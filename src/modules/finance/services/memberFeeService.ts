@@ -803,10 +803,68 @@ export const upsertMemberFeeFromTransaction = async (params: {
       }));
     }
 
+    // 聚合同步已收金额/付款日期/状态
+    await reconcileMemberFeeFromTransactions(params.memberId, params.fiscalYear);
+
     globalSystemService.log('info', 'Upsert member fee from transaction', 'memberFeeService.upsertMemberFeeFromTransaction', { memberId: params.memberId, fiscalYear: params.fiscalYear, transactionId: params.transactionId, userId: params.userId });
   } catch (error: any) {
     globalSystemService.log('error', 'Failed to upsert member fee from transaction', 'memberFeeService.upsertMemberFeeFromTransaction', { error: error.message, params });
     // 不抛出以免影响交易主流程
+  }
+};
+
+/**
+ * 根据交易记录汇总同步会费记录的已收金额、付款日期与状态
+ */
+export const reconcileMemberFeeFromTransactions = async (
+  memberId: string,
+  fiscalYear: string
+): Promise<void> => {
+  try {
+    // 读取该会员该财年的会费记录
+    const feesSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
+    const feeDoc = feesSnap.docs.find(d => d.data().type === 'memberFee' && d.data().memberId === memberId && d.data().fiscalYear === fiscalYear);
+    if (!feeDoc) return;
+
+    // 读取交易并聚合
+    const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
+    let paidAmount = 0;
+    let latestPayment: string | undefined = undefined;
+
+    txnSnap.docs.forEach(d => {
+      const data = d.data() as any;
+      if (data.category !== 'member-fees') return;
+      if (!data?.metadata?.memberId || data.metadata.memberId !== memberId) return;
+      if (data.fiscalYear !== fiscalYear) return;
+      if (!data.amount || !data.transactionType) return;
+      // 只累计收入
+      if (data.transactionType === 'income') {
+        paidAmount += Number(data.amount) || 0;
+      }
+      const txDate = safeTimestampToISO(data.transactionDate);
+      if (!latestPayment || txDate > latestPayment) latestPayment = txDate;
+    });
+
+    const ref = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS, feeDoc.id);
+    const feeData = feeDoc.data() as any;
+    const expected = Number(feeData.expectedAmount || 0);
+    const remaining = Math.max(expected - paidAmount, 0);
+
+    let newStatus: MemberFeeStatus = 'partial';
+    if (expected <= 0) newStatus = 'unpaid';
+    else if (remaining <= 0) newStatus = 'paid';
+    else if (feeData.dueDate && new Date(latestPayment || new Date().toISOString()) > new Date(feeData.dueDate) && remaining > 0) newStatus = 'overdue';
+    else newStatus = 'partial';
+
+    await updateDoc(ref, cleanUndefinedValues({
+      paidAmount,
+      remainingAmount: remaining,
+      paymentDate: latestPayment ?? null,
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch (error: any) {
+    globalSystemService.log('warning', 'Failed to reconcile member fee from transactions', 'memberFeeService.reconcileMemberFeeFromTransactions', { error: error.message, memberId, fiscalYear });
   }
 };
 

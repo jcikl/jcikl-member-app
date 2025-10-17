@@ -3,7 +3,6 @@ import { Form, Input, Button, Space, Card, Table, DatePicker, InputNumber, Switc
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Event, EventAgendaItem } from '../../types';
-import { globalComponentService } from '@/config/globalComponentSettings';
 
 interface Props {
   initialValues: Event;
@@ -12,7 +11,6 @@ interface Props {
 }
 
 const EventAgendaForm: React.FC<Props> = ({ initialValues, onSubmit, loading }) => {
-  const formConfig = globalComponentService.getFormConfig();
   const [agendaItems, setAgendaItems] = useState<EventAgendaItem[]>(
     initialValues.agendaItems || []
   );
@@ -158,7 +156,7 @@ const EventAgendaForm: React.FC<Props> = ({ initialValues, onSubmit, loading }) 
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_, record: EventAgendaItem) => (
+      render: (_: unknown, record: EventAgendaItem) => (
         <Popconfirm
           title="确定删除这个议程项目吗？"
           onConfirm={() => removeAgendaItem(record.id)}

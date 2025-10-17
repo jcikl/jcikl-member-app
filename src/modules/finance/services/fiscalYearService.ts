@@ -16,9 +16,7 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   limit,
-  QueryConstraint,
 } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
@@ -76,11 +74,11 @@ export const createFiscalYear = async (
       endDate: globalDateService.formatDate(endDate, 'api'),
       status: data.status,
       isDefault: data.isDefault,
-      description: data.description ?? null,
+      description: data.description ?? undefined,
       totalIncome: 0,
       totalExpense: 0,
       netIncome: 0,
-      notes: data.notes ?? null,
+      notes: data.notes ?? undefined,
       createdAt: now,
       updatedAt: now,
     };

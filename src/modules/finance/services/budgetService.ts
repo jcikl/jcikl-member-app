@@ -74,8 +74,8 @@ export const createBudget = async (
         percentageUsed: 0,
       })),
       status: data.status,
-      description: data.description ?? null,
-      notes: data.notes ?? null,
+      description: data.description ?? undefined,
+      notes: data.notes ?? undefined,
       createdAt: now,
       updatedAt: now,
     };

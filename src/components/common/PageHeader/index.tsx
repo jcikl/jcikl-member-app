@@ -42,6 +42,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         <Breadcrumb 
           style={{ marginBottom: 8 }}
           items={breadcrumbs.map((item, index) => ({
+            key: index,
             title: (
               <span 
                 style={{ cursor: item.path ? 'pointer' : 'default' }}

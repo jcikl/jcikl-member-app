@@ -32,7 +32,6 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { globalSystemService } from '@/config/globalSystemSettings';
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
 import { useAuthStore } from '@/stores/authStore';
@@ -43,10 +42,9 @@ import {
   getAllBankAccounts,
   createBankAccount,
   updateBankAccount,
-  deleteBankAccount,
   getTotalBalance,
 } from '../../services/bankAccountService';
-import type { BankAccount, BankAccountFormData, BankAccountType, BankAccountStatus } from '../../types';
+import type { BankAccount, BankAccountType } from '../../types';
 import './styles.css';
 
 const { Search } = Input;
@@ -162,27 +160,6 @@ const BankAccountManagementPage: React.FC = () => {
     } catch (error: any) {
       message.error('保存失败');
     }
-  };
-
-  const handleDelete = (id: string) => {
-    if (!user) return;
-
-    Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除此银行账户吗？此操作无法撤销。',
-      okText: '删除',
-      cancelText: '取消',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        try {
-          await deleteBankAccount(id, user.id);
-          message.success('账户已删除');
-          loadBankAccounts();
-        } catch (error: any) {
-          message.error('删除失败: ' + error.message);
-        }
-      },
-    });
   };
 
   const handleViewTransactions = (account: BankAccount) => {

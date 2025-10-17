@@ -308,7 +308,7 @@ const EventPreview: React.FC<EventPreviewProps> = ({ event }) => {
                     <Space direction="vertical" size="small">
                       {speaker.title && <Text type="secondary">{speaker.title}</Text>}
                       {speaker.bio && (
-                        <Text type="secondary" ellipsis={{ rows: 2 }}>
+                        <Text type="secondary" ellipsis>
                           {speaker.bio}
                         </Text>
                       )}

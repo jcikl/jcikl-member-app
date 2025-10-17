@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Space, Card, Table, Popconfirm, Upload } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import type { Event, Speaker } from '../../types';
-import { globalComponentService } from '@/config/globalComponentSettings';
 
 interface Props {
   initialValues: Event;
@@ -11,7 +10,6 @@ interface Props {
 }
 
 const EventSpeakersForm: React.FC<Props> = ({ initialValues, onSubmit, loading }) => {
-  const formConfig = globalComponentService.getFormConfig();
   const [speakers, setSpeakers] = useState<Speaker[]>(
     initialValues.speakers || []
   );
@@ -49,7 +47,7 @@ const EventSpeakersForm: React.FC<Props> = ({ initialValues, onSubmit, loading }
       dataIndex: 'id',
       key: 'id',
       width: 80,
-      render: (_: any, record: Speaker, index: number) => index + 1,
+      render: (_: unknown, _record: Speaker, index: number) => index + 1,
     },
     {
       title: '姓名',
@@ -155,7 +153,7 @@ const EventSpeakersForm: React.FC<Props> = ({ initialValues, onSubmit, loading }
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_, record: Speaker) => (
+      render: (_: unknown, record: Speaker) => (
         <Popconfirm
           title="确定删除这个讲师吗？"
           onConfirm={() => removeSpeaker(record.id)}

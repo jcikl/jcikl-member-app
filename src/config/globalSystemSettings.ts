@@ -142,8 +142,7 @@ export const globalSystemService = {
    * @param context - Additional context
    */
   log: (level: 'info' | 'warning' | 'error', message: string, source: string, context?: Record<string, unknown>) => {
-    const logData = { level, message, source, context, timestamp: new Date().toISOString() };
-    
+    // Log to console based on level
     if (level === 'error') {
       console.error(`[${source}]`, message, context);
     } else if (level === 'warning') {
