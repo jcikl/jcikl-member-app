@@ -267,6 +267,80 @@ export interface MemberFee {
   updatedAt: string;
 }
 
+// ========== Event Financial Record (活动财务记录) ==========
+
+export type EventFinancialRecordStatus = 'draft' | 'active' | 'completed' | 'reconciled';
+
+export interface EventFinancialRecord {
+  id: string;
+  eventId: string;
+  eventName: string;
+  eventDate?: string;
+  fiscalYear?: string;
+  subCategory?: string; // 二次分类（通常与 eventName 相同）
+  
+  // 🆕 付款人/收款人信息（最新一笔交易的信息）
+  payerPayee?: string; // 付款人/收款人姓名
+  memberId?: string; // 如果是会员，存储会员ID
+  memberName?: string; // 如果是会员，存储会员名字
+  memberEmail?: string; // 如果是会员，存储会员邮箱
+  
+  // 收入汇总
+  totalRevenue: number;
+  revenueTransactionIds: string[]; // 关联的收入交易ID列表
+  
+  // 支出汇总
+  totalExpense: number;
+  expenseTransactionIds: string[]; // 关联的支出交易ID列表
+  
+  // 统计
+  netIncome: number; // 净收益
+  transactionCount: number; // 交易笔数
+  
+  status: EventFinancialRecordStatus;
+  notes?: string;
+  lastReconciliationDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ========== General Financial Record (日常账户财务记录) ==========
+
+export type GeneralFinancialRecordStatus = 'active' | 'archived';
+
+export interface GeneralFinancialRecord {
+  id: string;
+  category: string; // general-* 类别
+  subCategory?: string; // 二次分类
+  fiscalYear?: string;
+  
+  // 🆕 付款人/收款人信息（最新一笔交易的信息）
+  payerPayee?: string; // 付款人/收款人姓名
+  memberId?: string; // 如果是会员，存储会员ID
+  memberName?: string; // 如果是会员，存储会员名字
+  memberEmail?: string; // 如果是会员，存储会员邮箱
+  
+  // 收入汇总
+  totalRevenue: number;
+  revenueTransactionIds: string[]; // 关联的收入交易ID列表
+  
+  // 支出汇总
+  totalExpense: number;
+  expenseTransactionIds: string[]; // 关联的支出交易ID列表
+  
+  // 统计
+  netIncome: number; // 净收益
+  transactionCount: number; // 交易笔数
+  
+  status: GeneralFinancialRecordStatus;
+  notes?: string;
+  lastReconciliationDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ========== Member Fee Form Data ==========
+
 export interface MemberFeeFormData {
   memberId: string;
   fiscalYear: string;

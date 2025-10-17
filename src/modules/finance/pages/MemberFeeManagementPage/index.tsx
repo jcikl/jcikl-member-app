@@ -31,7 +31,6 @@ import {
   DownloadOutlined,
   RiseOutlined,
   FallOutlined,
-  WarningOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -40,7 +39,6 @@ import { globalSystemService } from '@/config/globalSystemSettings';
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
 import { useAuthStore } from '@/stores/authStore';
-import { PageHeader } from '@/components/common/PageHeader';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import {
@@ -186,11 +184,6 @@ const MemberFeeManagementPage: React.FC = () => {
 
   const handleCategoryFilterChange = (value: MemberCategoryType | 'all') => {
     setCategoryFilter(value);
-    setCurrentPage(1);
-  };
-
-  const handleYearChange = (value: string) => {
-    setSelectedYear(value);
     setCurrentPage(1);
   };
 
@@ -726,74 +719,41 @@ const MemberFeeManagementPage: React.FC = () => {
   return (
     <ErrorBoundary>
       <div className="member-fee-management-page">
-        <PageHeader
-          title="会员费用追踪"
-          subtitle={selectedYear}
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '财务管理', path: '/finance' },
-            { title: '会员费用管理' },
-          ]}
-          extra={
-            <Select
-              style={{ width: 150 }}
-              value={selectedYear}
-              onChange={handleYearChange}
-            >
-              <Option value="FY2024">FY2024</Option>
-              <Option value="FY2023">FY2023</Option>
-              <Option value="FY2022">FY2022</Option>
-            </Select>
-          }
-        />
-
         {/* Statistics Cards */}
         <div className="mb-6">
           <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={8}>
               <Card>
                 <Statistic
-                  title="预期总额"
+                  title="应收总额"
                   value={statistics.totalExpected}
-                  precision={2}
+                  precision={0}
                   prefix="RM"
                   valueStyle={{ color: '#333' }}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={8}>
               <Card>
                 <Statistic
-                  title="已收总额"
+                  title="已收金额"
                   value={statistics.totalCollected}
-                  precision={2}
+                  precision={0}
                   prefix="RM"
                   valueStyle={{ color: '#10b981' }}
                   suffix={<RiseOutlined />}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={8}>
               <Card>
                 <Statistic
-                  title="未收总额"
+                  title="待收金额"
                   value={statistics.totalOutstanding}
-                  precision={2}
+                  precision={0}
                   prefix="RM"
                   valueStyle={{ color: '#faad14' }}
                   suffix={<FallOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="逾期总额"
-                  value={statistics.totalOverdue}
-                  precision={2}
-                  prefix="RM"
-                  valueStyle={{ color: '#ef4444' }}
-                  suffix={<WarningOutlined />}
                 />
               </Card>
             </Col>

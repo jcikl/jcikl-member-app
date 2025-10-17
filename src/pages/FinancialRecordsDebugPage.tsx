@@ -175,11 +175,15 @@ export const FinancialRecordsDebugPage: React.FC = () => {
       title: '记录类型',
       dataIndex: 'type',
       key: 'type',
-      render: (type: string) => (
-        <Tag color={type === 'memberFee' ? 'blue' : 'default'}>
-          {type}
-        </Tag>
-      ),
+      render: (type: string) => {
+        const typeMap: Record<string, { label: string; color: string }> = {
+          memberFee: { label: '会员费用', color: 'blue' },
+          eventFinancialRecord: { label: '活动财务', color: 'green' },
+          generalFinancialRecord: { label: '日常账户', color: 'orange' },
+        };
+        const config = typeMap[type] || { label: type, color: 'default' };
+        return <Tag color={config.color}>{config.label}</Tag>;
+      },
     },
     {
       title: '记录数量',
@@ -204,66 +208,147 @@ export const FinancialRecordsDebugPage: React.FC = () => {
 
   const detailColumns: ColumnsType<FinancialRecord> = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 200,
-      ellipsis: true,
-      fixed: 'left',
+      title: '交易日期',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      width: 150,
+      render: (date: string) => date ? globalDateService.formatDate(new Date(date), 'display') : '-',
     },
     {
-      title: '类型',
+      title: '交易类型',
       dataIndex: 'type',
       key: 'type',
-      width: 120,
-      render: (type: string) => <Tag>{type || 'unknown'}</Tag>,
-    },
-    {
-      title: '会员ID',
-      dataIndex: 'memberId',
-      key: 'memberId',
       width: 150,
-      ellipsis: true,
+      render: (type: string) => {
+        const typeMap: Record<string, { label: string; color: string }> = {
+          memberFee: { label: '会员费用', color: 'blue' },
+          eventFinancialRecord: { label: '活动财务', color: 'green' },
+          generalFinancialRecord: { label: '日常账户', color: 'orange' },
+        };
+        const config = typeMap[type] || { label: type || 'unknown', color: 'default' };
+        return <Tag color={config.color}>{config.label}</Tag>;
+      },
     },
     {
-      title: '会员姓名',
-      dataIndex: 'memberName',
-      key: 'memberName',
-      width: 150,
-    },
-    {
-      title: '二次分类',
+      title: '交易用途',
       dataIndex: 'subCategory',
       key: 'subCategory',
       width: 200,
       render: (subCategory?: string) => subCategory ? (
-        <Tag color="purple">{subCategory}</Tag>
+        <Tag color="geekblue">{subCategory}</Tag>
       ) : (
-        <Tag color="default">-</Tag>
+        <span style={{ color: '#999' }}>-</span>
       ),
     },
     {
-      title: '交易ID',
-      dataIndex: 'transactionId',
-      key: 'transactionId',
+      title: '名字/公司',
+      key: 'name',
       width: 200,
-      ellipsis: true,
+      render: (_: any, record: FinancialRecord) => {
+        if (record.type === 'memberFee') {
+          // 会员费记录：显示会员名字 + 邮箱
+          const memberName = record.memberName || '-';
+          const memberEmail = record.memberEmail;
+          
+          return (
+            <div>
+              <div style={{ fontWeight: 500 }}>{memberName}</div>
+              {memberEmail && (
+                <div style={{ fontSize: 12, color: '#666' }}>{memberEmail}</div>
+              )}
+            </div>
+          );
+        } else if (record.type === 'eventFinancialRecord' || record.type === 'generalFinancialRecord') {
+          // 活动财务/日常账户记录：显示会员名字或付款人 + 邮箱（如果有）
+          const payerPayee = (record as any).payerPayee;
+          const memberName = (record as any).memberName;
+          const memberId = (record as any).memberId;
+          const memberEmail = (record as any).memberEmail;
+          
+          // 优先显示会员名字，其次显示付款人/收款人
+          const displayName = memberName || payerPayee || '-';
+          
+          return (
+            <div>
+              <div style={{ fontWeight: 500 }}>{displayName}</div>
+              {memberEmail && (
+                <div style={{ fontSize: 12, color: '#666' }}>{memberEmail}</div>
+              )}
+            </div>
+          );
+        }
+        return '-';
+      },
     },
     {
-      title: '预期金额',
-      dataIndex: 'expectedAmount',
-      key: 'expectedAmount',
-      width: 120,
+      title: '金额',
+      key: 'amount',
+      width: 150,
       align: 'right',
-      render: (amount: number) => amount ? `RM ${amount.toFixed(2)}` : '-',
-    },
-    {
-      title: '已付金额',
-      dataIndex: 'paidAmount',
-      key: 'paidAmount',
-      width: 120,
-      align: 'right',
-      render: (amount: number) => amount ? `RM ${amount.toFixed(2)}` : '-',
+      render: (_: any, record: FinancialRecord) => {
+        // 根据记录类型计算收入和支出
+        let income = 0;
+        let expense = 0;
+        
+        if (record.type === 'memberFee') {
+          // 会员费：显示剩余未付金额（应收 - 实收）
+          const expected = (record as any).expectedAmount || 0;
+          const paid = (record as any).paidAmount || 0;
+          const remaining = expected - paid;
+          
+          // 会员费特殊处理：显示剩余金额
+          if (remaining === 0) {
+            // 已全额支付，显示已付金额
+            return (
+              <span style={{ color: '#52c41a', fontWeight: 500 }}>
+                RM {paid.toFixed(2)}
+              </span>
+            );
+          } else if (remaining > 0) {
+            // 部分支付或未支付，显示剩余金额
+            return (
+              <span style={{ color: '#ff4d4f', fontWeight: 500 }}>
+                RM {remaining.toFixed(2)}
+              </span>
+            );
+          } else {
+            // 超额支付（异常情况）
+            return (
+              <span style={{ color: '#faad14', fontWeight: 500 }}>
+                RM {Math.abs(remaining).toFixed(2)}
+              </span>
+            );
+          }
+        } else if (record.type === 'eventFinancialRecord' || record.type === 'generalFinancialRecord') {
+          // 活动财务/日常账户：显示总收入和总支出
+          income = (record as any).totalRevenue || 0;
+          expense = (record as any).totalExpense || 0;
+        }
+        
+        // 参考银行对账单：收入显示正数（绿色），支出显示负数（红色）
+        const netAmount = income - expense;
+        const displayAmount = Math.abs(netAmount);
+        const isIncome = netAmount >= 0;
+        
+        if (displayAmount === 0) return '-';
+        
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <span style={{ 
+              color: isIncome ? '#52c41a' : '#ff4d4f', 
+              fontWeight: 500,
+              fontSize: '14px'
+            }}>
+              RM {displayAmount.toFixed(2)}
+            </span>
+            {income > 0 && expense > 0 && (
+              <span style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
+                {income.toFixed(2)} - {expense.toFixed(2)}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: '状态',
@@ -279,20 +364,6 @@ export const FinancialRecordsDebugPage: React.FC = () => {
         };
         return status ? <Tag color={colorMap[status] || 'default'}>{status}</Tag> : '-';
       },
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 150,
-      render: (date: string) => date ? globalDateService.formatDate(new Date(date), 'display') : '-',
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 150,
-      render: (date: string) => date ? globalDateService.formatDate(new Date(date), 'display') : '-',
     },
     {
       title: '操作',
@@ -399,7 +470,7 @@ export const FinancialRecordsDebugPage: React.FC = () => {
           columns={detailColumns}
           dataSource={displayRecords}
           rowKey="id"
-          scroll={{ x: 1800 }}
+          scroll={{ x: 1200 }}
           pagination={{
             pageSize: 20,
             showSizeChanger: true,

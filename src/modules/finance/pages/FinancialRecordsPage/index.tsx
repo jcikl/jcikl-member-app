@@ -269,7 +269,9 @@ const FinancialRecordsPage: React.FC = () => {
 
   const getTypeTag = (type?: string) => {
     const typeMap: Record<string, { color: string; text: string }> = {
-      memberFee: { color: 'blue', text: '会员费' },
+      memberFee: { color: 'blue', text: '会员费用' },
+      eventFinancialRecord: { color: 'green', text: '活动财务' },
+      generalFinancialRecord: { color: 'orange', text: '日常账户' },
       donation: { color: 'green', text: '捐赠' },
       eventFee: { color: 'purple', text: '活动费用' },
       sponsorship: { color: 'orange', text: '赞助' },
@@ -295,27 +297,25 @@ const FinancialRecordsPage: React.FC = () => {
 
   const columns: ColumnsType<FinancialRecord> = [
     {
-      title: '会员信息',
-      key: 'member',
-      width: 200,
-      render: (_, record) => (
-        <div>
-          <div style={{ fontWeight: 500 }}>{record.memberName || '-'}</div>
-          {record.memberEmail && (
-            <div style={{ fontSize: 12, color: '#666' }}>{record.memberEmail}</div>
-          )}
-        </div>
-      ),
+      title: '交易日期',
+      dataIndex: 'transactionDate',
+      key: 'transactionDate',
+      width: 120,
+      render: (date: string, record) => {
+        // 优先使用transactionDate，其次使用createdAt
+        const displayDate = date || record.createdAt;
+        return displayDate ? globalDateService.formatDate(new Date(displayDate), 'display') : '-';
+      },
     },
     {
-      title: '记录类型',
+      title: '交易类型',
       dataIndex: 'type',
       key: 'type',
       width: 120,
       render: (type?: string) => getTypeTag(type),
     },
     {
-      title: '二次分类',
+      title: '交易用途',
       dataIndex: 'subCategory',
       key: 'subCategory',
       width: 150,
@@ -326,40 +326,113 @@ const FinancialRecordsPage: React.FC = () => {
       ),
     },
     {
-      title: '预期金额',
-      dataIndex: 'expectedAmount',
-      key: 'expectedAmount',
-      width: 120,
-      align: 'right',
-      render: (amount: number) => (
-        <span style={{ fontWeight: 500 }}>
-          RM {amount?.toFixed(2) || '0.00'}
-        </span>
-      ),
+      title: '名字/公司',
+      key: 'member',
+      width: 200,
+      render: (_, record) => {
+        if (record.type === 'memberFee') {
+          // 会员费记录：显示会员名字 + 邮箱
+          return (
+            <div>
+              <div style={{ fontWeight: 500 }}>{record.memberName || '-'}</div>
+              {record.memberEmail && (
+                <div style={{ fontSize: 12, color: '#666' }}>{record.memberEmail}</div>
+              )}
+            </div>
+          );
+        } else if (record.type === 'eventFinancialRecord' || record.type === 'generalFinancialRecord') {
+          // 活动财务/日常账户记录：显示会员名字或付款人 + 邮箱（如果有）
+          const payerPayee = (record as any).payerPayee;
+          const memberName = (record as any).memberName;
+          const memberId = (record as any).memberId;
+          
+          // 优先显示会员名字，其次显示付款人/收款人
+          const displayName = memberName || payerPayee || '-';
+          
+          // 尝试从 record 中获取邮箱信息（如果是会员记录）
+          // 注意：需要从 financial_records 中存储的会员邮箱信息获取
+          const memberEmail = (record as any).memberEmail;
+          
+          return (
+            <div>
+              <div style={{ fontWeight: 500 }}>{displayName}</div>
+              {memberEmail && (
+                <div style={{ fontSize: 12, color: '#666' }}>{memberEmail}</div>
+              )}
+            </div>
+          );
+        }
+        
+        return '-';
+      },
     },
     {
-      title: '已付金额',
-      dataIndex: 'paidAmount',
-      key: 'paidAmount',
-      width: 120,
+      title: '金额',
+      key: 'amount',
+      width: 150,
       align: 'right',
-      render: (amount: number) => (
-        <span style={{ color: '#52c41a', fontWeight: 500 }}>
-          RM {amount?.toFixed(2) || '0.00'}
-        </span>
-      ),
-    },
-    {
-      title: '剩余金额',
-      dataIndex: 'remainingAmount',
-      key: 'remainingAmount',
-      width: 120,
-      align: 'right',
-      render: (amount: number) => (
-        <span style={{ color: amount > 0 ? '#ff4d4f' : '#52c41a', fontWeight: 500 }}>
-          RM {amount?.toFixed(2) || '0.00'}
-        </span>
-      ),
+      render: (_, record) => {
+        // 根据记录类型计算收入和支出
+        let income = 0;
+        let expense = 0;
+        
+        if (record.type === 'memberFee') {
+          // 会员费：显示剩余未付金额（应收 - 实收）
+          const expected = record.expectedAmount || 0;
+          const paid = record.paidAmount || 0;
+          const remaining = expected - paid;
+          
+          // 会员费特殊处理：显示剩余金额
+          if (remaining === 0) {
+            // 已全额支付，显示已付金额
+            return (
+              <span style={{ color: '#52c41a', fontWeight: 500 }}>
+                RM {paid.toFixed(2)}
+              </span>
+            );
+          } else if (remaining > 0) {
+            // 部分支付或未支付，显示剩余金额
+            return (
+              <span style={{ color: '#ff4d4f', fontWeight: 500 }}>
+                RM {remaining.toFixed(2)}
+              </span>
+            );
+          } else {
+            // 超额支付（异常情况）
+            return (
+              <span style={{ color: '#faad14', fontWeight: 500 }}>
+                RM {Math.abs(remaining).toFixed(2)}
+              </span>
+            );
+          }
+        } else if (record.type === 'eventFinancialRecord' || record.type === 'generalFinancialRecord') {
+          // 活动财务/日常账户：显示总收入和总支出
+          income = (record as any).totalRevenue || 0;
+          expense = (record as any).totalExpense || 0;
+        }
+        
+        // 参考银行对账单：收入显示正数（绿色），支出显示负数（红色）
+        const netAmount = income - expense;
+        const displayAmount = Math.abs(netAmount);
+        const isIncome = netAmount >= 0;
+        
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <span style={{ 
+              color: isIncome ? '#52c41a' : '#ff4d4f', 
+              fontWeight: 500,
+              fontSize: '14px'
+            }}>
+              RM {displayAmount.toFixed(2)}
+            </span>
+            {income > 0 && expense > 0 && (
+              <span style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
+                {income.toFixed(2)} - {expense.toFixed(2)}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: '状态',
@@ -367,22 +440,6 @@ const FinancialRecordsPage: React.FC = () => {
       key: 'status',
       width: 100,
       render: (status: MemberFeeStatus) => getStatusTag(status),
-    },
-    {
-      title: '到期日期',
-      dataIndex: 'dueDate',
-      key: 'dueDate',
-      width: 120,
-      render: (date: string) =>
-        date ? globalDateService.formatDate(new Date(date), 'display') : '-',
-    },
-    {
-      title: '创建日期',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 120,
-      render: (date: string) =>
-        date ? globalDateService.formatDate(new Date(date), 'display') : '-',
     },
     {
       title: '操作',
@@ -571,7 +628,7 @@ const FinancialRecordsPage: React.FC = () => {
                 setPageSize(size || 20);
               },
             }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1070 }}
           />
         </Card>
 

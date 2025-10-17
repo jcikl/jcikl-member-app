@@ -36,6 +36,14 @@ import {
   reconcileMemberFeeFromTransactions 
 } from './memberFeeService';
 import { getMemberById } from '@/modules/member/services/memberService';
+import { 
+  upsertEventFinancialRecordFromTransaction,
+  reconcileEventFinancialRecord 
+} from './eventFinancialRecordService';
+import { 
+  upsertGeneralFinancialRecordFromTransaction,
+  reconcileGeneralFinancialRecord 
+} from './generalFinancialRecordService';
 
 /**
  * Generate Transaction Number
@@ -391,6 +399,137 @@ export const updateTransaction = async (
           userId,
         });
         // Don't throw - allow transaction update to succeed even if member fee sync fails
+      }
+    }
+
+    // === 🆕 Auto-sync Event Financial from Transaction ===
+    // When transaction category starts with 'event-' and has metadata.eventId,
+    // automatically create/update eventFinancialRecord in FINANCIAL_RECORDS
+    if (finalCategory.startsWith('event-') && finalMetadata?.eventId) {
+      console.log('🔗 [updateTransaction] Event financial transaction detected, auto-syncing...', {
+        transactionId,
+        eventId: finalMetadata.eventId,
+        category: finalCategory,
+      });
+
+      try {
+        const finalAmount = updates.amount ?? existingData.amount;
+        const finalTransactionType = updates.transactionType ?? existingData.transactionType;
+        const finalSubCategory = updates.subCategory ?? existingData.subCategory;
+        const finalPayerPayee = updates.payerPayee ?? existingData.payerPayee;
+
+        // 🆕 获取会员信息（如果有 memberId）
+        let memberName: string | undefined;
+        let memberEmail: string | undefined;
+        const linkedMemberId = finalMetadata?.memberId;
+        if (linkedMemberId) {
+          try {
+            const member = await getMemberById(linkedMemberId);
+            memberName = member?.name;
+            memberEmail = member?.email;
+          } catch (error) {
+            console.warn('Failed to get member info:', error);
+          }
+        }
+
+        await upsertEventFinancialRecordFromTransaction({
+          eventId: finalMetadata.eventId,
+          eventName: finalMetadata.eventName || 'Unknown Event',
+          eventDate: finalMetadata.eventDate,
+          fiscalYear: updates.fiscalYear ?? existingData.fiscalYear,
+          subCategory: finalSubCategory,
+          payerPayee: finalPayerPayee, // 🆕 传递付款人/收款人
+          memberId: linkedMemberId, // 🆕 传递会员ID
+          memberName, // 🆕 传递会员名字
+          memberEmail, // 🆕 传递会员邮箱
+          transactionId,
+          amount: finalAmount || 0,
+          transactionType: finalTransactionType,
+          userId,
+        });
+
+        await reconcileEventFinancialRecord(finalMetadata.eventId);
+
+        console.log('✅ [updateTransaction] Event financial record auto-synced successfully');
+        globalSystemService.log('info', 'Event financial auto-synced from transaction', 'transactionService.updateTransaction', {
+          transactionId,
+          eventId: finalMetadata.eventId,
+          userId,
+        });
+      } catch (syncError: any) {
+        console.error('❌ [updateTransaction] Failed to auto-sync event financial:', syncError);
+        globalSystemService.log('error', 'Failed to auto-sync event financial from transaction', 'transactionService.updateTransaction', {
+          error: syncError.message,
+          transactionId,
+          eventId: finalMetadata?.eventId,
+          userId,
+        });
+        // Don't throw - allow transaction update to succeed even if sync fails
+      }
+    }
+
+    // === 🆕 Auto-sync General Financial from Transaction ===
+    // When transaction category starts with 'general-',
+    // automatically create/update generalFinancialRecord in FINANCIAL_RECORDS
+    if (finalCategory.startsWith('general-')) {
+      console.log('🔗 [updateTransaction] General financial transaction detected, auto-syncing...', {
+        transactionId,
+        category: finalCategory,
+        subCategory: updates.subCategory ?? existingData.subCategory,
+      });
+
+      try {
+        const finalAmount = updates.amount ?? existingData.amount;
+        const finalTransactionType = updates.transactionType ?? existingData.transactionType;
+        const finalSubCategory = updates.subCategory ?? existingData.subCategory;
+        const finalPayerPayee = updates.payerPayee ?? existingData.payerPayee;
+
+        // 🆕 获取会员信息（如果有 memberId）
+        let memberName: string | undefined;
+        let memberEmail: string | undefined;
+        const linkedMemberId = finalMetadata?.memberId;
+        if (linkedMemberId) {
+          try {
+            const member = await getMemberById(linkedMemberId);
+            memberName = member?.name;
+            memberEmail = member?.email;
+          } catch (error) {
+            console.warn('Failed to get member info:', error);
+          }
+        }
+
+        await upsertGeneralFinancialRecordFromTransaction({
+          category: finalCategory,
+          subCategory: finalSubCategory,
+          fiscalYear: updates.fiscalYear ?? existingData.fiscalYear,
+          payerPayee: finalPayerPayee, // 🆕 传递付款人/收款人
+          memberId: linkedMemberId, // 🆕 传递会员ID
+          memberName, // 🆕 传递会员名字
+          memberEmail, // 🆕 传递会员邮箱
+          transactionId,
+          amount: finalAmount || 0,
+          transactionType: finalTransactionType,
+          userId,
+        });
+
+        await reconcileGeneralFinancialRecord(finalCategory, finalSubCategory);
+
+        console.log('✅ [updateTransaction] General financial record auto-synced successfully');
+        globalSystemService.log('info', 'General financial auto-synced from transaction', 'transactionService.updateTransaction', {
+          transactionId,
+          category: finalCategory,
+          subCategory: finalSubCategory,
+          userId,
+        });
+      } catch (syncError: any) {
+        console.error('❌ [updateTransaction] Failed to auto-sync general financial:', syncError);
+        globalSystemService.log('error', 'Failed to auto-sync general financial from transaction', 'transactionService.updateTransaction', {
+          error: syncError.message,
+          transactionId,
+          category: finalCategory,
+          userId,
+        });
+        // Don't throw - allow transaction update to succeed even if sync fails
       }
     }
   } catch (error: any) {

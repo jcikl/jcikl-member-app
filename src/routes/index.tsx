@@ -8,6 +8,7 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import GlobalSettingsPage from '@/modules/system/pages/GlobalSettingsPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
+import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage';
 
 // Member Module
 import MemberListPage from '@/modules/member/pages/MemberListPage';
@@ -91,6 +92,10 @@ export const router = createBrowserRouter(
       {
         path: 'financial-records-debug',
         element: <FinancialRecordsDebugPage />,
+      },
+      {
+        path: 'update-financial-records-payer-info',
+        element: <UpdateFinancialRecordsPayerInfoPage />,
       },
       // Member Module Routes
       {

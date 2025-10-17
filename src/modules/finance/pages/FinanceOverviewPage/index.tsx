@@ -1,17 +1,24 @@
 /**
  * Finance Overview Page
- * 财务概览页面 - 仪表板
+ * 财务概览页面 - 统一财务管理入口
  * 
- * Displays comprehensive financial overview and statistics
+ * Displays comprehensive financial overview with tabbed interface for:
+ * - Overview (概览)
+ * - Member Fees (会员费用)
+ * - Event Finance (活动财务)
+ * - General Accounts (日常账户)
  */
 
-import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Button, DatePicker, message, Table, Tag } from 'antd';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { Card, Row, Col, Statistic, Button, DatePicker, message, Table, Tag, Tabs } from 'antd';
 import {
   DollarOutlined,
   RiseOutlined,
   WalletOutlined,
   FileTextOutlined,
+  TeamOutlined,
+  CalendarOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { Dayjs } from 'dayjs';
@@ -27,9 +34,15 @@ import { getTotalBalance } from '../../services/bankAccountService';
 import type { Transaction, FinancialStatistics } from '../../types';
 import './styles.css';
 
+// Lazy load tab components
+const MemberFeeManagementPage = lazy(() => import('../MemberFeeManagementPage'));
+const EventFinancialPage = lazy(() => import('../EventFinancialPage'));
+const GeneralAccountsPage = lazy(() => import('../GeneralAccountsPage'));
+
 const { RangePicker } = DatePicker;
 
 type PeriodType = 'fiscal' | 'calendar' | 'custom';
+type TabKey = 'overview' | 'member-fees' | 'event-finance' | 'general-accounts';
 
 const FinanceOverviewPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -38,10 +51,13 @@ const FinanceOverviewPage: React.FC = () => {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [periodType, setPeriodType] = useState<PeriodType>('fiscal');
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
   useEffect(() => {
-    loadFinancialData();
-  }, [periodType, dateRange]);
+    if (activeTab === 'overview') {
+      loadFinancialData();
+    }
+  }, [periodType, dateRange, activeTab]);
 
   const loadFinancialData = async () => {
     if (!user) return;
@@ -211,33 +227,24 @@ const FinanceOverviewPage: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!statistics) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>无法加载财务数据</p>
-      </div>
-    );
-  }
-
   const tableConfig = globalComponentService.getTableConfig();
 
-  return (
-    <ErrorBoundary>
-      <div className="finance-overview-page">
-        <PageHeader
-          title="财务概览"
-          subtitle="组织财务状况综合视图"
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '财务管理', path: '/finance' },
-            { title: '财务概览' },
-          ]}
-        />
+  // Overview Tab Content
+  const renderOverviewTab = () => {
+    if (loading) {
+      return <LoadingSpinner />;
+    }
 
+    if (!statistics) {
+      return (
+        <div className="flex items-center justify-center" style={{ minHeight: '300px' }}>
+          <p>无法加载财务数据</p>
+        </div>
+      );
+    }
+
+    return (
+      <div>
         {/* Period Selection */}
         <Card className="mb-6">
           <div className="flex justify-between items-center flex-wrap gap-4">
@@ -397,9 +404,86 @@ const FinanceOverviewPage: React.FC = () => {
           />
         </Card>
       </div>
+    );
+  };
+
+  return (
+    <ErrorBoundary>
+      <div className="finance-overview-page">
+        <PageHeader
+          title="财务概览"
+          subtitle="组织财务状况综合视图"
+          breadcrumbs={[
+            { title: '首页', path: '/' },
+            { title: '财务管理', path: '/finance' },
+            { title: '财务概览' },
+          ]}
+        />
+
+        {/* Tabbed Interface */}
+        <Card>
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => setActiveTab(key as TabKey)}
+            items={[
+              {
+                key: 'overview',
+                label: (
+                  <span>
+                    <FileTextOutlined />
+                    概览
+                  </span>
+                ),
+                children: renderOverviewTab(),
+              },
+              {
+                key: 'member-fees',
+                label: (
+                  <span>
+                    <TeamOutlined />
+                    会员费用
+                  </span>
+                ),
+                children: (
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <MemberFeeManagementPage />
+                  </Suspense>
+                ),
+              },
+              {
+                key: 'event-finance',
+                label: (
+                  <span>
+                    <CalendarOutlined />
+                    活动财务
+                  </span>
+                ),
+                children: (
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <EventFinancialPage />
+                  </Suspense>
+                ),
+              },
+              {
+                key: 'general-accounts',
+                label: (
+                  <span>
+                    <BankOutlined />
+                    日常账户
+                  </span>
+                ),
+                children: (
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <GeneralAccountsPage />
+                  </Suspense>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      </div>
     </ErrorBoundary>
   );
 };
 
 export default FinanceOverviewPage;
-

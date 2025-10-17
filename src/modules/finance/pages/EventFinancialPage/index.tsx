@@ -21,6 +21,7 @@ import {
   Modal,
   Drawer,
   Descriptions,
+  Input,
 } from 'antd';
 import {
   RiseOutlined,
@@ -33,12 +34,11 @@ import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
 import { globalSystemService } from '@/config/globalSystemSettings';
 import { useAuthStore } from '@/stores/authStore';
-import { PageHeader } from '@/components/common/PageHeader';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
 import { getAllFinanceEvents, createFinanceEvent, updateFinanceEvent } from '../../services/financeEventService';
-import { getAllActiveMembers } from '../../../member/services/memberService';
+import { getAllActiveMembers, getMembers, getMemberById } from '../../../member/services/memberService';
 import type { Transaction, FinanceEvent } from '../../types';
 import type { Member } from '../../../member/types';
 import './styles.css';
@@ -83,6 +83,12 @@ const EventFinancialPage: React.FC = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchClassifyModalVisible, setBatchClassifyModalVisible] = useState(false);
+  // 🆕 会员搜索相关状态
+  const [modalSelectedMemberId, setModalSelectedMemberId] = useState<string>('');
+  const [modalPayerPayee, setModalPayerPayee] = useState<string>(''); // 手动填写的乙方
+  const [modalSelectedEvent, setModalSelectedEvent] = useState<string>(''); // 🆕 选择的活动名称
+  const [memberSearchOptions, setMemberSearchOptions] = useState<{ value: string; label: string }[]>([]);
+  const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   
   // 活动管理相关状态
   const [financeEvents, setFinanceEvents] = useState<FinanceEvent[]>([]);
@@ -112,6 +118,9 @@ const EventFinancialPage: React.FC = () => {
   const [editEventChair, setEditEventChair] = useState('');
   const [editEventTreasurer, setEditEventTreasurer] = useState('');
   const [editEventStatus, setEditEventStatus] = useState<'planned' | 'active' | 'completed' | 'cancelled'>('planned');
+  
+  // 🆕 会员信息缓存（用于显示描述栏中的会员信息）
+  const [memberInfoCache, setMemberInfoCache] = useState<Record<string, { name: string; email?: string; phone?: string }>>({});
 
   useEffect(() => {
     loadEventFinancials();
@@ -393,6 +402,38 @@ const EventFinancialPage: React.FC = () => {
       
       setTransactions(result.data);
       setTransactionTotal(result.total);
+      
+      // 🆕 提取所有唯一的 memberId 并获取会员信息
+      const uniqueMemberIds = Array.from(
+        new Set(
+          result.data
+            .map(t => (t as any)?.metadata?.memberId as string | undefined)
+            .filter(Boolean)
+        )
+      );
+      
+      if (uniqueMemberIds.length > 0) {
+        const memberCache: Record<string, { name: string; email?: string; phone?: string }> = {};
+        
+        for (const memberId of uniqueMemberIds) {
+          if (!memberId) continue; // 跳过空值
+          
+          try {
+            const member = await getMemberById(memberId);
+            if (member) {
+              memberCache[memberId] = {
+                name: member.name,
+                email: member.email,
+                phone: member.phone,
+              };
+            }
+          } catch (error) {
+            console.warn(`Failed to load member ${memberId}:`, error);
+          }
+        }
+        
+        setMemberInfoCache(memberCache);
+      }
     } catch (error: any) {
       message.error('加载交易记录失败');
       globalSystemService.log('error', 'Failed to load event finance transactions', 'EventFinancialPage', { error });
@@ -402,25 +443,108 @@ const EventFinancialPage: React.FC = () => {
   };
   
   // 打开分类模态框
-  const handleClassify = (transaction: Transaction) => {
+  const handleClassify = async (transaction: Transaction) => {
     setSelectedTransaction(transaction);
+    
+    // 🆕 预填活动选择
+    setModalSelectedEvent(transaction.subCategory || '');
+    
+    // 🆕 预填会员信息或付款人信息
+    const existingMemberId = (transaction as any)?.metadata?.memberId as string | undefined;
+    const existingPayerPayee = transaction.payerPayee || '';
+    
+    setModalPayerPayee(existingPayerPayee);
+    
+    if (existingMemberId) {
+      setModalSelectedMemberId(existingMemberId);
+      // 加载该会员的信息以显示名字
+      try {
+        const member = await getMemberById(existingMemberId);
+        if (member) {
+          setMemberSearchOptions([
+            { value: member.id, label: `${member.name} (${member.email || member.phone || member.memberId || ''})` }
+          ]);
+        } else {
+          setMemberSearchOptions([
+            { value: existingMemberId, label: `会员ID: ${existingMemberId}` }
+          ]);
+        }
+      } catch (error) {
+        setMemberSearchOptions([
+          { value: existingMemberId, label: `会员ID: ${existingMemberId}` }
+        ]);
+      }
+    } else {
+      setModalSelectedMemberId('');
+      setMemberSearchOptions([]);
+    }
+    
     setClassifyModalVisible(true);
   };
   
   // 保存二次分类
-  const handleClassifySubmit = async (subCategory: string) => {
+  const handleClassifySubmit = async () => {
     if (!user || !selectedTransaction) return;
     
+    // 验证必填项
+    if (!modalSelectedEvent.trim()) {
+      message.warning('请选择活动分类');
+      return;
+    }
+    
     try {
+      // 🆕 查找对应的活动，获取 eventId
+      const selectedEvent = financeEvents.find(e => e.eventName === modalSelectedEvent);
+      
+      // 🆕 构建更新数据，包含 metadata.eventId 和乙方信息
+      const updateData: any = { subCategory: modalSelectedEvent };
+      
+      // 🆕 处理付款人/收款人信息
+      let finalPayerPayee = modalPayerPayee.trim();
+      
+      // 如果选择了会员，用会员名字作为 payerPayee
+      if (modalSelectedMemberId) {
+        const member = await getMemberById(modalSelectedMemberId);
+        if (member) {
+          finalPayerPayee = member.name;
+        }
+      }
+      
+      // 设置 payerPayee（如果有值）
+      if (finalPayerPayee) {
+        updateData.payerPayee = finalPayerPayee;
+      }
+      
+      if (selectedEvent) {
+        updateData.metadata = {
+          ...selectedTransaction.metadata,
+          eventId: selectedEvent.id,
+          eventName: selectedEvent.eventName,
+          eventDate: selectedEvent.eventDate,
+          // 🆕 添加会员ID（如果选择了会员）
+          ...(modalSelectedMemberId && { memberId: modalSelectedMemberId }),
+        };
+        console.log('🔗 [EventFinancialPage] Setting metadata for event:', {
+          eventId: selectedEvent.id,
+          eventName: selectedEvent.eventName,
+          memberId: modalSelectedMemberId || 'none',
+          payerPayee: finalPayerPayee || 'none',
+        });
+      }
+      
       await updateTransaction(
         selectedTransaction.id,
-        { subCategory },
+        updateData,
         user.id
       );
       
       message.success('分类已更新');
       setClassifyModalVisible(false);
       setSelectedTransaction(null);
+      setModalSelectedMemberId('');
+      setModalPayerPayee('');
+      setModalSelectedEvent('');
+      setMemberSearchOptions([]);
       loadTransactions();
     } catch (error: any) {
       message.error('更新分类失败');
@@ -438,11 +562,25 @@ const EventFinancialPage: React.FC = () => {
     }
     
     try {
+      // 🆕 查找对应的活动，获取 eventId
+      const selectedEvent = financeEvents.find(e => e.eventName === eventName);
+      
       // 批量更新所有选中的交易
       for (const transactionId of selectedRowKeys) {
+        // 🆕 构建更新数据，包含 metadata.eventId
+        const updateData: any = { subCategory: eventName };
+        
+        if (selectedEvent) {
+          updateData.metadata = {
+            eventId: selectedEvent.id,
+            eventName: selectedEvent.eventName,
+            eventDate: selectedEvent.eventDate,
+          };
+        }
+        
         await updateTransaction(
           transactionId as string,
-          { subCategory: eventName },
+          updateData,
           user.id
         );
       }
@@ -587,6 +725,31 @@ const EventFinancialPage: React.FC = () => {
       key: 'mainDescription',
       width: 250,
       ellipsis: true,
+      render: (description: string, record: Transaction) => {
+        const memberId = (record as any)?.metadata?.memberId;
+        const memberInfo = memberId ? memberInfoCache[memberId] : null;
+        
+        return (
+          <div>
+            <div style={{ marginBottom: memberInfo ? 4 : 0 }}>
+              {description}
+            </div>
+            {memberInfo && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#666', 
+                backgroundColor: '#f0f9ff', 
+                padding: '2px 6px', 
+                borderRadius: '3px',
+                display: 'inline-block'
+              }}>
+                👤 {memberInfo.name}
+                {memberInfo.email && ` (${memberInfo.email})`}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: '金额',
@@ -669,15 +832,6 @@ const EventFinancialPage: React.FC = () => {
   return (
     <ErrorBoundary>
       <div className="event-financial-page">
-        <PageHeader
-          title="活动财务管理"
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '财务管理', path: '/finance' },
-            { title: '活动财务' },
-          ]}
-        />
-
         {/* Filter Section */}
         <Card className="mb-6">
           <Row gutter={[16, 16]} align="middle">
@@ -828,11 +982,11 @@ const EventFinancialPage: React.FC = () => {
                             </div>
                             
                             {/* 该理事的活动表格 */}
-                            <Table
-                              {...tableConfig}
-                              columns={columns}
+                    <Table
+                      {...tableConfig}
+                      columns={columns}
                               dataSource={boardEvents}
-                              rowKey="eventId"
+                      rowKey="eventId"
                               pagination={false}
                               size="small"
                               style={{ marginBottom: 16 }}
@@ -937,18 +1091,87 @@ const EventFinancialPage: React.FC = () => {
           onCancel={() => {
             setClassifyModalVisible(false);
             setSelectedTransaction(null);
+            setModalSelectedMemberId('');
+            setModalPayerPayee('');
+            setModalSelectedEvent('');
+            setMemberSearchOptions([]);
           }}
           footer={null}
+          width={800}
         >
           {selectedTransaction && (
             <>
-              <div style={{ marginBottom: 24 }}>
+              <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
                 <p><strong>交易描述：</strong>{selectedTransaction.mainDescription}</p>
                 <p><strong>交易金额：</strong>RM {selectedTransaction.amount?.toFixed(2)}</p>
                 <p><strong>交易日期：</strong>{globalDateService.formatDate(new Date(selectedTransaction.transactionDate), 'display')}</p>
                 {selectedTransaction.subCategory && (
                   <p><strong>当前分类：</strong>{selectedTransaction.subCategory}</p>
                 )}
+                {selectedTransaction.payerPayee && (
+                  <p><strong>当前乙方：</strong>{selectedTransaction.payerPayee}</p>
+                )}
+              </div>
+              
+              {/* 🆕 付款人/收款人信息区域 */}
+              <div style={{ marginBottom: 24, padding: 16, border: '1px solid #d9d9d9', borderRadius: 8 }}>
+                <p style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 16 }}>
+                  {selectedTransaction.transactionType === 'income' ? '📥 付款人信息' : '📤 收款人信息'}
+                </p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <p style={{ marginBottom: 8, fontWeight: 500 }}>选择会员：</p>
+                    <Select
+                      showSearch
+                      allowClear
+                      placeholder="搜索姓名/邮箱/电话"
+                      style={{ width: '100%' }}
+                      value={modalSelectedMemberId || undefined}
+                      filterOption={false}
+                      notFoundContent={memberSearchLoading ? '加载中...' : '暂无数据'}
+                      onSearch={async (value) => {
+                        if (value.length < 2) return;
+                        setMemberSearchLoading(true);
+                        try {
+                          const res = await getMembers({ page: 1, limit: 10, search: value });
+                          setMemberSearchOptions(
+                            res.data.map((m: any) => ({ value: m.id, label: `${m.name} (${m.email || m.phone || m.memberId || ''})` }))
+                          );
+                        } finally {
+                          setMemberSearchLoading(false);
+                        }
+                      }}
+                      onChange={(val) => {
+                        setModalSelectedMemberId(val || '');
+                        if (val) {
+                          setModalPayerPayee(''); // 选择会员后清空手动填写
+                        }
+                      }}
+                      options={memberSearchOptions}
+                    />
+                  </div>
+                  
+                  <div>
+                    <p style={{ marginBottom: 8, fontWeight: 500 }}>或手动填写（非会员）：</p>
+                    <Input
+                      placeholder="例如：某某公司、某某个人"
+                      value={modalPayerPayee}
+                      onChange={(e) => {
+                        setModalPayerPayee(e.target.value);
+                        if (e.target.value.trim()) {
+                          setModalSelectedMemberId(''); // 手动填写后清空会员选择
+                        }
+                      }}
+                      disabled={!!modalSelectedMemberId}
+                    />
+                    {modalSelectedMemberId && (
+                      <div style={{ marginTop: 4, fontSize: 12, color: '#999' }}>
+                        已选择会员，手动填写已禁用
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -969,7 +1192,7 @@ const EventFinancialPage: React.FC = () => {
                 </div>
                 
                 <div style={{ 
-                  maxHeight: '400px', 
+                  maxHeight: '300px', 
                   overflowY: 'auto',
                   display: 'flex',
                   flexDirection: 'column',
@@ -985,8 +1208,8 @@ const EventFinancialPage: React.FC = () => {
                         key={event.id}
                   block 
                   size="large"
-                        type={selectedTransaction.subCategory === event.eventName ? 'primary' : 'default'}
-                        onClick={() => handleClassifySubmit(event.eventName)}
+                        type={modalSelectedEvent === event.eventName ? 'primary' : 'default'}
+                        onClick={() => setModalSelectedEvent(event.eventName)}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                           <span>{event.eventName}</span>
@@ -1000,6 +1223,18 @@ const EventFinancialPage: React.FC = () => {
                     ))
                   )}
                 </div>
+                
+                {/* 🆕 确认保存按钮 */}
+                <Button 
+                  type="primary"
+                  block 
+                  size="large"
+                  style={{ marginTop: 16 }}
+                  onClick={handleClassifySubmit}
+                  disabled={!modalSelectedEvent}
+                >
+                  确认保存
+                </Button>
               </div>
             </>
           )}
@@ -1451,33 +1686,33 @@ const EventFinancialPage: React.FC = () => {
                 <Row gutter={16}>
                   <Col span={8}>
                     <Statistic
-                      title="总收入"
+                      title="活动收入"
                       value={eventTransactions
                         .filter(t => t.transactionType === 'income')
                         .reduce((sum, t) => sum + t.amount, 0)}
-                      precision={2}
+                      precision={0}
                       prefix="RM"
                       valueStyle={{ color: '#3f8600' }}
                     />
                   </Col>
                   <Col span={8}>
                     <Statistic
-                      title="总支出"
+                      title="活动支出"
                       value={eventTransactions
                         .filter(t => t.transactionType === 'expense')
                         .reduce((sum, t) => sum + t.amount, 0)}
-                      precision={2}
+                      precision={0}
                       prefix="RM"
                       valueStyle={{ color: '#cf1322' }}
                     />
                   </Col>
                   <Col span={8}>
                     <Statistic
-                      title="净收入"
+                      title="净收益"
                       value={eventTransactions.reduce((sum, t) => 
                         sum + (t.transactionType === 'income' ? t.amount : -t.amount), 0
                       )}
-                      precision={2}
+                      precision={0}
                       prefix="RM"
                       valueStyle={{ 
                         color: eventTransactions.reduce((sum, t) => 
@@ -1502,6 +1737,12 @@ const EventFinancialPage: React.FC = () => {
                       dataIndex: 'transactionDate',
                       key: 'transactionDate',
                       width: 100,
+                      sorter: (a: Transaction, b: Transaction) => {
+                        const dateA = new Date(a.transactionDate).getTime();
+                        const dateB = new Date(b.transactionDate).getTime();
+                        return dateA - dateB;
+                      },
+                      defaultSortOrder: 'descend', // 默认降序（最新的在前）
                       render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
                     },
                     {

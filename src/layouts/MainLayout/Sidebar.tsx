@@ -69,18 +69,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           label: '交易记录',
         },
         {
-          key: '/finance/member-fees',
-          label: '会员费用',
-        },
-        {
-          key: '/finance/events',
-          label: '活动财务',
-        },
-        {
-          key: '/finance/accounts',
-          label: '日常账户',
-        },
-        {
           key: '/finance/fiscal-years',
           label: '财年管理',
         },
