@@ -43,7 +43,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { collection, getDocs, query, orderBy as firestoreOrderBy } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { safeTimestampToISO } from '@/utils/dateHelpers';
-import type { MemberFee, MemberFeeStatus, MemberFeeType } from '../../types';
+import type { MemberFeeStatus } from '../../types';
 import './styles.css';
 
 const { Search } = Input;
@@ -51,21 +51,29 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
 
+// 通用财务记录接口
+interface FinancialRecord {
+  id: string;
+  type?: string; // 记录类型：memberFee, donation, eventFee, etc.
+  [key: string]: any; // 允许其他动态字段
+}
+
 const FinancialRecordsPage: React.FC = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [records, setRecords] = useState<MemberFee[]>([]);
-  const [filteredRecords, setFilteredRecords] = useState<MemberFee[]>([]);
+  const [records, setRecords] = useState<FinancialRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<FinancialRecord[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<MemberFeeStatus | 'all'>('all');
-  const [typeFilter, setTypeFilter] = useState<MemberFeeType | 'all'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all'); // 改为记录类型
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<MemberFee | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<FinancialRecord | null>(null);
   const [availableSubCategories, setAvailableSubCategories] = useState<string[]>([]);
+  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
 
   // Statistics
   const [statistics, setStatistics] = useState({
@@ -80,6 +88,14 @@ const FinancialRecordsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Extract unique types from records
+    const types = Array.from(new Set(
+      records
+        .filter(r => r.type)
+        .map(r => r.type!)
+    )).sort();
+    setAvailableTypes(types);
+
     // Extract unique sub-categories from records
     const subCategories = Array.from(new Set(
       records
@@ -107,7 +123,7 @@ const FinancialRecordsPage: React.FC = () => {
 
       const snapshot = await getDocs(q);
 
-      const data: MemberFee[] = snapshot.docs.map(doc => ({
+      const data: FinancialRecord[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: safeTimestampToISO(doc.data().createdAt),
@@ -115,7 +131,7 @@ const FinancialRecordsPage: React.FC = () => {
         dueDate: doc.data().dueDate ? safeTimestampToISO(doc.data().dueDate) : '',
         paymentDate: doc.data().paymentDate ? safeTimestampToISO(doc.data().paymentDate) : undefined,
         lastReminderDate: doc.data().lastReminderDate ? safeTimestampToISO(doc.data().lastReminderDate) : undefined,
-      })) as MemberFee[];
+      }));
 
       setRecords(data);
 
@@ -161,9 +177,9 @@ const FinancialRecordsPage: React.FC = () => {
       filtered = filtered.filter(r => r.status === statusFilter);
     }
 
-    // Type filter
+    // Type filter (记录类型)
     if (typeFilter !== 'all') {
-      filtered = filtered.filter(r => r.feeType === typeFilter);
+      filtered = filtered.filter(r => r.type === typeFilter);
     }
 
     // Sub-category filter
@@ -194,7 +210,7 @@ const FinancialRecordsPage: React.FC = () => {
   };
 
   const handleTypeChange = (value: string) => {
-    setTypeFilter(value as MemberFeeType | 'all');
+    setTypeFilter(value);
     setCurrentPage(1);
   };
 
@@ -212,9 +228,22 @@ const FinancialRecordsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const handleViewDetail = (record: MemberFee) => {
+  const handleViewDetail = (record: FinancialRecord) => {
     setSelectedRecord(record);
     setDetailModalVisible(true);
+  };
+
+  const getTypeTag = (type?: string) => {
+    const typeMap: Record<string, { color: string; text: string }> = {
+      memberFee: { color: 'blue', text: '会员费' },
+      donation: { color: 'green', text: '捐赠' },
+      eventFee: { color: 'purple', text: '活动费用' },
+      sponsorship: { color: 'orange', text: '赞助' },
+      grant: { color: 'cyan', text: '拨款' },
+      other: { color: 'default', text: '其他' },
+    };
+    const config = typeMap[type || 'other'] || { color: 'default', text: type || 'unknown' };
+    return <Tag color={config.color}>{config.text}</Tag>;
   };
 
   const getStatusTag = (status: MemberFeeStatus) => {
@@ -230,20 +259,7 @@ const FinancialRecordsPage: React.FC = () => {
     return <Tag color={config.color}>{config.text}</Tag>;
   };
 
-  const getFeeTypeTag = (type: MemberFeeType) => {
-    const typeMap: Record<MemberFeeType, { color: string; text: string }> = {
-      new_member: { color: 'blue', text: '新会员费' },
-      renewal: { color: 'cyan', text: '续会费' },
-      upgrade: { color: 'purple', text: '升级费' },
-      late_fee: { color: 'orange', text: '滞纳金' },
-      penalty: { color: 'red', text: '罚款' },
-      other: { color: 'default', text: '其他' },
-    };
-    const config = typeMap[type] || { color: 'default', text: type };
-    return <Tag color={config.color}>{config.text}</Tag>;
-  };
-
-  const columns: ColumnsType<MemberFee> = [
+  const columns: ColumnsType<FinancialRecord> = [
     {
       title: '会员信息',
       key: 'member',
@@ -258,11 +274,11 @@ const FinancialRecordsPage: React.FC = () => {
       ),
     },
     {
-      title: '类型',
-      dataIndex: 'feeType',
-      key: 'feeType',
+      title: '记录类型',
+      dataIndex: 'type',
+      key: 'type',
       width: 120,
-      render: (type: MemberFeeType) => getFeeTypeTag(type),
+      render: (type?: string) => getTypeTag(type),
     },
     {
       title: '二次分类',
@@ -461,15 +477,18 @@ const FinancialRecordsPage: React.FC = () => {
                   style={{ width: '100%' }}
                   value={typeFilter}
                   onChange={handleTypeChange}
-                  placeholder="类型筛选"
+                  placeholder="记录类型"
                 >
                   <Option value="all">全部类型</Option>
-                  <Option value="new_member">新会员费</Option>
-                  <Option value="renewal">续会费</Option>
-                  <Option value="upgrade">升级费</Option>
-                  <Option value="late_fee">滞纳金</Option>
-                  <Option value="penalty">罚款</Option>
-                  <Option value="other">其他</Option>
+                  {availableTypes.map(type => (
+                    <Option key={type} value={type}>
+                      {type === 'memberFee' ? '会员费' : 
+                       type === 'donation' ? '捐赠' : 
+                       type === 'eventFee' ? '活动费用' : 
+                       type === 'sponsorship' ? '赞助' : 
+                       type === 'grant' ? '拨款' : type}
+                    </Option>
+                  ))}
                 </Select>
               </Col>
               <Col xs={12} sm={6} md={4}>
@@ -545,8 +564,15 @@ const FinancialRecordsPage: React.FC = () => {
               <Descriptions.Item label="会员类别">
                 {selectedRecord.memberCategory || '-'}
               </Descriptions.Item>
+              <Descriptions.Item label="记录类型">
+                {getTypeTag(selectedRecord.type)}
+              </Descriptions.Item>
               <Descriptions.Item label="费用类型">
-                {getFeeTypeTag(selectedRecord.feeType)}
+                {selectedRecord.feeType ? (
+                  <Tag color="cyan">{selectedRecord.feeType}</Tag>
+                ) : (
+                  '-'
+                )}
               </Descriptions.Item>
               <Descriptions.Item label="二次分类">
                 {selectedRecord.subCategory ? (
