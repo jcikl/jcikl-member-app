@@ -24,7 +24,6 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTransactions, getTransactionStatistics } from '../../services/transactionService';
 import { getMemberFeeStatistics } from '../../services/memberFeeService';
 import { getTotalBalance } from '../../services/bankAccountService';
-import { getCurrentFiscalYear } from '../../services/fiscalYearService';
 import type { Transaction, FinancialStatistics } from '../../types';
 import './styles.css';
 
@@ -39,7 +38,6 @@ const FinanceOverviewPage: React.FC = () => {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [periodType, setPeriodType] = useState<PeriodType>('fiscal');
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-  const [currentFiscalYear, setCurrentFiscalYear] = useState<string>('');
 
   useEffect(() => {
     loadFinancialData();
@@ -54,25 +52,14 @@ const FinanceOverviewPage: React.FC = () => {
       // Determine date range based on period type
       let startDate: string | undefined;
       let endDate: string | undefined;
-      let fiscalYear: string | undefined;
 
       if (periodType === 'fiscal') {
-        const fyData = await getCurrentFiscalYear();
-        if (fyData) {
-          startDate = fyData.startDate;
-          endDate = fyData.endDate;
-          fiscalYear = fyData.name;
-          setCurrentFiscalYear(fyData.name);
-        } else {
-          // No fiscal year found, use current calendar year
-          const year = new Date().getFullYear();
-          const month = new Date().getMonth() + 1;
-          const fyYear = month >= 10 ? year : year - 1;
-          startDate = `${fyYear}-10-01`;
-          endDate = `${fyYear + 1}-09-30`;
-          fiscalYear = `FY${fyYear}`;
-          setCurrentFiscalYear(fiscalYear);
-        }
+        // Use fiscal year date range (Oct 1 - Sep 30)
+        const year = new Date().getFullYear();
+        const month = new Date().getMonth() + 1;
+        const fyYear = month >= 10 ? year : year - 1;
+        startDate = `${fyYear}-10-01`;
+        endDate = `${fyYear + 1}-09-30`;
       } else if (periodType === 'calendar') {
         const year = new Date().getFullYear();
         startDate = `${year}-01-01`;
@@ -88,8 +75,8 @@ const FinanceOverviewPage: React.FC = () => {
         memberFeeStats,
         totalBalance,
       ] = await Promise.all([
-        getTransactionStatistics(fiscalYear, startDate, endDate),
-        getMemberFeeStatistics(fiscalYear),
+        getTransactionStatistics(startDate, endDate),
+        getMemberFeeStatistics(),
         getTotalBalance(),
       ]);
 
@@ -118,7 +105,6 @@ const FinanceOverviewPage: React.FC = () => {
         
         transactionCount: transactionStats.transactionCount,
         
-        fiscalYear: fiscalYear || 'N/A',
         periodStart: startDate || '',
         periodEnd: endDate || '',
         
@@ -282,12 +268,6 @@ const FinanceOverviewPage: React.FC = () => {
                 onChange={handleDateRangeChange}
                 format="DD-MMM-YYYY"
               />
-            )}
-
-            {periodType === 'fiscal' && currentFiscalYear && (
-              <div className="text-gray-600">
-                当前财年: <strong>{currentFiscalYear}</strong>
-              </div>
             )}
           </div>
         </Card>

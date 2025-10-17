@@ -158,7 +158,7 @@ const MemberFeeManagementPage: React.FC = () => {
       setTotal(result.total);
 
       // Load statistics
-      const stats = await getMemberFeeStatistics(selectedYear);
+      const stats = await getMemberFeeStatistics();
       setStatistics(stats);
 
     } catch (error: any) {

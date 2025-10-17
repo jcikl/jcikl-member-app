@@ -248,7 +248,7 @@ export interface MemberFee {
   memberName?: string;
   memberEmail?: string;
   memberCategory?: MemberCategoryType;
-  fiscalYear: string;
+  fiscalYear?: string; // ⚠️ DEPRECATED: Optional for backward compatibility
   feeType: MemberFeeType;
   expectedAmount: number;
   paidAmount: number;
@@ -405,7 +405,7 @@ export interface FinancialStatistics {
   
   transactionCount: number;
   
-  fiscalYear: string;
+  fiscalYear?: string; // ⚠️ DEPRECATED: Optional for backward compatibility, only used for reporting
   periodStart: string;
   periodEnd: string;
   

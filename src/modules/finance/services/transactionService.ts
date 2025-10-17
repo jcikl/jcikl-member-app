@@ -31,7 +31,6 @@ import type {
   TransactionStatus,
 } from '../types';
 import type { PaginatedResponse } from '@/types';
-import { upsertMemberFeeFromTransaction } from '@/modules/finance/services/memberFeeService';
 
 /**
  * Generate Transaction Number
@@ -72,8 +71,12 @@ const generateTransactionNumber = async (
 /**
  * Get fiscal year from date
  * Fiscal year starts October 1
+ * 
+ * ⚠️ DEPRECATED: FiscalYear is now only used for reporting purposes
+ * This function is kept for backward compatibility and report generation
+ * @deprecated Use date ranges for filtering instead
  */
-const getFiscalYearFromDate = (date: Date): string => {
+export const getFiscalYearFromDate = (date: Date): string => {
   const month = date.getMonth() + 1; // 1-12
   const year = date.getFullYear();
   
