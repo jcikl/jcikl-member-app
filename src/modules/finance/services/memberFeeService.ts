@@ -419,10 +419,10 @@ export const getMemberFees = async (
       );
     }
     
-    // 5. 关联交易以补充付款日期（会员费交易记录二次分类）
+    // 5. 关联交易以补充付款日期和二次分类（会员费交易记录二次分类）
     try {
       const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
-      const latestPaidByMember: Record<string, string> = {};
+      const latestPaidByMember: Record<string, { date: string; subCategory?: string }> = {};
       let debugMatchCount = 0;
       txnSnap.docs
         .filter(d => d.data().category === 'member-fees')
@@ -432,20 +432,25 @@ export const getMemberFees = async (
           if (!mId) return;
           const txDate = safeTimestampToISO(data.transactionDate);
           const prev = latestPaidByMember[mId];
-          if (!prev || txDate > prev) {
-            latestPaidByMember[mId] = txDate;
+          if (!prev || txDate > prev.date) {
+            latestPaidByMember[mId] = { 
+              date: txDate,
+              subCategory: data.subCategory, // 🆕 获取二次分类
+            };
           }
           if (debugMatchCount < 5) {
-            console.log('[MemberFees][Debug] txn hit member-fees:', { id: d.id, memberId: mId, txDate, amount: data.amount, type: data.transactionType });
+            console.log('[MemberFees][Debug] txn hit member-fees:', { id: d.id, memberId: mId, txDate, amount: data.amount, type: data.transactionType, subCategory: data.subCategory });
             debugMatchCount++;
           }
         });
       fees = fees.map(f => {
-        if (!f.paymentDate) {
-          const latest = latestPaidByMember[f.memberId];
-          if (latest) {
-            return { ...f, paymentDate: latest } as MemberFee;
-          }
+        const latest = latestPaidByMember[f.memberId];
+        if (latest) {
+          return { 
+            ...f, 
+            paymentDate: f.paymentDate || latest.date,
+            subCategory: latest.subCategory, // 🆕 添加二次分类字段
+          } as MemberFee & { subCategory?: string };
         }
         return f;
       });
@@ -758,27 +763,73 @@ export const upsertMemberFeeFromTransaction = async (params: {
     const now = new Date().toISOString();
     const due = params.dueDate || now;
 
-    // 读取该会员的现有记录（client 过滤，避免索引依赖）
+    // 🆕 Step 1: 先按 transactionId 查找（优先级最高 - 这个交易可能已经有关联的会费记录）
     const snapshot = await getDocs(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
-    const existing = snapshot.docs
-      .filter(d => d.data().type === 'memberFee' && d.data().memberId === params.memberId)
-      .map(d => ({ id: d.id, ...d.data() }))[0] as (MemberFee & { id: string }) | undefined;
+    const allFees = snapshot.docs
+      .filter(d => d.data().type === 'memberFee')
+      .map(d => ({ id: d.id, ...d.data() } as MemberFee & { id: string }));
 
-    if (existing) {
-      const feeRef = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS, existing.id);
-      const paidAmount = existing.paidAmount || 0;
-      const expectedAmount = existing.expectedAmount || params.expectedAmount || 0;
-      const remainingAmount = Math.max(expectedAmount - paidAmount, 0);
+    let existingByTransaction = allFees.find(f => f.transactionId === params.transactionId);
+    let existingByMember = allFees.find(f => f.memberId === params.memberId);
+
+    console.log('🔍 [upsertMemberFeeFromTransaction] Search results:', {
+      transactionId: params.transactionId,
+      memberId: params.memberId,
+      existingByTransaction: existingByTransaction ? { id: existingByTransaction.id, memberId: existingByTransaction.memberId } : null,
+      existingByMember: existingByMember ? { id: existingByMember.id, transactionId: existingByMember.transactionId } : null,
+    });
+
+    if (existingByTransaction) {
+      // 情况 1: 这个交易已经有关联的会费记录 -> 更新关联会员（memberId 可能变了）
+      console.log('✏️ [upsertMemberFeeFromTransaction] Updating existing fee record linked to this transaction');
+      const feeRef = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS, existingByTransaction.id);
+      
+      // 🆕 如果 memberId 变了，需要先对旧会员进行对账同步，再更新到新会员
+      const oldMemberId = existingByTransaction.memberId;
+      const memberIdChanged = oldMemberId !== params.memberId;
+
       await updateDoc(feeRef, cleanUndefinedValues({
-        memberName: params.memberName ?? existing.memberName,
-        memberEmail: params.memberEmail ?? existing.memberEmail,
-        memberCategory: params.memberCategory ?? existing.memberCategory,
+        memberId: params.memberId,
+        memberName: params.memberName ?? existingByTransaction.memberName,
+        memberEmail: params.memberEmail ?? existingByTransaction.memberEmail,
+        memberCategory: params.memberCategory ?? existingByTransaction.memberCategory,
+        expectedAmount: params.expectedAmount,
+        dueDate: due,
+        updatedAt: now,
+      }));
+
+      // 对账同步：如果会员变了，需要同步旧会员和新会员
+      if (memberIdChanged) {
+        console.log('🔄 [upsertMemberFeeFromTransaction] Member changed, reconciling both old and new member');
+        await reconcileMemberFeeFromTransactions(oldMemberId); // 同步旧会员
+        await reconcileMemberFeeFromTransactions(params.memberId); // 同步新会员
+      } else {
+        await reconcileMemberFeeFromTransactions(params.memberId);
+      }
+
+    } else if (existingByMember) {
+      // 情况 2: 该会员已有会费记录，但不是这个交易创建的 -> 更新会费记录
+      console.log('✏️ [upsertMemberFeeFromTransaction] Updating existing fee record for this member');
+      const feeRef = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS, existingByMember.id);
+      const paidAmount = existingByMember.paidAmount || 0;
+      const expectedAmount = existingByMember.expectedAmount || params.expectedAmount || 0;
+      const remainingAmount = Math.max(expectedAmount - paidAmount, 0);
+      
+      await updateDoc(feeRef, cleanUndefinedValues({
+        memberName: params.memberName ?? existingByMember.memberName,
+        memberEmail: params.memberEmail ?? existingByMember.memberEmail,
+        memberCategory: params.memberCategory ?? existingByMember.memberCategory,
         expectedAmount: expectedAmount || params.expectedAmount,
         remainingAmount,
         transactionId: params.transactionId,
         updatedAt: now,
       }));
+
+      await reconcileMemberFeeFromTransactions(params.memberId);
+
     } else {
+      // 情况 3: 完全新建会费记录
+      console.log('➕ [upsertMemberFeeFromTransaction] Creating new fee record');
       const fee: Omit<MemberFee, 'id'> = {
         memberId: params.memberId,
         memberName: params.memberName,
@@ -802,14 +853,14 @@ export const upsertMemberFeeFromTransaction = async (params: {
         ...fee,
         type: 'memberFee',
       }));
-    }
 
-    // 聚合同步已收金额/付款日期/状态
-    await reconcileMemberFeeFromTransactions(params.memberId);
+      await reconcileMemberFeeFromTransactions(params.memberId);
+    }
 
     globalSystemService.log('info', 'Upsert member fee from transaction', 'memberFeeService.upsertMemberFeeFromTransaction', { memberId: params.memberId, transactionId: params.transactionId, userId: params.userId });
   } catch (error: any) {
     globalSystemService.log('error', 'Failed to upsert member fee from transaction', 'memberFeeService.upsertMemberFeeFromTransaction', { error: error.message, params });
+    console.error('❌ [upsertMemberFeeFromTransaction] Error:', error);
     // 不抛出以免影响交易主流程
   }
 };

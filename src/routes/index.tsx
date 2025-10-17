@@ -7,6 +7,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import GlobalSettingsPage from '@/modules/system/pages/GlobalSettingsPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
+import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
 
 // Member Module
 import MemberListPage from '@/modules/member/pages/MemberListPage';
@@ -86,6 +87,10 @@ export const router = createBrowserRouter(
       {
         path: 'firebase-test',
         element: <FirebaseTestPage />,
+      },
+      {
+        path: 'financial-records-debug',
+        element: <FinancialRecordsDebugPage />,
       },
       // Member Module Routes
       {

@@ -61,9 +61,11 @@ const FinancialRecordsPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<MemberFeeStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<MemberFeeType | 'all'>('all');
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<MemberFee | null>(null);
+  const [availableSubCategories, setAvailableSubCategories] = useState<string[]>([]);
 
   // Statistics
   const [statistics, setStatistics] = useState({
@@ -78,8 +80,18 @@ const FinancialRecordsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Extract unique sub-categories from records
+    const subCategories = Array.from(new Set(
+      records
+        .filter(r => r.subCategory)
+        .map(r => r.subCategory!)
+    )).sort();
+    setAvailableSubCategories(subCategories);
+  }, [records]);
+
+  useEffect(() => {
     filterRecords();
-  }, [records, searchText, statusFilter, typeFilter, dateRange]);
+  }, [records, searchText, statusFilter, typeFilter, subCategoryFilter, dateRange]);
 
   const loadFinancialRecords = async () => {
     if (!user) return;
@@ -154,6 +166,11 @@ const FinancialRecordsPage: React.FC = () => {
       filtered = filtered.filter(r => r.feeType === typeFilter);
     }
 
+    // Sub-category filter
+    if (subCategoryFilter !== 'all') {
+      filtered = filtered.filter(r => r.subCategory === subCategoryFilter);
+    }
+
     // Date range filter
     if (dateRange) {
       const [start, end] = dateRange;
@@ -178,6 +195,11 @@ const FinancialRecordsPage: React.FC = () => {
 
   const handleTypeChange = (value: string) => {
     setTypeFilter(value as MemberFeeType | 'all');
+    setCurrentPage(1);
+  };
+
+  const handleSubCategoryChange = (value: string) => {
+    setSubCategoryFilter(value);
     setCurrentPage(1);
   };
 
@@ -241,6 +263,17 @@ const FinancialRecordsPage: React.FC = () => {
       key: 'feeType',
       width: 120,
       render: (type: MemberFeeType) => getFeeTypeTag(type),
+    },
+    {
+      title: '二次分类',
+      dataIndex: 'subCategory',
+      key: 'subCategory',
+      width: 150,
+      render: (subCategory?: string) => subCategory ? (
+        <Tag color="geekblue">{subCategory}</Tag>
+      ) : (
+        <Text type="secondary">-</Text>
+      ),
     },
     {
       title: '预期金额',
@@ -439,6 +472,21 @@ const FinancialRecordsPage: React.FC = () => {
                   <Option value="other">其他</Option>
                 </Select>
               </Col>
+              <Col xs={12} sm={6} md={4}>
+                <Select
+                  style={{ width: '100%' }}
+                  value={subCategoryFilter}
+                  onChange={handleSubCategoryChange}
+                  placeholder="二次分类"
+                >
+                  <Option value="all">全部分类</Option>
+                  {availableSubCategories.map(cat => (
+                    <Option key={cat} value={cat}>
+                      {cat}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
               <Col xs={24} sm={12} md={8}>
                 <RangePicker
                   style={{ width: '100%' }}
@@ -500,7 +548,14 @@ const FinancialRecordsPage: React.FC = () => {
               <Descriptions.Item label="费用类型">
                 {getFeeTypeTag(selectedRecord.feeType)}
               </Descriptions.Item>
-              <Descriptions.Item label="预期金额">
+              <Descriptions.Item label="二次分类">
+                {selectedRecord.subCategory ? (
+                  <Tag color="geekblue">{selectedRecord.subCategory}</Tag>
+                ) : (
+                  '-'
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label="预期金额" span={2}>
                 <Text strong>RM {selectedRecord.expectedAmount?.toFixed(2) || '0.00'}</Text>
               </Descriptions.Item>
               <Descriptions.Item label="已付金额">

@@ -296,6 +296,13 @@ const MemberFeeManagementPage: React.FC = () => {
       };
       filteredTransactions = applyCategory(applyYear(result.data));
       
+      // 🆕 客户端排序：按交易日期降序（最新的在前）
+      filteredTransactions.sort((a, b) => {
+        const dateA = new Date(a.transactionDate).getTime();
+        const dateB = new Date(b.transactionDate).getTime();
+        return dateB - dateA; // 降序：最新的在前
+      });
+      
       // 🔍 Debug: 加载交易记录（生产环境可注释）
       // const childTransactions = result.data.filter(t => t.isVirtual === true);
       // console.log('💰 [MemberFeeManagementPage] 加载交易记录:', {
@@ -498,6 +505,17 @@ const MemberFeeManagementPage: React.FC = () => {
       },
     },
     {
+      title: '二次分类',
+      dataIndex: 'subCategory',
+      key: 'subCategory',
+      render: (subCategory: string | undefined, record: any) => {
+        if (record.isPlaceholder) {
+          return '-';
+        }
+        return subCategory ? <Tag color="purple">{subCategory}</Tag> : <Tag color="default">未分类</Tag>;
+      },
+    },
+    {
       title: '操作',
       key: 'actions',
       render: (_, record: any) => {
@@ -560,6 +578,12 @@ const MemberFeeManagementPage: React.FC = () => {
       dataIndex: 'transactionDate',
       key: 'transactionDate',
       width: 80,
+      sorter: (a: Transaction, b: Transaction) => {
+        const dateA = new Date(a.transactionDate).getTime();
+        const dateB = new Date(b.transactionDate).getTime();
+        return dateA - dateB;
+      },
+      defaultSortOrder: 'descend', // 默认降序（最新的在前）
       render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
     },
     {

@@ -31,6 +31,11 @@ import type {
   TransactionStatus,
 } from '../types';
 import type { PaginatedResponse } from '@/types';
+import { 
+  upsertMemberFeeFromTransaction, 
+  reconcileMemberFeeFromTransactions 
+} from './memberFeeService';
+import { getMemberById } from '@/modules/member/services/memberService';
 
 /**
  * Generate Transaction Number
@@ -327,9 +332,67 @@ export const updateTransaction = async (
       { transactionId, userId }
     );
 
-    // === Auto upsert Member Fee when linked ===
-    // ⚠️ REMOVED: FiscalYear-based member fee linkage
-    // Member fees are now managed independently without fiscal year constraints
+    // === 🆕 Auto-sync Member Fee from Transaction ===
+    // When transaction category is 'member-fees' and has metadata.memberId,
+    // automatically create/update memberFee record in FINANCIAL_RECORDS
+    const finalCategory = updates.category ?? existingData.category;
+    const finalMetadata = updates.metadata ?? existingData.metadata;
+    const linkedMemberId = finalMetadata?.memberId;
+
+    if (finalCategory === 'member-fees' && linkedMemberId) {
+      console.log('🔗 [updateTransaction] Member fee transaction detected, auto-syncing...', {
+        transactionId,
+        memberId: linkedMemberId,
+        category: finalCategory,
+      });
+
+      try {
+        // Fetch member details
+        const member = await getMemberById(linkedMemberId);
+        if (member) {
+          const finalAmount = updates.amount ?? existingData.amount;
+          const finalTransactionDate = updates.transactionDate ?? existingData.transactionDate;
+
+          // Upsert memberFee record
+          await upsertMemberFeeFromTransaction({
+            memberId: member.id,
+            memberName: member.name,
+            memberEmail: member.email,
+            memberCategory: member.category || (member.accountType as any),
+            expectedAmount: finalAmount || 0,
+            dueDate: safeTimestampToISO(finalTransactionDate),
+            transactionId,
+            userId,
+          });
+
+          // Reconcile to update paidAmount, paymentDate, status
+          await reconcileMemberFeeFromTransactions(member.id);
+
+          console.log('✅ [updateTransaction] Member fee record auto-synced successfully');
+          globalSystemService.log('info', 'Member fee auto-synced from transaction', 'transactionService.updateTransaction', {
+            transactionId,
+            memberId: member.id,
+            userId,
+          });
+        } else {
+          console.warn('⚠️ [updateTransaction] Member not found for member fee sync:', linkedMemberId);
+          globalSystemService.log('warning', 'Member not found for member fee sync', 'transactionService.updateTransaction', {
+            transactionId,
+            memberId: linkedMemberId,
+            userId,
+          });
+        }
+      } catch (syncError: any) {
+        console.error('❌ [updateTransaction] Failed to auto-sync member fee:', syncError);
+        globalSystemService.log('error', 'Failed to auto-sync member fee from transaction', 'transactionService.updateTransaction', {
+          error: syncError.message,
+          transactionId,
+          memberId: linkedMemberId,
+          userId,
+        });
+        // Don't throw - allow transaction update to succeed even if member fee sync fails
+      }
+    }
   } catch (error: any) {
     globalSystemService.log(
       'error',

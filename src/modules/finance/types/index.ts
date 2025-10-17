@@ -262,6 +262,7 @@ export interface MemberFee {
   notes?: string;
   remindersSent: number;
   lastReminderDate?: string;
+  subCategory?: string; // 🆕 二次分类（从关联交易继承）
   createdAt: string;
   updatedAt: string;
 }
