@@ -1,0 +1,57 @@
+/**
+ * Event List Page Styles
+ * 活动列表页面样式
+ */
+
+.event-list-page {
+  padding: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .event-list-page {
+    padding: 0 8px;
+  }
+}
+
+/* Status colors */
+.event-status-draft {
+  color: #8c8c8c;
+}
+
+.event-status-published {
+  color: #52c41a;
+}
+
+.event-status-cancelled {
+  color: #f5222d;
+}
+
+.event-status-completed {
+  color: #1890ff;
+}
+
+/* Custom table scrollbar */
+.event-list-page .ant-table-wrapper {
+  margin-top: 16px;
+}
+
+.event-list-page .ant-table-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.event-list-page .ant-table-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 8px;
+}
+
+.event-list-page .ant-table-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 8px;
+}
+
+.event-list-page .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+

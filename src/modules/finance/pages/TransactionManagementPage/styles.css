@@ -1,0 +1,85 @@
+/* 标签页样式增强 */
+.transaction-management-page .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  padding: 12px 20px;
+  border-radius: 8px 8px 0 0;
+  transition: all 0.3s ease;
+}
+
+.transaction-management-page .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f5ff 100%);
+  border-bottom: 2px solid #1890ff;
+  font-weight: 600;
+}
+
+.transaction-management-page .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab:hover {
+  background: #fafafa;
+}
+
+/* Badge 样式 */
+.transaction-management-page .ant-badge-count {
+  font-size: 11px;
+  height: 18px;
+  line-height: 18px;
+  min-width: 18px;
+  padding: 0 6px;
+  box-shadow: 0 0 0 1px #fff;
+}
+
+/* 表格样式 */
+.transaction-management-page .text-success {
+  color: #52c41a;
+  font-weight: 600;
+}
+
+.transaction-management-page .text-danger {
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+/* 筛选栏优化 */
+.transaction-management-page .mb-6 {
+  margin-bottom: 24px;
+}
+
+.transaction-management-page .ml-auto {
+  margin-left: auto;
+}
+
+/* Tabs 卡片无内边距 */
+.transaction-management-page .ant-card-body {
+  padding: 16px;
+}
+
+/* 标签页卡片特殊处理 */
+.transaction-management-page > div > div:nth-child(2) .ant-card-body {
+  padding: 0;
+}
+
+/* Tab 标签垂直布局改进 */
+.transaction-management-page .ant-tabs-tab {
+  min-height: 60px;
+}
+
+/* 账户信息文本样式 */
+.transaction-management-page .account-balance {
+  font-size: 11px;
+  color: #8c8c8c;
+  font-weight: normal;
+}
+
+.transaction-management-page .account-name {
+  font-weight: 500;
+  color: #262626;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .transaction-management-page .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .transaction-management-page .ant-tabs-tab {
+    min-height: auto;
+  }
+}

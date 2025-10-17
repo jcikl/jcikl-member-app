@@ -1,0 +1,26 @@
+/**
+ * StatisticsChart Styles
+ */
+
+.statistics-chart__container {
+  position: relative;
+}
+
+.statistics-chart__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8c8c8c;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.statistics-chart__legend {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+

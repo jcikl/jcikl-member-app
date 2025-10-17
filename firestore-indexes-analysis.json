@@ -1,0 +1,11 @@
+{
+  "analysisDate": "2025-10-17T05:50:15.490Z",
+  "currentIndexes": 8,
+  "optimizedIndexes": 11,
+  "duplicates": 0,
+  "savings": -3,
+  "recommendations": [
+    "定期审查索引使用情况",
+    "使用 Firestore 控制台监控索引性能"
+  ]
+}

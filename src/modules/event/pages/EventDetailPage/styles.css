@@ -1,0 +1,36 @@
+/**
+ * Event Detail Page Styles
+ * 活动详情页面样式
+ */
+
+.event-detail-page {
+  padding: 0;
+}
+
+.event-detail-content {
+  margin-top: 24px;
+}
+
+.event-detail-page .ant-descriptions-item-label {
+  font-weight: 500;
+}
+
+.event-detail-page .ant-card {
+  border-radius: 8px;
+}
+
+.event-detail-page .ant-card-head {
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .event-detail-page {
+    padding: 0 8px;
+  }
+
+  .event-detail-page .ant-descriptions {
+    font-size: 12px;
+  }
+}
+

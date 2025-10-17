@@ -1,0 +1,28 @@
+/* Member List Page Styles */
+
+.member-list-page {
+  padding: 0;
+}
+
+.member-list-page .ant-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.member-list-page .ant-statistic-title {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.member-list-page .ant-statistic-content {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .member-list-page .ant-statistic-content {
+    font-size: 20px;
+  }
+}
+

@@ -1,0 +1,26 @@
+.page-header-wrapper {
+  margin-bottom: 12px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  background: transparent;
+}
+
+.page-header-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.page-header-title-group {
+  flex: 1;
+}
+
+.page-header-extra {
+  margin-left: 16px;
+}
+

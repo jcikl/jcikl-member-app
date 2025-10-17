@@ -1,0 +1,27 @@
+/**
+ * ExportModal Styles
+ */
+
+.export-modal h4 {
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.export-modal__columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.export-modal__progress {
+  padding: 16px;
+  background: #e6f7ff;
+  border-radius: 8px;
+  text-align: center;
+}
+

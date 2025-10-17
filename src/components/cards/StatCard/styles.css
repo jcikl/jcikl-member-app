@@ -1,0 +1,17 @@
+.stat-card {
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.stat-card-trend {
+  margin-top: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+

@@ -1,0 +1,112 @@
+/**
+ * PricingTierCard Styles
+ */
+
+.pricing-tier-cards {
+  margin: 0;
+}
+
+.pricing-tier-card {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.pricing-tier-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.pricing-tier-card--recommended {
+  border: 2px solid #1890ff;
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.15);
+}
+
+.pricing-tier-card--unavailable {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pricing-tier-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pricing-tier-card__title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  text-align: center;
+}
+
+.pricing-tier-card__price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.pricing-tier-card__price-currency {
+  font-size: 18px;
+  font-weight: 600;
+  color: #595959;
+}
+
+.pricing-tier-card__price-value {
+  font-size: 48px;
+  font-weight: 800;
+  color: #262626;
+  line-height: 1;
+}
+
+.pricing-tier-card__price-original {
+  font-size: 14px;
+  color: #8c8c8c;
+  text-decoration: line-through;
+  margin-left: 8px;
+}
+
+.pricing-tier-card__discount {
+  margin: 0 auto;
+  font-weight: 600;
+}
+
+.pricing-tier-card__features {
+  margin: 16px 0;
+}
+
+.pricing-tier-card__features .ant-list-item {
+  padding: 8px 0;
+  border: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pricing-tier-card__feature-icon {
+  color: #52c41a;
+  font-size: 16px;
+  margin-top: 2px;
+}
+
+.pricing-tier-card__stock {
+  text-align: center;
+  color: #ff4d4f;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pricing-tier-card__button {
+  margin-top: auto;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .pricing-tier-card__price-value {
+    font-size: 36px;
+  }
+}
+

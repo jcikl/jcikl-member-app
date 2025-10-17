@@ -1,0 +1,671 @@
+# JCI KL Membership Management System - AI Coding Rules
+
+## 🎯 Project Identity
+
+You are working on the **JCI KL Membership Management System** (超级国际青年商会吉隆坡分会会员管理系统) - an enterprise-grade, production-ready web application with 30,000+ lines of code, 200+ components, and 52 Firestore collections.
+
+**Complexity Level**: ⭐⭐⭐⭐⭐ (5/5 - Highly Complex)
+
+---
+
+## 🏗️ Architecture Overview
+
+### Tech Stack
+- **Frontend**: React 18 + TypeScript 5.2 + Vite 5.0 + Ant Design 5.12
+- **State Management**: Zustand (primary), React Context (local)
+- **Backend**: Firebase (BaaS) - Firestore + Auth + Storage
+- **Image CDN**: Cloudinary (primary)
+- **Forms**: React Hook Form + Yup
+- **Date/Time**: Day.js
+- **Utilities**: Axios, crypto-js, XLSX, pdfjs-dist
+
+### Module Structure (8 Core Modules)
+```
+src/modules/
+├── member/      # 会员管理
+├── finance/     # 财务系统
+├── event/       # 活动管理
+├── permission/  # 权限系统 (RBAC)
+├── survey/      # 问卷系统
+├── award/       # 奖项系统
+├── image/       # 图片管理
+└── system/      # 系统设置
+```
+
+### 3-Tier Architecture
+```
+UI Layer (React Components)
+    ↓
+Business Logic Layer (Services)
+    ↓
+Data Access Layer (Firestore)
+```
+
+---
+
+## 🚨 CRITICAL RULES (Must Follow)
+
+### 1. ⛔ NEVER Use Hardcoded Values
+```typescript
+// ❌ FORBIDDEN
+const membersRef = collection(db, 'members');
+const email = /^[a-z]+@[a-z]+\.[a-z]+$/;
+
+// ✅ REQUIRED
+import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
+import { globalValidationService } from '@/config/globalValidationSettings';
+
+const membersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
+const emailRegex = GLOBAL_VALIDATION_CONFIG.VALIDATION_RULES.email;
+```
+
+### 2. ⛔ NEVER Pass undefined to Firebase
+```typescript
+// ❌ WRONG - Will throw error
+await setDoc(doc(db, 'members', id), {
+  name: data.name,
+  phone: data.phone,  // Could be undefined
+  avatar: data.avatar // Could be undefined
+});
+
+// ✅ CORRECT - Clean undefined values
+import { cleanUndefinedValues } from '@/utils/dataHelpers';
+
+await setDoc(doc(db, 'members', id), 
+  cleanUndefinedValues({
+    name: data.name,
+    phone: data.phone ?? null,
+    avatar: data.avatar ?? null
+  })
+);
+
+// ✅ BETTER - Conditional spread
+await setDoc(doc(db, 'members', id), {
+  name: data.name,
+  ...(data.phone && { phone: data.phone }),
+  ...(data.avatar && { avatar: data.avatar })
+});
+```
+
+### 3. ✅ ALWAYS Check Permissions
+```typescript
+// ❌ WRONG - No permission check
+const handleDelete = async () => {
+  await memberService.deleteMember(id);
+};
+
+// ✅ CORRECT - Check permission first
+import { globalPermissionService } from '@/config/globalPermissions';
+
+const handleDelete = async () => {
+  const result = await globalPermissionService.checkPermission(
+    currentUserId,
+    'MEMBER_MANAGEMENT',
+    'DELETE'
+  );
+  
+  if (!result.hasPermission) {
+    message.error('权限不足');
+    return;
+  }
+  
+  await memberService.deleteMember(id);
+};
+```
+
+### 4. ✅ ALWAYS Use Global Configuration Services
+```typescript
+// ❌ WRONG - Inline configuration
+<Table 
+  pagination={{ pageSize: 20 }}
+  bordered={false}
+  size="middle"
+/>
+
+// ✅ CORRECT - Use global config
+import { globalComponentService } from '@/config/globalComponentSettings';
+
+const tableConfig = globalComponentService.getTableConfig();
+<Table {...tableConfig} />
+```
+
+### 5. ✅ ALWAYS Use Global Validation
+```typescript
+// ❌ WRONG - Custom regex
+const emailRegex = /^[a-z0-9]+@[a-z0-9]+\.[a-z]+$/;
+
+// ✅ CORRECT - Global validation
+import { globalValidationService } from '@/config/globalValidationSettings';
+
+const isValid = globalValidationService.validateEmail(email);
+```
+
+---
+
+## 📋 Code Style Guidelines
+
+### TypeScript Standards
+```typescript
+// ✅ REQUIRED: Explicit types, no 'any'
+interface User {
+  id: string;
+  name: string;
+}
+
+const getUser = async (id: string): Promise<User> => {
+  // Implementation
+};
+
+// ❌ FORBIDDEN
+const getUser = async (id: any): Promise<any> => {};
+```
+
+### Import Order (STRICT)
+```typescript
+// 1. React & Third-party
+import React, { useState, useEffect } from 'react';
+import { Button, Form, Table } from 'antd';
+
+// 2. Global Config (PRIORITY - ALWAYS FIRST)
+import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
+import { GLOBAL_SYSTEM_CONFIG, globalSystemService } from '@/config/globalSystemSettings';
+import { GLOBAL_COMPONENT_CONFIG, globalComponentService } from '@/config/globalComponentSettings';
+import { GLOBAL_VALIDATION_CONFIG, globalValidationService } from '@/config/globalValidationSettings';
+import { GLOBAL_DATE_CONFIG, globalDateService } from '@/config/globalDateSettings';
+import { GLOBAL_PERMISSION_CONFIG, globalPermissionService } from '@/config/globalPermissions';
+
+// 3. Types
+import { Member, Transaction } from '@/types';
+
+// 4. Services
+import { memberService } from '@/modules/member/services/memberService';
+
+// 5. Components
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+
+// 6. Styles
+import './styles.css';
+```
+
+### Naming Conventions
+```typescript
+// Components: PascalCase
+MemberListPage, TransactionManagement
+
+// Services: camelCase
+memberService, financeService
+
+// Hooks: use prefix
+usePermissions, useMemberCategory
+
+// Constants: UPPER_SNAKE_CASE
+GLOBAL_COLLECTIONS, MAX_FILE_SIZE
+
+// Types/Interfaces: PascalCase
+Member, Transaction, BankAccount
+```
+
+### Component Pattern
+```typescript
+// ✅ REQUIRED: Functional components with TypeScript
+interface Props {
+  memberId: string;
+  onSuccess?: () => void;
+}
+
+export const MemberProfile: React.FC<Props> = ({ memberId, onSuccess }) => {
+  // Component logic
+};
+
+// ✅ Named exports (NOT default)
+export { MemberProfile };
+```
+
+---
+
+## 🔐 Security & Data Safety
+
+### Authentication Check
+```typescript
+// ✅ ALWAYS verify auth state
+const { user } = useAuthStore();
+if (!user) return <Navigate to="/login" />;
+```
+
+### Input Validation (Both Client & Server)
+```typescript
+// ✅ Use global validation service
+const schema = globalValidationService.createSchema({
+  email: 'email',
+  phone: 'phone',
+  password: 'password'
+});
+```
+
+### XSS Prevention
+```typescript
+// ✅ Use Ant Design components (auto-escaped)
+<Typography.Text>{userInput}</Typography.Text>
+
+// ❌ NEVER use dangerouslySetInnerHTML
+<div dangerouslySetInnerHTML={{ __html: userInput }} />
+```
+
+---
+
+## 📊 Critical Business Rules
+
+### 1. Member Fee Standards
+| Category | New Fee | Renewal | Tasks Required |
+|----------|---------|---------|----------------|
+| Official Member | RM 480 | RM 350 | 3 events + 1 course + 1 role |
+| Associate Member | RM 250 | RM 200 | 2 events |
+| Honorary Member | RM 0 | RM 0 | None |
+| Visiting Member | RM 100 | RM 100 | None |
+
+### 2. Event Pricing (4-Tier)
+- `regularPrice` - Guest (highest)
+- `memberPrice` - JCI members (~30% off)
+- `alumniPrice` - Alumni (~20% off)
+- `earlyBirdPrice` - Limited time
+- Committee members: **FREE**
+
+### 3. Fiscal Year
+- Start: October 1
+- End: September 30 (next year)
+- Example: FY 2024 = 2024-10-01 to 2025-09-30
+
+### 4. Transaction Number Format
+`TXN-{YYYY}-{ACCT_LAST_4}-{SEQ_4}`
+- Example: `TXN-2024-1234-0001`
+
+---
+
+## 🗄️ Data Models Reference
+
+### Key Collections (52 total)
+```typescript
+// Member Domain
+GLOBAL_COLLECTIONS.MEMBERS
+GLOBAL_COLLECTIONS.MEMBER_POSITIONS
+GLOBAL_COLLECTIONS.MEMBER_CATEGORIES
+GLOBAL_COLLECTIONS.MEMBER_RECRUITMENT
+
+// Finance Domain
+GLOBAL_COLLECTIONS.TRANSACTIONS
+GLOBAL_COLLECTIONS.BANK_ACCOUNTS
+GLOBAL_COLLECTIONS.TRANSACTION_PURPOSES
+GLOBAL_COLLECTIONS.BILL_PAYMENTS
+GLOBAL_COLLECTIONS.BUDGETS
+
+// Event Domain
+GLOBAL_COLLECTIONS.EVENTS
+GLOBAL_COLLECTIONS.EVENT_REGISTRATIONS
+GLOBAL_COLLECTIONS.EVENT_PARTICIPANTS
+
+// Permission Domain (RBAC)
+GLOBAL_COLLECTIONS.RBAC_PERMISSIONS
+GLOBAL_COLLECTIONS.RBAC_ROLES
+GLOBAL_COLLECTIONS.RBAC_ROLE_BINDINGS
+
+// System Domain
+GLOBAL_COLLECTIONS.GLOBAL_SETTINGS
+GLOBAL_COLLECTIONS.AUDIT_LOGS
+GLOBAL_COLLECTIONS.USER_OPERATION_LOGS
+GLOBAL_COLLECTIONS.ONLINE_USERS
+GLOBAL_COLLECTIONS.PAGE_VIEWS
+```
+
+### Data Transformation Helpers
+```typescript
+// Firestore Timestamp → ISO String
+import { safeTimestampToISO } from '@/utils/dateHelpers';
+
+// undefined → null (MANDATORY)
+import { cleanUndefinedValues } from '@/utils/dataHelpers';
+```
+
+---
+
+## 🎨 UI/UX Standards
+
+### Use Global Component Config
+```typescript
+// Table
+const tableConfig = globalComponentService.getTableConfig({
+  pageSize: 20,  // Override if needed
+});
+
+// Form
+const formConfig = globalComponentService.getFormConfig({
+  layout: 'vertical'
+});
+
+// Modal
+const modalConfig = globalComponentService.getModalConfig({
+  width: 800,
+  centered: true
+});
+```
+
+### Status Colors (CSS Classes)
+```css
+.status-active      /* Green - Active, Published */
+.status-inactive    /* Orange - Inactive, Suspended */
+.status-pending     /* Blue - Pending, In Progress */
+.status-suspended   /* Red - Disabled, Cancelled, Error */
+```
+
+### Date Formats
+```typescript
+import { globalDateService } from '@/config/globalDateSettings';
+
+// Display format
+globalDateService.formatDate(date, 'display'); // DD-MMM-YYYY
+
+// API format
+globalDateService.formatDate(date, 'api'); // YYYY-MM-DD
+
+// Filename format
+globalDateService.formatDate(date, 'filename'); // YYYYMMDD
+```
+
+---
+
+## 🔄 Common Patterns
+
+### Standard CRUD Flow
+```typescript
+// 1. Service Layer
+export const getMembers = async (params: QueryParams) => {
+  const q = query(
+    collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+    where('status', '==', params.status),
+    orderBy('createdAt', 'desc'),
+    limit(params.limit)
+  );
+  
+  const snapshot = await getDocs(q);
+  
+  return {
+    data: snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })),
+    total: snapshot.size,
+    page: params.page,
+    limit: params.limit
+  };
+};
+
+// 2. Component
+const [data, setData] = useState([]);
+
+useEffect(() => {
+  const fetchData = async () => {
+    const result = await memberService.getMembers({ page: 1, limit: 20 });
+    setData(result.data);
+  };
+  fetchData();
+}, []);
+```
+
+### Permission-Protected Operation
+```typescript
+const { hasPermission } = usePermission(
+  userId, 
+  'MEMBER_MANAGEMENT', 
+  'DELETE'
+);
+
+if (!hasPermission) {
+  return <Button disabled>删除</Button>;
+}
+
+return <Button onClick={handleDelete}>删除</Button>;
+```
+
+---
+
+## 📝 Development Checklist
+
+### Before Writing Code
+- [ ] Check if global config exists for this feature
+- [ ] Review similar existing implementations
+- [ ] Identify all affected consumers
+- [ ] Plan permission checks needed
+
+### While Writing Code
+- [ ] Use `GLOBAL_COLLECTIONS.*` for all Firestore refs
+- [ ] Use global services (validation, date, component)
+- [ ] Clean undefined values before Firebase writes
+- [ ] Add explicit TypeScript types
+- [ ] Implement permission checks
+- [ ] Follow import order strictly
+
+### Before Committing
+- [ ] Run compliance check (target ≥90/100)
+- [ ] Run TypeScript check: `npm run type-check`
+- [ ] Test primary user flow
+- [ ] Update all affected consumers
+- [ ] No console.log in production code
+- [ ] No hardcoded values
+
+---
+
+## 🚨 Emergency Procedures
+
+### Firestore Rules Expiry (2025-10-10)
+```bash
+# URGENT: Update production rules
+firebase deploy --only firestore:rules
+```
+
+### Production Rollback
+```bash
+git revert [commit]
+# Then redeploy
+```
+
+### Data Corruption
+1. Stop writes (disable features)
+2. Export data: `firebase firestore:export`
+3. Analyze transaction logs
+4. Restore from backup
+5. Run integrity checks
+
+---
+
+## 🎯 Performance Targets
+
+- First Contentful Paint: < 1.5s
+- Time to Interactive: < 3s
+- List rendering (1000 items): < 200ms
+- Form submission: < 500ms
+- Initial bundle: < 500KB (gzipped)
+
+---
+
+## 📚 Key File Locations
+
+### Global Configuration
+```
+src/config/
+├── globalCollections.ts       # Collection IDs
+├── globalPermissions.ts        # RBAC
+├── globalSystemSettings.ts     # System config
+├── globalComponentSettings.ts  # UI defaults
+├── globalValidationSettings.ts # Validation
+├── globalDateSettings.ts       # Date formats
+├── globalSettingsCommander.ts  # Compliance checker
+└── index.ts                    # Unified exports
+```
+
+### Module Structure
+```
+src/modules/{module_name}/
+├── components/    # UI components
+├── pages/        # Route pages
+├── services/     # Business logic
+├── hooks/        # Custom hooks
+├── types/        # TypeScript types
+└── __tests__/    # Unit tests
+```
+
+---
+
+## 🔍 Common Issues & Solutions
+
+### Issue: Undefined to Firebase
+**Solution**: Always use `cleanUndefinedValues()` or conditional spread
+
+### Issue: Hardcoded collection names
+**Solution**: Import and use `GLOBAL_COLLECTIONS.*`
+
+### Issue: Missing permission checks
+**Solution**: Use `globalPermissionService.checkPermission()` or `usePermission()` hook
+
+### Issue: Large service files (>500 lines)
+**Solution**: Split into focused services (transaction, budget, report)
+
+### Issue: Timestamp conversion errors
+**Solution**: Use `Timestamp.fromDate()` for writes, `safeTimestampToISO()` for reads
+
+---
+
+## 🎓 Module-Specific Notes
+
+### Finance Module
+- Transaction numbers must follow format: `TXN-YYYY-XXXX-NNNN`
+- All amounts must be ≥ 0
+- Budget → Transaction mapping uses keywords
+- Fiscal year: Oct 1 - Sep 30
+
+#### 💰 Running Balance Calculation (累计余额计算)
+**Critical Logic - Must Follow Exactly**
+
+```typescript
+// 核心原则：完全基于UI列表物理顺序，不依赖任何固定字段
+// 计算方向：从下到上（数组末尾→开头）、从后往前（最旧页→最新页）
+
+// Step 1: 定位当前页在全局的位置
+const lastTxnOnPage = currentPageTransactions[currentPageTransactions.length - 1];
+const globalEndIndex = allTransactions.findIndex(t => t.id === lastTxnOnPage.id);
+
+// Step 2: 计算起始余额（累加当前页之后的所有交易）
+let startingBalance = initialBalance;
+for (let i = allTransactions.length - 1; i > globalEndIndex; i--) {
+  const netAmount = tx.transactionType === 'income' ? tx.amount : -tx.amount;
+  startingBalance += netAmount;
+}
+
+// Step 3: 计算当前页余额（从下到上）
+let runningBalance = startingBalance;
+for (let i = currentPageTransactions.length - 1; i >= 0; i--) {
+  const netAmount = txn.transactionType === 'income' ? txn.amount : -txn.amount;
+  runningBalance += netAmount;
+  balanceMap.set(txn.id, runningBalance);
+}
+```
+
+**关键要点：**
+- ❌ 不使用position字段或任何固定排序字段
+- ✅ 只依赖当前UI列表的物理顺序
+- ✅ UI底部（数组末尾）= 第一笔交易（最旧）
+- ✅ UI顶部（数组开头）= 最新交易
+- ✅ 起始余额 = 初始余额 + 当前页之后的所有交易
+- ✅ 只计算父交易余额（跳过isVirtual和子交易）
+- ✅ 支持任意排序规则变更后自动重新计算
+
+### Member Module
+- Category changes require task completion validation
+- Permissions auto-sync on category/position change
+- Recruitment tracking links introducer to new member
+
+### Event Module
+- Multi-tier pricing based on member category
+- Registration → Transaction auto-creation on approval
+- Level restrictions: Local < Area < National < JCI
+
+### Permission Module
+- 4-layer model: User → RoleBinding → Role → Permission
+- Scoped permissions support (site-level, event-level)
+- Dynamic permission matrix
+
+---
+
+## 🌟 Best Practices
+
+### DO ✅
+- Import global configs at top of every file
+- Use TypeScript strict mode
+- Clean undefined before Firebase writes
+- Check permissions before operations
+- Use named exports
+- Follow module structure
+- Write unit tests for services
+- Handle errors gracefully
+- Log operations for audit trail
+
+### DON'T ❌
+- Hardcode collection names
+- Use 'any' type
+- Skip permission checks
+- Pass undefined to Firebase
+- Use default exports
+- Create files outside module structure
+- Leave console.log in production
+- Ignore TypeScript errors
+- Create helper scripts to bypass standards
+
+---
+
+## 🎯 Code Quality Standards
+
+### Minimum Requirements
+- TypeScript strict mode: ✅ Enabled
+- Linter errors: 0
+- Type errors: 0
+- Compliance score: ≥ 90/100
+- Test coverage: Target 60%
+- Bundle size: < 500KB (gzipped)
+
+### Commands
+```bash
+npm run type-check    # TypeScript validation
+npm run lint          # ESLint check
+npm run build         # Production build
+npm test              # Run tests
+```
+
+---
+
+## 📖 Documentation References
+
+- Main technical doc: `.cursor/rules/00-master-enhanced.md`
+- API docs: `docs/technical/api/`
+- Architecture: `docs/technical/architecture/`
+- Troubleshooting: `docs/technical/troubleshooting/`
+
+---
+
+## 🚀 Final Reminders
+
+1. **NEVER** hardcode - use `GLOBAL_COLLECTIONS.*` and global services
+2. **ALWAYS** convert `undefined` to `null` before Firebase
+3. **ALWAYS** check permissions for sensitive operations
+4. **ALWAYS** use global validation for forms
+5. **ALWAYS** run compliance check before commit (≥90/100)
+6. **NEVER** use `any` type - use explicit types
+7. **ALWAYS** follow import order (global configs first)
+8. **ALWAYS** clean up after refactoring (update all consumers)
+
+---
+
+**Remember**: This is a production system serving real users. Code quality, security, and reliability are paramount. When in doubt, refer to global configs and existing patterns.
+
+**Version**: 2.0
+**Last Updated**: 2025-01-13
+**Codebase Size**: 30,000+ LOC, 200+ components, 52 collections
+
+

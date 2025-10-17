@@ -1,0 +1,30 @@
+/**
+ * Network Status Styles
+ * 网络状态样式
+ */
+
+.network-status {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  animation: slideDown 0.3s ease-out;
+}
+
+.network-status .ant-alert {
+  border-radius: 0;
+  margin: 0;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+

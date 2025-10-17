@@ -1,0 +1,304 @@
+rules_version = '2';
+
+/**
+ * Firestore Security Rules for JCI KL Membership Management System
+ * JCI KL 会员管理系统 Firestore 安全规则
+ * 
+ * 最后更新: 2025-01-13
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ====================================
+    // Helper Functions
+    // 辅助函数
+    // ====================================
+    
+    /**
+     * Check if user is authenticated
+     * 检查用户是否已认证
+     */
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    /**
+     * Check if user is the document owner
+     * 检查用户是否是文档所有者
+     */
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    /**
+     * Check if user has admin role
+     * 检查用户是否是管理员
+     */
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    /**
+     * Check if user account is active
+     * 检查用户账户是否活跃
+     */
+    function isActive() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/members/$(request.auth.uid)).data.status == 'active';
+    }
+    
+    /**
+     * Check if only specified fields are being updated
+     * 检查是否仅更新指定字段
+     */
+    function onlyUpdatingFields(allowedFields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
+    }
+    
+    // ====================================
+    // Members Collection
+    // 会员集合
+    // ====================================
+    
+    match /members/{memberId} {
+      // Allow read if authenticated
+      // 已认证用户可以读取会员信息
+      allow read: if isAuthenticated();
+      
+      // Allow create for new user registration
+      // 允许新用户注册时创建自己的文档
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == memberId &&
+                       request.resource.data.role == 'member' &&
+                       request.resource.data.status in ['pending', 'active'];
+      
+      // Allow update for own profile or admin
+      // 允许用户更新自己的资料或管理员更新任何资料
+      allow update: if isOwner(memberId) || isAdmin();
+      
+      // Allow delete only for admin
+      // 只有管理员可以删除
+      allow delete: if isAdmin();
+    }
+    
+    // ====================================
+    // Member Related Collections
+    // 会员相关集合
+    // ====================================
+    
+    match /memberCategories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /memberPositions/{positionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /memberRecruitment/{recruitmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    
+    // ====================================
+    // Events Collection
+    // 活动集合
+    // ====================================
+    
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isActive();
+    }
+    
+    match /eventRegistrations/{registrationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(resource.data.memberId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    match /eventParticipants/{participantId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isActive();
+    }
+    
+    // ====================================
+    // Finance Collections
+    // 财务集合
+    // ====================================
+    
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated();
+      allow create: if isActive() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /bankAccounts/{accountId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      // Allow authenticated users to update balance-related fields (for transaction processing)
+      // Only allow admin to update all other fields
+      allow update: if isAdmin() || 
+                      (isAuthenticated() && 
+                       onlyUpdatingFields(['balance', 'lastTransactionDate', 'updatedAt']));
+    }
+    
+    match /transactionPurposes/{purposeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /billPayments/{billId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /budgets/{budgetId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /fiscalYears/{fiscalYearId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /financeEvents/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isActive() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /financialRecords/{recordId} {
+      allow read: if isAuthenticated();
+      allow create: if isActive() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /projectAccounts/{accountId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ====================================
+    // Permission Collections (RBAC)
+    // 权限集合
+    // ====================================
+    
+    match /rbacPermissions/{permissionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /rbacRoles/{roleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /rbacRoleBindings/{bindingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ====================================
+    // Survey Collections
+    // 问卷集合
+    // ====================================
+    
+    match /surveys/{surveyId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isActive();
+    }
+    
+    match /surveyResponses/{responseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(resource.data.memberId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ====================================
+    // Award Collections
+    // 奖项集合
+    // ====================================
+    
+    match /awards/{awardId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /awardCategories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /awardNominations/{nominationId} {
+      allow read: if isAuthenticated();
+      allow create: if isActive();
+      allow update, delete: if isAdmin();
+    }
+    
+    // ====================================
+    // Image Collections
+    // 图片集合
+    // ====================================
+    
+    match /images/{imageId} {
+      allow read: if isAuthenticated();
+      allow create: if isActive();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /imageCategories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ====================================
+    // System Collections
+    // 系统集合
+    // ====================================
+    
+    match /globalSettings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Logs are immutable
+    }
+    
+    match /userOperationLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+    
+    match /onlineUsers/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+    
+    match /pageViews/{viewId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+    
+    // ====================================
+    // Default: Deny all other access
+    // 默认：拒绝所有其他访问
+    // ====================================
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

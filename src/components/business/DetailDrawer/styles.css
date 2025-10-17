@@ -1,0 +1,224 @@
+/**
+ * DetailDrawer Styles
+ * 详情抽屉样式
+ */
+
+/* 主容器 */
+.detail-drawer {
+  font-family: 'Manrope', sans-serif;
+}
+
+/* 标题区域 */
+.detail-drawer__title-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  gap: 16px;
+}
+
+.detail-drawer__title-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.detail-drawer__subtitle {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 头部操作 */
+.detail-drawer__header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detail-drawer__action-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-drawer__action-button.danger {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.detail-drawer__action-button.danger:hover {
+  color: #ff7875;
+  border-color: #ff7875;
+}
+
+.detail-drawer__close-button {
+  color: #8c8c8c;
+}
+
+.detail-drawer__close-button:hover {
+  color: #595959;
+}
+
+/* 标签页 */
+.detail-drawer__tabs-wrapper {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-drawer__tabs {
+  margin: 0;
+}
+
+.detail-drawer__tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
+.detail-drawer__tabs .ant-tabs-tab {
+  padding: 16px 20px;
+  font-weight: 500;
+}
+
+.detail-drawer__tab-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* 内容区域 */
+.detail-drawer__content {
+  padding: 24px;
+  min-height: 300px;
+}
+
+.detail-drawer__tab-content {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 加载状态 */
+.detail-drawer__loading {
+  padding: 24px;
+}
+
+/* 空状态 */
+.detail-drawer__empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #8c8c8c;
+}
+
+/* 底部操作栏 */
+.detail-drawer__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .detail-drawer__title-wrapper {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .detail-drawer__header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .detail-drawer__content {
+    padding: 16px;
+  }
+
+  .detail-drawer__tabs .ant-tabs-tab {
+    padding: 12px 16px;
+  }
+
+  .detail-drawer__footer {
+    flex-wrap: wrap;
+  }
+
+  .detail-drawer__footer .ant-btn {
+    flex: 1;
+    min-width: 100px;
+  }
+}
+
+/* 深色模式支持（手动控制） */
+.dark .detail-drawer__title-wrapper,
+.dark .detail-drawer__tabs-wrapper {
+  border-color: #303030;
+}
+
+.dark .detail-drawer__action-button.danger {
+  color: #ff7875;
+  border-color: #ff7875;
+}
+
+.dark .detail-drawer__close-button {
+  color: #a6a6a6;
+}
+
+.dark .detail-drawer__close-button:hover {
+  color: #d9d9d9;
+}
+
+/* 滚动优化 */
+.detail-drawer__content {
+  overflow-y: auto;
+  max-height: calc(100vh - 300px);
+}
+
+.detail-drawer__content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.detail-drawer__content::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 3px;
+}
+
+.detail-drawer__content::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 3px;
+}
+
+.detail-drawer__content::-webkit-scrollbar-thumb:hover {
+  background: #8c8c8c;
+}
+
+/* 动画效果 */
+.detail-drawer .ant-drawer-content-wrapper {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 头部阴影 */
+.detail-drawer__title-wrapper {
+  position: relative;
+}
+
+/* 标签页激活状态 */
+.detail-drawer__tabs .ant-tabs-tab-active .detail-drawer__tab-icon {
+  color: #1890ff;
+}
+
+/* 按钮组间距 */
+.detail-drawer__header-actions .ant-btn + .ant-btn {
+  margin-left: 8px;
+}
+
+.detail-drawer__footer .ant-btn + .ant-btn {
+  margin-left: 12px;
+}
+

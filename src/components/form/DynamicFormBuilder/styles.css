@@ -1,0 +1,152 @@
+/**
+ * DynamicFormBuilder Styles
+ */
+
+.dynamic-form-builder {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dynamic-form-builder__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0 24px;
+  height: 64px;
+}
+
+.dynamic-form-builder__layout {
+  flex: 1;
+  overflow: hidden;
+}
+
+.dynamic-form-builder__toolbox {
+  background: #ffffff;
+  border-right: 1px solid #f0f0f0;
+}
+
+.dynamic-form-builder__toolbox-content {
+  padding: 16px;
+}
+
+.dynamic-form-builder__toolbox-content h3 {
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.dynamic-form-builder__palette-item {
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.dynamic-form-builder__canvas {
+  background: #f6f7f8;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.dynamic-form-builder__canvas-content {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 24px;
+  min-height: 400px;
+}
+
+.dynamic-form-builder__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  color: #8c8c8c;
+}
+
+.dynamic-form-builder__field {
+  position: relative;
+  padding: 16px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dynamic-form-builder__field:hover {
+  border-color: #d9d9d9;
+  background: #f5f5f5;
+}
+
+.dynamic-form-builder__field.selected {
+  border-color: #1890ff;
+  background: #e6f7ff;
+}
+
+.dynamic-form-builder__field-header {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dynamic-form-builder__field:hover .dynamic-form-builder__field-header {
+  opacity: 1;
+}
+
+.dynamic-form-builder__properties {
+  background: #ffffff;
+  border-left: 1px solid #f0f0f0;
+}
+
+.dynamic-form-builder__properties-content {
+  padding: 16px;
+}
+
+.dynamic-form-builder__properties-content h3 {
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.dynamic-form-builder__properties-content label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #595959;
+}
+
+.dynamic-form-builder__properties-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8c8c8c;
+  padding: 24px;
+  text-align: center;
+}
+
+.dynamic-form-builder__form {
+  max-width: 800px;
+  margin: 24px auto;
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 8px;
+}
+
+@media (max-width: 1024px) {
+  .dynamic-form-builder__layout {
+    flex-direction: column;
+  }
+
+  .dynamic-form-builder__toolbox,
+  .dynamic-form-builder__properties {
+    width: 100% !important;
+  }
+}
+

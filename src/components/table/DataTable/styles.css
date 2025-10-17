@@ -1,0 +1,32 @@
+.data-table-wrapper {
+  width: 100%;
+}
+
+.data-table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.data-table-toolbar .ant-space {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .data-table-toolbar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .data-table-toolbar .ant-space {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+

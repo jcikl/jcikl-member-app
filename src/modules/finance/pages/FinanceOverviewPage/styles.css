@@ -1,0 +1,49 @@
+/* Finance Overview Page Styles */
+
+.finance-overview-page {
+  padding: 24px;
+}
+
+.finance-overview-page .text-success {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.finance-overview-page .text-danger {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.finance-overview-page .ant-statistic-title {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.finance-overview-page .ant-statistic-content {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.finance-overview-page .ant-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.finance-overview-page .ant-card-body {
+  padding: 20px;
+}
+
+/* Dark mode styles */
+.dark .finance-overview-page .ant-card {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+.dark .finance-overview-page .ant-statistic-title {
+  color: #9ca3af;
+}
+
+.dark .finance-overview-page .ant-statistic-content {
+  color: #f3f4f6;
+}
+

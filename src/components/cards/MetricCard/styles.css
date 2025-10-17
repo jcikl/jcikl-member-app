@@ -1,0 +1,184 @@
+/**
+ * MetricCard Styles
+ * 指标卡片样式
+ */
+
+/* 主容器 */
+.metric-card {
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metric-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.metric-card--clickable {
+  cursor: pointer;
+}
+
+.metric-card--clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* 内容区域 */
+.metric-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 标题 */
+.metric-card__title {
+  font-size: 14px;
+  color: #8c8c8c;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* 数值区域 */
+.metric-card__value-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.metric-card__prefix {
+  font-size: 20px;
+  color: #262626;
+}
+
+/* 趋势指示器 */
+.metric-card__trend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.metric-card__trend-icon {
+  font-size: 16px;
+}
+
+.metric-card__trend-value {
+  font-weight: 600;
+}
+
+.metric-card__trend-label {
+  color: #8c8c8c;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+/* 图表容器 */
+.metric-card__chart-wrapper {
+  margin-top: 8px;
+  width: 100%;
+}
+
+/* 线图 */
+.metric-card__chart--line {
+  width: 100%;
+  position: relative;
+}
+
+.metric-card__chart--line svg {
+  display: block;
+}
+
+/* 柱状图 */
+.metric-card__chart--bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.metric-card__bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  transition: all 0.3s ease;
+  min-height: 4px;
+}
+
+.metric-card__bar:hover {
+  opacity: 0.8;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .metric-card__value-wrapper .ant-statistic {
+    font-size: 24px !important;
+  }
+
+  .metric-card__chart-wrapper {
+    height: 60px;
+  }
+}
+
+/* 深色模式（手动控制） */
+.dark .metric-card {
+  background: #1f1f1f;
+}
+
+.dark .metric-card__title {
+  color: #a6a6a6;
+}
+
+.dark .metric-card__value-wrapper {
+  color: #f5f5f5;
+}
+
+.dark .metric-card__trend-label {
+  color: #a6a6a6;
+}
+
+/* 加载状态 */
+.metric-card .ant-skeleton {
+  padding: 8px 0;
+}
+
+/* Statistic 样式覆盖 */
+.metric-card .ant-statistic-content {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.metric-card .ant-statistic-content-suffix {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin-left: 4px;
+}
+
+/* 动画效果 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.metric-card__content {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* 网格布局优化 */
+.metric-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .metric-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+

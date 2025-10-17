@@ -1,0 +1,37 @@
+/* General Accounts Page Styles */
+
+.general-accounts-page {
+  padding: 24px;
+}
+
+.general-accounts-page .text-success {
+  color: #3f8600;
+  font-weight: 600;
+}
+
+.general-accounts-page .text-danger {
+  color: #cf1322;
+  font-weight: 600;
+}
+
+.general-accounts-page .ant-layout-sider {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.general-accounts-page .ant-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode styles */
+.dark .general-accounts-page .ant-layout-sider {
+  background-color: #1f2937;
+}
+
+.dark .general-accounts-page .ant-card {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+

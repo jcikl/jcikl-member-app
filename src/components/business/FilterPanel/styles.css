@@ -1,0 +1,264 @@
+/**
+ * FilterPanel Styles
+ * 筛选面板样式
+ */
+
+/* 主容器 */
+.filter-panel {
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+}
+
+/* 可折叠容器 */
+.filter-panel--collapsible .ant-collapse {
+  background: transparent;
+  border: none;
+}
+
+.filter-panel--collapsible .ant-collapse-item {
+  border: none;
+}
+
+.filter-panel--collapsible .ant-collapse-header {
+  padding: 16px 24px !important;
+  background: #fafafa;
+  border-radius: 8px 8px 8px 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.filter-panel--collapsible .ant-collapse-header:hover {
+  background: #f5f5f5;
+}
+
+.filter-panel--collapsible .ant-collapse-content {
+  border-top: 1px solid #f0f0f0;
+}
+
+/* 头部 */
+.filter-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+}
+
+.filter-panel__icon {
+  font-size: 18px;
+  color: #1890ff;
+}
+
+.filter-panel__title {
+  font-weight: 600;
+  color: #333333;
+}
+
+/* 内容区域 */
+.filter-panel__content {
+  padding: 24px;
+}
+
+/* 快速搜索 */
+.filter-panel__search {
+  margin-bottom: 24px;
+}
+
+/* 分组容器 */
+.filter-panel__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 分组 */
+.filter-panel__group {
+  margin-bottom: 0;
+}
+
+.filter-panel__group-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #1890ff;
+  position: relative;
+}
+
+.filter-panel__group-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 40px;
+  height: 2px;
+  background: #1890ff;
+}
+
+.filter-panel__group-content {
+  /* 移除原有的 flex 样式，使用 Row/Col 布局 */
+  display: block;
+}
+
+/* 操作栏 */
+.filter-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.filter-panel__presets {
+  flex-wrap: wrap;
+}
+
+.filter-panel__main-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* 加载状态 */
+.filter-panel__loading {
+  padding: 24px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .filter-panel__content {
+    padding: 16px;
+  }
+
+  .filter-panel__groups {
+    gap: 20px;
+  }
+
+  .filter-panel__group-title {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .filter-panel__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-panel__presets,
+  .filter-panel__main-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filter-panel__presets .ant-space,
+  .filter-panel__main-actions .ant-space {
+    width: 100%;
+  }
+
+  .filter-panel__presets .ant-space-item,
+  .filter-panel__main-actions .ant-space-item {
+    flex: 1;
+  }
+
+  .filter-panel__presets .ant-input,
+  .filter-panel__presets .ant-select,
+  .filter-panel__main-actions .ant-btn {
+    width: 100%;
+  }
+}
+
+/* 小屏幕优化 */
+@media (max-width: 480px) {
+  .filter-panel__groups {
+    gap: 16px;
+  }
+
+  .filter-panel__group-title {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  /* 确保表单项在小屏幕上全宽显示 */
+  .filter-panel__group-content .ant-col {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* 深色模式支持（手动控制） */
+.dark .filter-panel {
+  background: #1f1f1f;
+  border-color: #434343;
+}
+
+.dark .filter-panel--collapsible .ant-collapse-header {
+  background: #262626;
+}
+
+.dark .filter-panel--collapsible .ant-collapse-header:hover {
+  background: #2f2f2f;
+}
+
+.dark .filter-panel__title {
+  color: #f5f5f5;
+}
+
+.dark .filter-panel__group-title {
+  color: #f5f5f5;
+}
+
+/* 动画效果 */
+.filter-panel--collapsible .ant-collapse-content {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filter-panel__header {
+  transition: color 0.3s ease;
+}
+
+.filter-panel--collapsible .ant-collapse-header:hover .filter-panel__icon {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* 表单项间距优化 */
+.filter-panel .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.filter-panel .ant-form-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 按钮样式优化 */
+.filter-panel__actions .ant-btn-primary {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.filter-panel__actions .ant-btn-primary:hover {
+  background: #40a9ff;
+  border-color: #40a9ff;
+}
+
+/* 输入框样式优化 */
+.filter-panel .ant-input,
+.filter-panel .ant-select-selector,
+.filter-panel .ant-picker {
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.filter-panel .ant-input:focus,
+.filter-panel .ant-select-focused .ant-select-selector,
+.filter-panel .ant-picker-focused {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+

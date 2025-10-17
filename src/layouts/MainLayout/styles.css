@@ -1,0 +1,33 @@
+/* Main Layout Styles */
+
+.main-layout {
+  min-height: 100vh;
+}
+
+.main-layout-content {
+  margin: 24px 16px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  min-height: 280px;
+}
+
+/* Sidebar Styles */
+.ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header Styles */
+.ant-layout-header {
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+}
+
+/* Smooth transitions */
+.ant-layout-sider,
+.ant-layout-header,
+.ant-layout-footer {
+  transition: all 0.2s;
+}
+
+

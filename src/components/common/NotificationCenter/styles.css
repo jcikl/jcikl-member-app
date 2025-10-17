@@ -1,0 +1,39 @@
+/**
+ * NotificationCenter Styles
+ */
+
+.notification-center__dropdown {
+  width: 380px;
+  max-height: 500px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.notification-center__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.notification-center__list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-center__list .ant-list-item.unread {
+  background: #e6f7ff;
+  border-left: 3px solid #1890ff;
+}
+
+.notification-center__list .ant-list-item {
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.notification-center__list .ant-list-item:hover {
+  background: #fafafa;
+}
+

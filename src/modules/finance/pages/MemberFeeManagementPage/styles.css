@@ -1,0 +1,39 @@
+/* Member Fee Management Page Styles */
+
+.member-fee-management-page {
+  padding: 24px;
+}
+
+.member-fee-management-page .ant-statistic-title {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.member-fee-management-page .ant-statistic-content {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.member-fee-management-page .ant-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.member-fee-management-page .ant-table-wrapper {
+  overflow-x: auto;
+}
+
+/* Dark mode styles */
+.dark .member-fee-management-page .ant-card {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+.dark .member-fee-management-page .ant-statistic-title {
+  color: #9ca3af;
+}
+
+.dark .member-fee-management-page .ant-statistic-content {
+  color: #f3f4f6;
+}
+

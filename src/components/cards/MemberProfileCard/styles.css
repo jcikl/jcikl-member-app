@@ -1,0 +1,127 @@
+/**
+ * MemberProfileCard Styles
+ */
+
+.member-profile-card {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.member-profile-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.member-profile-card__header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.member-profile-card__avatar-wrapper {
+  position: relative;
+}
+
+.member-profile-card__avatar {
+  cursor: pointer;
+}
+
+.member-profile-card__avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+}
+
+.member-profile-card__avatar-wrapper:hover .member-profile-card__avatar-overlay {
+  opacity: 1;
+}
+
+.member-profile-card__info {
+  flex: 1;
+}
+
+.member-profile-card__name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.member-profile-card__name {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.member-profile-card__meta {
+  display: flex;
+  gap: 8px;
+  color: #8c8c8c;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.member-profile-card__meta span:not(:last-child)::after {
+  content: '•';
+  margin-left: 8px;
+}
+
+.member-profile-card__status {
+  margin: 0;
+}
+
+.member-profile-card__divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 16px 0;
+}
+
+.member-profile-card__stats {
+  margin: 16px 0;
+}
+
+.member-profile-card__stats .ant-statistic-title {
+  font-size: 12px;
+}
+
+.member-profile-card__footer {
+  text-align: center;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 12px;
+}
+
+.member-profile-card__toggle {
+  padding: 0;
+  height: auto;
+}
+
+/* 紧凑模式 */
+.member-profile-card--compact .member-profile-card__stats {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .member-profile-card__header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .member-profile-card__name-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .member-profile-card__meta {
+    justify-content: center;
+  }
+}
+
