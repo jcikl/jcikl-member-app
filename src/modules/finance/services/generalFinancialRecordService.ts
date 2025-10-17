@@ -16,7 +16,7 @@ import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
 import { globalSystemService } from '@/config/globalSystemSettings';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
-import type { GeneralFinancialRecord, GeneralFinancialRecordStatus } from '../types';
+import type { GeneralFinancialRecord } from '../types';
 
 /**
  * Upsert General Financial Record from Transaction

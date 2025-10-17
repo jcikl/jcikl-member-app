@@ -11,14 +11,12 @@ import {
   getDocs,
   addDoc,
   updateDoc,
-  query,
-  where,
 } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
 import { globalSystemService } from '@/config/globalSystemSettings';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
-import type { EventFinancialRecord, EventFinancialRecordStatus } from '../types';
+import type { EventFinancialRecord } from '../types';
 
 /**
  * Upsert Event Financial Record from Transaction

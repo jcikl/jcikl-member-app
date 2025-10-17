@@ -22,12 +22,21 @@ import {
   Modal,
   Descriptions,
   Typography,
+  Tabs,
+  Tree,
+  Badge,
+  Alert,
 } from 'antd';
+import type { DataNode } from 'antd/es/tree';
 import {
   SearchOutlined,
   ReloadOutlined,
   EyeOutlined,
   FileTextOutlined,
+  TableOutlined,
+  ApartmentOutlined,
+  RiseOutlined,
+  FallOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
@@ -74,6 +83,9 @@ const FinancialRecordsPage: React.FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<FinancialRecord | null>(null);
   const [availableSubCategories, setAvailableSubCategories] = useState<string[]>([]);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'table' | 'tree'>('table');
+  const [treeData, setTreeData] = useState<DataNode[]>([]);
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
 
   // Statistics
   const [statistics, setStatistics] = useState({
@@ -103,7 +115,192 @@ const FinancialRecordsPage: React.FC = () => {
         .map(r => r.subCategory!)
     )).sort();
     setAvailableSubCategories(subCategories);
+
+    // Build tree data
+    buildTreeData();
   }, [records]);
+
+  const buildTreeData = () => {
+    // 构建收入和支出的树形结构
+    const incomeNode: DataNode = {
+      title: <span style={{ fontSize: 16, fontWeight: 600 }}><RiseOutlined style={{ color: '#52c41a' }} /> 收入 Incomes</span>,
+      key: 'income-root',
+      children: [],
+    };
+
+    const expenseNode: DataNode = {
+      title: <span style={{ fontSize: 16, fontWeight: 600 }}><FallOutlined style={{ color: '#ff4d4f' }} /> 支出 Expenses</span>,
+      key: 'expense-root',
+      children: [],
+    };
+
+    // 分组数据结构
+    const incomeGroups: Record<string, Record<string, FinancialRecord[]>> = {
+      memberFee: {},
+      eventFinancialRecord: {},
+      generalFinancialRecord: {},
+    };
+
+    const expenseGroups: Record<string, Record<string, FinancialRecord[]>> = {
+      generalFinancialRecord: {},
+      eventFinancialRecord: {},
+    };
+
+    // 遍历记录并分组
+    records.forEach(record => {
+      const type = record.type || 'other';
+      const subCategory = record.subCategory || 'uncategorized';
+      
+      // 判断是收入还是支出
+      const isIncome = determineIsIncome(record);
+
+      if (isIncome) {
+        if (!incomeGroups[type]) incomeGroups[type] = {};
+        if (!incomeGroups[type][subCategory]) incomeGroups[type][subCategory] = [];
+        incomeGroups[type][subCategory].push(record);
+      } else {
+        if (!expenseGroups[type]) expenseGroups[type] = {};
+        if (!expenseGroups[type][subCategory]) expenseGroups[type][subCategory] = [];
+        expenseGroups[type][subCategory].push(record);
+      }
+    });
+
+    // 构建收入树
+    const typeNameMap: Record<string, string> = {
+      memberFee: '会员费用',
+      eventFinancialRecord: '活动财务',
+      generalFinancialRecord: '日常账户',
+    };
+
+    Object.entries(incomeGroups).forEach(([type, subGroups]) => {
+      if (Object.keys(subGroups).length === 0) return;
+
+      const typeTotal = Object.values(subGroups).flat().reduce((sum, r) => {
+        const paid = r.paidAmount || 0;
+        return sum + (r.type === 'memberFee' ? paid : (r.totalRevenue || 0));
+      }, 0);
+
+      const typeNode: DataNode = {
+        title: (
+          <span>
+            {typeNameMap[type] || type} 
+            <Badge 
+              count={Object.values(subGroups).flat().length} 
+              style={{ marginLeft: 8, backgroundColor: '#52c41a' }} 
+            />
+            <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+              RM {typeTotal.toFixed(2)}
+            </Text>
+          </span>
+        ),
+        key: `income-${type}`,
+        children: [],
+      };
+
+      Object.entries(subGroups).forEach(([subCategory, items]) => {
+        const subTotal = items.reduce((sum, r) => {
+          const paid = r.paidAmount || 0;
+          return sum + (r.type === 'memberFee' ? paid : (r.totalRevenue || 0));
+        }, 0);
+
+        typeNode.children!.push({
+          title: (
+            <span onClick={() => handleTreeNodeClick(items)}>
+              {subCategory === 'uncategorized' ? '未分类' : subCategory}
+              <Badge 
+                count={items.length} 
+                style={{ marginLeft: 8 }} 
+              />
+              <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                RM {subTotal.toFixed(2)}
+              </Text>
+            </span>
+          ),
+          key: `income-${type}-${subCategory}`,
+          isLeaf: true,
+        });
+      });
+
+      incomeNode.children!.push(typeNode);
+    });
+
+    // 构建支出树
+    Object.entries(expenseGroups).forEach(([type, subGroups]) => {
+      if (Object.keys(subGroups).length === 0) return;
+
+      const typeTotal = Object.values(subGroups).flat().reduce((sum, r) => {
+        return sum + (r.totalExpense || 0);
+      }, 0);
+
+      const typeNode: DataNode = {
+        title: (
+          <span>
+            {typeNameMap[type] || type}
+            <Badge 
+              count={Object.values(subGroups).flat().length} 
+              style={{ marginLeft: 8, backgroundColor: '#ff4d4f' }} 
+            />
+            <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+              RM {typeTotal.toFixed(2)}
+            </Text>
+          </span>
+        ),
+        key: `expense-${type}`,
+        children: [],
+      };
+
+      Object.entries(subGroups).forEach(([subCategory, items]) => {
+        const subTotal = items.reduce((sum, r) => sum + (r.totalExpense || 0), 0);
+
+        typeNode.children!.push({
+          title: (
+            <span onClick={() => handleTreeNodeClick(items)}>
+              {subCategory === 'uncategorized' ? '未分类' : subCategory}
+              <Badge 
+                count={items.length} 
+                style={{ marginLeft: 8 }} 
+              />
+              <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                RM {subTotal.toFixed(2)}
+              </Text>
+            </span>
+          ),
+          key: `expense-${type}-${subCategory}`,
+          isLeaf: true,
+        });
+      });
+
+      expenseNode.children!.push(typeNode);
+    });
+
+    setTreeData([incomeNode, expenseNode]);
+    setExpandedKeys(['income-root', 'expense-root']);
+  };
+
+  const determineIsIncome = (record: FinancialRecord): boolean => {
+    // 根据记录类型判断是收入还是支出
+    if (record.type === 'memberFee') {
+      // 会员费都是收入
+      return true;
+    } else if (record.type === 'eventFinancialRecord') {
+      // 活动财务看净收入
+      const revenue = record.totalRevenue || 0;
+      const expense = record.totalExpense || 0;
+      return revenue >= expense;
+    } else if (record.type === 'generalFinancialRecord') {
+      // 日常账户看净收入
+      const revenue = record.totalRevenue || 0;
+      const expense = record.totalExpense || 0;
+      return revenue >= expense;
+    }
+    return true; // 默认认为是收入
+  };
+
+  const handleTreeNodeClick = (items: FinancialRecord[]) => {
+    // 切换到表格视图并筛选这些记录
+    setActiveTab('table');
+    setFilteredRecords(items);
+  };
 
   useEffect(() => {
     filterRecords();
@@ -344,7 +541,6 @@ const FinancialRecordsPage: React.FC = () => {
           // 活动财务/日常账户记录：显示会员名字或付款人 + 邮箱（如果有）
           const payerPayee = (record as any).payerPayee;
           const memberName = (record as any).memberName;
-          const memberId = (record as any).memberId;
           
           // 优先显示会员名字，其次显示付款人/收款人
           const displayName = memberName || payerPayee || '-';
@@ -534,10 +730,25 @@ const FinancialRecordsPage: React.FC = () => {
           </Row>
         </div>
 
-        {/* Filters */}
-        <Card className="mb-4">
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <Row gutter={[16, 16]}>
+        {/* Tabs for different views */}
+        <Card>
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => setActiveTab(key as 'table' | 'tree')}
+            items={[
+              {
+                key: 'table',
+                label: (
+                  <span>
+                    <TableOutlined /> 表格视图
+                  </span>
+                ),
+                children: (
+                  <>
+                    {/* Filters */}
+                    <Card className="mb-4" bordered={false}>
+                      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} md={8}>
                 <Search
                   placeholder="搜索会员姓名、邮箱或备注"
@@ -607,28 +818,60 @@ const FinancialRecordsPage: React.FC = () => {
                 />
               </Col>
             </Row>
-          </Space>
-        </Card>
+                      </Space>
+                    </Card>
 
-        {/* Table */}
-        <Card>
-          <Table
-            {...tableConfig}
-            columns={columns}
-            dataSource={filteredRecords}
-            rowKey="id"
-            pagination={{
-              current: currentPage,
-              pageSize: pageSize,
-              total: filteredRecords.length,
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条记录`,
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size || 20);
+                    {/* Table */}
+                    <Table
+                      {...tableConfig}
+                      columns={columns}
+                      dataSource={filteredRecords}
+                      rowKey="id"
+                      pagination={{
+                        current: currentPage,
+                        pageSize: pageSize,
+                        total: filteredRecords.length,
+                        showSizeChanger: true,
+                        showTotal: (total) => `共 ${total} 条记录`,
+                        onChange: (page, size) => {
+                          setCurrentPage(page);
+                          setPageSize(size || 20);
+                        },
+                      }}
+                      scroll={{ x: 1070 }}
+                    />
+                  </>
+                ),
               },
-            }}
-            scroll={{ x: 1070 }}
+              {
+                key: 'tree',
+                label: (
+                  <span>
+                    <ApartmentOutlined /> 树形视图
+                  </span>
+                ),
+                children: (
+                  <div style={{ padding: '24px 0' }}>
+                    <Alert
+                      message="树形视图说明"
+                      description="点击分类名称可切换到表格视图并查看该分类下的详细记录"
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: 24 }}
+                    />
+                    <Tree
+                      showLine
+                      showIcon={false}
+                      defaultExpandAll
+                      expandedKeys={expandedKeys}
+                      onExpand={setExpandedKeys}
+                      treeData={treeData}
+                      style={{ fontSize: 14 }}
+                    />
+                  </div>
+                ),
+              },
+            ]}
           />
         </Card>
 

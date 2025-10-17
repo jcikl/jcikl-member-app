@@ -9,7 +9,6 @@
 import { collection, doc, getDocs, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
-import { globalSystemService } from '@/config/globalSystemSettings';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
 import type { Transaction, EventFinancialRecord, GeneralFinancialRecord } from '@/modules/finance/types';
 

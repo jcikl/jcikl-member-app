@@ -260,10 +260,9 @@ export const FinancialRecordsDebugPage: React.FC = () => {
           );
         } else if (record.type === 'eventFinancialRecord' || record.type === 'generalFinancialRecord') {
           // 活动财务/日常账户记录：显示会员名字或付款人 + 邮箱（如果有）
-          const payerPayee = (record as any).payerPayee;
-          const memberName = (record as any).memberName;
-          const memberId = (record as any).memberId;
-          const memberEmail = (record as any).memberEmail;
+           const payerPayee = (record as any).payerPayee;
+           const memberName = (record as any).memberName;
+           const memberEmail = (record as any).memberEmail;
           
           // 优先显示会员名字，其次显示付款人/收款人
           const displayName = memberName || payerPayee || '-';
