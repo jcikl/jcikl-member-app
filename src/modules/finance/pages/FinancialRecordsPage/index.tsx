@@ -123,7 +123,7 @@ const FinancialRecordsPage: React.FC = () => {
 
       const snapshot = await getDocs(q);
 
-      const data: FinancialRecord[] = snapshot.docs.map(doc => ({
+      let data: FinancialRecord[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: safeTimestampToISO(doc.data().createdAt),
@@ -132,6 +132,40 @@ const FinancialRecordsPage: React.FC = () => {
         paymentDate: doc.data().paymentDate ? safeTimestampToISO(doc.data().paymentDate) : undefined,
         lastReminderDate: doc.data().lastReminderDate ? safeTimestampToISO(doc.data().lastReminderDate) : undefined,
       }));
+
+      // 🆕 关联交易以补充二次分类（从 Transactions 表获取）
+      try {
+        const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
+        const subCategoryByMember: Record<string, string> = {};
+
+        // 遍历所有会员费交易，获取最新的 subCategory
+        txnSnap.docs
+          .filter(d => d.data().category === 'member-fees')
+          .forEach(d => {
+            const txnData = d.data() as any;
+            const memberId = txnData?.metadata?.memberId;
+            if (memberId && txnData.subCategory) {
+              // 如果已有记录，保留最新的（这里假设后遍历的是最新的）
+              subCategoryByMember[memberId] = txnData.subCategory;
+            }
+          });
+
+        // 将 subCategory 合并到会费记录中
+        data = data.map(record => {
+          if (record.type === 'memberFee' && record.memberId) {
+            const subCategory = subCategoryByMember[record.memberId];
+            if (subCategory) {
+              return { ...record, subCategory };
+            }
+          }
+          return record;
+        });
+
+        console.log('[FinancialRecords] Merged subCategory from transactions:', 
+          Object.keys(subCategoryByMember).length, 'members');
+      } catch (error) {
+        console.warn('[FinancialRecords] Failed to merge subCategory from transactions:', error);
+      }
 
       setRecords(data);
 

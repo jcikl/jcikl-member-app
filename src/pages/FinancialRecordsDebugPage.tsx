@@ -43,10 +43,41 @@ export const FinancialRecordsDebugPage: React.FC = () => {
     try {
       const snapshot = await getDocs(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
       
-      const allRecords: FinancialRecord[] = snapshot.docs.map(doc => ({
-        id: doc.id,
+      let allRecords: FinancialRecord[] = snapshot.docs.map(doc => ({
         ...doc.data(),
+        id: doc.id,
       }));
+
+      // 🆕 从 Transactions 表中获取 subCategory 并合并
+      try {
+        const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
+        const subCategoryByMember: Record<string, string> = {};
+
+        txnSnap.docs
+          .filter(d => d.data().category === 'member-fees')
+          .forEach(d => {
+            const txnData = d.data() as any;
+            const memberId = txnData?.metadata?.memberId;
+            if (memberId && txnData.subCategory) {
+              subCategoryByMember[memberId] = txnData.subCategory;
+            }
+          });
+
+        // 合并 subCategory 到会费记录
+        allRecords = allRecords.map(record => {
+          if (record.type === 'memberFee' && record.memberId) {
+            const subCategory = subCategoryByMember[record.memberId];
+            if (subCategory) {
+              return { ...record, subCategory };
+            }
+          }
+          return record;
+        });
+
+        console.log('[DebugPage] Merged subCategory for', Object.keys(subCategoryByMember).length, 'members');
+      } catch (error) {
+        console.warn('[DebugPage] Failed to merge subCategory:', error);
+      }
 
       setRecords(allRecords);
 
@@ -199,6 +230,17 @@ export const FinancialRecordsDebugPage: React.FC = () => {
       dataIndex: 'memberName',
       key: 'memberName',
       width: 150,
+    },
+    {
+      title: '二次分类',
+      dataIndex: 'subCategory',
+      key: 'subCategory',
+      width: 200,
+      render: (subCategory?: string) => subCategory ? (
+        <Tag color="purple">{subCategory}</Tag>
+      ) : (
+        <Tag color="default">-</Tag>
+      ),
     },
     {
       title: '交易ID',
