@@ -60,6 +60,7 @@ import {
 import SplitTransactionModal from '../../components/SplitTransactionModal';
 import BatchSplitModal from '../../components/BatchSplitModal';
 import BatchSetCategoryModal from '../../components/BatchSetCategoryModal';
+import { useNavigate } from 'react-router-dom';
 import { getAllBankAccounts } from '../../services/bankAccountService';
 import type { Transaction, TransactionFormData, TransactionStatus, BankAccount } from '../../types';
 import './styles.css';
@@ -610,6 +611,8 @@ const TransactionManagementPage: React.FC = () => {
     }
   };
 
+  const navigate = useNavigate();
+
   // 批量拆分
   const handleBatchSplit = () => {
     setBatchSplitModalVisible(true);
@@ -654,7 +657,7 @@ const TransactionManagementPage: React.FC = () => {
     setBatchCategoryModalVisible(true);
   };
 
-  const handleBatchSetCategoryOk = async (category: string) => {
+  const handleBatchSetCategoryOk = async (category: string, subCategory?: string) => {
     if (!user) return;
 
     try {
@@ -663,6 +666,15 @@ const TransactionManagementPage: React.FC = () => {
         category,
         user.id
       );
+
+      // 如选择了二次分类，则追加一次批量更新二次分类
+      if (subCategory) {
+        await Promise.all(
+          (selectedRowKeys as string[]).map(id =>
+            updateTransaction(id, { subCategory }, user.id)
+          )
+        );
+      }
 
       if (result.successCount > 0) {
         message.success(`成功设置 ${result.successCount} 条交易的类别`);
@@ -1261,6 +1273,16 @@ const TransactionManagementPage: React.FC = () => {
           selectedCount={selectedRowKeys.length}
           onOk={handleBatchSetCategoryOk}
           onCancel={() => setBatchCategoryModalVisible(false)}
+          onManageSubcategory={(category) => {
+            // 根据分类跳转到对应的二次分类管理页面
+            if (category === 'member-fees') {
+              navigate('/finance/member-fees');
+            } else if (category === 'event-finance') {
+              navigate('/finance/event-finance');
+            } else if (category === 'general-accounts') {
+              navigate('/finance/general-accounts');
+            }
+          }}
         />
       </div>
     </ErrorBoundary>

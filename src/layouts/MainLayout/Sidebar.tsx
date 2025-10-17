@@ -84,6 +84,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           key: '/finance/fiscal-years',
           label: '财年管理',
         },
+        {
+          key: '/finance/records',
+          label: '财务记录',
+        },
       ],
     },
     {

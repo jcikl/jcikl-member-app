@@ -1,0 +1,60 @@
+/**
+ * Financial Records Page Styles
+ */
+
+.financial-records-page {
+  padding: 24px;
+  background-color: #f0f2f5;
+  min-height: calc(100vh - 64px);
+}
+
+.financial-records-page .mb-4 {
+  margin-bottom: 16px;
+}
+
+.financial-records-page .mb-6 {
+  margin-bottom: 24px;
+}
+
+/* Ensure responsive table */
+.financial-records-page .ant-table-wrapper {
+  overflow-x: auto;
+}
+
+/* Status badge styles */
+.financial-records-page .ant-tag {
+  font-weight: 500;
+}
+
+/* Amount display styles */
+.financial-records-page .ant-statistic-content-value {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Card hover effect */
+.financial-records-page .ant-card {
+  transition: box-shadow 0.3s ease;
+}
+
+.financial-records-page .ant-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Modal descriptions */
+.financial-records-page .ant-descriptions-item-label {
+  font-weight: 500;
+  background-color: #fafafa;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .financial-records-page {
+    padding: 16px;
+  }
+
+  .financial-records-page .ant-statistic-content-value {
+    font-size: 20px;
+  }
+}
+
