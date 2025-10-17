@@ -60,7 +60,6 @@ export const createMemberFee = async (
       memberName: memberData.name,
       memberEmail: memberData.email,
       memberCategory: memberData.accountType || memberData.category,
-      fiscalYear: data.fiscalYear,
       feeType: data.feeType,
       expectedAmount: data.expectedAmount,
       paidAmount: 0,
@@ -202,7 +201,6 @@ export const updateMemberFee = async (
     
     if (data.notes !== undefined) updates.notes = data.notes ?? null;
     if (data.feeType !== undefined) updates.feeType = data.feeType;
-    if (data.fiscalYear !== undefined) updates.fiscalYear = data.fiscalYear;
     
     const cleanData = cleanUndefinedValues(updates);
     await updateDoc(feeRef, cleanData);
@@ -298,7 +296,6 @@ export const getMemberFees = async (
       page = 1,
       limit: pageLimit = 20,
       search,
-      fiscalYear,
       status,
       feeType,
       memberCategory,
@@ -310,11 +307,14 @@ export const getMemberFees = async (
     // 1. 获取所有会员
     const membersQuery = query(collection(db, GLOBAL_COLLECTIONS.MEMBERS));
     const membersSnapshot = await getDocs(membersQuery);
+    console.log('[MemberFees][Debug] load params:', { status, memberCategory, search, page, pageLimit, sortBy, sortOrder });
+    console.log('[MemberFees][Debug] members count:', membersSnapshot.size);
     
     // 2. 获取所有会员费记录
     const feesQuery = query(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
     const feesSnapshot = await getDocs(feesQuery);
-    
+    console.log('[MemberFees][Debug] raw financialRecords count:', feesSnapshot.size);
+
     // 创建会员费记录映射 (memberId -> MemberFee)
     const feesByMemberId = new Map<string, MemberFee>();
     feesSnapshot.docs
@@ -327,7 +327,6 @@ export const getMemberFees = async (
           memberName: data.memberName,
           memberEmail: data.memberEmail,
           memberCategory: data.memberCategory,
-          fiscalYear: data.fiscalYear,
           feeType: data.feeType,
           expectedAmount: data.expectedAmount || 0,
           paidAmount: data.paidAmount || 0,
@@ -345,10 +344,8 @@ export const getMemberFees = async (
           updatedAt: safeTimestampToISO(data.updatedAt),
         };
         
-        // 如果指定了财年，只保留匹配的记录
-        if (!fiscalYear || fee.fiscalYear === fiscalYear) {
-          feesByMemberId.set(fee.memberId, fee);
-        }
+        // 保留所有记录（不再按财年筛选）
+        feesByMemberId.set(fee.memberId, fee);
       });
     
     // 3. 为每个会员创建会员费记录（如果不存在则创建占位记录）
@@ -374,7 +371,6 @@ export const getMemberFees = async (
           memberName: memberData.name || '',
           memberEmail: memberData.email || '',
           memberCategory: (memberData.category ?? memberData.accountType) || undefined,
-          fiscalYear: fiscalYear || '',
           feeType: 'annual' as const,
           expectedAmount: 0,
           paidAmount: 0,
@@ -427,6 +423,7 @@ export const getMemberFees = async (
     try {
       const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
       const latestPaidByMember: Record<string, string> = {};
+      let debugMatchCount = 0;
       txnSnap.docs
         .filter(d => d.data().category === 'member-fees')
         .forEach(d => {
@@ -438,6 +435,10 @@ export const getMemberFees = async (
           if (!prev || txDate > prev) {
             latestPaidByMember[mId] = txDate;
           }
+          if (debugMatchCount < 5) {
+            console.log('[MemberFees][Debug] txn hit member-fees:', { id: d.id, memberId: mId, txDate, amount: data.amount, type: data.transactionType });
+            debugMatchCount++;
+          }
         });
       fees = fees.map(f => {
         if (!f.paymentDate) {
@@ -448,8 +449,10 @@ export const getMemberFees = async (
         }
         return f;
       });
+      console.log('[MemberFees][Debug] latestPaidByMember keys:', Object.keys(latestPaidByMember).slice(0, 10));
     } catch (e) {
       // 非关键路径，忽略错误
+      console.warn('[MemberFees][Debug] txn aggregation failed:', e);
     }
 
     // 6. 排序
@@ -469,6 +472,7 @@ export const getMemberFees = async (
     
     // 7. 分页
     const total = fees.length;
+    console.log('[MemberFees][Debug] final fees (first 5):', fees.slice(0, 5).map(f => ({ memberId: f.memberId, memberName: f.memberName, paymentDate: f.paymentDate, status: f.status })));
     const startIndex = (page - 1) * pageLimit;
     const endIndex = startIndex + pageLimit;
     const paginatedData = fees.slice(startIndex, endIndex);
@@ -615,10 +619,9 @@ export const waiveMemberFee = async (
 
 /**
  * Get Member Fee Statistics
+ * ⚠️ Note: fiscalYear parameter removed - use date ranges for filtering if needed
  */
-export const getMemberFeeStatistics = async (
-  fiscalYear?: string
-): Promise<{
+export const getMemberFeeStatistics = async (): Promise<{
   totalExpected: number;
   totalCollected: number;
   totalOutstanding: number;
@@ -645,9 +648,6 @@ export const getMemberFeeStatistics = async (
       // Only process member fees
       if (data.type !== 'memberFee') return;
       
-      // Filter by fiscal year if provided
-      if (fiscalYear && data.fiscalYear !== fiscalYear) return;
-      
       totalExpected += data.expectedAmount || 0;
       totalCollected += data.paidAmount || 0;
       totalOutstanding += data.remainingAmount || 0;
@@ -672,7 +672,7 @@ export const getMemberFeeStatistics = async (
       'warning',
       'Failed to get member fee statistics, returning empty data',
       'memberFeeService.getMemberFeeStatistics',
-      { error: error.message, fiscalYear }
+      { error: error.message }
     );
     
     // Return empty statistics instead of throwing
@@ -738,15 +738,17 @@ console.log('✅ Member Fee Service Loaded');
 
 /**
  * Upsert Member Fee by Transaction linkage
+ * ⚠️ DEPRECATED: FiscalYear-based member fee management is removed
+ * This function is kept for backward compatibility but should not be used for new features
+ * 
  * 当交易分类为 member-fees 且存在 metadata.memberId 时，
- * 在 FINANCIAL_RECORDS 中创建/更新对应的 memberFee 文档（按 fiscalYear + memberId 去重）
+ * 在 FINANCIAL_RECORDS 中创建/更新对应的 memberFee 文档
  */
 export const upsertMemberFeeFromTransaction = async (params: {
   memberId: string;
   memberName?: string;
   memberEmail?: string;
   memberCategory?: MemberCategoryType;
-  fiscalYear: string;
   expectedAmount: number;
   dueDate?: string;
   transactionId: string;
@@ -756,10 +758,10 @@ export const upsertMemberFeeFromTransaction = async (params: {
     const now = new Date().toISOString();
     const due = params.dueDate || now;
 
-    // 读取该会员与财年的现有记录（client 过滤，避免索引依赖）
+    // 读取该会员的现有记录（client 过滤，避免索引依赖）
     const snapshot = await getDocs(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
     const existing = snapshot.docs
-      .filter(d => d.data().type === 'memberFee' && d.data().memberId === params.memberId && d.data().fiscalYear === params.fiscalYear)
+      .filter(d => d.data().type === 'memberFee' && d.data().memberId === params.memberId)
       .map(d => ({ id: d.id, ...d.data() }))[0] as (MemberFee & { id: string }) | undefined;
 
     if (existing) {
@@ -782,7 +784,6 @@ export const upsertMemberFeeFromTransaction = async (params: {
         memberName: params.memberName,
         memberEmail: params.memberEmail,
         memberCategory: params.memberCategory,
-        fiscalYear: params.fiscalYear,
         feeType: 'other',
         expectedAmount: params.expectedAmount || 0,
         paidAmount: 0,
@@ -804,9 +805,9 @@ export const upsertMemberFeeFromTransaction = async (params: {
     }
 
     // 聚合同步已收金额/付款日期/状态
-    await reconcileMemberFeeFromTransactions(params.memberId, params.fiscalYear);
+    await reconcileMemberFeeFromTransactions(params.memberId);
 
-    globalSystemService.log('info', 'Upsert member fee from transaction', 'memberFeeService.upsertMemberFeeFromTransaction', { memberId: params.memberId, fiscalYear: params.fiscalYear, transactionId: params.transactionId, userId: params.userId });
+    globalSystemService.log('info', 'Upsert member fee from transaction', 'memberFeeService.upsertMemberFeeFromTransaction', { memberId: params.memberId, transactionId: params.transactionId, userId: params.userId });
   } catch (error: any) {
     globalSystemService.log('error', 'Failed to upsert member fee from transaction', 'memberFeeService.upsertMemberFeeFromTransaction', { error: error.message, params });
     // 不抛出以免影响交易主流程
@@ -815,15 +816,15 @@ export const upsertMemberFeeFromTransaction = async (params: {
 
 /**
  * 根据交易记录汇总同步会费记录的已收金额、付款日期与状态
+ * ⚠️ Updated: FiscalYear parameter removed
  */
 export const reconcileMemberFeeFromTransactions = async (
-  memberId: string,
-  fiscalYear: string
+  memberId: string
 ): Promise<void> => {
   try {
-    // 读取该会员该财年的会费记录
+    // 读取该会员的会费记录
     const feesSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
-    const feeDoc = feesSnap.docs.find(d => d.data().type === 'memberFee' && d.data().memberId === memberId && d.data().fiscalYear === fiscalYear);
+    const feeDoc = feesSnap.docs.find(d => d.data().type === 'memberFee' && d.data().memberId === memberId);
     if (!feeDoc) return;
 
     // 读取交易并聚合
@@ -835,7 +836,6 @@ export const reconcileMemberFeeFromTransactions = async (
       const data = d.data() as any;
       if (data.category !== 'member-fees') return;
       if (!data?.metadata?.memberId || data.metadata.memberId !== memberId) return;
-      if (data.fiscalYear !== fiscalYear) return;
       if (!data.amount || !data.transactionType) return;
       // 只累计收入
       if (data.transactionType === 'income') {
@@ -864,7 +864,7 @@ export const reconcileMemberFeeFromTransactions = async (
       updatedAt: new Date().toISOString(),
     }));
   } catch (error: any) {
-    globalSystemService.log('warning', 'Failed to reconcile member fee from transactions', 'memberFeeService.reconcileMemberFeeFromTransactions', { error: error.message, memberId, fiscalYear });
+    globalSystemService.log('warning', 'Failed to reconcile member fee from transactions', 'memberFeeService.reconcileMemberFeeFromTransactions', { error: error.message, memberId });
   }
 };
 

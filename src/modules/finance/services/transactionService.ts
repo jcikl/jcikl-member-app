@@ -101,9 +101,6 @@ export const createTransaction = async (
       transactionDate
     );
     
-    // Determine fiscal year
-    const fiscalYear = getFiscalYearFromDate(transactionDate);
-    
     const now = new Date().toISOString();
     
     const transaction: Omit<Transaction, 'id'> = {
@@ -123,7 +120,6 @@ export const createTransaction = async (
       inputBy: userId,
       notes: data.notes,
       attachments: data.attachments ?? [],
-      fiscalYear,
       receiptNumber: data.receiptNumber,
       invoiceNumber: data.invoiceNumber,
       tags: data.tags ?? [],
@@ -204,13 +200,12 @@ export const updateTransaction = async (
       });
     }
     
-    // Update transaction date and recalculate fiscal year
+    // Update transaction date
     if (data.transactionDate) {
       const transactionDate = data.transactionDate instanceof Date 
         ? data.transactionDate 
         : new Date(data.transactionDate);
       updates.transactionDate = globalDateService.formatDate(transactionDate, 'api');
-      updates.fiscalYear = getFiscalYearFromDate(transactionDate);
     }
     
     // Update description
@@ -330,30 +325,8 @@ export const updateTransaction = async (
     );
 
     // === Auto upsert Member Fee when linked ===
-    try {
-      const finalCategory = updates.category ?? existingData.category;
-      const finalFiscalYear = updates.fiscalYear ?? existingData.fiscalYear;
-      const finalAmount = updates.amount ?? existingData.amount;
-      const finalTransactionDate = updates.transactionDate ?? existingData.transactionDate;
-      const finalMetadata = updates.metadata ?? existingData.metadata;
-
-      const linkedMemberId: string | undefined = finalMetadata?.memberId;
-      if (finalCategory === 'member-fees' && linkedMemberId) {
-        await upsertMemberFeeFromTransaction({
-          memberId: linkedMemberId,
-          memberName: existingData?.metadata?.memberName,
-          memberEmail: existingData?.metadata?.memberEmail,
-          memberCategory: existingData?.metadata?.memberCategory,
-          fiscalYear: finalFiscalYear,
-          expectedAmount: typeof finalAmount === 'number' ? finalAmount : 0,
-          dueDate: finalTransactionDate,
-          transactionId,
-          userId,
-        });
-      }
-    } catch (e: any) {
-      globalSystemService.log('warning', 'upsertMemberFeeFromTransaction failed (non-blocking)', 'transactionService.updateTransaction', { error: e?.message, transactionId });
-    }
+    // ⚠️ REMOVED: FiscalYear-based member fee linkage
+    // Member fees are now managed independently without fiscal year constraints
   } catch (error: any) {
     globalSystemService.log(
       'error',
@@ -519,7 +492,6 @@ export const getTransactions = async (
       transactionType,
       status,
       category,
-      fiscalYear,
       startDate,
       endDate,
       minAmount,
@@ -568,9 +540,6 @@ export const getTransactions = async (
     // 🔑 二次分类过滤
     if (params.subCategory) {
       transactions = transactions.filter(t => t.subCategory === params.subCategory);
-    }
-    if (fiscalYear) {
-      transactions = transactions.filter(t => t.fiscalYear === fiscalYear);
     }
     if (startDate) {
       transactions = transactions.filter(t => t.transactionDate >= startDate);
@@ -1138,9 +1107,9 @@ export const getBalanceBeforeDate = async (
 
 /**
  * Get Transaction Statistics
+ * ⚠️ Note: fiscalYear parameter removed - use date ranges for filtering
  */
 export const getTransactionStatistics = async (
-  fiscalYear?: string,
   startDate?: string,
   endDate?: string
 ): Promise<{
@@ -1169,9 +1138,6 @@ export const getTransactionStatistics = async (
       
       // 🆕 排除虚拟交易（子交易不影响统计）
       if (data.isVirtual === true) return;
-      
-      // Check fiscal year
-      if (fiscalYear && data.fiscalYear !== fiscalYear) return;
       
       // Check date range
       if (startDate && data.transactionDate < startDate) return;
@@ -1212,7 +1178,7 @@ export const getTransactionStatistics = async (
       'warning',
       'Failed to get transaction statistics, returning empty data',
       'transactionService.getTransactionStatistics',
-      { error: error.message, fiscalYear, startDate, endDate }
+      { error: error.message, startDate, endDate }
     );
     
     // Return empty statistics instead of throwing
@@ -1338,7 +1304,6 @@ export const splitTransaction = async (
         paymentMethod: parentData.paymentMethod, // 继承
         status: parentData.status, // 继承
         inputBy: userId,
-        fiscalYear: parentData.fiscalYear,
         notes: split.notes,
         
         // 子交易标记
@@ -1393,7 +1358,6 @@ export const splitTransaction = async (
         paymentMethod: parentData.paymentMethod,
         status: parentData.status,
         inputBy: userId,
-        fiscalYear: parentData.fiscalYear,
         notes: '系统自动创建 - 拆分后剩余金额',
         
         parentTransactionId: transactionId,
