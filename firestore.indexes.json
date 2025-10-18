@@ -29,16 +29,6 @@
       ]
     },
     {
-      "collectionGroup": "events",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "startDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "transactions",
       "queryScope": "COLLECTION",
       "fields": [
