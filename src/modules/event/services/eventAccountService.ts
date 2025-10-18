@@ -323,6 +323,7 @@ export const addBulkEventAccountTransactions = async (
     description: string;
     remark: string;
     amount: number;
+    paymentDate: string;
     transactionType: EventAccountTransactionType;
     category: string;
     isForecast?: boolean;

@@ -26,17 +26,13 @@ import {
   Alert,
   Tabs,
   Input,
-  Divider,
 } from 'antd';
 import {
   ReloadOutlined,
-  PlusOutlined,
   DollarOutlined,
+  LineChartOutlined,
   RiseOutlined,
   FallOutlined,
-  LineChartOutlined,
-  DeleteOutlined,
-  MinusCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -79,6 +75,7 @@ interface TransactionRecord {
   description: string;
   remark: string;
   amount: number;
+  paymentDate: string;
   payerPayee?: string;
   isForecast: boolean;
   forecastConfidence?: 'high' | 'medium' | 'low';
@@ -93,6 +90,7 @@ interface BulkInputRow {
   description: string;
   remark: string;
   amount: number;
+  paymentDate: string;
 }
 
 const EventAccountManagementPage: React.FC = () => {
@@ -101,7 +99,6 @@ const EventAccountManagementPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [account, setAccount] = useState<EventAccount | null>(null);
-  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [transactionModalVisible, setTransactionModalVisible] = useState(false);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [form] = Form.useForm();
@@ -245,7 +242,26 @@ const EventAccountManagementPage: React.FC = () => {
 
     try {
       const records = await getEventAccountTransactions(selectedEventId);
-      setFinancialRecords(records);
+      // Convert EventAccountTransaction to TransactionRecord
+      const convertedRecords: TransactionRecord[] = records.map((record, index) => ({
+        id: record.id,
+        sn: index + 1,
+        transactionDate: record.transactionDate,
+        transactionType: record.transactionType,
+        category: record.category,
+        description: record.description,
+        remark: record.remark || '',
+        amount: record.amount,
+        paymentDate: record.paymentDate || record.transactionDate,
+        payerPayee: record.payerPayee,
+        isForecast: record.isForecast,
+        forecastConfidence: record.forecastConfidence,
+        actualAmount: record.actualAmount,
+        variance: record.variance,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+      }));
+      setFinancialRecords(convertedRecords);
     } catch (error: any) {
       console.error('Failed to load financial records:', error);
       // For now, use mock data
@@ -259,6 +275,7 @@ const EventAccountManagementPage: React.FC = () => {
           description: '会员费A',
           remark: '备注A',
           amount: 220,
+          paymentDate: '2025-01-13',
           isForecast: true,
           forecastConfidence: 'high',
           createdAt: '2025-01-13T10:00:00Z',
@@ -273,6 +290,7 @@ const EventAccountManagementPage: React.FC = () => {
           description: '会员费B',
           remark: '备注B',
           amount: 250,
+          paymentDate: '2025-01-14',
           isForecast: true,
           forecastConfidence: 'medium',
           createdAt: '2025-01-13T10:00:00Z',
@@ -292,6 +310,7 @@ const EventAccountManagementPage: React.FC = () => {
         description: record.description,
         remark: record.remark,
         amount: record.amount,
+        paymentDate: record.paymentDate,
         transactionType: 'income' as EventAccountTransactionType,
         category: 'ticketFee',
         isForecast: true,
@@ -311,7 +330,7 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
-  const filteredTransactions = transactions.filter(t => {
+  const filteredTransactions = financialRecords.filter((t: TransactionRecord) => {
     if (activeTab === 'actual') return !t.isForecast;
     if (activeTab === 'forecast') return t.isForecast;
     return true;

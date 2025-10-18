@@ -18,6 +18,7 @@ import {
   Statistic,
   message,
   Divider,
+  DatePicker,
 } from 'antd';
 import {
   PlusOutlined,
@@ -27,6 +28,8 @@ import {
 } from '@ant-design/icons';
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalSystemService } from '@/config/globalSystemSettings';
+import { globalDateService } from '@/config/globalDateSettings';
+import dayjs from 'dayjs';
 import './BulkFinancialInput.css';
 
 interface BulkInputRow {
@@ -34,6 +37,7 @@ interface BulkInputRow {
   description: string;
   remark: string;
   amount: number;
+  paymentDate: string;
 }
 
 interface BulkFinancialInputProps {
@@ -56,6 +60,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
       description: '',
       remark: '',
       amount: 0,
+      paymentDate: globalDateService.formatDate(new Date(), 'api'),
     }));
     setRows(initialRows);
   }, []);
@@ -72,6 +77,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
       description: '',
       remark: '',
       amount: 0,
+      paymentDate: globalDateService.formatDate(new Date(), 'api'),
     };
     setRows([...rows, newRow]);
   };
@@ -90,6 +96,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
       description: '',
       remark: '',
       amount: 0,
+      paymentDate: globalDateService.formatDate(new Date(), 'api'),
     })));
     form.resetFields();
   };
@@ -166,9 +173,10 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         <div className="bulk-input-header">
           <Row gutter={8}>
             <Col span={2}><strong>Sn</strong></Col>
-            <Col span={8}><strong>Description</strong></Col>
-            <Col span={6}><strong>Remark</strong></Col>
-            <Col span={6}><strong>Amount</strong></Col>
+            <Col span={6}><strong>Description</strong></Col>
+            <Col span={4}><strong>Remark</strong></Col>
+            <Col span={4}><strong>Amount</strong></Col>
+            <Col span={6}><strong>Payment Date</strong></Col>
             <Col span={2}><strong>操作</strong></Col>
           </Row>
         </div>
@@ -183,7 +191,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                 <Col span={2}>
                   <div className="row-number">{index + 1}</div>
                 </Col>
-                <Col span={8}>
+                <Col span={6}>
                   <Input
                     placeholder="输入描述"
                     value={row.description}
@@ -191,7 +199,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                     maxLength={50}
                   />
                 </Col>
-                <Col span={6}>
+                <Col span={4}>
                   <Input
                     placeholder="备注"
                     value={row.remark}
@@ -199,7 +207,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                     maxLength={100}
                   />
                 </Col>
-                <Col span={6}>
+                <Col span={4}>
                   <InputNumber
                     style={{ width: '100%' }}
                     placeholder="0.00"
@@ -208,6 +216,17 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                     prefix="RM"
                     value={row.amount}
                     onChange={(value) => handleFieldChange(row.id, 'amount', value || 0)}
+                  />
+                </Col>
+                <Col span={6}>
+                  <DatePicker
+                    style={{ width: '100%' }}
+                    format="DD-MMM-YYYY"
+                    value={row.paymentDate ? dayjs(row.paymentDate) : null}
+                    onChange={(date) => handleFieldChange(row.id, 'paymentDate', 
+                      date ? globalDateService.formatDate(date.toDate(), 'api') : ''
+                    )}
+                    placeholder="选择日期"
                   />
                 </Col>
                 <Col span={2}>

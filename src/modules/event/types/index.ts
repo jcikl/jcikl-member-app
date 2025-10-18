@@ -358,7 +358,9 @@ export interface EventAccountTransaction {
   transactionType: EventAccountTransactionType;
   category: string;             // 收入类型：ticket, sponsorship, donation / 支出类型：venue, food, marketing
   description: string;
+  remark?: string;              // 备注信息
   amount: number;
+  paymentDate?: string;         // 付款日期
   payerPayee?: string;          // 付款人/收款人
   paymentMethod?: string;
   receiptNumber?: string;

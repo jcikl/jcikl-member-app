@@ -13,7 +13,6 @@ import {
   Space,
   Statistic,
   Tag,
-  message,
   Tooltip,
   Row,
   Col,
@@ -27,7 +26,6 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
-import { globalSystemService } from '@/config/globalSystemSettings';
 import './FinancialRecordsList.css';
 
 interface FinancialRecord {
@@ -36,6 +34,7 @@ interface FinancialRecord {
   description: string;
   remark: string;
   amount: number;
+  paymentDate: string;
   transactionType: 'income' | 'expense';
   isForecast: boolean;
   forecastConfidence?: 'high' | 'medium' | 'low';
@@ -152,6 +151,14 @@ const FinancialRecordsList: React.FC<FinancialRecordsListProps> = ({
           RM {amount.toFixed(2)}
         </span>
       ),
+    },
+    {
+      title: 'Payment Date',
+      dataIndex: 'paymentDate',
+      key: 'paymentDate',
+      width: 120,
+      render: (date: string) =>
+        date ? globalDateService.formatDate(new Date(date), 'display') : '-',
     },
     {
       title: 'Type',
@@ -298,7 +305,7 @@ const FinancialRecordsList: React.FC<FinancialRecordsListProps> = ({
             showTotal: (total) => `共 ${total} 条记录`,
             showQuickJumper: true,
           }}
-          scroll={{ x: 800 }}
+          scroll={{ x: 900 }}
           size="small"
         />
       </div>
