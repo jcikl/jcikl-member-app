@@ -24,7 +24,6 @@ import {
   Typography,
   Tabs,
   Tree,
-  Badge,
   Alert,
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
@@ -35,8 +34,6 @@ import {
   FileTextOutlined,
   TableOutlined,
   ApartmentOutlined,
-  RiseOutlined,
-  FallOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
@@ -123,13 +120,13 @@ const FinancialRecordsPage: React.FC = () => {
   const buildTreeData = () => {
     // 构建收入和支出的树形结构
     const incomeNode: DataNode = {
-      title: <span style={{ fontSize: 16, fontWeight: 600 }}><RiseOutlined style={{ color: '#52c41a' }} /> 收入 Incomes</span>,
+      title: <span style={{ fontSize: 16, fontWeight: 600, color: '#52c41a' }}>收入 Incomes</span>,
       key: 'income-root',
       children: [],
     };
 
     const expenseNode: DataNode = {
-      title: <span style={{ fontSize: 16, fontWeight: 600 }}><FallOutlined style={{ color: '#ff4d4f' }} /> 支出 Expenses</span>,
+      title: <span style={{ fontSize: 16, fontWeight: 600, color: '#ff4d4f' }}>支出 Expenses</span>,
       key: 'expense-root',
       children: [],
     };
@@ -183,13 +180,9 @@ const FinancialRecordsPage: React.FC = () => {
       const typeNode: DataNode = {
         title: (
           <span>
-            {typeNameMap[type] || type} 
-            <Badge 
-              count={Object.values(subGroups).flat().length} 
-              style={{ marginLeft: 8, backgroundColor: '#52c41a' }} 
-            />
+            {typeNameMap[type] || type}
             <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-              RM {typeTotal.toFixed(2)}
+              ({Object.values(subGroups).flat().length}) RM {typeTotal.toFixed(2)}
             </Text>
           </span>
         ),
@@ -205,14 +198,10 @@ const FinancialRecordsPage: React.FC = () => {
 
         typeNode.children!.push({
           title: (
-            <span onClick={() => handleTreeNodeClick(items)}>
+            <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
               {subCategory === 'uncategorized' ? '未分类' : subCategory}
-              <Badge 
-                count={items.length} 
-                style={{ marginLeft: 8 }} 
-              />
               <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                RM {subTotal.toFixed(2)}
+                ({items.length}) RM {subTotal.toFixed(2)}
               </Text>
             </span>
           ),
@@ -236,12 +225,8 @@ const FinancialRecordsPage: React.FC = () => {
         title: (
           <span>
             {typeNameMap[type] || type}
-            <Badge 
-              count={Object.values(subGroups).flat().length} 
-              style={{ marginLeft: 8, backgroundColor: '#ff4d4f' }} 
-            />
             <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-              RM {typeTotal.toFixed(2)}
+              ({Object.values(subGroups).flat().length}) RM {typeTotal.toFixed(2)}
             </Text>
           </span>
         ),
@@ -254,14 +239,10 @@ const FinancialRecordsPage: React.FC = () => {
 
         typeNode.children!.push({
           title: (
-            <span onClick={() => handleTreeNodeClick(items)}>
+            <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
               {subCategory === 'uncategorized' ? '未分类' : subCategory}
-              <Badge 
-                count={items.length} 
-                style={{ marginLeft: 8 }} 
-              />
               <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                RM {subTotal.toFixed(2)}
+                ({items.length}) RM {subTotal.toFixed(2)}
               </Text>
             </span>
           ),
@@ -273,8 +254,19 @@ const FinancialRecordsPage: React.FC = () => {
       expenseNode.children!.push(typeNode);
     });
 
+    // 收集所有节点的 key 用于默认展开
+    const allKeys: React.Key[] = ['income-root', 'expense-root'];
+    
+    incomeNode.children?.forEach(typeNode => {
+      allKeys.push(typeNode.key!);
+    });
+    
+    expenseNode.children?.forEach(typeNode => {
+      allKeys.push(typeNode.key!);
+    });
+
     setTreeData([incomeNode, expenseNode]);
-    setExpandedKeys(['income-root', 'expense-root']);
+    setExpandedKeys(allKeys);
   };
 
   const determineIsIncome = (record: FinancialRecord): boolean => {
@@ -862,7 +854,6 @@ const FinancialRecordsPage: React.FC = () => {
                     <Tree
                       showLine
                       showIcon={false}
-                      defaultExpandAll
                       expandedKeys={expandedKeys}
                       onExpand={setExpandedKeys}
                       treeData={treeData}
