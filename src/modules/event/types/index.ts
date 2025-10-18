@@ -347,5 +347,99 @@ export const REGISTRATION_TARGET_AUDIENCE_OPTIONS: SelectOption[] = [
   { label: '公众', value: 'Public' },
 ];
 
+// ========== Event Account (活动账户) ==========
+
+export type EventAccountTransactionType = 'income' | 'expense';
+export type EventAccountStatus = 'active' | 'closed' | 'archived';
+
+export interface EventAccountTransaction {
+  id: string;
+  transactionDate: string;
+  transactionType: EventAccountTransactionType;
+  category: string;             // 收入类型：ticket, sponsorship, donation / 支出类型：venue, food, marketing
+  description: string;
+  amount: number;
+  payerPayee?: string;          // 付款人/收款人
+  paymentMethod?: string;
+  receiptNumber?: string;
+  invoiceNumber?: string;
+  notes?: string;
+  attachments?: string[];
+  isForecast: boolean;          // 是否为预测数据
+  forecastConfidence?: 'high' | 'medium' | 'low'; // 预测置信度
+  actualAmount?: number;        // 如果是预测，记录实际金额
+  variance?: number;            // 预测与实际的差异
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+export interface EventAccount extends BaseEntity {
+  eventId: string;
+  eventName: string;
+  status: EventAccountStatus;
+  
+  // Budget & Targets
+  budgetIncome: number;         // 预算收入目标
+  budgetExpense: number;        // 预算支出目标
+  targetProfit: number;         // 目标利润
+  
+  // Actual Amounts
+  actualIncome: number;         // 实际收入
+  actualExpense: number;        // 实际支出
+  actualProfit: number;         // 实际利润 (income - expense)
+  
+  // Forecast Amounts
+  forecastIncome: number;       // 预测收入
+  forecastExpense: number;      // 预测支出
+  forecastProfit: number;       // 预测利润
+  
+  // Breakdown by Category
+  incomeByCategory: Record<string, number>;    // { ticket: 5000, sponsorship: 3000 }
+  expenseByCategory: Record<string, number>;   // { venue: 2000, food: 1500 }
+  
+  // Transaction IDs
+  transactions: string[];       // 关联的交易记录IDs
+  
+  // Notes
+  notes?: string;
+  
+  // Metadata
+  createdBy?: string;
+  updatedBy?: string;
+  closedAt?: string;
+  closedBy?: string;
+}
+
+export interface EventAccountFormData {
+  eventId: string;
+  budgetIncome: number;
+  budgetExpense: number;
+  targetProfit: number;
+  notes?: string;
+}
+
+// ========== Event Account Transaction Categories ==========
+
+export const EVENT_INCOME_CATEGORIES: SelectOption[] = [
+  { label: '门票收入', value: 'ticket' },
+  { label: '赞助收入', value: 'sponsorship' },
+  { label: '捐赠', value: 'donation' },
+  { label: '商品销售', value: 'merchandise' },
+  { label: '其他收入', value: 'other_income' },
+];
+
+export const EVENT_EXPENSE_CATEGORIES: SelectOption[] = [
+  { label: '场地费用', value: 'venue' },
+  { label: '餐饮费用', value: 'food' },
+  { label: '营销推广', value: 'marketing' },
+  { label: '设备租赁', value: 'equipment' },
+  { label: '讲师费用', value: 'speaker' },
+  { label: '印刷物料', value: 'printing' },
+  { label: '交通费用', value: 'transportation' },
+  { label: '保险费用', value: 'insurance' },
+  { label: '其他支出', value: 'other_expense' },
+];
+
 console.log('✅ Event Types Loaded');
 
