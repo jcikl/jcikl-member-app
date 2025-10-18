@@ -264,39 +264,12 @@ const EventAccountManagementPage: React.FC = () => {
       setFinancialRecords(convertedRecords);
     } catch (error: any) {
       console.error('Failed to load financial records:', error);
-      // For now, use mock data
-      setFinancialRecords([
-        {
-          id: '1',
-          sn: 1,
-          transactionDate: '2025-01-13',
-          transactionType: 'income',
-          category: 'ticketFee',
-          description: '会员费A',
-          remark: '备注A',
-          amount: 220,
-          paymentDate: '2025-01-13',
-          isForecast: true,
-          forecastConfidence: 'high',
-          createdAt: '2025-01-13T10:00:00Z',
-          updatedAt: '2025-01-13T10:00:00Z',
-        },
-        {
-          id: '2',
-          sn: 2,
-          transactionDate: '2025-01-13',
-          transactionType: 'income',
-          category: 'ticketFee',
-          description: '会员费B',
-          remark: '备注B',
-          amount: 250,
-          paymentDate: '2025-01-14',
-          isForecast: true,
-          forecastConfidence: 'medium',
-          createdAt: '2025-01-13T10:00:00Z',
-          updatedAt: '2025-01-13T10:00:00Z',
-        },
-      ]);
+      globalSystemService.logError(error, {
+        operation: 'loadFinancialRecords',
+        eventId: selectedEventId,
+      });
+      message.error('加载财务记录失败');
+      setFinancialRecords([]);
     }
   };
 
