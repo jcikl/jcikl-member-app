@@ -185,6 +185,23 @@ const FinanceOverviewPage: React.FC = () => {
       dataIndex: 'mainDescription',
       key: 'mainDescription',
       ellipsis: true,
+      render: (description: string, record: Transaction) => {
+        return (
+          <div>
+            <div style={{ marginBottom: record.subDescription ? 4 : 0 }}>
+              {description}
+            </div>
+            {record.subDescription && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#888'
+              }}>
+                {record.subDescription}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: '类型',

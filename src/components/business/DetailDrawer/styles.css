@@ -74,13 +74,23 @@
 }
 
 .detail-drawer__tabs .ant-tabs-tab {
-  padding: 16px 20px;
+  padding: 16px 12px;
   font-weight: 500;
+  font-size: 14px;
+}
+
+/* 🆕 紧凑标签布局 - 确保所有标签在抽屉宽度内 */
+.detail-drawer__tabs .ant-tabs-nav-list {
+  gap: 0;
+}
+
+.detail-drawer__tabs .ant-tabs-tab + .ant-tabs-tab {
+  margin: 0;
 }
 
 .detail-drawer__tab-icon {
-  margin-right: 8px;
-  font-size: 16px;
+  margin-right: 6px;
+  font-size: 14px;
 }
 
 /* 内容区域 */
@@ -142,7 +152,13 @@
   }
 
   .detail-drawer__tabs .ant-tabs-tab {
-    padding: 12px 16px;
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+  
+  .detail-drawer__tab-icon {
+    margin-right: 4px;
+    font-size: 13px;
   }
 
   .detail-drawer__footer {

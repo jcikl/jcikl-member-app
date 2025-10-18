@@ -591,9 +591,18 @@ const MemberFeeManagementPage: React.FC = () => {
         
         return (
           <div>
-            <div style={{ marginBottom: memberInfo ? 4 : 0 }}>
+            <div style={{ marginBottom: (record.subDescription || memberInfo) ? 4 : 0 }}>
               {description}
             </div>
+            {record.subDescription && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#888', 
+                marginBottom: memberInfo ? 4 : 0
+              }}>
+                {record.subDescription}
+              </div>
+            )}
             {memberInfo && (
               <div style={{ 
                 fontSize: '12px', 

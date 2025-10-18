@@ -713,37 +713,49 @@ const TransactionManagementPage: React.FC = () => {
         const isParent = record.isSplit;
         
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {isChild && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {isChild && (
+                <span style={{ 
+                  color: '#999', 
+                  fontSize: 16,
+                  marginLeft: -4,
+                  marginRight: -4,
+                }}>
+                  └─
+                </span>
+              )}
               <span style={{ 
-                color: '#999', 
-                fontSize: 16,
-                marginLeft: -4,
-                marginRight: -4,
+                color: isChild ? '#666' : 'inherit',
+                fontStyle: isChild ? 'italic' : 'normal',
               }}>
-                └─
+                {text}
               </span>
-            )}
-            <span style={{ 
-              color: isChild ? '#666' : 'inherit',
-              fontStyle: isChild ? 'italic' : 'normal',
-            }}>
-              {text}
-            </span>
-            {isParent && (
-              <Tag color="orange" style={{ fontSize: 11, padding: '0 4px', margin: 0 }}>
-                已拆分 {record.splitCount}
-              </Tag>
-            )}
-            {isChild && (
-              <Tag color="blue" style={{ fontSize: 11, padding: '0 4px', margin: 0 }}>
-                子项
-              </Tag>
-            )}
-            {record.category === 'unallocated' && (
-              <Tag color="default" style={{ fontSize: 11, padding: '0 4px', margin: 0 }}>
-                未分配
-              </Tag>
+              {isParent && (
+                <Tag color="orange" style={{ fontSize: 11, padding: '0 4px', margin: 0 }}>
+                  已拆分 {record.splitCount}
+                </Tag>
+              )}
+              {isChild && (
+                <Tag color="blue" style={{ fontSize: 11, padding: '0 4px', margin: 0 }}>
+                  子项
+                </Tag>
+              )}
+              {record.category === 'unallocated' && (
+                <Tag color="default" style={{ fontSize: 11, padding: '0 4px', margin: 0 }}>
+                  未分配
+                </Tag>
+              )}
+            </div>
+            {record.subDescription && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#888',
+                marginTop: 4,
+                marginLeft: isChild ? 20 : 0
+              }}>
+                {record.subDescription}
+              </div>
             )}
           </div>
         );
