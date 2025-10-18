@@ -94,10 +94,27 @@ const EventRegistrationManagementPage: React.FC = () => {
 
   const loadEvents = async () => {
     try {
-      const result = await getEvents({ page: 1, limit: 1000 });
+      const result = await getEvents({ 
+        page: 1, 
+        limit: 1000,
+        // Remove default sorting to avoid index issues
+        // Sort will be applied client-side
+      });
+      console.log('✅ Loaded events:', result.data.length);
       setEvents(result.data);
+      
+      if (result.data.length === 0) {
+        message.warning('暂无活动数据，请先创建活动');
+      }
     } catch (error: any) {
-      message.error('加载活动列表失败');
+      console.error('❌ Failed to load events:', error);
+      message.error(`加载活动列表失败: ${error.message || '未知错误'}`);
+      globalSystemService.log(
+        'error',
+        'Failed to load events',
+        'EventRegistrationManagementPage.loadEvents',
+        { error: error.message }
+      );
     }
   };
 

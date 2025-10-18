@@ -509,7 +509,7 @@ const MemberListPage: React.FC = () => {
     },
     {
       key: 'member-fees',
-      label: '会费记录',
+      label: '会费',
       content: (
         <div style={{ padding: '16px' }}>
           <MemberFeesTab memberId={selectedMember.id} />
@@ -517,20 +517,8 @@ const MemberListPage: React.FC = () => {
       ),
     },
     {
-      key: 'profile',
-      label: '档案详情',
-      content: (
-        <div style={{ padding: '24px' }}>
-          <p>公司: {selectedMember.profile?.company || '-'}</p>
-          <p>职位: {selectedMember.profile?.departmentAndPosition || '-'}</p>
-          <p>性别: {selectedMember.profile?.gender || '-'}</p>
-          <p>生日: {selectedMember.profile?.birthDate || '-'}</p>
-        </div>
-      ),
-    },
-    {
       key: 'career-business',
-      label: '职业与商业',
+      label: '职业商业',
       icon: <BankOutlined />,
       content: (
         <div style={{ padding: '24px' }}>
@@ -612,7 +600,7 @@ const MemberListPage: React.FC = () => {
     },
     {
       key: 'jci-development',
-      label: 'JCI 相关 / 职业发展',
+      label: 'JCI发展',
       icon: <TrophyOutlined />,
       content: (
         <div style={{ padding: '24px' }}>

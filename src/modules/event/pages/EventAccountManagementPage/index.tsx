@@ -102,14 +102,30 @@ const EventAccountManagementPage: React.FC = () => {
 
   const loadEvents = async () => {
     try {
-      const result = await getEvents({ page: 1, limit: 1000 });
-      setEvents(result.data.filter((e: Event) => e.status !== 'Cancelled'));
+      const result = await getEvents({ 
+        page: 1, 
+        limit: 1000,
+        // Remove default sorting to avoid index issues
+      });
+      console.log('✅ Loaded events:', result.data.length);
       
-      if (result.data.length > 0) {
-        setSelectedEventId(result.data[0].id);
+      const activeEvents = result.data.filter((e: Event) => e.status !== 'Cancelled');
+      setEvents(activeEvents);
+      
+      if (activeEvents.length > 0) {
+        setSelectedEventId(activeEvents[0].id);
+      } else {
+        message.warning('暂无活动数据，请先创建活动');
       }
     } catch (error: any) {
-      message.error('加载活动列表失败');
+      console.error('❌ Failed to load events:', error);
+      message.error(`加载活动列表失败: ${error.message || '未知错误'}`);
+      globalSystemService.log(
+        'error',
+        'Failed to load events',
+        'EventAccountManagementPage.loadEvents',
+        { error: error.message }
+      );
     }
   };
 

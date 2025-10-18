@@ -126,6 +126,11 @@ service cloud.firestore {
       allow write: if isAdmin() || isActive();
     }
     
+    match /eventAccounts/{accountId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isActive();
+    }
+    
     // ====================================
     // Finance Collections
     // 财务集合
