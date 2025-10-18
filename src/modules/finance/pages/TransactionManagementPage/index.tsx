@@ -46,6 +46,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { BulkOperationBar } from '@/components/common/BulkOperationBar';
+import { BulkTransactionForm } from '@/components/form/BulkTransactionForm';
 import {
   getTransactions,
   createTransaction,
@@ -88,6 +89,7 @@ const TransactionManagementPage: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]); // 多选行
   const [batchSplitModalVisible, setBatchSplitModalVisible] = useState(false);
   const [batchCategoryModalVisible, setBatchCategoryModalVisible] = useState(false);
+  const [bulkTransactionModalVisible, setBulkTransactionModalVisible] = useState(false);
   
   // 🎯 累计余额相关状态
   const [balanceMap, setBalanceMap] = useState<Map<string, number>>(new Map());
@@ -611,6 +613,48 @@ const TransactionManagementPage: React.FC = () => {
     }
   };
 
+  // 批量交易处理
+  const handleBulkTransactionOk = async (bulkTransactions: TransactionFormData[]) => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      
+      // 逐个创建交易
+      const results = [];
+      for (const transactionData of bulkTransactions) {
+        try {
+          const transactionId = await createTransaction(transactionData, user.id);
+          results.push({ success: true, id: transactionId });
+        } catch (error: any) {
+          console.error('创建交易失败:', error);
+          results.push({ success: false, error: error.message });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const failedCount = results.filter(r => !r.success).length;
+
+      if (successCount > 0) {
+        message.success(`成功创建 ${successCount} 条交易`);
+      }
+      if (failedCount > 0) {
+        message.warning(`${failedCount} 条交易创建失败`);
+      }
+
+      setBulkTransactionModalVisible(false);
+      clearBalanceCache(); // 清空余额缓存
+      await loadTransactions();
+      await updateAccountTransactionCounts();
+      
+    } catch (error: any) {
+      console.error('批量交易创建失败:', error);
+      message.error('批量创建失败: ' + (error.message || '未知错误'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const navigate = useNavigate();
 
   // 批量拆分
@@ -1083,9 +1127,17 @@ const TransactionManagementPage: React.FC = () => {
             <Button icon={<FilterOutlined />}>高级筛选</Button>
             <Button icon={<DownloadOutlined />}>导出报表</Button>
             <div className="ml-auto">
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                新交易
-              </Button>
+              <Space>
+                <Button 
+                  icon={<PlusOutlined />} 
+                  onClick={() => setBulkTransactionModalVisible(true)}
+                >
+                  批量添加
+                </Button>
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                  新交易
+                </Button>
+              </Space>
             </div>
           </div>
         </Card>
@@ -1295,6 +1347,16 @@ const TransactionManagementPage: React.FC = () => {
               navigate('/finance/general-accounts');
             }
           }}
+        />
+
+        {/* Bulk Transaction Form */}
+        <BulkTransactionForm
+          visible={bulkTransactionModalVisible}
+          onOk={handleBulkTransactionOk}
+          onCancel={() => setBulkTransactionModalVisible(false)}
+          bankAccountId={activeTabKey !== 'all' ? activeTabKey : undefined}
+          transactionDate={dayjs()}
+          transactionType="income"
         />
       </div>
     </ErrorBoundary>
