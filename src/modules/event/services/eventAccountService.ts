@@ -14,7 +14,6 @@ import {
   updateDoc,
   query,
   where,
-  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
@@ -435,8 +434,6 @@ export const getEventAccountTransactions = async (
       // Account doesn't exist yet, return empty array
       return [];
     }
-    
-    const accountData = accountDoc.data() as EventAccount;
     
     // For now, return empty array as transactions are stored within account
     // In production, implement sub-collection query

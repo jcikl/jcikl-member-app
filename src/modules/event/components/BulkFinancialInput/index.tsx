@@ -22,6 +22,7 @@ import {
   Typography,
   Select,
   Badge,
+  Modal,
 } from 'antd';
 import {
   PlusOutlined,
@@ -30,6 +31,8 @@ import {
   ClearOutlined,
   RiseOutlined,
   FallOutlined,
+  EditOutlined,
+  FolderAddOutlined,
 } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -38,8 +41,14 @@ import { globalDateService } from '@/config/globalDateSettings';
 import dayjs from 'dayjs';
 import './BulkFinancialInput.css';
 
+// Available icons for categories
+const AVAILABLE_ICONS = [
+  '🎫', '🤝', '💼', '🎁', '📦', '🏢', '🍽️', '📢', '🚗', '📋',
+  '💰', '💳', '🏦', '📊', '📈', '📉', '🎯', '⭐', '🔥', '💡'
+];
+
 // Predefined category options
-const INCOME_CATEGORIES = [
+const DEFAULT_INCOME_CATEGORIES = [
   { label: 'Ticket', value: 'ticket', icon: '🎫' },
   { label: 'Sponsors', value: 'sponsors', icon: '🤝' },
   { label: 'Grant', value: 'grant', icon: '💼' },
@@ -47,7 +56,7 @@ const INCOME_CATEGORIES = [
   { label: 'Other', value: 'other', icon: '📦' },
 ];
 
-const EXPENSE_CATEGORIES = [
+const DEFAULT_EXPENSE_CATEGORIES = [
   { label: 'Venue', value: 'venue', icon: '🏢' },
   { label: 'F&B', value: 'fnb', icon: '🍽️' },
   { label: 'Marketing', value: 'marketing', icon: '📢' },
@@ -77,15 +86,23 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   const [form] = Form.useForm();
   const [incomeRows, setIncomeRows] = useState<BulkInputRow[]>([]);
   const [expenseRows, setExpenseRows] = useState<BulkInputRow[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState(DEFAULT_INCOME_CATEGORIES);
+  const [expenseCategories, setExpenseCategories] = useState(DEFAULT_EXPENSE_CATEGORIES);
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
+  
+  // Modal states
+  const [addCategoryModalVisible, setAddCategoryModalVisible] = useState(false);
+  const [editCategoryModalVisible, setEditCategoryModalVisible] = useState(false);
+  const [currentEditCategory, setCurrentEditCategory] = useState<{type: 'income' | 'expense', category: any} | null>(null);
+  const [modalForm] = Form.useForm();
 
   // Initialize with 3 empty rows for each type
   useEffect(() => {
     const initialIncomeRows = Array.from({ length: 3 }, (_, index) => ({
       id: `income-${index + 1}`,
       type: 'income' as const,
-      category: INCOME_CATEGORIES[0].value,
+      category: incomeCategories[0].value,
       description: '',
       remark: '',
       amount: 0,
@@ -95,7 +112,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     const initialExpenseRows = Array.from({ length: 3 }, (_, index) => ({
       id: `expense-${index + 1}`,
       type: 'expense' as const,
-      category: EXPENSE_CATEGORIES[0].value,
+      category: expenseCategories[0].value,
       description: '',
       remark: '',
       amount: 0,
@@ -104,7 +121,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     
     setIncomeRows(initialIncomeRows);
     setExpenseRows(initialExpenseRows);
-  }, []);
+  }, [incomeCategories, expenseCategories]);
 
   // Calculate total amounts when rows change
   useEffect(() => {
@@ -115,9 +132,8 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   }, [incomeRows, expenseRows]);
 
   const handleAddRow = (type: 'income' | 'expense', category?: string) => {
-    const defaultCategory = type === 'income' 
-      ? (category || INCOME_CATEGORIES[0].value)
-      : (category || EXPENSE_CATEGORIES[0].value);
+    const categories = type === 'income' ? incomeCategories : expenseCategories;
+    const defaultCategory = category || categories[0].value;
       
     const newRow: BulkInputRow = {
       id: `${type}-${Date.now()}`,
@@ -155,7 +171,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   const handleClearAll = () => {
     setIncomeRows(incomeRows.map(row => ({
       ...row,
-      category: row.category || INCOME_CATEGORIES[0].value,
+      category: row.category || incomeCategories[0].value,
       description: '',
       remark: '',
       amount: 0,
@@ -164,7 +180,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     
     setExpenseRows(expenseRows.map(row => ({
       ...row,
-      category: row.category || EXPENSE_CATEGORIES[0].value,
+      category: row.category || expenseCategories[0].value,
       description: '',
       remark: '',
       amount: 0,
@@ -220,6 +236,93 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     return row.description.trim() && row.amount > 0;
   };
 
+  // Category management functions
+  const handleAddCategory = (type: 'income' | 'expense') => {
+    setCurrentEditCategory({ type, category: null });
+    setAddCategoryModalVisible(true);
+    modalForm.resetFields();
+  };
+
+  const handleEditCategory = (type: 'income' | 'expense', category: any) => {
+    setCurrentEditCategory({ type, category });
+    setEditCategoryModalVisible(true);
+    modalForm.setFieldsValue({
+      label: category.label,
+      icon: category.icon,
+    });
+  };
+
+  const handleSaveCategory = async () => {
+    try {
+      const values = await modalForm.validateFields();
+      const { type, category } = currentEditCategory!;
+
+      if (addCategoryModalVisible) {
+        // Add new category
+        const newCategory = {
+          label: values.label,
+          value: values.label.toLowerCase().replace(/\s+/g, '_'),
+          icon: values.icon,
+        };
+
+        if (type === 'income') {
+          setIncomeCategories([...incomeCategories, newCategory]);
+          // Add a new row with this category
+          handleAddRow('income', newCategory.value);
+        } else {
+          setExpenseCategories([...expenseCategories, newCategory]);
+          // Add a new row with this category
+          handleAddRow('expense', newCategory.value);
+        }
+        
+        message.success('类别添加成功');
+      } else {
+        // Edit existing category
+        const updatedCategory = {
+          ...category,
+          label: values.label,
+          icon: values.icon,
+        };
+
+        if (type === 'income') {
+          const newCategories = incomeCategories.map(cat => 
+            cat.value === category.value ? updatedCategory : cat
+          );
+          setIncomeCategories(newCategories);
+          
+          // Update all rows with this category
+          setIncomeRows(incomeRows.map(row => 
+            row.category === category.value 
+              ? { ...row, category: updatedCategory.value }
+              : row
+          ));
+        } else {
+          const newCategories = expenseCategories.map(cat => 
+            cat.value === category.value ? updatedCategory : cat
+          );
+          setExpenseCategories(newCategories);
+          
+          // Update all rows with this category
+          setExpenseRows(expenseRows.map(row => 
+            row.category === category.value 
+              ? { ...row, category: updatedCategory.value }
+              : row
+          ));
+        }
+        
+        message.success('类别更新成功');
+      }
+
+      setAddCategoryModalVisible(false);
+      setEditCategoryModalVisible(false);
+      setCurrentEditCategory(null);
+      modalForm.resetFields();
+    } catch (error) {
+      console.error('Save category error:', error);
+    }
+  };
+
+
   // Group rows by category
   const groupedIncomeRows = useMemo(() => {
     const grouped: Record<string, BulkInputRow[]> = {};
@@ -249,35 +352,19 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   };
 
   const getCategoryLabel = (categoryValue: string, type: 'income' | 'expense') => {
-    const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const categories = type === 'income' ? incomeCategories : expenseCategories;
     const category = categories.find(c => c.value === categoryValue);
     return category || { label: categoryValue, icon: '📦', value: categoryValue };
   };
   
   const renderRowsSection = (rows: BulkInputRow[], type: 'income' | 'expense', startSn: number) => {
-    const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    
     return rows.map((row, index) => (
       <div key={row.id} className="bulk-input-row">
         <Row gutter={8} align="middle">
           <Col span={2}>
             <div className="row-number">{startSn + index}</div>
           </Col>
-          <Col span={4}>
-            <Select
-              style={{ width: '100%' }}
-              value={row.category}
-              onChange={(value) => handleFieldChange(row.id, 'category', value, type)}
-              size="small"
-            >
-              {categories.map(cat => (
-                <Select.Option key={cat.value} value={cat.value}>
-                  {cat.icon} {cat.label}
-                </Select.Option>
-              ))}
-            </Select>
-          </Col>
-          <Col span={5}>
+          <Col span={7}>
             <Input
               placeholder="输入描述"
               value={row.description}
@@ -286,7 +373,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
               size="small"
             />
           </Col>
-          <Col span={3}>
+          <Col span={4}>
             <Input
               placeholder="备注"
               value={row.remark}
@@ -295,7 +382,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
               size="small"
             />
           </Col>
-          <Col span={4}>
+          <Col span={5}>
             <InputNumber
               style={{ width: '100%' }}
               placeholder="0.00"
@@ -307,7 +394,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
               size="small"
             />
           </Col>
-          <Col span={4}>
+          <Col span={5}>
             <DatePicker
               style={{ width: '100%' }}
               format="DD-MMM-YYYY"
@@ -319,7 +406,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
               size="small"
             />
           </Col>
-          <Col span={2}>
+          <Col span={1}>
             <Button
               type="text"
               danger
@@ -367,6 +454,15 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
               <Text strong style={{ fontSize: '14px' }}>
                 {categoryInfo.label}
               </Text>
+              <Button
+                icon={<EditOutlined />}
+                onClick={() => handleEditCategory(type, categoryInfo)}
+                size="small"
+                type="link"
+                style={{ color: type === 'income' ? '#52c41a' : '#ff4d4f' }}
+              >
+                编辑
+              </Button>
               <Badge 
                 count={rows.length} 
                 style={{ backgroundColor: type === 'income' ? '#52c41a' : '#ff4d4f' }}
@@ -430,12 +526,11 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         <div className="bulk-input-header">
           <Row gutter={8}>
             <Col span={2}><strong>Sn</strong></Col>
-            <Col span={4}><strong>Category</strong></Col>
-            <Col span={5}><strong>Description</strong></Col>
-            <Col span={3}><strong>Remark</strong></Col>
-            <Col span={4}><strong>Amount</strong></Col>
-            <Col span={4}><strong>Payment Date</strong></Col>
-            <Col span={2}><strong>操作</strong></Col>
+            <Col span={7}><strong>Description</strong></Col>
+            <Col span={4}><strong>Remark</strong></Col>
+            <Col span={5}><strong>Amount</strong></Col>
+            <Col span={5}><strong>Payment Date</strong></Col>
+            <Col span={1}><strong>操作</strong></Col>
           </Row>
         </div>
 
@@ -465,6 +560,16 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                 title="类别数量"
               />
             </Space>
+            <Button
+              icon={<FolderAddOutlined />}
+              onClick={() => handleAddCategory('income')}
+              size="small"
+              type="primary"
+              ghost
+              style={{ color: '#52c41a', borderColor: '#52c41a' }}
+            >
+              添加类别
+            </Button>
           </div>
           <div className="bulk-input-rows">
             {renderGroupedSection(groupedIncomeRows, 'income')}
@@ -497,6 +602,16 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                 title="类别数量"
               />
             </Space>
+            <Button
+              icon={<FolderAddOutlined />}
+              onClick={() => handleAddCategory('expense')}
+              size="small"
+              type="primary"
+              ghost
+              style={{ color: '#ff4d4f', borderColor: '#ff4d4f' }}
+            >
+              添加类别
+            </Button>
           </div>
           <div className="bulk-input-rows">
             {renderGroupedSection(groupedExpenseRows, 'expense')}
@@ -584,6 +699,45 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
           </Row>
         </div>
       </Form>
+
+      {/* Add/Edit Category Modal */}
+      <Modal
+        title={addCategoryModalVisible ? '添加类别' : '编辑类别'}
+        open={addCategoryModalVisible || editCategoryModalVisible}
+        onOk={handleSaveCategory}
+        onCancel={() => {
+          setAddCategoryModalVisible(false);
+          setEditCategoryModalVisible(false);
+          setCurrentEditCategory(null);
+          modalForm.resetFields();
+        }}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Form form={modalForm} layout="vertical">
+          <Form.Item
+            name="label"
+            label="类别名称"
+            rules={[{ required: true, message: '请输入类别名称' }]}
+          >
+            <Input placeholder="输入类别名称" />
+          </Form.Item>
+          
+          <Form.Item
+            name="icon"
+            label="选择图标"
+            rules={[{ required: true, message: '请选择图标' }]}
+          >
+            <Select placeholder="选择图标" style={{ width: '100%' }}>
+              {AVAILABLE_ICONS.map(icon => (
+                <Select.Option key={icon} value={icon}>
+                  {icon} {icon}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
     </Card>
   );
 };
