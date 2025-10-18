@@ -40,10 +40,11 @@ interface BulkInputRow {
   remark: string;
   amount: number;
   paymentDate: string;
+  recordType?: 'income' | 'expense';
 }
 
 interface BulkFinancialInputProps {
-  onSave: (records: BulkInputRow[], transactionType: 'income' | 'expense') => Promise<void>;
+  onSave: (records: BulkInputRow[], recordType: 'income' | 'expense') => Promise<void>;
   loading?: boolean;
 }
 
@@ -52,9 +53,9 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   loading = false,
 }) => {
   const [form] = Form.useForm();
+  const [recordType, setRecordType] = useState<'income' | 'expense'>('income');
   const [rows, setRows] = useState<BulkInputRow[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [transactionType, setTransactionType] = useState<'income' | 'expense'>('income');
 
   // Initialize with 5 empty rows
   useEffect(() => {
@@ -122,12 +123,12 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         return;
       }
 
-      await onSave(validRows, transactionType);
+      await onSave(validRows, recordType);
       
       // Clear form after successful save
       handleClearAll();
-      const typeText = transactionType === 'income' ? '收入' : '支出';
-      message.success(`成功保存 ${validRows.length} 条${typeText}记录`);
+      const typeLabel = recordType === 'income' ? '收入' : '支出';
+      message.success(`成功保存 ${validRows.length} 条${typeLabel}记录`);
       
     } catch (error: any) {
       message.error('保存失败，请重试');
@@ -135,7 +136,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         'error',
         'Failed to save bulk financial records',
         'BulkFinancialInput.handleSave',
-        { error: error.message, transactionType }
+        { error: error.message, recordType }
       );
     }
   };
@@ -147,33 +148,8 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   return (
     <Card
       title={
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space>
           <span>📝 批量输入财务记录</span>
-          <Segmented
-            value={transactionType}
-            onChange={(value) => setTransactionType(value as 'income' | 'expense')}
-            options={[
-              {
-                label: (
-                  <Space>
-                    <RiseOutlined style={{ color: '#52c41a' }} />
-                    <span>Incomes</span>
-                  </Space>
-                ),
-                value: 'income',
-              },
-              {
-                label: (
-                  <Space>
-                    <FallOutlined style={{ color: '#ff4d4f' }} />
-                    <span>Expenses</span>
-                  </Space>
-                ),
-                value: 'expense',
-              },
-            ]}
-            block
-          />
         </Space>
       }
       className="bulk-financial-input-card"
@@ -197,6 +173,36 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         </Space>
       }
     >
+      {/* Record Type Selector */}
+      <div style={{ marginBottom: 16 }}>
+        <Segmented
+          value={recordType}
+          onChange={(value) => setRecordType(value as 'income' | 'expense')}
+          options={[
+            {
+              label: (
+                <Space>
+                  <RiseOutlined style={{ color: '#52c41a' }} />
+                  <span>Incomes (收入)</span>
+                </Space>
+              ),
+              value: 'income',
+            },
+            {
+              label: (
+                <Space>
+                  <FallOutlined style={{ color: '#ff4d4f' }} />
+                  <span>Expenses (支出)</span>
+                </Space>
+              ),
+              value: 'expense',
+            },
+          ]}
+          block
+          size="large"
+        />
+      </div>
+
       <Form form={form} layout="vertical">
         {/* Table Header */}
         <div className="bulk-input-header">
@@ -279,14 +285,12 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         <Row gutter={16} align="middle">
           <Col span={12}>
             <Statistic
-              title={transactionType === 'income' ? '收入小计' : '支出小计'}
+              title="小计"
               value={totalAmount}
               precision={2}
               prefix="RM"
               valueStyle={{ 
-                color: totalAmount > 0 
-                  ? (transactionType === 'income' ? '#52c41a' : '#ff4d4f')
-                  : '#999',
+                color: totalAmount > 0 ? '#52c41a' : '#999',
                 fontSize: '18px',
                 fontWeight: 600
               }}

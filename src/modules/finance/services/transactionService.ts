@@ -343,11 +343,11 @@ export const updateTransaction = async (
     // === 🆕 Auto-sync Member Fee from Transaction ===
     // When transaction category is 'member-fees' and has metadata.memberId,
     // automatically create/update memberFee record in FINANCIAL_RECORDS
-    const finalCategory = updates.category ?? existingData.category;
-    const finalMetadata = updates.metadata ?? existingData.metadata;
+      const finalCategory = updates.category ?? existingData.category;
+      const finalMetadata = updates.metadata ?? existingData.metadata;
     const linkedMemberId = finalMetadata?.memberId;
 
-    if (finalCategory === 'member-fees' && linkedMemberId) {
+      if (finalCategory === 'member-fees' && linkedMemberId) {
       console.log('🔗 [updateTransaction] Member fee transaction detected, auto-syncing...', {
         transactionId,
         memberId: linkedMemberId,
@@ -362,7 +362,7 @@ export const updateTransaction = async (
           const finalTransactionDate = updates.transactionDate ?? existingData.transactionDate;
 
           // Upsert memberFee record
-          await upsertMemberFeeFromTransaction({
+        await upsertMemberFeeFromTransaction({
             memberId: member.id,
             memberName: member.name,
             memberEmail: member.email,
@@ -386,7 +386,7 @@ export const updateTransaction = async (
           console.warn('⚠️ [updateTransaction] Member not found for member fee sync:', linkedMemberId);
           globalSystemService.log('warning', 'Member not found for member fee sync', 'transactionService.updateTransaction', {
             transactionId,
-            memberId: linkedMemberId,
+          memberId: linkedMemberId,
             userId,
           });
         }
