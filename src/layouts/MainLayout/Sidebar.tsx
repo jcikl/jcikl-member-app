@@ -49,6 +49,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           key: '/events',
           label: '活动列表',
         },
+        {
+          key: '/events/registrations',
+          label: '报名管理',
+        },
+        {
+          key: '/events/accounts',
+          label: '活动账户',
+        },
       ],
     },
     {

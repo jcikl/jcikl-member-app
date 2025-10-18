@@ -21,6 +21,8 @@ import EventListPage from '@/modules/event/pages/EventListPage';
 import EventDetailPage from '@/modules/event/pages/EventDetailPage';
 import EventCreatePage from '@/modules/event/pages/EventCreatePage';
 import EventEditPage from '@/modules/event/pages/EventEditPage';
+import EventRegistrationManagementPage from '@/modules/event/pages/EventRegistrationManagementPage';
+import EventAccountManagementPage from '@/modules/event/pages/EventAccountManagementPage';
 
 // Finance Module
 import FinanceOverviewPage from '@/modules/finance/pages/FinanceOverviewPage';
@@ -138,6 +140,14 @@ export const router = createBrowserRouter(
           {
             path: ':id/edit',
             element: <EventEditPage />,
+          },
+          {
+            path: 'registrations',
+            element: <EventRegistrationManagementPage />,
+          },
+          {
+            path: 'accounts',
+            element: <EventAccountManagementPage />,
           },
         ],
       },

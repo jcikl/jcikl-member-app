@@ -1,0 +1,51 @@
+/**
+ * Event Account Management Page Styles
+ */
+
+.event-account-management-page {
+  padding: 24px;
+  background-color: #f0f2f5;
+  min-height: calc(100vh - 64px);
+}
+
+.event-account-management-page .mb-4 {
+  margin-bottom: 16px;
+}
+
+.event-account-management-page .mb-6 {
+  margin-bottom: 24px;
+}
+
+/* Overview cards */
+.event-account-management-page .ant-card-head-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.event-account-management-page .ant-statistic-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.event-account-management-page .ant-statistic-content-value {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Progress bars */
+.event-account-management-page .ant-progress {
+  margin-top: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .event-account-management-page {
+    padding: 16px;
+  }
+
+  .event-account-management-page .ant-statistic-content-value {
+    font-size: 20px;
+  }
+}
+

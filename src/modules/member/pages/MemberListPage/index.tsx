@@ -18,6 +18,7 @@ import {
   Form,
   Card,
   Table,
+  Tabs,
 } from 'antd';
 import {
   PlusOutlined,
@@ -29,6 +30,10 @@ import {
   UserAddOutlined,
   ClockCircleOutlined,
   SearchOutlined,
+  BankOutlined,
+  TrophyOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -84,6 +89,7 @@ const MemberListPage: React.FC = () => {
   // Search & Filter
   const [searchParams, setSearchParams] = useState<MemberSearchParams>({});
   const [searchText, setSearchText] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('all'); // 🆕 标签页状态
   
   // New UI States
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -103,11 +109,15 @@ const MemberListPage: React.FC = () => {
   const fetchMembers = useCallback(async () => {
     setLoading(true);
     try {
+      // 🆕 根据 activeTab 自动设置分类筛选
+      const categoryFilter = activeTab !== 'all' ? (activeTab as any) : undefined;
+      
       const result = await getMembers({
         page: pagination.current,
         limit: pagination.pageSize,
         search: searchText,
         ...searchParams,
+        category: categoryFilter, // 🆕 添加分类筛选
       });
       
       setMembers(result.data);
@@ -121,7 +131,7 @@ const MemberListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagination.current, pagination.pageSize, searchText, searchParams]);
+  }, [pagination.current, pagination.pageSize, searchText, searchParams, activeTab]);
   
   const fetchStats = useCallback(async () => {
     try {
@@ -139,6 +149,18 @@ const MemberListPage: React.FC = () => {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // ========== Tab Handling ==========
+  
+  // 🆕 处理标签页切换
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    setPagination(prev => ({
+      ...prev,
+      current: 1, // 重置到第一页
+    }));
+    setSelectedRowKeys([]); // 清除选中
+  };
 
   // ========== Actions ==========
   
@@ -506,6 +528,232 @@ const MemberListPage: React.FC = () => {
         </div>
       ),
     },
+    {
+      key: 'career-business',
+      label: '职业与商业',
+      icon: <BankOutlined />,
+      content: (
+        <div style={{ padding: '24px' }}>
+          <Row gutter={[16, 24]}>
+            {/* 职业信息 */}
+            <Col span={24}>
+              <h3 style={{ marginBottom: 16, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                💼 职业信息
+              </h3>
+            </Col>
+            
+            <Col span={8}><strong>公司名称:</strong></Col>
+            <Col span={16}>{selectedMember.profile?.company || '-'}</Col>
+            
+            <Col span={8}><strong>部门与职位:</strong></Col>
+            <Col span={16}>{selectedMember.profile?.departmentAndPosition || '-'}</Col>
+            
+            <Col span={8}><strong>行业细分:</strong></Col>
+            <Col span={16}>{selectedMember.profile?.industryDetail || '-'}</Col>
+            
+            <Col span={8}><strong>公司介绍:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.companyIntro || '-'}
+            </Col>
+            
+            {/* 商业信息 */}
+            <Col span={24}>
+              <h3 style={{ marginTop: 16, marginBottom: 16, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                🏢 商业信息
+              </h3>
+            </Col>
+            
+            <Col span={8}><strong>自有行业:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.ownIndustry && selectedMember.profile.ownIndustry.length > 0 ? (
+                <Space wrap>
+                  {selectedMember.profile.ownIndustry.map((industry, idx) => (
+                    <Tag key={idx} color="blue">{industry}</Tag>
+                  ))}
+                </Space>
+              ) : '-'}
+            </Col>
+            
+            <Col span={8}><strong>感兴趣的行业:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.interestedIndustries && selectedMember.profile.interestedIndustries.length > 0 ? (
+                <Space wrap>
+                  {selectedMember.profile.interestedIndustries.map((industry, idx) => (
+                    <Tag key={idx} color="green">{industry}</Tag>
+                  ))}
+                </Space>
+              ) : '-'}
+            </Col>
+            
+            <Col span={8}><strong>业务类别:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.businessCategories && selectedMember.profile.businessCategories.length > 0 ? (
+                <Space wrap>
+                  {selectedMember.profile.businessCategories.map((category, idx) => (
+                    <Tag key={idx} color="purple">{category}</Tag>
+                  ))}
+                </Space>
+              ) : '-'}
+            </Col>
+            
+            <Col span={8}><strong>接受国际业务:</strong></Col>
+            <Col span={16}>
+              <Tag color={
+                selectedMember.profile?.acceptInternationalBusiness === 'Yes' ? 'success' :
+                selectedMember.profile?.acceptInternationalBusiness === 'Willing to explore' ? 'processing' :
+                'default'
+              }>
+                {selectedMember.profile?.acceptInternationalBusiness || '-'}
+              </Tag>
+            </Col>
+          </Row>
+        </div>
+      ),
+    },
+    {
+      key: 'jci-development',
+      label: 'JCI 相关 / 职业发展',
+      icon: <TrophyOutlined />,
+      content: (
+        <div style={{ padding: '24px' }}>
+          <Row gutter={[16, 24]}>
+            {/* JCI 相关 */}
+            <Col span={24}>
+              <h3 style={{ marginBottom: 16, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                🏆 JCI 相关
+              </h3>
+            </Col>
+            
+            <Col span={8}><strong>JCI 职位:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.jciPosition ? (
+                <Tag color="gold">{selectedMember.profile.jciPosition}</Tag>
+              ) : '-'}
+            </Col>
+            
+            <Col span={8}><strong>参议员编号:</strong></Col>
+            <Col span={16}>{selectedMember.profile?.senatorId || '-'}</Col>
+            
+            <Col span={8}><strong>参议员积分:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.senatorScore !== undefined ? (
+                <Tag color="magenta">{selectedMember.profile.senatorScore} 分</Tag>
+              ) : '-'}
+            </Col>
+            
+            <Col span={8}><strong>介绍人:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.introducerName || '-'}
+              {selectedMember.profile?.introducerId && (
+                <span style={{ color: '#999', marginLeft: 8 }}>
+                  (ID: {selectedMember.profile.introducerId})
+                </span>
+              )}
+            </Col>
+            
+            {/* 职业发展 */}
+            <Col span={24}>
+              <h3 style={{ marginTop: 16, marginBottom: 16, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                🎯 职业发展
+              </h3>
+            </Col>
+            
+            <Col span={8}><strong>五年愿景:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.fiveYearsVision || '-'}
+            </Col>
+            
+            <Col span={8}><strong>如何成为活跃会员:</strong></Col>
+            <Col span={16}>
+              {selectedMember.profile?.activeMemberHow || '-'}
+            </Col>
+          </Row>
+        </div>
+      ),
+    },
+    {
+      key: 'activities',
+      label: '活动',
+      icon: <CalendarOutlined />,
+      content: (
+        <div style={{ padding: '16px' }}>
+          {selectedMember.profile?.activityParticipation && selectedMember.profile.activityParticipation.length > 0 ? (
+            <Table
+              dataSource={selectedMember.profile.activityParticipation}
+              rowKey={(record) => record.eventId}
+              pagination={false}
+              columns={[
+                {
+                  title: '活动名称',
+                  dataIndex: 'eventName',
+                  key: 'eventName',
+                },
+                {
+                  title: '参与角色',
+                  dataIndex: 'role',
+                  key: 'role',
+                  render: (role: string) => role ? <Tag color="blue">{role}</Tag> : '-',
+                },
+                {
+                  title: '参与时间',
+                  dataIndex: 'participatedAt',
+                  key: 'participatedAt',
+                  render: (date: string) => date ? new Date(date).toLocaleDateString('zh-CN') : '-',
+                },
+              ]}
+            />
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
+              暂无活动记录
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'tasks',
+      label: '任务',
+      icon: <CheckCircleOutlined />,
+      content: (
+        <div style={{ padding: '16px' }}>
+          {selectedMember.profile?.taskCompletions && selectedMember.profile.taskCompletions.length > 0 ? (
+            <Table
+              dataSource={selectedMember.profile.taskCompletions}
+              rowKey={(record) => record.taskId}
+              pagination={false}
+              columns={[
+                {
+                  title: '任务名称',
+                  dataIndex: 'taskName',
+                  key: 'taskName',
+                },
+                {
+                  title: '完成时间',
+                  dataIndex: 'completedAt',
+                  key: 'completedAt',
+                  render: (date: string) => date ? new Date(date).toLocaleDateString('zh-CN') : '-',
+                },
+                {
+                  title: '验证状态',
+                  dataIndex: 'verifiedBy',
+                  key: 'verifiedBy',
+                  render: (verifiedBy: string) => 
+                    verifiedBy ? (
+                      <Tag color="success">已验证</Tag>
+                    ) : (
+                      <Tag color="warning">待验证</Tag>
+                    ),
+                },
+              ]}
+            />
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
+              暂无任务记录
+            </div>
+          )}
+        </div>
+      ),
+    },
   ] : [];
 
   // ========== Table Columns ==========
@@ -701,6 +949,45 @@ const MemberListPage: React.FC = () => {
         ]}
       />
       
+      {/* 🆕 会员分类标签页 */}
+      <Card style={{ marginBottom: 24 }}>
+        <Tabs
+          activeKey={activeTab}
+          onChange={handleTabChange}
+          items={[
+            {
+              key: 'all',
+              label: (
+                <span>
+                  <TeamOutlined /> 全部会员
+                  {stats?.total !== undefined && (
+                    <Tag color="blue" style={{ marginLeft: 8 }}>
+                      {stats.total}
+                    </Tag>
+                  )}
+                </span>
+              ),
+            },
+            ...MEMBER_CATEGORY_OPTIONS.map(option => {
+              const count = stats?.byCategory?.[option.value as keyof typeof stats.byCategory];
+              return {
+                key: option.value as string,
+                label: (
+                  <span>
+                    {option.label}
+                    {count !== undefined && (
+                      <Tag color="default" style={{ marginLeft: 8 }}>
+                        {count}
+                      </Tag>
+                    )}
+                  </span>
+                ),
+              };
+            }),
+          ]}
+        />
+      </Card>
+      
       {/* 筛选控件 - 直接显示 */}
       <Card style={{ marginBottom: 24 }}>
         <Form
@@ -723,22 +1010,6 @@ const MemberListPage: React.FC = () => {
                     }, 300);
                   }}
                 />
-              </Form.Item>
-            </Col>
-            
-            <Col xs={24} sm={12} md={8} lg={4}>
-              <Form.Item name="category">
-                <Select
-                  placeholder="会员类别"
-                  allowClear
-                  style={{ minWidth: '120px' }}
-                >
-                  {MEMBER_CATEGORY_OPTIONS.map(option => (
-                    <Option key={option.value} value={option.value}>
-                      {option.label}
-                    </Option>
-                  ))}
-                </Select>
               </Form.Item>
             </Col>
             
