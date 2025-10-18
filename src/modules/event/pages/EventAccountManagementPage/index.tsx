@@ -87,6 +87,7 @@ interface TransactionRecord {
 
 interface BulkInputRow {
   id: string;
+  type: 'income' | 'expense';
   description: string;
   remark: string;
   amount: number;
@@ -272,7 +273,7 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
-  const handleBulkSave = async (records: BulkInputRow[], recordType: 'income' | 'expense') => {
+  const handleBulkSave = async (records: BulkInputRow[]) => {
     if (!user || !account) return;
 
     try {
@@ -283,8 +284,8 @@ const EventAccountManagementPage: React.FC = () => {
         remark: record.remark,
         amount: record.amount,
         paymentDate: record.paymentDate,
-        transactionType: recordType as EventAccountTransactionType,
-        category: recordType === 'income' ? 'ticketFee' : 'venue',
+        transactionType: record.type as EventAccountTransactionType,
+        category: record.type === 'income' ? 'ticketFee' : 'venue',
         isForecast: true,
         forecastConfidence: 'medium' as 'high' | 'medium' | 'low',
       }));
