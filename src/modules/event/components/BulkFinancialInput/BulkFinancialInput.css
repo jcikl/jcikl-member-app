@@ -1,0 +1,143 @@
+/**
+ * Bulk Financial Input Component Styles
+ * 批量财务记录输入组件样式
+ */
+
+.bulk-financial-input-card {
+  height: 100%;
+}
+
+.bulk-financial-input-card .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 16px;
+}
+
+.bulk-financial-input-card .ant-card-body {
+  padding: 16px;
+}
+
+.bulk-input-header {
+  background-color: #fafafa;
+  padding: 8px 0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.bulk-input-header .ant-col {
+  text-align: center;
+  font-weight: 500;
+  color: #262626;
+}
+
+.bulk-input-rows {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.bulk-input-row {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.bulk-input-row:hover {
+  background-color: #fafafa;
+}
+
+.bulk-input-row:last-child {
+  border-bottom: none;
+}
+
+.row-number {
+  text-align: center;
+  font-weight: 500;
+  color: #666;
+  padding: 8px 0;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.validation-summary {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Input field styles */
+.bulk-input-row .ant-input,
+.bulk-input-row .ant-input-number {
+  border-radius: 4px;
+}
+
+.bulk-input-row .ant-input:focus,
+.bulk-input-row .ant-input-number:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Button styles */
+.bulk-input-row .ant-btn {
+  border-radius: 4px;
+}
+
+.bulk-input-row .ant-btn-dangerous {
+  color: #ff4d4f;
+}
+
+.bulk-input-row .ant-btn-dangerous:hover {
+  background-color: #fff2f0;
+  border-color: #ff4d4f;
+}
+
+/* Statistic styles */
+.bulk-financial-input-card .ant-statistic-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.bulk-financial-input-card .ant-statistic-content {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .bulk-input-header .ant-col,
+  .bulk-input-row .ant-col {
+    font-size: 12px;
+  }
+  
+  .bulk-input-row .ant-input,
+  .bulk-input-row .ant-input-number {
+    font-size: 12px;
+  }
+  
+  .row-number {
+    font-size: 12px;
+    min-height: 28px;
+  }
+}
+
+/* Scrollbar styling */
+.bulk-input-rows::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bulk-input-rows::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.bulk-input-rows::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.bulk-input-rows::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

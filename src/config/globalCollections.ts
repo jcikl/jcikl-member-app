@@ -35,7 +35,6 @@ export const GLOBAL_COLLECTIONS = {
   EVENT_REGISTRATIONS: 'eventRegistrations',
   EVENT_PARTICIPANTS: 'eventParticipants',
   EVENT_ACCOUNTS: 'eventAccounts', // 活动专用财务账户
-  EVENT_ACCOUNT_TRANSACTIONS: 'eventAccountTransactions', // 活动账户交易记录
 
   // ========== Permission Domain (权限域 - RBAC) ==========
   RBAC_PERMISSIONS: 'rbacPermissions',

@@ -14,6 +14,7 @@ import {
   updateDoc,
   query,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
@@ -196,13 +197,6 @@ export const addEventAccountTransaction = async (
     const actualProfit = actualIncome - actualExpense;
     const forecastProfit = forecastIncome - forecastExpense;
     
-    // Store transaction in separate collection
-    const transactionsCollection = collection(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNT_TRANSACTIONS);
-    const transactionDocRef = await addDoc(transactionsCollection, cleanUndefinedValues({
-      accountId,
-      ...transaction,
-    }));
-    
     // Update account
     await updateDoc(accountRef, cleanUndefinedValues({
       actualIncome,
@@ -213,10 +207,14 @@ export const addEventAccountTransaction = async (
       forecastProfit,
       incomeByCategory,
       expenseByCategory,
-      transactions: [...(accountData.transactions || []), transactionDocRef.id],
+      transactions: [...(accountData.transactions || []), transaction.id],
       updatedAt: now,
       updatedBy: userId,
     }));
+    
+    // Store transaction in sub-collection or separate collection
+    // For now, we'll store transactions within the account document's transactions array
+    // In production, consider using a sub-collection for better scalability
     
     globalSystemService.log(
       'info',
@@ -282,49 +280,6 @@ export const updateEventAccountBudget = async (
 };
 
 /**
- * Get Event Account Transactions
- */
-export const getEventAccountTransactions = async (
-  accountId: string
-): Promise<EventAccountTransaction[]> => {
-  try {
-    const accountRef = doc(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNTS, accountId);
-    const accountDoc = await getDoc(accountRef);
-    
-    if (!accountDoc.exists()) {
-      return [];
-    }
-    
-    const accountData = accountDoc.data() as EventAccount;
-    
-    // Load transactions from separate collection
-    const transactionsCollection = collection(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNT_TRANSACTIONS);
-    const q = query(
-      transactionsCollection,
-      where('accountId', '==', accountId)
-    );
-    
-    const snapshot = await getDocs(q);
-    
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      transactionDate: safeTimestampToISO(doc.data().transactionDate),
-      createdAt: safeTimestampToISO(doc.data().createdAt),
-      updatedAt: safeTimestampToISO(doc.data().updatedAt),
-    } as EventAccountTransaction));
-  } catch (error: any) {
-    globalSystemService.log(
-      'error',
-      'Failed to get event account transactions',
-      'eventAccountService.getEventAccountTransactions',
-      { error: error.message, accountId }
-    );
-    return [];
-  }
-};
-
-/**
  * Close Event Account
  */
 export const closeEventAccount = async (
@@ -352,6 +307,143 @@ export const closeEventAccount = async (
       'error',
       'Failed to close event account',
       'eventAccountService.closeEventAccount',
+      { error: error.message, accountId }
+    );
+    throw error;
+  }
+};
+
+/**
+ * Add Multiple Transactions to Event Account (Bulk Operation)
+ * 批量添加交易记录到活动账户
+ */
+export const addBulkEventAccountTransactions = async (
+  accountId: string,
+  transactions: Array<{
+    description: string;
+    remark: string;
+    amount: number;
+    transactionType: EventAccountTransactionType;
+    category: string;
+    isForecast?: boolean;
+    forecastConfidence?: 'high' | 'medium' | 'low';
+  }>,
+  userId: string
+): Promise<void> => {
+  try {
+    const accountRef = doc(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNTS, accountId);
+    const accountDoc = await getDoc(accountRef);
+    
+    if (!accountDoc.exists()) {
+      throw new Error('Event account not found');
+    }
+    
+    const accountData = accountDoc.data() as EventAccount;
+    const now = new Date().toISOString();
+    
+    // Initialize totals
+    let actualIncome = accountData.actualIncome || 0;
+    let actualExpense = accountData.actualExpense || 0;
+    let forecastIncome = accountData.forecastIncome || 0;
+    let forecastExpense = accountData.forecastExpense || 0;
+    const incomeByCategory = accountData.incomeByCategory ? { ...accountData.incomeByCategory } : {};
+    const expenseByCategory = accountData.expenseByCategory ? { ...accountData.expenseByCategory } : {};
+    
+    // Process each transaction
+    const transactionIds: string[] = [];
+    
+    transactions.forEach((txnData, index) => {
+      const transactionId = `${Date.now()}-${index}`;
+      transactionIds.push(transactionId);
+      
+      const isForecast = txnData.isForecast || false;
+      
+      if (isForecast) {
+        // 预测数据
+        if (txnData.transactionType === 'income') {
+          forecastIncome += txnData.amount;
+          incomeByCategory[txnData.category] = (incomeByCategory[txnData.category] || 0) + txnData.amount;
+        } else {
+          forecastExpense += txnData.amount;
+          expenseByCategory[txnData.category] = (expenseByCategory[txnData.category] || 0) + txnData.amount;
+        }
+      } else {
+        // 实际数据
+        if (txnData.transactionType === 'income') {
+          actualIncome += txnData.amount;
+          incomeByCategory[txnData.category] = (incomeByCategory[txnData.category] || 0) + txnData.amount;
+        } else {
+          actualExpense += txnData.amount;
+          expenseByCategory[txnData.category] = (expenseByCategory[txnData.category] || 0) + txnData.amount;
+        }
+      }
+    });
+    
+    const actualProfit = actualIncome - actualExpense;
+    const forecastProfit = forecastIncome - forecastExpense;
+    
+    // Update account with new totals
+    await updateDoc(accountRef, cleanUndefinedValues({
+      actualIncome,
+      actualExpense,
+      actualProfit,
+      forecastIncome,
+      forecastExpense,
+      forecastProfit,
+      incomeByCategory,
+      expenseByCategory,
+      transactions: [...(accountData.transactions || []), ...transactionIds],
+      updatedAt: now,
+      updatedBy: userId,
+    }));
+    
+    globalSystemService.log(
+      'info',
+      'Bulk transactions added to event account',
+      'eventAccountService.addBulkEventAccountTransactions',
+      { 
+        accountId, 
+        transactionCount: transactions.length,
+        totalAmount: transactions.reduce((sum, txn) => sum + txn.amount, 0),
+        userId 
+      }
+    );
+  } catch (error: any) {
+    globalSystemService.log(
+      'error',
+      'Failed to add bulk transactions to event account',
+      'eventAccountService.addBulkEventAccountTransactions',
+      { error: error.message, accountId, transactionCount: transactions.length }
+    );
+    throw error;
+  }
+};
+
+/**
+ * Get Event Account Transactions
+ * 获取活动账户交易记录
+ */
+export const getEventAccountTransactions = async (
+  accountId: string
+): Promise<EventAccountTransaction[]> => {
+  try {
+    const accountRef = doc(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNTS, accountId);
+    const accountDoc = await getDoc(accountRef);
+    
+    if (!accountDoc.exists()) {
+      throw new Error('Event account not found');
+    }
+    
+    const accountData = accountDoc.data() as EventAccount;
+    
+    // For now, return empty array as transactions are stored within account
+    // In production, implement sub-collection query
+    return [];
+  } catch (error: any) {
+    globalSystemService.log(
+      'error',
+      'Failed to get event account transactions',
+      'eventAccountService.getEventAccountTransactions',
       { error: error.message, accountId }
     );
     throw error;

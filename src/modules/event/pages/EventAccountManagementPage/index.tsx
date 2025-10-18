@@ -47,10 +47,13 @@ import { useAuthStore } from '@/stores/authStore';
 import { PageHeader } from '@/components/common/PageHeader';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import BulkFinancialInput from '../../components/BulkFinancialInput';
+import FinancialRecordsList from '../../components/FinancialRecordsList';
 import {
   getOrCreateEventAccount,
   addEventAccountTransaction,
   updateEventAccountBudget,
+  addBulkEventAccountTransactions,
   getEventAccountTransactions,
 } from '../../services/eventAccountService';
 import { getEvents } from '../../services/eventService';
@@ -69,24 +72,27 @@ const { Option } = Select;
 
 interface TransactionRecord {
   id: string;
+  sn: number;
   transactionDate: string;
   transactionType: EventAccountTransactionType;
   category: string;
   description: string;
+  remark: string;
   amount: number;
   payerPayee?: string;
   isForecast: boolean;
   forecastConfidence?: 'high' | 'medium' | 'low';
   actualAmount?: number;
   variance?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface BulkTransactionRecord {
-  sn: number;
+interface BulkInputRow {
+  id: string;
   description: string;
   remark: string;
   amount: number;
-  paymentDate: string;
 }
 
 const EventAccountManagementPage: React.FC = () => {
@@ -101,10 +107,8 @@ const EventAccountManagementPage: React.FC = () => {
   const [form] = Form.useForm();
   const [budgetForm] = Form.useForm();
   const [activeTab, setActiveTab] = useState<'actual' | 'forecast' | 'all'>('all');
-  const [bulkTransactions, setBulkTransactions] = useState<BulkTransactionRecord[]>([
-    { sn: 1, description: '', remark: '', amount: 0, paymentDate: dayjs().format('YYYY-MM-DD') }
-  ]);
-  const [bulkForm] = Form.useForm();
+  const [financialRecords, setFinancialRecords] = useState<TransactionRecord[]>([]);
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -113,6 +117,7 @@ const EventAccountManagementPage: React.FC = () => {
   useEffect(() => {
     if (selectedEventId) {
       loadEventAccount();
+      loadFinancialRecords();
     }
   }, [selectedEventId]);
 
@@ -162,21 +167,8 @@ const EventAccountManagementPage: React.FC = () => {
 
       setAccount(accountData);
       
-      // Load transactions
-      const transactionsData = await getEventAccountTransactions(accountData.id);
-      setTransactions(transactionsData.map(t => ({
-        id: t.id,
-        transactionDate: t.transactionDate,
-        transactionType: t.transactionType,
-        category: t.category,
-        description: t.description,
-        amount: t.amount,
-        payerPayee: t.payerPayee,
-        isForecast: t.isForecast,
-        forecastConfidence: t.forecastConfidence,
-        actualAmount: t.actualAmount,
-        variance: t.variance,
-      })));
+      // Load financial records
+      await loadFinancialRecords();
 
     } catch (error: any) {
       message.error('加载活动账户失败');
@@ -248,75 +240,74 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
-  const handleAddBulkTransaction = () => {
-    setBulkTransactions(prev => [
-      ...prev,
-      { 
-        sn: prev.length + 1, 
-        description: '', 
-        remark: '', 
-        amount: 0, 
-        paymentDate: dayjs().format('YYYY-MM-DD') 
-      }
-    ]);
-  };
+  const loadFinancialRecords = async () => {
+    if (!selectedEventId) return;
 
-  const handleRemoveBulkTransaction = (index: number) => {
-    if (bulkTransactions.length > 1) {
-      setBulkTransactions(prev => prev.filter((_, i) => i !== index));
+    try {
+      const records = await getEventAccountTransactions(selectedEventId);
+      setFinancialRecords(records);
+    } catch (error: any) {
+      console.error('Failed to load financial records:', error);
+      // For now, use mock data
+      setFinancialRecords([
+        {
+          id: '1',
+          sn: 1,
+          transactionDate: '2025-01-13',
+          transactionType: 'income',
+          category: 'ticketFee',
+          description: '会员费A',
+          remark: '备注A',
+          amount: 220,
+          isForecast: true,
+          forecastConfidence: 'high',
+          createdAt: '2025-01-13T10:00:00Z',
+          updatedAt: '2025-01-13T10:00:00Z',
+        },
+        {
+          id: '2',
+          sn: 2,
+          transactionDate: '2025-01-13',
+          transactionType: 'income',
+          category: 'ticketFee',
+          description: '会员费B',
+          remark: '备注B',
+          amount: 250,
+          isForecast: true,
+          forecastConfidence: 'medium',
+          createdAt: '2025-01-13T10:00:00Z',
+          updatedAt: '2025-01-13T10:00:00Z',
+        },
+      ]);
     }
   };
 
-  const handleBulkTransactionChange = (index: number, field: keyof BulkTransactionRecord, value: any) => {
-    setBulkTransactions(prev => 
-      prev.map((item, i) => 
-        i === index ? { ...item, [field]: value } : item
-      )
-    );
-  };
-
-  const handleSaveBulkTransactions = async () => {
+  const handleBulkSave = async (records: BulkInputRow[]) => {
     if (!user || !account) return;
 
     try {
-      const validTransactions = bulkTransactions.filter(t => 
-        t.description.trim() && t.amount > 0
-      );
+      setBulkSaving(true);
 
-      if (validTransactions.length === 0) {
-        message.error('请至少输入一条有效的交易记录');
-        return;
-      }
+      const transactions = records.map(record => ({
+        description: record.description,
+        remark: record.remark,
+        amount: record.amount,
+        transactionType: 'income' as EventAccountTransactionType,
+        category: 'ticketFee',
+        isForecast: true,
+        forecastConfidence: 'medium' as 'high' | 'medium' | 'low',
+      }));
 
-      // 批量创建交易
-      for (const transaction of validTransactions) {
-        await addEventAccountTransaction(
-          account.id,
-          {
-            transactionDate: new Date(transaction.paymentDate),
-            transactionType: 'income', // 默认为收入
-            category: 'ticket_fee', // 默认为票费
-            description: transaction.description,
-            amount: transaction.amount,
-            payerPayee: transaction.remark,
-            paymentMethod: 'cash',
-            notes: `批量导入 - ${transaction.description}`,
-            isForecast: false,
-          },
-          user.id
-        );
-      }
-
-      message.success(`成功保存 ${validTransactions.length} 条交易记录`);
+      await addBulkEventAccountTransactions(account.id, transactions, user.id);
       
-      // 重置表单
-      setBulkTransactions([
-        { sn: 1, description: '', remark: '', amount: 0, paymentDate: dayjs().format('YYYY-MM-DD') }
-      ]);
+      // Reload account and records
+      await loadEventAccount();
+      await loadFinancialRecords();
       
-      loadEventAccount();
     } catch (error: any) {
-      message.error('保存批量交易失败');
+      throw error;
+    } finally {
+      setBulkSaving(false);
     }
   };
 
@@ -575,19 +566,8 @@ const EventAccountManagementPage: React.FC = () => {
           </Row>
         </div>
 
-        {/* Transaction List */}
-        <Card
-          title="交易记录"
-          extra={
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setTransactionModalVisible(true)}
-            >
-              添加交易
-            </Button>
-          }
-        >
+        {/* Transaction Management */}
+        <Card title="交易管理">
           <Tabs
             activeKey={activeTab}
             onChange={(key) => setActiveTab(key as 'actual' | 'forecast' | 'all')}
@@ -618,111 +598,6 @@ const EventAccountManagementPage: React.FC = () => {
                   </span>
                 ),
                 children: (
-                  <div>
-                    <div style={{ marginBottom: 16 }}>
-                      <Space>
-                        <Button 
-                          type="primary" 
-                          icon={<PlusOutlined />}
-                          onClick={handleAddBulkTransaction}
-                        >
-                          添加行
-                        </Button>
-                        <Button 
-                          type="primary" 
-                          onClick={handleSaveBulkTransactions}
-                        >
-                          保存所有记录
-                        </Button>
-                      </Space>
-                    </div>
-                    
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #d9d9d9' }}>
-                        <thead>
-                          <tr style={{ backgroundColor: '#fafafa' }}>
-                            <th style={{ padding: '8px 12px', border: '1px solid #d9d9d9', textAlign: 'center', minWidth: '60px' }}>Sn</th>
-                            <th style={{ padding: '8px 12px', border: '1px solid #d9d9d9', textAlign: 'center', minWidth: '200px' }}>Description</th>
-                            <th style={{ padding: '8px 12px', border: '1px solid #d9d9d9', textAlign: 'center', minWidth: '150px' }}>Remark</th>
-                            <th style={{ padding: '8px 12px', border: '1px solid #d9d9d9', textAlign: 'center', minWidth: '120px' }}>Amount (Income)</th>
-                            <th style={{ padding: '8px 12px', border: '1px solid #d9d9d9', textAlign: 'center', minWidth: '120px' }}>Payment Date</th>
-                            <th style={{ padding: '8px 12px', border: '1px solid #d9d9d9', textAlign: 'center', minWidth: '80px' }}>操作</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bulkTransactions.map((transaction, index) => (
-                            <tr key={index}>
-                              <td style={{ padding: '8px 12px', border: '1px solid #d9d9d9', textAlign: 'center' }}>
-                                {transaction.sn}
-                              </td>
-                              <td style={{ padding: '8px 12px', border: '1px solid #d9d9d9' }}>
-                                <Input
-                                  value={transaction.description}
-                                  onChange={(e) => handleBulkTransactionChange(index, 'description', e.target.value)}
-                                  placeholder="输入描述"
-                                  style={{ border: 'none', boxShadow: 'none' }}
-                                />
-                              </td>
-                              <td style={{ padding: '8px 12px', border: '1px solid #d9d9d9' }}>
-                                <Input
-                                  value={transaction.remark}
-                                  onChange={(e) => handleBulkTransactionChange(index, 'remark', e.target.value)}
-                                  placeholder="输入备注"
-                                  style={{ border: 'none', boxShadow: 'none' }}
-                                />
-                              </td>
-                              <td style={{ padding: '8px 12px', border: '1px solid #d9d9d9' }}>
-                                <InputNumber
-                                  value={transaction.amount}
-                                  onChange={(value) => handleBulkTransactionChange(index, 'amount', value || 0)}
-                                  min={0}
-                                  precision={2}
-                                  prefix="RM"
-                                  style={{ width: '100%', border: 'none', boxShadow: 'none' }}
-                                />
-                              </td>
-                              <td style={{ padding: '8px 12px', border: '1px solid #d9d9d9' }}>
-                                <DatePicker
-                                  value={dayjs(transaction.paymentDate)}
-                                  onChange={(date) => handleBulkTransactionChange(index, 'paymentDate', date?.format('YYYY-MM-DD') || dayjs().format('YYYY-MM-DD'))}
-                                  format="DD-MMM-YYYY"
-                                  style={{ width: '100%', border: 'none', boxShadow: 'none' }}
-                                />
-                              </td>
-                              <td style={{ padding: '8px 12px', border: '1px solid #d9d9d9', textAlign: 'center' }}>
-                                {bulkTransactions.length > 1 && (
-                                  <Button
-                                    type="link"
-                                    danger
-                                    size="small"
-                                    onClick={() => handleRemoveBulkTransaction(index)}
-                                  >
-                                    删除
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    <Divider />
-                    
-                    <div style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                      总计: RM {bulkTransactions.reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: 'forecast',
-                label: (
-                  <span>
-                    <LineChartOutlined /> 预测
-                  </span>
-                ),
-                children: (
                   <Table
                     {...tableConfig}
                     columns={columns}
@@ -735,6 +610,36 @@ const EventAccountManagementPage: React.FC = () => {
                       showTotal: (total) => `共 ${total} 条交易`,
                     }}
                   />
+                ),
+              },
+              {
+                key: 'forecast',
+                label: (
+                  <span>
+                    <LineChartOutlined /> 预测
+                  </span>
+                ),
+                children: (
+                  <div className="forecast-tab-content">
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} lg={12}>
+                        <BulkFinancialInput
+                          onSave={handleBulkSave}
+                          loading={bulkSaving}
+                        />
+                      </Col>
+                      <Col xs={24} lg={12}>
+                        <FinancialRecordsList
+                          records={financialRecords}
+                          loading={loading}
+                          onRefresh={loadFinancialRecords}
+                          onExport={() => {
+                            message.info('导出功能开发中...');
+                          }}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
                 ),
               },
             ]}

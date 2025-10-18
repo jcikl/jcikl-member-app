@@ -1,0 +1,170 @@
+/**
+ * Financial Records List Component Styles
+ * 财务记录列表组件样式
+ */
+
+.financial-records-list-card {
+  height: 100%;
+}
+
+.financial-records-list-card .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 16px;
+}
+
+.financial-records-list-card .ant-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 57px);
+}
+
+.financial-summary {
+  background-color: #fafafa;
+  padding: 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #f0f0f0;
+}
+
+.financial-summary .ant-statistic-title {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.financial-summary .ant-statistic-content {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.last-updated {
+  margin-top: 12px;
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid #e8e8e8;
+}
+
+.records-table {
+  flex: 1;
+  overflow: hidden;
+}
+
+.records-table .ant-table {
+  height: 100%;
+}
+
+.records-table .ant-table-container {
+  height: 100%;
+}
+
+.records-table .ant-table-body {
+  max-height: calc(100vh - 400px);
+  overflow-y: auto;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Table specific styles */
+.records-table .ant-table-thead > tr > th {
+  background-color: #fafafa;
+  font-weight: 600;
+  color: #262626;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.records-table .ant-table-tbody > tr:hover > td {
+  background-color: #f5f5f5;
+}
+
+.records-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 8px 12px;
+}
+
+/* Tag styles */
+.records-table .ant-tag {
+  margin: 2px;
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 2px 6px;
+  line-height: 1.2;
+}
+
+/* Button styles */
+.records-table .ant-btn {
+  border-radius: 4px;
+}
+
+.records-table .ant-btn-text {
+  padding: 4px 8px;
+}
+
+.records-table .ant-btn-text:hover {
+  background-color: #f5f5f5;
+}
+
+/* Pagination styles */
+.records-table .ant-pagination {
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .financial-summary {
+    padding: 12px;
+  }
+  
+  .financial-summary .ant-statistic-content {
+    font-size: 14px;
+  }
+  
+  .records-table .ant-table-tbody > tr > td {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  
+  .records-table .ant-table-thead > tr > th {
+    padding: 8px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .financial-records-list-card .ant-card-body {
+    padding: 12px;
+  }
+  
+  .financial-summary {
+    padding: 8px;
+  }
+  
+  .records-table .ant-table-tbody > tr > td {
+    padding: 4px 6px;
+  }
+}
+
+/* Scrollbar styling */
+.records-table .ant-table-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.records-table .ant-table-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.records-table .ant-table-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.records-table .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
