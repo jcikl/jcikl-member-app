@@ -12,6 +12,25 @@
   padding: 12px 16px;
 }
 
+.bulk-financial-input-card .ant-card-head-title {
+  padding: 0;
+}
+
+.bulk-financial-input-card .ant-segmented {
+  margin-top: 12px;
+  background-color: #f5f5f5;
+}
+
+.bulk-financial-input-card .ant-segmented-item {
+  padding: 8px 16px;
+  font-weight: 500;
+}
+
+.bulk-financial-input-card .ant-segmented-item-selected {
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
 .bulk-financial-input-card .ant-card-body {
   padding: 16px;
 }

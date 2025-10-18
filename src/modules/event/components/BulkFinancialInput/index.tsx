@@ -19,14 +19,16 @@ import {
   message,
   Divider,
   DatePicker,
+  Segmented,
 } from 'antd';
 import {
   PlusOutlined,
   DeleteOutlined,
   SaveOutlined,
   ClearOutlined,
+  RiseOutlined,
+  FallOutlined,
 } from '@ant-design/icons';
-import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalSystemService } from '@/config/globalSystemSettings';
 import { globalDateService } from '@/config/globalDateSettings';
 import dayjs from 'dayjs';
@@ -41,7 +43,7 @@ interface BulkInputRow {
 }
 
 interface BulkFinancialInputProps {
-  onSave: (records: BulkInputRow[]) => Promise<void>;
+  onSave: (records: BulkInputRow[], transactionType: 'income' | 'expense') => Promise<void>;
   loading?: boolean;
 }
 
@@ -52,6 +54,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   const [form] = Form.useForm();
   const [rows, setRows] = useState<BulkInputRow[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [transactionType, setTransactionType] = useState<'income' | 'expense'>('income');
 
   // Initialize with 5 empty rows
   useEffect(() => {
@@ -119,11 +122,12 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         return;
       }
 
-      await onSave(validRows);
+      await onSave(validRows, transactionType);
       
       // Clear form after successful save
       handleClearAll();
-      message.success(`成功保存 ${validRows.length} 条财务记录`);
+      const typeText = transactionType === 'income' ? '收入' : '支出';
+      message.success(`成功保存 ${validRows.length} 条${typeText}记录`);
       
     } catch (error: any) {
       message.error('保存失败，请重试');
@@ -131,7 +135,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         'error',
         'Failed to save bulk financial records',
         'BulkFinancialInput.handleSave',
-        { error: error.message }
+        { error: error.message, transactionType }
       );
     }
   };
@@ -143,8 +147,33 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   return (
     <Card
       title={
-        <Space>
+        <Space direction="vertical" style={{ width: '100%' }}>
           <span>📝 批量输入财务记录</span>
+          <Segmented
+            value={transactionType}
+            onChange={(value) => setTransactionType(value as 'income' | 'expense')}
+            options={[
+              {
+                label: (
+                  <Space>
+                    <RiseOutlined style={{ color: '#52c41a' }} />
+                    <span>Incomes</span>
+                  </Space>
+                ),
+                value: 'income',
+              },
+              {
+                label: (
+                  <Space>
+                    <FallOutlined style={{ color: '#ff4d4f' }} />
+                    <span>Expenses</span>
+                  </Space>
+                ),
+                value: 'expense',
+              },
+            ]}
+            block
+          />
         </Space>
       }
       className="bulk-financial-input-card"
@@ -250,12 +279,14 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         <Row gutter={16} align="middle">
           <Col span={12}>
             <Statistic
-              title="小计"
+              title={transactionType === 'income' ? '收入小计' : '支出小计'}
               value={totalAmount}
               precision={2}
               prefix="RM"
               valueStyle={{ 
-                color: totalAmount > 0 ? '#52c41a' : '#999',
+                color: totalAmount > 0 
+                  ? (transactionType === 'income' ? '#52c41a' : '#ff4d4f')
+                  : '#999',
                 fontSize: '18px',
                 fontWeight: 600
               }}

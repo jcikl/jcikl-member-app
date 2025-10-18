@@ -272,7 +272,7 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
-  const handleBulkSave = async (records: BulkInputRow[]) => {
+  const handleBulkSave = async (records: BulkInputRow[], transactionType: 'income' | 'expense') => {
     if (!user || !account) return;
 
     try {
@@ -283,8 +283,8 @@ const EventAccountManagementPage: React.FC = () => {
         remark: record.remark,
         amount: record.amount,
         paymentDate: record.paymentDate,
-        transactionType: 'income' as EventAccountTransactionType,
-        category: 'ticketFee',
+        transactionType: transactionType as EventAccountTransactionType,
+        category: transactionType === 'income' ? 'ticketFee' : 'venue',
         isForecast: true,
         forecastConfidence: 'medium' as 'high' | 'medium' | 'low',
       }));
