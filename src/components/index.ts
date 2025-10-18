@@ -24,7 +24,6 @@ export { FiscalYearPicker } from './form/FiscalYearPicker';
 export type { FiscalYearPickerProps } from './form/FiscalYearPicker/types';
 export { FileUploadZone } from './form/FileUploadZone';
 export type { UploadedFile, FileUploadZoneProps } from './form/FileUploadZone/types';
-export { BulkTransactionForm } from './form/BulkTransactionForm';
 
 // Card Components
 export { StatCard } from './cards/StatCard';

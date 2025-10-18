@@ -196,6 +196,13 @@ export const addEventAccountTransaction = async (
     const actualProfit = actualIncome - actualExpense;
     const forecastProfit = forecastIncome - forecastExpense;
     
+    // Store transaction in separate collection
+    const transactionsCollection = collection(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNT_TRANSACTIONS);
+    const transactionDocRef = await addDoc(transactionsCollection, cleanUndefinedValues({
+      accountId,
+      ...transaction,
+    }));
+    
     // Update account
     await updateDoc(accountRef, cleanUndefinedValues({
       actualIncome,
@@ -206,14 +213,10 @@ export const addEventAccountTransaction = async (
       forecastProfit,
       incomeByCategory,
       expenseByCategory,
-      transactions: [...(accountData.transactions || []), transaction.id],
+      transactions: [...(accountData.transactions || []), transactionDocRef.id],
       updatedAt: now,
       updatedBy: userId,
     }));
-    
-    // Store transaction in sub-collection or separate collection
-    // For now, we'll store transactions within the account document's transactions array
-    // In production, consider using a sub-collection for better scalability
     
     globalSystemService.log(
       'info',
@@ -275,6 +278,49 @@ export const updateEventAccountBudget = async (
       { error: error.message, accountId }
     );
     throw error;
+  }
+};
+
+/**
+ * Get Event Account Transactions
+ */
+export const getEventAccountTransactions = async (
+  accountId: string
+): Promise<EventAccountTransaction[]> => {
+  try {
+    const accountRef = doc(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNTS, accountId);
+    const accountDoc = await getDoc(accountRef);
+    
+    if (!accountDoc.exists()) {
+      return [];
+    }
+    
+    const accountData = accountDoc.data() as EventAccount;
+    
+    // Load transactions from separate collection
+    const transactionsCollection = collection(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNT_TRANSACTIONS);
+    const q = query(
+      transactionsCollection,
+      where('accountId', '==', accountId)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      transactionDate: safeTimestampToISO(doc.data().transactionDate),
+      createdAt: safeTimestampToISO(doc.data().createdAt),
+      updatedAt: safeTimestampToISO(doc.data().updatedAt),
+    } as EventAccountTransaction));
+  } catch (error: any) {
+    globalSystemService.log(
+      'error',
+      'Failed to get event account transactions',
+      'eventAccountService.getEventAccountTransactions',
+      { error: error.message, accountId }
+    );
+    return [];
   }
 };
 

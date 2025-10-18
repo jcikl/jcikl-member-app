@@ -51,6 +51,7 @@ import {
   getOrCreateEventAccount,
   addEventAccountTransaction,
   updateEventAccountBudget,
+  getEventAccountTransactions,
 } from '../../services/eventAccountService';
 import { getEvents } from '../../services/eventService';
 import type {
@@ -161,10 +162,21 @@ const EventAccountManagementPage: React.FC = () => {
 
       setAccount(accountData);
       
-      // Extract transactions from account
-      // Note: In production, these should be stored in a sub-collection
-      // For now, we'll use mock data
-      setTransactions([]);
+      // Load transactions
+      const transactionsData = await getEventAccountTransactions(accountData.id);
+      setTransactions(transactionsData.map(t => ({
+        id: t.id,
+        transactionDate: t.transactionDate,
+        transactionType: t.transactionType,
+        category: t.category,
+        description: t.description,
+        amount: t.amount,
+        payerPayee: t.payerPayee,
+        isForecast: t.isForecast,
+        forecastConfidence: t.forecastConfidence,
+        actualAmount: t.actualAmount,
+        variance: t.variance,
+      })));
 
     } catch (error: any) {
       message.error('加载活动账户失败');
