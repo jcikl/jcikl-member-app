@@ -826,6 +826,67 @@ const TransactionManagementPage: React.FC = () => {
       },
     },
     {
+      title: '二次分类',
+      dataIndex: 'subCategory',
+      key: 'subCategory',
+      width: 150,
+      render: (subCat: string, record: Transaction) => {
+        // 二次分类配置（支持多种类别）
+        const subCategoryConfig: Record<string, { color: string; text: string }> = {
+          // 会员费二次分类
+          'official-member': { color: 'blue', text: '官方会员' },
+          'associate-member': { color: 'cyan', text: '准会员' },
+          'honorary-member': { color: 'purple', text: '荣誉会员' },
+          'visiting-member': { color: 'geekblue', text: '访问会员' },
+          
+          // 活动财务二次分类（动态，显示活动名称）
+          // 日常账户二次分类
+          'donations': { color: 'blue', text: '捐赠' },
+          'sponsorships': { color: 'green', text: '赞助' },
+          'investments': { color: 'purple', text: '投资回报' },
+          'grants': { color: 'cyan', text: '拨款' },
+          'merchandise': { color: 'geekblue', text: '商品销售' },
+          'other-income': { color: 'default', text: '其他收入' },
+          'utilities': { color: 'orange', text: '水电费' },
+          'rent': { color: 'red', text: '租金' },
+          'salaries': { color: 'magenta', text: '工资' },
+          'equipment': { color: 'volcano', text: '设备用品' },
+          'insurance': { color: 'gold', text: '保险' },
+          'professional': { color: 'lime', text: '专业服务' },
+          'marketing': { color: 'pink', text: '营销费用' },
+          'travel': { color: 'purple', text: '差旅交通' },
+          'miscellaneous': { color: 'default', text: '杂项' },
+        };
+        
+        if (!subCat) {
+          return <Tag color="default">未分类</Tag>;
+        }
+        
+        // 如果是活动财务，subCategory 可能是活动名称
+        if (record.category === 'event-finance' && !subCategoryConfig[subCat]) {
+          return (
+            <Tooltip title={`活动: ${subCat}`}>
+              <Tag color="green" style={{ maxWidth: 120 }}>
+                <span style={{ 
+                  display: 'inline-block',
+                  maxWidth: 100,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  verticalAlign: 'middle'
+                }}>
+                  {subCat}
+                </span>
+              </Tag>
+            </Tooltip>
+          );
+        }
+        
+        const config = subCategoryConfig[subCat] || { color: 'default', text: subCat };
+        return <Tag color={config.color}>{config.text}</Tag>;
+      },
+    },
+    {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
