@@ -738,7 +738,7 @@ const FinancialRecordsPage: React.FC = () => {
                 children: (
                   <>
                     {/* Filters */}
-                    <Card className="mb-4" bordered={false}>
+                    <Card className="mb-4" variant="borderless">
                       <Space direction="vertical" style={{ width: '100%' }} size="middle">
                         <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} md={8}>

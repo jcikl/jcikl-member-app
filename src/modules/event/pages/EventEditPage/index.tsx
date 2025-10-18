@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { message, Spin, Empty, Tabs, Modal, Row, Col } from 'antd';
+import { Spin, Empty, Tabs, Modal, Row, Col, App } from 'antd';
 import { PageHeader } from '@/components';
 import EventForm from '../../components/EventForm';
 import EventPricingForm from '../../components/EventPricingForm';
@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/authStore';
 const EventEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const { user } = useAuthStore();
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(false);
@@ -76,7 +77,8 @@ const EventEditPage: React.FC = () => {
       await handleAsyncOperation(
         () => updateEvent(id, values, user.id),
         '更新活动成功',
-        '更新活动失败'
+        '更新活动失败',
+        message
       );
 
       navigate(`/events/${id}`);
@@ -169,7 +171,8 @@ const EventEditPage: React.FC = () => {
                       await handleAsyncOperation(
                         () => updateEvent(id, partial as any, user.id),
                         '时间与地点已保存',
-                        '保存失败'
+                        '保存失败',
+                        message
                       );
                       await fetchEvent();
                       setIsDirty(false);
@@ -193,7 +196,8 @@ const EventEditPage: React.FC = () => {
                       await handleAsyncOperation(
                         () => updateEvent(id, partial as any, user.id),
                         '价格设置已保存',
-                        '保存价格设置失败'
+                        '保存价格设置失败',
+                        message
                       );
                       await fetchEvent();
                       setIsDirty(false);
@@ -217,7 +221,8 @@ const EventEditPage: React.FC = () => {
                       await handleAsyncOperation(
                         () => updateEvent(id, partial as any, user.id),
                         '报名设置已保存',
-                        '保存失败'
+                        '保存失败',
+                        message
                       );
                       await fetchEvent();
                       setIsDirty(false);
@@ -241,7 +246,8 @@ const EventEditPage: React.FC = () => {
                       await handleAsyncOperation(
                         () => updateEvent(id, partial as any, user.id),
                         '程序安排已保存',
-                        '保存失败'
+                        '保存失败',
+                        message
                       );
                       await fetchEvent();
                       setIsDirty(false);
@@ -265,7 +271,8 @@ const EventEditPage: React.FC = () => {
                       await handleAsyncOperation(
                         () => updateEvent(id, partial as any, user.id),
                         '委员会成员已保存',
-                        '保存失败'
+                        '保存失败',
+                        message
                       );
                       await fetchEvent();
                       setIsDirty(false);
@@ -289,7 +296,8 @@ const EventEditPage: React.FC = () => {
                       await handleAsyncOperation(
                         () => updateEvent(id, partial as any, user.id),
                         '讲师信息已保存',
-                        '保存失败'
+                        '保存失败',
+                        message
                       );
                       await fetchEvent();
                       setIsDirty(false);

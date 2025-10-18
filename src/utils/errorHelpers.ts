@@ -1,9 +1,14 @@
-import { message } from 'antd';
+import { message as staticMessage } from 'antd';
+import type { MessageInstance } from 'antd/es/message/interface';
 import { globalSystemService } from '@/config';
 
 /**
  * Error Helper Functions
  * 错误处理辅助函数
+ * 
+ * 注意：这些函数接受可选的 message 实例参数
+ * 推荐在 React 组件中使用 App.useApp() 获取 message 实例并传入
+ * 如果不传入，将使用静态 API（会有弃用警告）
  */
 
 /**
@@ -48,50 +53,72 @@ export const handleFirebaseError = (error: any): string => {
 
 /**
  * Show error message
+ * @param error - Error object
+ * @param customMessage - Custom error message (optional)
+ * @param messageInstance - Message instance from App.useApp() (optional, recommended)
  */
-export const showError = (error: any, customMessage?: string): void => {
+export const showError = (
+  error: any, 
+  customMessage?: string,
+  messageInstance?: MessageInstance
+): void => {
   const errorMessage = customMessage || handleFirebaseError(error);
-  message.error(errorMessage);
+  const msgApi = messageInstance || staticMessage;
+  msgApi.error(errorMessage);
   globalSystemService.logError(error instanceof Error ? error : new Error(String(error)));
 };
 
 /**
  * Show success message
+ * @param msg - Success message
+ * @param messageInstance - Message instance from App.useApp() (optional, recommended)
  */
-export const showSuccess = (msg: string): void => {
-  message.success(msg);
+export const showSuccess = (msg: string, messageInstance?: MessageInstance): void => {
+  const msgApi = messageInstance || staticMessage;
+  msgApi.success(msg);
 };
 
 /**
  * Show warning message
+ * @param msg - Warning message
+ * @param messageInstance - Message instance from App.useApp() (optional, recommended)
  */
-export const showWarning = (msg: string): void => {
-  message.warning(msg);
+export const showWarning = (msg: string, messageInstance?: MessageInstance): void => {
+  const msgApi = messageInstance || staticMessage;
+  msgApi.warning(msg);
 };
 
 /**
  * Show info message
+ * @param msg - Info message
+ * @param messageInstance - Message instance from App.useApp() (optional, recommended)
  */
-export const showInfo = (msg: string): void => {
-  message.info(msg);
+export const showInfo = (msg: string, messageInstance?: MessageInstance): void => {
+  const msgApi = messageInstance || staticMessage;
+  msgApi.info(msg);
 };
 
 /**
  * Handle async operation with error handling
+ * @param operation - Async operation to execute
+ * @param successMessage - Success message (optional)
+ * @param errorMessage - Error message (optional)
+ * @param messageInstance - Message instance from App.useApp() (optional, recommended)
  */
 export const handleAsyncOperation = async <T>(
   operation: () => Promise<T>,
   successMessage?: string,
-  errorMessage?: string
+  errorMessage?: string,
+  messageInstance?: MessageInstance
 ): Promise<T | null> => {
   try {
     const result = await operation();
     if (successMessage) {
-      showSuccess(successMessage);
+      showSuccess(successMessage, messageInstance);
     }
     return result;
   } catch (error) {
-    showError(error, errorMessage);
+    showError(error, errorMessage, messageInstance);
     return null;
   }
 };

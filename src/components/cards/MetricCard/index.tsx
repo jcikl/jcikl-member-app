@@ -242,7 +242,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <Card
       className={`metric-card ${onClick ? 'metric-card--clickable' : ''} ${className}`}
       onClick={onClick}
-      bordered={false}
+      variant="borderless"
       hoverable={!!onClick}
       loading={loading}
     >

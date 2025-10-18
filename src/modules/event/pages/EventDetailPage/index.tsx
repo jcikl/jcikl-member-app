@@ -327,6 +327,13 @@ const EventDetailPage: React.FC = () => {
                             ? globalDateService.formatDate(event.pricing.earlyBirdDeadline, 'display')
                             : '-'}
                         </Descriptions.Item>
+                        {event.financialAccountName && (
+                          <Descriptions.Item label="财务账户" span={2}>
+                            <Tag color="blue" icon={<DollarOutlined />}>
+                              {event.financialAccountName}
+                            </Tag>
+                          </Descriptions.Item>
+                        )}
                       </Descriptions>
                     </Card>
                   )}

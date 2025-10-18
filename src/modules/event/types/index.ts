@@ -104,7 +104,8 @@ export interface Event extends BaseEntity {
   // Pricing (4-tier system)
   pricing: EventPricing;
   isFree: boolean;
-  financialAccount?: string;   // 项目财务户口匹配
+  financialAccount?: string;   // 项目财务户口匹配 (FinanceEvent ID)
+  financialAccountName?: string; // 财务账户名称（用于显示）
   
   // Organizers & Contacts
   organizerId: string;
@@ -254,7 +255,8 @@ export interface EventFormData {
   committeePrice?: number;
   earlyBirdDeadline?: string;
   isFree?: boolean;
-  financialAccount?: string;   // 项目财务户口匹配
+  financialAccount?: string;   // 项目财务户口匹配 (FinanceEvent ID)
+  financialAccountName?: string; // 财务账户名称（用于显示）
   
   // Organizers
   organizerId?: string;

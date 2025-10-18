@@ -34,7 +34,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   };
 
   return (
-    <Card loading={loading} bordered={false} className="stat-card">
+    <Card loading={loading} variant="borderless" className="stat-card">
       <Statistic
         title={title}
         value={value}

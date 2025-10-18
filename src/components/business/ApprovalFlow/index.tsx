@@ -162,7 +162,7 @@ export const ApprovalFlow: React.FC<ApprovalFlowProps> = ({
   }));
 
   return (
-    <Card className={`approval-flow ${className}`} bordered={false}>
+    <Card className={`approval-flow ${className}`} variant="borderless">
       {/* 流程步骤 */}
       <Steps
         current={flowData.currentNodeIndex}

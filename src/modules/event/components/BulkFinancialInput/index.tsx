@@ -359,8 +359,8 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   
   const renderRowsSection = (rows: BulkInputRow[], type: 'income' | 'expense', startSn: number) => {
     return rows.map((row, index) => (
-      <div key={row.id} className="bulk-input-row">
-        <Row gutter={8} align="middle">
+      <div key={row.id} className="bulk-input-row" style={{ marginBottom: '2px' }}>
+        <Row gutter={4} align="middle">
           <Col span={2}>
             <div className="row-number">{startSn + index}</div>
           </Col>
@@ -437,21 +437,21 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
       currentSn += rows.length;
       
       return (
-        <div key={category} className="category-group" style={{ marginBottom: '16px' }}>
+        <div key={category} className="category-group" style={{ marginBottom: '8px' }}>
           {/* Category Header */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between',
-            padding: '8px 12px',
+            padding: '4px 8px',
             background: type === 'income' ? '#f6ffed' : '#fff1f0',
-            borderRadius: '4px',
+            borderRadius: '3px',
             border: `1px solid ${type === 'income' ? '#b7eb8f' : '#ffa39e'}`,
-            marginBottom: '8px'
+            marginBottom: '4px'
           }}>
-            <Space>
-              <span style={{ fontSize: '16px' }}>{categoryInfo.icon}</span>
-              <Text strong style={{ fontSize: '14px' }}>
+            <Space size="small">
+              <span style={{ fontSize: '14px' }}>{categoryInfo.icon}</span>
+              <Text strong style={{ fontSize: '13px' }}>
                 {categoryInfo.label}
               </Text>
               <Button
@@ -468,11 +468,11 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                 style={{ backgroundColor: type === 'income' ? '#52c41a' : '#ff4d4f' }}
               />
             </Space>
-            <Space>
-              <Text type="secondary" style={{ fontSize: '12px' }}>小计:</Text>
+            <Space size="small">
+              <Text type="secondary" style={{ fontSize: '11px' }}>小计:</Text>
               <Text strong style={{ 
                 color: type === 'income' ? '#52c41a' : '#ff4d4f',
-                fontSize: '14px'
+                fontSize: '13px'
               }}>
                 RM {subtotal.toFixed(2)}
               </Text>
@@ -524,7 +524,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
       <Form form={form} layout="vertical">
         {/* Table Header */}
         <div className="bulk-input-header">
-          <Row gutter={8}>
+          <Row gutter={4}>
             <Col span={2}><strong>Sn</strong></Col>
             <Col span={7}><strong>Description</strong></Col>
             <Col span={4}><strong>Remark</strong></Col>
@@ -534,7 +534,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
           </Row>
         </div>
 
-        <Divider style={{ margin: '8px 0' }} />
+        <Divider style={{ margin: '4px 0' }} />
 
         {/* Incomes Section */}
         <div className="income-section">
@@ -542,15 +542,15 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between',
-            marginBottom: '12px',
-            padding: '8px 12px',
+            marginBottom: '6px',
+            padding: '6px 10px',
             background: '#f0f9ff',
-            borderRadius: '6px',
+            borderRadius: '4px',
             border: '1px solid #91d5ff'
           }}>
-            <Space>
-              <RiseOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-              <Text strong style={{ color: '#52c41a', fontSize: '14px' }}>
+            <Space size="small">
+              <RiseOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
+              <Text strong style={{ color: '#52c41a', fontSize: '13px' }}>
                 Incomes (收入)
               </Text>
               <Badge 
@@ -576,7 +576,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
           </div>
         </div>
 
-        <Divider style={{ margin: '16px 0' }} />
+        <Divider style={{ margin: '8px 0' }} />
 
         {/* Expenses Section */}
         <div className="expense-section">
@@ -584,15 +584,15 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between',
-            marginBottom: '12px',
-            padding: '8px 12px',
+            marginBottom: '6px',
+            padding: '6px 10px',
             background: '#fff1f0',
-            borderRadius: '6px',
+            borderRadius: '4px',
             border: '1px solid #ffa39e'
           }}>
-            <Space>
-              <FallOutlined style={{ color: '#ff4d4f', fontSize: '16px' }} />
-              <Text strong style={{ color: '#ff4d4f', fontSize: '14px' }}>
+            <Space size="small">
+              <FallOutlined style={{ color: '#ff4d4f', fontSize: '14px' }} />
+              <Text strong style={{ color: '#ff4d4f', fontSize: '13px' }}>
                 Expenses (支出)
               </Text>
               <Badge 
@@ -618,12 +618,12 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
           </div>
         </div>
 
-        <Divider style={{ margin: '16px 0' }} />
+        <Divider style={{ margin: '8px 0' }} />
 
         {/* Summary and Actions */}
-        <Row gutter={16} align="middle">
+        <Row gutter={8} align="middle">
           <Col span={16}>
-            <Row gutter={16}>
+            <Row gutter={8}>
               <Col span={8}>
                 <Statistic
                   title="收入小计"
@@ -632,7 +632,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                   prefix="RM"
                   valueStyle={{ 
                     color: '#52c41a',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     fontWeight: 600
                   }}
                 />
@@ -645,7 +645,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                   prefix="RM"
                   valueStyle={{ 
                     color: '#ff4d4f',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     fontWeight: 600
                   }}
                 />
@@ -658,7 +658,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                   prefix="RM"
                   valueStyle={{ 
                     color: totalIncome - totalExpense >= 0 ? '#52c41a' : '#ff4d4f',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     fontWeight: 600
                   }}
                 />
@@ -673,7 +673,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                 onClick={handleSave}
                 loading={loading}
                 disabled={totalValidRecords === 0}
-                size="large"
+                size="middle"
               >
                 保存全部
               </Button>
@@ -683,14 +683,14 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
 
         {/* Validation Summary */}
         <div className="validation-summary">
-          <Row gutter={16}>
+          <Row gutter={8}>
             <Col span={24}>
-              <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
                 有效记录: {totalValidRecords} / {totalRecords} 条 |
                 收入类别: {Object.keys(groupedIncomeRows).length} |
                 支出类别: {Object.keys(groupedExpenseRows).length}
                 {totalValidRecords === 0 && (
-                  <span style={{ color: '#ff4d4f', marginLeft: '8px' }}>
+                  <span style={{ color: '#ff4d4f', marginLeft: '6px' }}>
                     (至少需要一条有效记录)
                   </span>
                 )}

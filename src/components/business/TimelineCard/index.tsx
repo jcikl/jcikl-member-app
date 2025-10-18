@@ -257,7 +257,7 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
   };
 
   return (
-    <Card className={`timeline-card ${className}`} bordered={false}>
+    <Card className={`timeline-card ${className}`} variant="borderless">
       {renderFilters()}
       <div className="timeline-card__content">
         {renderContent()}

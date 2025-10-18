@@ -13,8 +13,8 @@ import {
   Card,
   Row,
   Col,
-  message,
   Upload,
+  App,
 } from 'antd';
 import { SaveOutlined, CloseOutlined, UploadOutlined } from '@ant-design/icons';
 import type { Event, EventFormData } from '../../types';
@@ -49,6 +49,7 @@ const EventForm: React.FC<EventFormProps> = ({
   loading = false,
 }) => {
   const [form] = Form.useForm();
+  const { message } = App.useApp();
 
   useEffect(() => {
     if (initialValues) {
@@ -131,31 +132,40 @@ const EventForm: React.FC<EventFormProps> = ({
         </Form.Item>
 
         <Form.Item
-          label="活动海报"
-          name="posterImage"
+          noStyle
+          shouldUpdate={(prevValues, currentValues) => 
+            prevValues.posterImage !== currentValues.posterImage
+          }
         >
-          <Upload
-            listType="picture-card"
-            showUploadList={true}
-            beforeUpload={() => false}
-            onChange={(info) => {
-              if (info.file) {
-                // 这里应该上传到云存储并获取URL
-                form.setFieldsValue({ posterImage: info.file.name });
-              }
-            }}
-            fileList={form.getFieldValue('posterImage') ? [{
-              uid: '1',
-              name: form.getFieldValue('posterImage'),
-              status: 'done',
-              url: form.getFieldValue('posterImage'),
-            }] : []}
-          >
-            <div>
-              <UploadOutlined />
-              <div style={{ marginTop: 8 }}>上传海报</div>
-            </div>
-          </Upload>
+          {({ getFieldValue, setFieldsValue }) => (
+            <Form.Item
+              label="活动海报"
+              name="posterImage"
+            >
+              <Upload
+                listType="picture-card"
+                showUploadList={true}
+                beforeUpload={() => false}
+                onChange={(info) => {
+                  if (info.file) {
+                    // 这里应该上传到云存储并获取URL
+                    setFieldsValue({ posterImage: info.file.name });
+                  }
+                }}
+                fileList={getFieldValue('posterImage') ? [{
+                  uid: '1',
+                  name: getFieldValue('posterImage'),
+                  status: 'done',
+                  url: getFieldValue('posterImage'),
+                }] : []}
+              >
+                <div>
+                  <UploadOutlined />
+                  <div style={{ marginTop: 8 }}>上传海报</div>
+                </div>
+              </Upload>
+            </Form.Item>
+          )}
         </Form.Item>
 
         <Row gutter={16}>

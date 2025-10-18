@@ -121,7 +121,7 @@ export const MemberProfileCard: React.FC<MemberProfileCardProps> = ({
   const statusConfig = getStatusConfig();
 
   return (
-    <Card className={`member-profile-card member-profile-card--${mode} ${className}`} bordered={false}>
+    <Card className={`member-profile-card member-profile-card--${mode} ${className}`} variant="borderless">
       {/* 头部区域 */}
       <div className="member-profile-card__header">
         <div className="member-profile-card__avatar-wrapper">
