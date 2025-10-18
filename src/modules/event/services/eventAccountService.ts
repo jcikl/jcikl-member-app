@@ -432,7 +432,8 @@ export const getEventAccountTransactions = async (
     const accountDoc = await getDoc(accountRef);
     
     if (!accountDoc.exists()) {
-      throw new Error('Event account not found');
+      // Account doesn't exist yet, return empty array
+      return [];
     }
     
     const accountData = accountDoc.data() as EventAccount;
@@ -447,7 +448,8 @@ export const getEventAccountTransactions = async (
       'eventAccountService.getEventAccountTransactions',
       { error: error.message, accountId }
     );
-    throw error;
+    // Return empty array instead of throwing error
+    return [];
   }
 };
 

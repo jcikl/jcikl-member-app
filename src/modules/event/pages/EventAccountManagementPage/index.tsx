@@ -114,7 +114,6 @@ const EventAccountManagementPage: React.FC = () => {
   useEffect(() => {
     if (selectedEventId) {
       loadEventAccount();
-      loadFinancialRecords();
     }
   }, [selectedEventId]);
 
@@ -238,10 +237,10 @@ const EventAccountManagementPage: React.FC = () => {
   };
 
   const loadFinancialRecords = async () => {
-    if (!selectedEventId) return;
+    if (!account) return;
 
     try {
-      const records = await getEventAccountTransactions(selectedEventId);
+      const records = await getEventAccountTransactions(account.id);
       // Convert EventAccountTransaction to TransactionRecord
       const convertedRecords: TransactionRecord[] = records.map((record, index) => ({
         id: record.id,
