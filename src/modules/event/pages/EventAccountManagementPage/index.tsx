@@ -88,6 +88,7 @@ interface TransactionRecord {
 interface BulkInputRow {
   id: string;
   type: 'income' | 'expense';
+  category: string;
   description: string;
   remark: string;
   amount: number;
@@ -285,7 +286,7 @@ const EventAccountManagementPage: React.FC = () => {
         amount: record.amount,
         paymentDate: record.paymentDate,
         transactionType: record.type as EventAccountTransactionType,
-        category: record.type === 'income' ? 'ticketFee' : 'venue',
+        category: record.category,
         isForecast: true,
         forecastConfidence: 'medium' as 'high' | 'medium' | 'low',
       }));

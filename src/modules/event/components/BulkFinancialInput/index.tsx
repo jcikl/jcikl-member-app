@@ -5,7 +5,7 @@
  * 用于活动账户页面的左侧卡片
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Form,
@@ -20,6 +20,8 @@ import {
   Divider,
   DatePicker,
   Typography,
+  Select,
+  Badge,
 } from 'antd';
 import {
   PlusOutlined,
@@ -36,9 +38,27 @@ import { globalDateService } from '@/config/globalDateSettings';
 import dayjs from 'dayjs';
 import './BulkFinancialInput.css';
 
+// Predefined category options
+const INCOME_CATEGORIES = [
+  { label: 'Ticket', value: 'ticket', icon: '🎫' },
+  { label: 'Sponsors', value: 'sponsors', icon: '🤝' },
+  { label: 'Grant', value: 'grant', icon: '💼' },
+  { label: 'Donation', value: 'donation', icon: '🎁' },
+  { label: 'Other', value: 'other', icon: '📦' },
+];
+
+const EXPENSE_CATEGORIES = [
+  { label: 'Venue', value: 'venue', icon: '🏢' },
+  { label: 'F&B', value: 'fnb', icon: '🍽️' },
+  { label: 'Marketing', value: 'marketing', icon: '📢' },
+  { label: 'Transportation', value: 'transportation', icon: '🚗' },
+  { label: 'Misc', value: 'misc', icon: '📋' },
+];
+
 interface BulkInputRow {
   id: string;
   type: 'income' | 'expense';
+  category: string;
   description: string;
   remark: string;
   amount: number;
@@ -65,6 +85,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     const initialIncomeRows = Array.from({ length: 3 }, (_, index) => ({
       id: `income-${index + 1}`,
       type: 'income' as const,
+      category: INCOME_CATEGORIES[0].value,
       description: '',
       remark: '',
       amount: 0,
@@ -74,6 +95,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     const initialExpenseRows = Array.from({ length: 3 }, (_, index) => ({
       id: `expense-${index + 1}`,
       type: 'expense' as const,
+      category: EXPENSE_CATEGORIES[0].value,
       description: '',
       remark: '',
       amount: 0,
@@ -92,10 +114,15 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     setTotalExpense(expenseTotal);
   }, [incomeRows, expenseRows]);
 
-  const handleAddRow = (type: 'income' | 'expense') => {
+  const handleAddRow = (type: 'income' | 'expense', category?: string) => {
+    const defaultCategory = type === 'income' 
+      ? (category || INCOME_CATEGORIES[0].value)
+      : (category || EXPENSE_CATEGORIES[0].value);
+      
     const newRow: BulkInputRow = {
       id: `${type}-${Date.now()}`,
       type,
+      category: defaultCategory,
       description: '',
       remark: '',
       amount: 0,
@@ -128,6 +155,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   const handleClearAll = () => {
     setIncomeRows(incomeRows.map(row => ({
       ...row,
+      category: row.category || INCOME_CATEGORIES[0].value,
       description: '',
       remark: '',
       amount: 0,
@@ -136,6 +164,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     
     setExpenseRows(expenseRows.map(row => ({
       ...row,
+      category: row.category || EXPENSE_CATEGORIES[0].value,
       description: '',
       remark: '',
       amount: 0,
@@ -190,28 +219,80 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   const validateRow = (row: BulkInputRow) => {
     return row.description.trim() && row.amount > 0;
   };
+
+  // Group rows by category
+  const groupedIncomeRows = useMemo(() => {
+    const grouped: Record<string, BulkInputRow[]> = {};
+    incomeRows.forEach(row => {
+      if (!grouped[row.category]) {
+        grouped[row.category] = [];
+      }
+      grouped[row.category].push(row);
+    });
+    return grouped;
+  }, [incomeRows]);
+
+  const groupedExpenseRows = useMemo(() => {
+    const grouped: Record<string, BulkInputRow[]> = {};
+    expenseRows.forEach(row => {
+      if (!grouped[row.category]) {
+        grouped[row.category] = [];
+      }
+      grouped[row.category].push(row);
+    });
+    return grouped;
+  }, [expenseRows]);
+
+  // Calculate category subtotals
+  const getCategorySubtotal = (rows: BulkInputRow[]) => {
+    return rows.reduce((sum, row) => sum + (row.amount || 0), 0);
+  };
+
+  const getCategoryLabel = (categoryValue: string, type: 'income' | 'expense') => {
+    const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const category = categories.find(c => c.value === categoryValue);
+    return category || { label: categoryValue, icon: '📦', value: categoryValue };
+  };
   
   const renderRowsSection = (rows: BulkInputRow[], type: 'income' | 'expense', startSn: number) => {
+    const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    
     return rows.map((row, index) => (
       <div key={row.id} className="bulk-input-row">
         <Row gutter={8} align="middle">
           <Col span={2}>
             <div className="row-number">{startSn + index}</div>
           </Col>
-          <Col span={6}>
+          <Col span={4}>
+            <Select
+              style={{ width: '100%' }}
+              value={row.category}
+              onChange={(value) => handleFieldChange(row.id, 'category', value, type)}
+              size="small"
+            >
+              {categories.map(cat => (
+                <Select.Option key={cat.value} value={cat.value}>
+                  {cat.icon} {cat.label}
+                </Select.Option>
+              ))}
+            </Select>
+          </Col>
+          <Col span={5}>
             <Input
               placeholder="输入描述"
               value={row.description}
               onChange={(e) => handleFieldChange(row.id, 'description', e.target.value, type)}
               maxLength={50}
+              size="small"
             />
           </Col>
-          <Col span={4}>
+          <Col span={3}>
             <Input
               placeholder="备注"
               value={row.remark}
               onChange={(e) => handleFieldChange(row.id, 'remark', e.target.value, type)}
               maxLength={100}
+              size="small"
             />
           </Col>
           <Col span={4}>
@@ -223,9 +304,10 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
               prefix="RM"
               value={row.amount}
               onChange={(value) => handleFieldChange(row.id, 'amount', value || 0, type)}
+              size="small"
             />
           </Col>
-          <Col span={6}>
+          <Col span={4}>
             <DatePicker
               style={{ width: '100%' }}
               format="DD-MMM-YYYY"
@@ -234,6 +316,7 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
                 date ? globalDateService.formatDate(date.toDate(), 'api') : '', type
               )}
               placeholder="选择日期"
+              size="small"
             />
           </Col>
           <Col span={2}>
@@ -249,6 +332,73 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         </Row>
       </div>
     ));
+  };
+
+  // Render grouped rows by category
+  const renderGroupedSection = (
+    groupedRows: Record<string, BulkInputRow[]>,
+    type: 'income' | 'expense'
+  ) => {
+    let currentSn = 1;
+    const allRowsBeforeThis = type === 'income' ? 0 : incomeRows.length;
+    
+    return Object.entries(groupedRows).map(([category, rows]) => {
+      const categoryInfo = getCategoryLabel(category, type);
+      const subtotal = getCategorySubtotal(rows);
+      const startSn = allRowsBeforeThis + currentSn;
+      const sectionRows = renderRowsSection(rows, type, startSn);
+      currentSn += rows.length;
+      
+      return (
+        <div key={category} className="category-group" style={{ marginBottom: '16px' }}>
+          {/* Category Header */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            padding: '8px 12px',
+            background: type === 'income' ? '#f6ffed' : '#fff1f0',
+            borderRadius: '4px',
+            border: `1px solid ${type === 'income' ? '#b7eb8f' : '#ffa39e'}`,
+            marginBottom: '8px'
+          }}>
+            <Space>
+              <span style={{ fontSize: '16px' }}>{categoryInfo.icon}</span>
+              <Text strong style={{ fontSize: '14px' }}>
+                {categoryInfo.label}
+              </Text>
+              <Badge 
+                count={rows.length} 
+                style={{ backgroundColor: type === 'income' ? '#52c41a' : '#ff4d4f' }}
+              />
+            </Space>
+            <Space>
+              <Text type="secondary" style={{ fontSize: '12px' }}>小计:</Text>
+              <Text strong style={{ 
+                color: type === 'income' ? '#52c41a' : '#ff4d4f',
+                fontSize: '14px'
+              }}>
+                RM {subtotal.toFixed(2)}
+              </Text>
+              <Button
+                icon={<PlusOutlined />}
+                onClick={() => handleAddRow(type, category)}
+                size="small"
+                type="link"
+                style={{ color: type === 'income' ? '#52c41a' : '#ff4d4f' }}
+              >
+                添加
+              </Button>
+            </Space>
+          </div>
+          
+          {/* Category Rows */}
+          <div className="category-rows">
+            {sectionRows}
+          </div>
+        </div>
+      );
+    });
   };
 
   const totalValidRecords = [...incomeRows, ...expenseRows].filter(validateRow).length;
@@ -280,10 +430,11 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
         <div className="bulk-input-header">
           <Row gutter={8}>
             <Col span={2}><strong>Sn</strong></Col>
-            <Col span={6}><strong>Description</strong></Col>
-            <Col span={4}><strong>Remark</strong></Col>
+            <Col span={4}><strong>Category</strong></Col>
+            <Col span={5}><strong>Description</strong></Col>
+            <Col span={3}><strong>Remark</strong></Col>
             <Col span={4}><strong>Amount</strong></Col>
-            <Col span={6}><strong>Payment Date</strong></Col>
+            <Col span={4}><strong>Payment Date</strong></Col>
             <Col span={2}><strong>操作</strong></Col>
           </Row>
         </div>
@@ -307,19 +458,16 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
               <Text strong style={{ color: '#52c41a', fontSize: '14px' }}>
                 Incomes (收入)
               </Text>
+              <Badge 
+                count={Object.keys(groupedIncomeRows).length} 
+                showZero
+                style={{ backgroundColor: '#52c41a' }}
+                title="类别数量"
+              />
             </Space>
-            <Button
-              icon={<PlusOutlined />}
-              onClick={() => handleAddRow('income')}
-              size="small"
-              type="link"
-              style={{ color: '#52c41a' }}
-            >
-              添加行
-            </Button>
           </div>
           <div className="bulk-input-rows">
-            {renderRowsSection(incomeRows, 'income', 1)}
+            {renderGroupedSection(groupedIncomeRows, 'income')}
           </div>
         </div>
 
@@ -342,19 +490,16 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
               <Text strong style={{ color: '#ff4d4f', fontSize: '14px' }}>
                 Expenses (支出)
               </Text>
+              <Badge 
+                count={Object.keys(groupedExpenseRows).length} 
+                showZero
+                style={{ backgroundColor: '#ff4d4f' }}
+                title="类别数量"
+              />
             </Space>
-            <Button
-              icon={<PlusOutlined />}
-              onClick={() => handleAddRow('expense')}
-              size="small"
-              type="link"
-              style={{ color: '#ff4d4f' }}
-            >
-              添加行
-            </Button>
           </div>
           <div className="bulk-input-rows">
-            {renderRowsSection(expenseRows, 'expense', incomeRows.length + 1)}
+            {renderGroupedSection(groupedExpenseRows, 'expense')}
           </div>
         </div>
 
@@ -426,7 +571,9 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
           <Row gutter={16}>
             <Col span={24}>
               <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                有效记录: {totalValidRecords} / {totalRecords} 条
+                有效记录: {totalValidRecords} / {totalRecords} 条 |
+                收入类别: {Object.keys(groupedIncomeRows).length} |
+                支出类别: {Object.keys(groupedExpenseRows).length}
                 {totalValidRecords === 0 && (
                   <span style={{ color: '#ff4d4f', marginLeft: '8px' }}>
                     (至少需要一条有效记录)
