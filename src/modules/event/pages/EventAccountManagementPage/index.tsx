@@ -43,16 +43,23 @@ import { useAuthStore } from '@/stores/authStore';
 import { PageHeader } from '@/components/common/PageHeader';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import BulkFinancialInput from '../../components/BulkFinancialInput';
-import FinancialRecordsList from '../../components/FinancialRecordsList';
+import ActivityFinancialPlan from '../../components/ActivityFinancialPlan';
+import BankTransactionList from '../../components/BankTransactionList';
+import AccountConsolidation from '../../components/AccountConsolidation';
 import {
   getOrCreateEventAccount,
   addEventAccountTransaction,
   updateEventAccountBudget,
-  addBulkEventAccountTransactions,
   getEventAccountTransactions,
 } from '../../services/eventAccountService';
 import { getEvents } from '../../services/eventService';
+import { 
+  getEventAccountPlans, 
+  addEventAccountPlan,
+  updateEventAccountPlan,
+  deleteEventAccountPlan,
+} from '../../services/eventAccountPlanService';
+import { getTransactionsByEventId } from '@/modules/finance/services/transactionService';
 import type {
   EventAccount,
   EventAccountTransactionType,
@@ -62,6 +69,9 @@ import {
   EVENT_INCOME_CATEGORIES,
   EVENT_EXPENSE_CATEGORIES,
 } from '../../types';
+import type { FinancialPlanItem } from '../../components/ActivityFinancialPlan';
+import type { BankTransaction } from '../../components/BankTransactionList';
+import type { ConsolidationData, CategoryComparison } from '../../components/AccountConsolidation';
 import './styles.css';
 
 const { Option } = Select;
@@ -85,16 +95,6 @@ interface TransactionRecord {
   updatedAt: string;
 }
 
-interface BulkInputRow {
-  id: string;
-  type: 'income' | 'expense';
-  category: string;
-  description: string;
-  remark: string;
-  amount: number;
-  paymentDate: string;
-}
-
 const EventAccountManagementPage: React.FC = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -107,7 +107,12 @@ const EventAccountManagementPage: React.FC = () => {
   const [budgetForm] = Form.useForm();
   const [activeTab, setActiveTab] = useState<'actual' | 'forecast' | 'all'>('all');
   const [financialRecords, setFinancialRecords] = useState<TransactionRecord[]>([]);
-  const [bulkSaving, setBulkSaving] = useState(false);
+  
+  // 新增：财务计划相关状态
+  const [planItems, setPlanItems] = useState<FinancialPlanItem[]>([]);
+  const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
+  const [consolidationData, setConsolidationData] = useState<ConsolidationData | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -118,6 +123,21 @@ const EventAccountManagementPage: React.FC = () => {
       loadEventAccount();
     }
   }, [selectedEventId]);
+
+  // 加载财务计划和交易记录
+  useEffect(() => {
+    if (account && selectedEventId) {
+      loadPlans();
+      loadBankTransactions();
+    }
+  }, [account, selectedEventId]);
+
+  // 自动计算对比数据
+  useEffect(() => {
+    if (planItems.length > 0 || bankTransactions.length > 0) {
+      calculateConsolidation();
+    }
+  }, [planItems, bankTransactions]);
 
   const loadEvents = async () => {
     try {
@@ -274,34 +294,164 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
-  const handleBulkSave = async (records: BulkInputRow[]) => {
-    if (!user || !account) return;
-
+  // 加载财务计划
+  const loadPlans = async () => {
+    if (!account) return;
+    
     try {
-      setBulkSaving(true);
-
-      const transactions = records.map(record => ({
-        description: record.description,
-        remark: record.remark,
-        amount: record.amount,
-        paymentDate: record.paymentDate,
-        transactionType: record.type as EventAccountTransactionType,
-        category: record.category,
-        isForecast: true,
-        forecastConfidence: 'medium' as 'high' | 'medium' | 'low',
-      }));
-
-      await addBulkEventAccountTransactions(account.id, transactions, user.id);
-      
-      // Reload account and records
-      await loadEventAccount();
-      await loadFinancialRecords();
-      
-    } catch (error: any) {
-      throw error;
+      setPlanLoading(true);
+      const plans = await getEventAccountPlans(account.id);
+      setPlanItems(plans);
+    } catch (error) {
+      message.error('加载财务计划失败');
+      console.error(error);
     } finally {
-      setBulkSaving(false);
+      setPlanLoading(false);
     }
+  };
+
+  // 加载银行交易记录
+  const loadBankTransactions = async () => {
+    if (!selectedEventId) return;
+    
+    try {
+      const transactions = await getTransactionsByEventId(selectedEventId);
+      
+      // 转换为 BankTransaction 格式
+      const bankTxns: BankTransaction[] = transactions.map(txn => ({
+        id: txn.id,
+        transactionDate: txn.transactionDate,
+        transactionNumber: txn.transactionNumber,
+        transactionType: txn.transactionType as 'income' | 'expense',
+        description: txn.mainDescription,
+        amount: txn.amount,
+        bankAccount: txn.bankAccountId,
+        status: txn.status === 'completed' ? 'verified' : 'pending',
+        category: txn.confirmedCategory || txn.autoMatchedCategory || txn.category,
+        payerPayee: txn.payerPayee,
+        paymentMethod: txn.paymentMethod,
+        receiptNumber: txn.receiptNumber,
+        invoiceNumber: txn.invoiceNumber,
+        createdAt: txn.createdAt,
+      }));
+      
+      setBankTransactions(bankTxns);
+    } catch (error) {
+      console.error('Failed to load bank transactions:', error);
+      setBankTransactions([]);
+    }
+  };
+
+  // 计算对比数据
+  const calculateConsolidation = () => {
+    if (planItems.length === 0 && bankTransactions.length === 0) {
+      setConsolidationData(null);
+      return;
+    }
+    
+    // 按类别分组计算
+    const incomeComparison = calculateCategoryComparison(
+      planItems.filter(p => p.type === 'income'),
+      bankTransactions.filter(t => t.transactionType === 'income')
+    );
+    
+    const expenseComparison = calculateCategoryComparison(
+      planItems.filter(p => p.type === 'expense'),
+      bankTransactions.filter(t => t.transactionType === 'expense')
+    );
+    
+    const totalIncomeForecast = planItems
+      .filter(p => p.type === 'income')
+      .reduce((sum, item) => sum + item.amount, 0);
+    
+    const totalIncomeActual = bankTransactions
+      .filter(t => t.transactionType === 'income')
+      .reduce((sum, txn) => sum + txn.amount, 0);
+    
+    const totalExpenseForecast = planItems
+      .filter(p => p.type === 'expense')
+      .reduce((sum, item) => sum + item.amount, 0);
+    
+    const totalExpenseActual = bankTransactions
+      .filter(t => t.transactionType === 'expense')
+      .reduce((sum, txn) => sum + txn.amount, 0);
+    
+    setConsolidationData({
+      incomeComparison,
+      expenseComparison,
+      totalIncomeForecast,
+      totalIncomeActual,
+      totalExpenseForecast,
+      totalExpenseActual,
+      profitForecast: totalIncomeForecast - totalExpenseForecast,
+      profitActual: totalIncomeActual - totalExpenseActual,
+    });
+  };
+
+  // 按类别对比计算
+  const calculateCategoryComparison = (
+    planItems: FinancialPlanItem[],
+    transactions: BankTransaction[]
+  ): CategoryComparison[] => {
+    const categories = Array.from(new Set([
+      ...planItems.map(p => p.category),
+      ...transactions.map(t => t.category).filter(Boolean) as string[],
+    ]));
+    
+    return categories.map(category => {
+      const forecast = planItems
+        .filter(p => p.category === category)
+        .reduce((sum, p) => sum + p.amount, 0);
+      
+      const actual = transactions
+        .filter(t => t.category === category)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const variance = actual - forecast;
+      const percentage = forecast > 0 ? (actual / forecast) * 100 : 0;
+      
+      let status: 'completed' | 'partial' | 'pending' | 'exceeded';
+      if (actual === 0) {
+        status = 'pending';
+      } else if (actual >= forecast) {
+        status = 'exceeded';
+      } else if (percentage >= 100) {
+        status = 'completed';
+      } else if (percentage >= 50) {
+        status = 'partial';
+      } else {
+        status = 'pending';
+      }
+      
+      return {
+        category: category || 'uncategorized',
+        categoryLabel: category || '未分类',
+        forecast,
+        actual,
+        variance,
+        percentage,
+        status,
+      };
+    });
+  };
+
+  // CRUD Handlers for Financial Plans
+  const handleAddPlan = async (item: Omit<FinancialPlanItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
+    if (!account || !user) return;
+    await addEventAccountPlan(account.id, item, user.id);
+    await loadPlans();
+  };
+
+  const handleUpdatePlan = async (id: string, updates: Partial<FinancialPlanItem>) => {
+    if (!user) return;
+    await updateEventAccountPlan(id, updates, user.id);
+    await loadPlans();
+  };
+
+  const handleDeletePlan = async (id: string) => {
+    if (!user) return;
+    await deleteEventAccountPlan(id, user.id);
+    await loadPlans();
   };
 
   const filteredTransactions = financialRecords.filter((t: TransactionRecord) => {
@@ -613,26 +763,37 @@ const EventAccountManagementPage: React.FC = () => {
                   </span>
                 ),
                 children: (
-                  <div className="forecast-tab-content">
-                    <Row gutter={[16, 16]}>
-                      <Col xs={24} lg={12}>
-                        <BulkFinancialInput
-                          onSave={handleBulkSave}
-                          loading={bulkSaving}
-                        />
-                      </Col>
-                      <Col xs={24} lg={12}>
-                        <FinancialRecordsList
-                          records={financialRecords}
-                          loading={loading}
-                          onRefresh={loadFinancialRecords}
-                          onExport={() => {
-                            message.info('导出功能开发中...');
-                          }}
-                        />
-                      </Col>
-                    </Row>
-                  </div>
+                  <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    {/* 1. 活动财务计划 */}
+                    <ActivityFinancialPlan
+                      accountId={account?.id || ''}
+                      items={planItems}
+                      loading={planLoading}
+                      onAdd={handleAddPlan}
+                      onUpdate={handleUpdatePlan}
+                      onDelete={handleDeletePlan}
+                      onRefresh={loadPlans}
+                    />
+                    
+                    {/* 2. 银行交易记录 */}
+                    <BankTransactionList
+                      accountId={account?.id || ''}
+                      transactions={bankTransactions}
+                      loading={loading}
+                      onRefresh={loadBankTransactions}
+                      onExport={() => message.info('导出功能开发中...')}
+                    />
+                    
+                    {/* 3. 户口核对 */}
+                    {consolidationData && (
+                      <AccountConsolidation
+                        data={consolidationData}
+                        loading={loading}
+                        onExport={() => message.info('导出功能开发中...')}
+                        onGenerateReport={() => message.info('报表生成功能开发中...')}
+                      />
+                    )}
+                  </Space>
                 ),
               },
             ]}

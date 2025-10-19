@@ -95,6 +95,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           key: '/settings/global',
           label: '全局配置',
         },
+        {
+          key: '/settings/financial-categories',
+          label: '财务类别管理',
+        },
+        {
+          key: '/settings/initialization',
+          label: '系统初始化',
+        },
       ],
     },
     

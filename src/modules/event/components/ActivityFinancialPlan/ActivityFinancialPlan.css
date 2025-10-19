@@ -1,0 +1,30 @@
+/**
+ * Activity Financial Plan Component Styles
+ */
+
+.activity-financial-plan-card {
+  margin-bottom: 16px;
+}
+
+.activity-financial-plan-card .ant-card-head-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.activity-financial-plan-card .ant-statistic-title {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.activity-financial-plan-card .ant-statistic-content {
+  font-size: 20px;
+}
+
+.activity-financial-plan-card .ant-table-summary {
+  background: #fafafa;
+}
+
+.activity-financial-plan-card .ant-table-summary strong {
+  font-size: 14px;
+}
+

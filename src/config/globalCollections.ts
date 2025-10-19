@@ -35,6 +35,7 @@ export const GLOBAL_COLLECTIONS = {
   EVENT_REGISTRATIONS: 'eventRegistrations',
   EVENT_PARTICIPANTS: 'eventParticipants',
   EVENT_ACCOUNTS: 'eventAccounts', // 活动专用财务账户
+  EVENT_ACCOUNT_PLANS: 'eventAccountPlans', // 活动财务计划
 
   // ========== Permission Domain (权限域 - RBAC) ==========
   RBAC_PERMISSIONS: 'rbacPermissions',
@@ -69,6 +70,7 @@ export const GLOBAL_COLLECTIONS = {
   ONLINE_USERS_STATS: 'onlineUsersStats',
   PAGE_VIEWS: 'pageViews',
   PAGE_VIEWS_STATS: 'pageViewsStats',
+  FINANCIAL_CATEGORIES: 'financialCategories', // 财务类别管理
 
   // ========== Organizational Hierarchy (组织架构) ==========
   WORLD_REGIONS: 'worldRegions',

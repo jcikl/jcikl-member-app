@@ -53,6 +53,17 @@ export interface Transaction {
   allocatedAmount?: number;       // 已分配金额（父交易字段）
   unallocatedAmount?: number;     // 未分配金额（父交易字段）
   
+  // 🆕 Event Relation Fields (活动关联字段 - 方案C)
+  relatedEventId?: string;        // 关联的活动ID
+  relatedEventName?: string;      // 关联的活动名称
+  
+  // 🆕 Category Mapping Fields (类别映射字段 - 方案4)
+  autoMatchedCategory?: string;   // 系统自动匹配的类别
+  confirmedCategory?: string;     // 人工确认的类别
+  needsReview?: boolean;          // 是否需要审核
+  reviewedBy?: string;            // 审核人ID
+  reviewedAt?: string;            // 审核时间
+  
   createdAt: string;
   updatedAt: string;
 }

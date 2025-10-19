@@ -1,0 +1,22 @@
+/**
+ * Bank Transaction List Component Styles
+ */
+
+.bank-transaction-list-card {
+  margin-bottom: 16px;
+}
+
+.bank-transaction-list-card .ant-card-head-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.bank-transaction-list-card .ant-statistic-title {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.bank-transaction-list-card .ant-statistic-content {
+  font-size: 20px;
+}
+

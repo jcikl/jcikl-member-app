@@ -6,6 +6,8 @@ import RegisterPage from '@/pages/RegisterPage';
 import DashboardPage from '@/pages/DashboardPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import GlobalSettingsPage from '@/modules/system/pages/GlobalSettingsPage';
+import FinancialCategoryManagementPage from '@/modules/system/pages/FinancialCategoryManagementPage';
+import InitializationPage from '@/pages/InitializationPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
 import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage';
@@ -84,6 +86,14 @@ export const router = createBrowserRouter(
           {
             path: 'global',
             element: <GlobalSettingsPage />,
+          },
+          {
+            path: 'financial-categories',
+            element: <FinancialCategoryManagementPage />,
+          },
+          {
+            path: 'initialization',
+            element: <InitializationPage />,
           },
         ],
       },

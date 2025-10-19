@@ -1905,5 +1905,35 @@ export const batchSetCategory = async (
   return { successCount, failedCount };
 };
 
+/**
+ * 获取关联到特定活动的交易记录（方案C）
+ */
+export const getTransactionsByEventId = async (eventId: string): Promise<Transaction[]> => {
+  try {
+    const q = query(
+      collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
+      where('relatedEventId', '==', eventId),
+      orderBy('transactionDate', 'desc')
+    );
+
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      transactionDate: safeTimestampToISO(doc.data().transactionDate) || '',
+      createdAt: safeTimestampToISO(doc.data().createdAt) || '',
+      updatedAt: safeTimestampToISO(doc.data().updatedAt) || '',
+      approvedAt: doc.data().approvedAt ? safeTimestampToISO(doc.data().approvedAt) : undefined,
+    } as Transaction));
+  } catch (error: any) {
+    globalSystemService.log('error', 'Failed to get transactions by event ID', 'transactionService', { 
+      error, 
+      eventId 
+    });
+    throw error;
+  }
+};
+
 console.log('✅ Transaction Service Loaded');
 

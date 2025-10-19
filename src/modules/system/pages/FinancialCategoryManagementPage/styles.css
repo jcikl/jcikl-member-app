@@ -1,0 +1,13 @@
+/**
+ * Financial Category Management Page Styles
+ */
+
+.financial-category-management-page {
+  padding: 24px;
+}
+
+.financial-category-management-page .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
