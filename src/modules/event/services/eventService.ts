@@ -37,6 +37,7 @@ import type {
   EventRegistration,
 } from '../types';
 import type { PaginatedResponse, PaginationParams } from '@/types';
+import { createFinanceEvent } from '@/modules/finance/services/financeEventService';
 
 // ========== Collection References ==========
 const getEventsRef = () => collection(db, GLOBAL_COLLECTIONS.EVENTS);
@@ -358,7 +359,41 @@ export const createEvent = async (
     };
     
     const docRef = await addDoc(getEventsRef(), cleanUndefinedValues(eventData));
-    return docRef.id;
+    const eventId = docRef.id;
+    
+    console.log('✅ [createEvent] Event created:', eventId);
+    
+    // 🆕 自动创建关联的 FinanceEvent
+    try {
+      console.log('🔄 [createEvent] Auto-creating FinanceEvent...');
+      
+      const financeEventData = {
+        eventName: formData.name,
+        eventDate: formData.startDate,
+        description: formData.description || `${formData.name} 活动财务账户`,
+        boardMember: 'president' as const, // 默认值，可后续修改
+        status: 'planned' as const,
+        relatedEventId: eventId,  // 双向关联
+        relatedEventName: formData.name,
+      };
+      
+      const financeEventId = await createFinanceEvent(financeEventData, currentUserId);
+      console.log('✅ [createEvent] FinanceEvent created:', financeEventId);
+      
+      // 更新 Event 的 financialAccount 字段
+      await updateDoc(doc(getEventsRef(), eventId), {
+        financialAccount: financeEventId,
+        financialAccountName: formData.name,
+        updatedAt: Timestamp.now(),
+      });
+      
+      console.log('✅ [createEvent] Event updated with financialAccount:', financeEventId);
+    } catch (error) {
+      console.warn('⚠️ [createEvent] Failed to auto-create FinanceEvent, but event was created:', error);
+      // 不抛出错误，允许活动创建成功但财务账户创建失败
+    }
+    
+    return eventId;
   } catch (error) {
     handleFirebaseError(error, {
       customMessage: '创建活动失败',

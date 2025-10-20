@@ -385,6 +385,11 @@ export interface FinanceEvent {
   eventChair?: string; // 🆕 活动主席
   eventTreasurer?: string; // 🆕 活动财政
   status: 'planned' | 'active' | 'completed' | 'cancelled';
+  
+  // 🆕 双向关联字段
+  relatedEventId?: string;   // 关联的 Event.id
+  relatedEventName?: string; // 关联的 Event.name
+  
   createdBy: string;
   createdAt: string;
   updatedAt: string;
