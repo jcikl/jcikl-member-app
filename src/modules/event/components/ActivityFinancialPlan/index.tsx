@@ -75,9 +75,8 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   onRefresh,
 }) => {
   const [editingKey, setEditingKey] = useState<string>('');
-  const [addingInCategory, setAddingInCategory] = useState<{type: 'income' | 'expense', category: string} | null>(null);
+  const [addingInType, setAddingInType] = useState<'income' | 'expense' | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [quickAddCategory, setQuickAddCategory] = useState<{income?: string; expense?: string}>({});
   const [form] = Form.useForm();
   
   // 动态类别
@@ -156,18 +155,18 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       return acc;
     }, {} as Record<string, FinancialPlanItem[]>);
     
-    // 如果正在添加新项目，确保类别存在
-    if (addingInCategory?.type === 'income' && !incomeByCategory[addingInCategory.category]) {
-      incomeByCategory[addingInCategory.category] = [];
+    // 如果正在添加新项目（在类型下，未指定类别）
+    if (addingInType === 'income' && editingKey) {
+      grouped.push({
+        key: editingKey,
+        type: 'income',
+        isNew: true,
+        indentLevel: 1,
+      } as GroupedRow);
     }
     
-    // 只渲染有项目的类别（或正在添加的类别）
+    // 只渲染有项目的类别
     Object.entries(incomeByCategory).forEach(([category, categoryItems]) => {
-      // 跳过空类别（除非正在添加）
-      if (categoryItems.length === 0 && !(addingInCategory?.type === 'income' && addingInCategory.category === category)) {
-        return;
-      }
-      
       const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
       
       // 类别标题行
@@ -189,17 +188,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           indentLevel: 2,
         } as GroupedRow);
       });
-      
-      // 如果正在添加新项目到这个类别
-      if (addingInCategory?.type === 'income' && addingInCategory.category === category && editingKey) {
-        grouped.push({
-          key: editingKey,
-          type: 'income',
-          category,
-          isNew: true,
-          indentLevel: 2,
-        } as GroupedRow);
-      }
     });
     
     // 支出组 - 始终显示
@@ -219,18 +207,18 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       return acc;
     }, {} as Record<string, FinancialPlanItem[]>);
     
-    // 如果正在添加新项目，确保类别存在
-    if (addingInCategory?.type === 'expense' && !expenseByCategory[addingInCategory.category]) {
-      expenseByCategory[addingInCategory.category] = [];
+    // 如果正在添加新项目（在类型下，未指定类别）
+    if (addingInType === 'expense' && editingKey) {
+      grouped.push({
+        key: editingKey,
+        type: 'expense',
+        isNew: true,
+        indentLevel: 1,
+      } as GroupedRow);
     }
     
-    // 只渲染有项目的类别（或正在添加的类别）
+    // 只渲染有项目的类别
     Object.entries(expenseByCategory).forEach(([category, categoryItems]) => {
-      // 跳过空类别（除非正在添加）
-      if (categoryItems.length === 0 && !(addingInCategory?.type === 'expense' && addingInCategory.category === category)) {
-        return;
-      }
-      
       const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
       
       // 类别标题行
@@ -252,17 +240,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           indentLevel: 2,
         } as GroupedRow);
       });
-      
-      // 如果正在添加新项目到这个类别
-      if (addingInCategory?.type === 'expense' && addingInCategory.category === category && editingKey) {
-        grouped.push({
-          key: editingKey,
-          type: 'expense',
-          category,
-          isNew: true,
-          indentLevel: 2,
-        } as GroupedRow);
-      }
     });
     
     return grouped;
@@ -341,7 +318,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   // 取消编辑
   const handleCancel = () => {
     setEditingKey('');
-    setAddingInCategory(null);
+    setAddingInType(null);
     form.resetFields();
   };
 
@@ -368,12 +345,31 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 在特定类别下添加项目
+  // 在类型下添加新项目
+  const handleAddInType = (type: 'income' | 'expense') => {
+    const newKey = `new-${Date.now()}`;
+    setAddingInType(type);
+    setEditingKey(newKey);
+    const defaultCategory = type === 'income' 
+      ? (incomeCategories[0]?.value || '') 
+      : (expenseCategories[0]?.value || '');
+    form.setFieldsValue({
+      category: defaultCategory,
+      description: '',
+      remark: '',
+      amount: 0,
+      expectedDate: dayjs(),
+      status: 'planned',
+    });
+  };
+
+  // 在特定类别下添加项目（从类别行的添加按钮）
   const handleAddItemInCategory = (type: 'income' | 'expense', category: string) => {
     const newKey = `new-${Date.now()}`;
-    setAddingInCategory({ type, category });
+    setAddingInType(type);
     setEditingKey(newKey);
     form.setFieldsValue({
+      category: category,
       description: '',
       remark: '',
       amount: 0,
@@ -384,14 +380,14 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 
   // 保存新项目
   const handleSaveNew = async () => {
-    if (!addingInCategory) return;
+    if (!addingInType) return;
     
     try {
       const values = await form.validateFields();
       
       const itemData = {
-        type: addingInCategory.type,
-        category: addingInCategory.category,
+        type: addingInType,
+        category: values.category,
         description: values.description,
         remark: values.remark || '',
         amount: values.amount,
@@ -402,7 +398,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       await onAdd(itemData as any);
       message.success('添加成功');
       setEditingKey('');
-      setAddingInCategory(null);
+      setAddingInType(null);
       form.resetFields();
     } catch (error) {
       console.error('添加失败:', error);
@@ -476,13 +472,43 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         // 项目行 - 可编辑
         const editing = isEditing(record);
         if (editing) {
+          // 新行需要添加类别选择器
+          if (record.isNew && !record.category) {
+            const categories = record.type === 'income' ? incomeCategories : expenseCategories;
+            return (
+              <Space direction="vertical" size="small" style={{ width: '100%', paddingLeft: '24px' }}>
+                <Form.Item
+                  name="category"
+                  style={{ margin: 0 }}
+                  rules={[{ required: true, message: '请选择类别' }]}
+                >
+                  <Select size="small" placeholder="选择类别" style={{ width: 200 }}>
+                    {categories.map(cat => (
+                      <Option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item
+                  name="description"
+                  style={{ margin: 0 }}
+                  rules={[{ required: true, message: '请输入描述' }]}
+                >
+                  <Input placeholder="项目描述" size="small" />
+                </Form.Item>
+              </Space>
+            );
+          }
+          
+          // 已有类别的新行或编辑现有项目
           return (
             <Form.Item
               name="description"
               style={{ margin: 0, paddingLeft: '48px' }}
               rules={[{ required: true, message: '请输入描述' }]}
             >
-              <Input placeholder="项目描述" />
+              <Input placeholder="项目描述" size="small" />
             </Form.Item>
           );
         }
@@ -623,53 +649,23 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '操作',
       key: 'action',
-      width: 250,
+      width: 140,
       render: (_: unknown, record: GroupedRow) => {
-        // 类型标题行显示快速添加功能
+        // 类型标题行显示添加按钮
         if (record.isTypeHeader) {
           if (!editMode) return null;
           
-          const type = record.type!;
-          const categories = type === 'income' ? incomeCategories : expenseCategories;
-          const selectedCategory = type === 'income' ? quickAddCategory.income : quickAddCategory.expense;
-          
           return (
-            <Space size="small">
-              <Select
-                size="small"
-                style={{ width: 120 }}
-                placeholder="选择类别"
-                value={selectedCategory}
-                onChange={(value) => {
-                  setQuickAddCategory(prev => ({
-                    ...prev,
-                    [type]: value
-                  }));
-                }}
-              >
-                {categories.map(cat => (
-                  <Option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </Option>
-                ))}
-              </Select>
-              <Button
-                type="link"
-                size="small"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  if (selectedCategory) {
-                    handleAddItemInCategory(type, selectedCategory);
-                  } else {
-                    message.warning('请先选择类别');
-                  }
-                }}
-                disabled={!selectedCategory || !!editingKey}
-                style={{ color: '#1890ff' }}
-              >
-                快速添加
-              </Button>
-            </Space>
+            <Button
+              type="link"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={() => handleAddInType(record.type!)}
+              disabled={!!editingKey}
+              style={{ color: '#1890ff' }}
+            >
+              添加
+            </Button>
           );
         }
         
