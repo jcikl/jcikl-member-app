@@ -23,7 +23,6 @@ export interface FinancialCategory {
   value: string;              // 类别代码（作为文档ID，如 'TXINC-0001', 'TXEXP-0001'）
   label: string;              // 类别名称（如 '门票收入', '场地费'）
   type: 'income' | 'expense'; // 类型
-  icon?: string;              // 图标
   description?: string;       // 描述
   sortOrder: number;          // 排序
   status: 'active' | 'inactive'; // 状态
@@ -288,24 +287,22 @@ export const deleteFinancialCategory = async (id: string, userId: string): Promi
 /**
  * 获取活跃的收入类别选项
  */
-export const getActiveIncomeCategories = async (): Promise<Array<{ label: string; value: string; icon?: string }>> => {
+export const getActiveIncomeCategories = async (): Promise<Array<{ label: string; value: string }>> => {
   const categories = await getFinancialCategories('income', 'active');
   return categories.map(cat => ({
-    label: cat.icon ? `${cat.icon} ${cat.label}` : cat.label,
+    label: cat.label,
     value: cat.value,
-    icon: cat.icon,
   }));
 };
 
 /**
  * 获取活跃的支出类别选项
  */
-export const getActiveExpenseCategories = async (): Promise<Array<{ label: string; value: string; icon?: string }>> => {
+export const getActiveExpenseCategories = async (): Promise<Array<{ label: string; value: string }>> => {
   const categories = await getFinancialCategories('expense', 'active');
   return categories.map(cat => ({
-    label: cat.icon ? `${cat.icon} ${cat.label}` : cat.label,
+    label: cat.label,
     value: cat.value,
-    icon: cat.icon,
   }));
 };
 

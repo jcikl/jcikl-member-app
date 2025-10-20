@@ -41,21 +41,6 @@ import './styles.css';
 
 const { Option } = Select;
 
-const ICON_OPTIONS = [
-  { label: '🎟️ 门票', value: '🎟️' },
-  { label: '🤝 赞助', value: '🤝' },
-  { label: '🎁 捐款', value: '🎁' },
-  { label: '📦 其他', value: '📦' },
-  { label: '🏢 场地', value: '🏢' },
-  { label: '🍔 餐饮', value: '🍔' },
-  { label: '📢 宣传', value: '📢' },
-  { label: '🎤 设备', value: '🎤' },
-  { label: '🚗 交通', value: '🚗' },
-  { label: '💼 办公', value: '💼' },
-  { label: '💰 财务', value: '💰' },
-  { label: '👥 人员', value: '👥' },
-];
-
 const FinancialCategoryManagementPage: React.FC = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -163,12 +148,6 @@ const FinancialCategoryManagementPage: React.FC = () => {
   const expenseCategories = categories.filter(cat => cat.type === 'expense');
 
   const columns: ColumnsType<FinancialCategory> = [
-    {
-      title: '图标',
-      dataIndex: 'icon',
-      width: 60,
-      render: (icon: string) => <span style={{ fontSize: '20px' }}>{icon}</span>,
-    },
     {
       title: '类别代码',
       dataIndex: 'value',
@@ -368,16 +347,6 @@ const FinancialCategoryManagementPage: React.FC = () => {
             rules={[{ required: true, message: '请输入类别名称' }]}
           >
             <Input placeholder="门票收入" maxLength={100} />
-          </Form.Item>
-
-          <Form.Item name="icon" label="图标">
-            <Select placeholder="选择图标" showSearch optionFilterProp="label">
-              {ICON_OPTIONS.map(opt => (
-                <Option key={opt.value} value={opt.value} label={opt.label}>
-                  {opt.label}
-                </Option>
-              ))}
-            </Select>
           </Form.Item>
 
           <Form.Item name="description" label="描述">

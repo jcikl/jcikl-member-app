@@ -270,7 +270,7 @@ export const FinancialCategoryInitializer: React.FC = () => {
                         color="green"
                         style={{ marginBottom: 8, fontFamily: 'monospace' }}
                       >
-                        {cat.icon} {cat.value} - {cat.label}
+                        {cat.value} - {cat.label}
                       </Tag>
                     ))}
                   </Space>
@@ -285,7 +285,7 @@ export const FinancialCategoryInitializer: React.FC = () => {
                         color="red"
                         style={{ marginBottom: 8, fontFamily: 'monospace' }}
                       >
-                        {cat.icon} {cat.value} - {cat.label}
+                        {cat.value} - {cat.label}
                       </Tag>
                     ))}
                   </Space>
