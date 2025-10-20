@@ -238,12 +238,6 @@ const EventListPage: React.FC = () => {
       placeholder: '选择日期范围',
     },
     {
-      name: 'location',
-      label: '地点',
-      type: 'text',
-      placeholder: '输入地点',
-    },
-    {
       name: 'isOnline',
       label: '在线活动',
       type: 'select',
@@ -554,6 +548,7 @@ const EventListPage: React.FC = () => {
         fields={filterFields}
         onFilter={handleFilter}
         defaultCollapsed={false}
+        showPresets={false}
       />
 
       {/* Bulk Operation Bar */}
