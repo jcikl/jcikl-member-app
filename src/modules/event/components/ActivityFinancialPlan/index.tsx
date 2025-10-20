@@ -668,7 +668,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '预计日期',
       dataIndex: 'expectedDate',
-      width: 10,
+      width: 110,
       render: (date: string, record: GroupedRow) => {
         // 只在项目行显示日期
         if (record.isTypeHeader || record.isCategoryHeader) return null;
@@ -770,48 +770,55 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           if (editMode && !record.isTypeHeader && !record.isCategoryHeader) return 'item-row editable-row';
           return 'item-row';
         }}
-                summary={() => (
-          <Table.Summary>
-                    <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={2}>
-                <strong style={{ fontSize: '16px' }}>Total Income</strong>
-                      </Table.Summary.Cell>
-              <Table.Summary.Cell index={2} align="right">
-                <strong style={{ color: '#52c41a', fontSize: '16px', fontWeight: 700 }}>
-                          RM {totalIncome.toFixed(2)}
-                        </strong>
-                      </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} />
-                    </Table.Summary.Row>
-                    <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={2}>
-                <strong style={{ fontSize: '16px' }}>Total Expenses</strong>
-                      </Table.Summary.Cell>
-              <Table.Summary.Cell index={2} align="right">
-                <strong style={{ color: '#ff4d4f', fontSize: '18px', fontWeight: 700 }}>
-                          RM {totalExpense.toFixed(2)}
-                        </strong>
-                      </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} />
-            </Table.Summary.Row>
-            <Table.Summary.Row style={{ backgroundColor: '#fafafa' }}>
-              <Table.Summary.Cell index={0} colSpan={2}>
-                <strong style={{ fontSize: '18px' }}>Net Profit</strong>
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={2} align="right">
-                <strong style={{ 
-                  color: netProfit >= 0 ? '#52c41a' : '#ff4d4f', 
-                  fontSize: '20px',
-                  fontWeight: 700 
-                }}>
-                  RM {netProfit.toFixed(2)}
-                </strong>
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} />
-                    </Table.Summary.Row>
-                  </Table.Summary>
-                )}
-              />
+      />
+
+      {/* 独立统计区域 */}
+      <div style={{ 
+        marginTop: 16, 
+        padding: '16px 24px', 
+        backgroundColor: '#fafafa',
+        borderRadius: 8,
+        border: '1px solid #f0f0f0'
+      }}>
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          {/* Total Income */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '16px', fontWeight: 600, color: '#262626' }}>
+              Total Income
+            </span>
+            <span style={{ color: '#52c41a', fontSize: '20px', fontWeight: 700 }}>
+              RM {totalIncome.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Total Expenses */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '16px', fontWeight: 600, color: '#262626' }}>
+              Total Expenses
+            </span>
+            <span style={{ color: '#ff4d4f', fontSize: '20px', fontWeight: 700 }}>
+              RM {totalExpense.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, backgroundColor: '#d9d9d9', margin: '4px 0' }} />
+
+          {/* Net Profit */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '18px', fontWeight: 700, color: '#262626' }}>
+              Net Profit
+            </span>
+            <span style={{ 
+              color: netProfit >= 0 ? '#52c41a' : '#ff4d4f', 
+              fontSize: '24px',
+              fontWeight: 700 
+            }}>
+              RM {netProfit.toFixed(2)}
+            </span>
+          </div>
+        </Space>
+      </div>
 
       {/* 批量粘贴模态框 */}
       <Modal
