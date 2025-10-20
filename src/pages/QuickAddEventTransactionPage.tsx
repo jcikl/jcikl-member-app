@@ -65,6 +65,8 @@ const QuickAddEventTransactionPage: React.FC = () => {
     try {
       setLoading(true);
 
+      const selectedEvent = events.find(e => e.id === values.eventId);
+      
       const transactionData = {
         bankAccountId: values.bankAccountId,
         transactionDate: values.transactionDate.format('YYYY-MM-DD'),
@@ -73,12 +75,28 @@ const QuickAddEventTransactionPage: React.FC = () => {
         amount: values.amount,
         payerPayee: values.payerPayee,
         status: 'completed' as const,
-        // 🆕 关键：设置 relatedEventId
+        
+        // 🔗 完整的活动关联字段设置
+        // 1. 项目账户关联（旧系统，兼容）
+        projectAccountId: selectedEvent?.financialAccount || undefined,
+        
+        // 2. 分类系统
+        category: 'event-financial',
+        subCategory: selectedEvent?.name || '',
+        
+        // 3. 活动关联（新系统 - 方案C）
         relatedEventId: values.eventId,
-        relatedEventName: events.find(e => e.id === values.eventId)?.name,
+        relatedEventName: selectedEvent?.name || '',
       };
 
-      console.log('📝 Creating transaction with relatedEventId:', transactionData);
+      console.log('📝 Creating transaction with full event relationships:', {
+        ...transactionData,
+        selectedEvent: {
+          id: selectedEvent?.id,
+          name: selectedEvent?.name,
+          financialAccount: selectedEvent?.financialAccount,
+        },
+      });
 
       await createTransaction(transactionData, user.id);
 
