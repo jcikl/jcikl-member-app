@@ -1906,6 +1906,66 @@ export const batchSetCategory = async (
 };
 
 /**
+ * 通过项目账户ID获取交易记录（用于活动财务）
+ */
+export const getTransactionsByProjectAccountId = async (
+  projectAccountId: string
+): Promise<Transaction[]> => {
+  console.log('🔍 [getTransactionsByProjectAccountId] Starting query...', { 
+    projectAccountId,
+    collection: GLOBAL_COLLECTIONS.TRANSACTIONS,
+  });
+  
+  try {
+    const q = query(
+      collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
+      where('projectAccountId', '==', projectAccountId),
+      orderBy('transactionDate', 'desc')
+    );
+
+    console.log('📡 [getTransactionsByProjectAccountId] Executing Firestore query...');
+    const snapshot = await getDocs(q);
+    console.log('✅ [getTransactionsByProjectAccountId] Query completed', {
+      totalDocs: snapshot.size,
+      isEmpty: snapshot.empty,
+    });
+
+    const transactions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log('📄 [getTransactionsByProjectAccountId] Document data:', {
+        id: doc.id,
+        transactionNumber: data.transactionNumber,
+        projectAccountId: data.projectAccountId,
+        mainDescription: data.mainDescription,
+        amount: data.amount,
+      });
+      
+      return {
+        id: doc.id,
+        ...data,
+        transactionDate: safeTimestampToISO(data.transactionDate) || '',
+        createdAt: safeTimestampToISO(data.createdAt) || '',
+        updatedAt: safeTimestampToISO(data.updatedAt) || '',
+        approvedAt: data.approvedAt ? safeTimestampToISO(data.approvedAt) : undefined,
+      } as Transaction;
+    });
+
+    console.log('✅ [getTransactionsByProjectAccountId] Returning transactions:', {
+      count: transactions.length,
+    });
+
+    return transactions;
+  } catch (error: any) {
+    console.error('❌ [getTransactionsByProjectAccountId] Query failed:', error);
+    globalSystemService.log('error', 'Failed to get transactions by project account ID', 'transactionService', { 
+      error, 
+      projectAccountId 
+    });
+    throw error;
+  }
+};
+
+/**
  * 获取关联到特定活动的交易记录（方案C）
  */
 export const getTransactionsByEventId = async (eventId: string): Promise<Transaction[]> => {
