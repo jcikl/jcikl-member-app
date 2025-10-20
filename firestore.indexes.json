@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "members",
+      "collectionGroup": "bankAccounts",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -9,36 +9,26 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "createdAt",
+          "fieldPath": "isDefault",
           "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "accountName",
+          "order": "ASCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "events",
+      "collectionGroup": "eventAccountPlans",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "status",
+          "fieldPath": "accountId",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "startDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "fin_transactions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "bankAccountId",
+          "fieldPath": "expectedDate",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "transactionDate",
-          "order": "DESCENDING"
         }
       ]
     },
@@ -71,24 +61,6 @@
       ]
     },
     {
-      "collectionGroup": "bankAccounts",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "isDefault",
-          "order": "DESCENDING"
-        },
-        {
-          "fieldPath": "accountName",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "fin_projects",
       "queryScope": "COLLECTION",
       "fields": [
@@ -117,16 +89,16 @@
       ]
     },
     {
-      "collectionGroup": "eventAccountPlans",
+      "collectionGroup": "fin_transactions",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "accountId",
+          "fieldPath": "bankAccountId",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "expectedDate",
-          "order": "ASCENDING"
+          "fieldPath": "transactionDate",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -161,8 +133,35 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "projects",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startDate",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
 }
-
