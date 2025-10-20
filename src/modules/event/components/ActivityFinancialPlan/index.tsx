@@ -77,6 +77,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const [editingKey, setEditingKey] = useState<string>('');
   const [addingInCategory, setAddingInCategory] = useState<{type: 'income' | 'expense', category: string} | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [quickAddCategory, setQuickAddCategory] = useState<{income?: string; expense?: string}>({});
   const [form] = Form.useForm();
   
   // 动态类别
@@ -155,20 +156,18 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       return acc;
     }, {} as Record<string, FinancialPlanItem[]>);
     
-    // 确保所有收入类别都显示（即使没有项目）
-    incomeCategories.forEach(cat => {
-      if (!incomeByCategory[cat.value]) {
-        incomeByCategory[cat.value] = [];
-      }
-    });
-    
     // 如果正在添加新项目，确保类别存在
     if (addingInCategory?.type === 'income' && !incomeByCategory[addingInCategory.category]) {
       incomeByCategory[addingInCategory.category] = [];
     }
     
-    // 渲染每个类别
+    // 只渲染有项目的类别（或正在添加的类别）
     Object.entries(incomeByCategory).forEach(([category, categoryItems]) => {
+      // 跳过空类别（除非正在添加）
+      if (categoryItems.length === 0 && !(addingInCategory?.type === 'income' && addingInCategory.category === category)) {
+        return;
+      }
+      
       const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
       
       // 类别标题行
@@ -220,20 +219,18 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       return acc;
     }, {} as Record<string, FinancialPlanItem[]>);
     
-    // 确保所有支出类别都显示（即使没有项目）
-    expenseCategories.forEach(cat => {
-      if (!expenseByCategory[cat.value]) {
-        expenseByCategory[cat.value] = [];
-      }
-    });
-    
     // 如果正在添加新项目，确保类别存在
     if (addingInCategory?.type === 'expense' && !expenseByCategory[addingInCategory.category]) {
       expenseByCategory[addingInCategory.category] = [];
     }
     
-    // 渲染每个类别
+    // 只渲染有项目的类别（或正在添加的类别）
     Object.entries(expenseByCategory).forEach(([category, categoryItems]) => {
+      // 跳过空类别（除非正在添加）
+      if (categoryItems.length === 0 && !(addingInCategory?.type === 'expense' && addingInCategory.category === category)) {
+        return;
+      }
+      
       const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
       
       // 类别标题行
@@ -626,10 +623,55 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '操作',
       key: 'action',
-      width: 140,
+      width: 250,
       render: (_: unknown, record: GroupedRow) => {
-        // 类型标题行不显示操作
-        if (record.isTypeHeader) return null;
+        // 类型标题行显示快速添加功能
+        if (record.isTypeHeader) {
+          if (!editMode) return null;
+          
+          const type = record.type!;
+          const categories = type === 'income' ? incomeCategories : expenseCategories;
+          const selectedCategory = type === 'income' ? quickAddCategory.income : quickAddCategory.expense;
+          
+          return (
+            <Space size="small">
+              <Select
+                size="small"
+                style={{ width: 120 }}
+                placeholder="选择类别"
+                value={selectedCategory}
+                onChange={(value) => {
+                  setQuickAddCategory(prev => ({
+                    ...prev,
+                    [type]: value
+                  }));
+                }}
+              >
+                {categories.map(cat => (
+                  <Option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </Option>
+                ))}
+              </Select>
+              <Button
+                type="link"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  if (selectedCategory) {
+                    handleAddItemInCategory(type, selectedCategory);
+                  } else {
+                    message.warning('请先选择类别');
+                  }
+                }}
+                disabled={!selectedCategory || !!editingKey}
+                style={{ color: '#1890ff' }}
+              >
+                快速添加
+              </Button>
+            </Space>
+          );
+        }
         
         // 非编辑模式下，不显示任何操作按钮
         if (!editMode) return null;
