@@ -8,11 +8,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card,
-  Table,
   Button,
   Select,
   Space,
-  Tag,
   message,
   Modal,
   Form,
@@ -23,20 +21,14 @@ import {
   Radio,
   InputNumber,
   Alert,
-  Tabs,
   Input,
 } from 'antd';
 import {
   ReloadOutlined,
-  DollarOutlined,
-  LineChartOutlined,
   RiseOutlined,
   FallOutlined,
 } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { globalComponentService } from '@/config/globalComponentSettings';
-import { globalDateService } from '@/config/globalDateSettings';
 import { globalSystemService } from '@/config/globalSystemSettings';
 import { useAuthStore } from '@/stores/authStore';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -49,7 +41,6 @@ import {
   getOrCreateEventAccount,
   addEventAccountTransaction,
   updateEventAccountBudget,
-  getEventAccountTransactions,
 } from '../../services/eventAccountService';
 import { getEvents } from '../../services/eventService';
 import { 
@@ -63,7 +54,6 @@ import { getAllBankAccounts } from '@/modules/finance/services/bankAccountServic
 import type { BankAccount } from '@/modules/finance/types';
 import type {
   EventAccount,
-  EventAccountTransactionType,
   Event,
 } from '../../types';
 import {
@@ -77,24 +67,6 @@ import './styles.css';
 
 const { Option } = Select;
 
-interface TransactionRecord {
-  id: string;
-  sn: number;
-  transactionDate: string;
-  transactionType: EventAccountTransactionType;
-  category: string;
-  description: string;
-  remark: string;
-  amount: number;
-  paymentDate: string;
-  payerPayee?: string;
-  isForecast: boolean;
-  forecastConfidence?: 'high' | 'medium' | 'low';
-  actualAmount?: number;
-  variance?: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
 const EventAccountManagementPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -106,8 +78,6 @@ const EventAccountManagementPage: React.FC = () => {
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [budgetForm] = Form.useForm();
-  const [activeTab, setActiveTab] = useState<'actual' | 'forecast' | 'all'>('all');
-  const [financialRecords, setFinancialRecords] = useState<TransactionRecord[]>([]);
   
   // 新增：财务计划相关状态
   const [planItems, setPlanItems] = useState<FinancialPlanItem[]>([]);
@@ -208,9 +178,6 @@ const EventAccountManagementPage: React.FC = () => {
       );
 
       setAccount(accountData);
-      
-      // Load financial records
-      await loadFinancialRecords();
 
     } catch (error: any) {
       message.error('加载活动账户失败');
@@ -282,41 +249,6 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
-  const loadFinancialRecords = async () => {
-    if (!account) return;
-
-    try {
-      const records = await getEventAccountTransactions(account.id);
-      // Convert EventAccountTransaction to TransactionRecord
-      const convertedRecords: TransactionRecord[] = records.map((record, index) => ({
-        id: record.id,
-        sn: index + 1,
-        transactionDate: record.transactionDate,
-        transactionType: record.transactionType,
-        category: record.category,
-        description: record.description,
-        remark: record.remark || '',
-        amount: record.amount,
-        paymentDate: record.paymentDate || record.transactionDate,
-        payerPayee: record.payerPayee,
-        isForecast: record.isForecast,
-        forecastConfidence: record.forecastConfidence,
-        actualAmount: record.actualAmount,
-        variance: record.variance,
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-      }));
-      setFinancialRecords(convertedRecords);
-    } catch (error: any) {
-      console.error('Failed to load financial records:', error);
-      globalSystemService.logError(error, {
-        operation: 'loadFinancialRecords',
-        eventId: selectedEventId,
-      });
-      message.error('加载财务记录失败');
-      setFinancialRecords([]);
-    }
-  };
 
   // 加载财务计划
   const loadPlans = async () => {
@@ -526,79 +458,6 @@ const EventAccountManagementPage: React.FC = () => {
     await loadPlans();
   };
 
-  const filteredTransactions = financialRecords.filter((t: TransactionRecord) => {
-    if (activeTab === 'actual') return !t.isForecast;
-    if (activeTab === 'forecast') return t.isForecast;
-    return true;
-  });
-
-  const columns: ColumnsType<TransactionRecord> = [
-    {
-      title: '日期',
-      dataIndex: 'transactionDate',
-      key: 'transactionDate',
-      width: 120,
-      render: (date: string) =>
-        globalDateService.formatDate(new Date(date), 'display'),
-    },
-    {
-      title: '类型',
-      dataIndex: 'transactionType',
-      key: 'transactionType',
-      width: 80,
-      render: (type: EventAccountTransactionType) => (
-        <Tag color={type === 'income' ? 'green' : 'red'}>
-          {type === 'income' ? '收入' : '支出'}
-        </Tag>
-      ),
-    },
-    {
-      title: '类别',
-      dataIndex: 'category',
-      key: 'category',
-      width: 120,
-      render: (category: string) => {
-        const allCategories = [...EVENT_INCOME_CATEGORIES, ...EVENT_EXPENSE_CATEGORIES];
-        const option = allCategories.find(opt => opt.value === category);
-        return option?.label || category;
-      },
-    },
-    {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-    },
-    {
-      title: '金额',
-      dataIndex: 'amount',
-      key: 'amount',
-      width: 120,
-      align: 'right',
-      render: (amount: number, record) => (
-        <span style={{ 
-          fontWeight: 500,
-          color: record.transactionType === 'income' ? '#52c41a' : '#ff4d4f',
-        }}>
-          RM {amount.toFixed(2)}
-        </span>
-      ),
-    },
-    {
-      title: '实际/预测',
-      key: 'forecast',
-      width: 100,
-      render: (_, record) => (
-        record.isForecast ? (
-          <Tag color="orange">预测</Tag>
-        ) : (
-          <Tag color="blue">实际</Tag>
-        )
-      ),
-    },
-  ];
-
-  const tableConfig = globalComponentService.getTableConfig();
 
   if (loading) {
     return <LoadingSpinner />;
@@ -654,190 +513,129 @@ const EventAccountManagementPage: React.FC = () => {
           }
         />
 
-        {/* 旧的统计卡片已移除：预算目标、实际数据、财务预测 */}
-        {/* 改用预测标签页中的对比统计卡片 */}
-
-        {/* Transaction Management */}
-        <Card title="交易管理">
-          <Tabs
-            activeKey={activeTab}
-            onChange={(key) => setActiveTab(key as 'actual' | 'forecast' | 'all')}
-            items={[
-              {
-                key: 'all',
-                label: '全部',
-                children: (
-                  <Table
-                    {...tableConfig}
-                    columns={columns}
-                    dataSource={filteredTransactions}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{
-                      pageSize: 20,
-                      showSizeChanger: true,
-                      showTotal: (total) => `共 ${total} 条交易`,
-                    }}
+        {/* 财务预测与管理 */}
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* 对比统计卡片 */}
+          {consolidationData && (
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={8}>
+                <Card size="small" className="comparison-stat-card">
+                  <Statistic
+                    title="📊 收入对比"
+                    value={consolidationData.totalIncomeActual}
+                    precision={2}
+                    prefix={<RiseOutlined style={{ color: '#52c41a' }} />}
+                    valueStyle={{ color: '#52c41a', fontSize: '20px' }}
+                    suffix="RM"
                   />
-                ),
-              },
-              {
-                key: 'actual',
-                label: (
-                  <span>
-                    <DollarOutlined /> 实际
-                  </span>
-                ),
-                children: (
-                  <Table
-                    {...tableConfig}
-                    columns={columns}
-                    dataSource={filteredTransactions}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{
-                      pageSize: 20,
-                      showSizeChanger: true,
-                      showTotal: (total) => `共 ${total} 条交易`,
-                    }}
+                  <div style={{ marginTop: 12, fontSize: '13px' }}>
+                    <div style={{ color: '#8c8c8c' }}>
+                      预测: RM {consolidationData.totalIncomeForecast.toFixed(2)}
+                    </div>
+                    <div style={{ 
+                      color: consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '#52c41a' : '#ff4d4f',
+                      fontWeight: 600
+                    }}>
+                      差异: {consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '+' : ''}
+                      RM {(consolidationData.totalIncomeActual - consolidationData.totalIncomeForecast).toFixed(2)}
+                      ({((consolidationData.totalIncomeActual / consolidationData.totalIncomeForecast) * 100).toFixed(1)}%)
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+
+              <Col xs={24} md={8}>
+                <Card size="small" className="comparison-stat-card">
+                  <Statistic
+                    title="📊 支出对比"
+                    value={consolidationData.totalExpenseActual}
+                    precision={2}
+                    prefix={<FallOutlined style={{ color: '#ff4d4f' }} />}
+                    valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
+                    suffix="RM"
                   />
-                ),
-              },
-              {
-                key: 'forecast',
-                label: (
-                  <span>
-                    <LineChartOutlined /> 预测
-                  </span>
-                ),
-                children: (
-                  <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                    {/* 对比统计卡片 */}
-                    {consolidationData && (
-                      <Row gutter={[16, 16]}>
-                        <Col xs={24} md={8}>
-                          <Card size="small" className="comparison-stat-card">
-                            <Statistic
-                              title="📊 收入对比"
-                              value={consolidationData.totalIncomeActual}
-                              precision={2}
-                              prefix={<RiseOutlined style={{ color: '#52c41a' }} />}
-                              valueStyle={{ color: '#52c41a', fontSize: '20px' }}
-                              suffix="RM"
-                            />
-                            <div style={{ marginTop: 12, fontSize: '13px' }}>
-                              <div style={{ color: '#8c8c8c' }}>
-                                预测: RM {consolidationData.totalIncomeForecast.toFixed(2)}
-                              </div>
-                              <div style={{ 
-                                color: consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '#52c41a' : '#ff4d4f',
-                                fontWeight: 600
-                              }}>
-                                差异: {consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '+' : ''}
-                                RM {(consolidationData.totalIncomeActual - consolidationData.totalIncomeForecast).toFixed(2)}
-                                ({((consolidationData.totalIncomeActual / consolidationData.totalIncomeForecast) * 100).toFixed(1)}%)
-                              </div>
-                            </div>
-                          </Card>
-                        </Col>
+                  <div style={{ marginTop: 12, fontSize: '13px' }}>
+                    <div style={{ color: '#8c8c8c' }}>
+                      预算: RM {consolidationData.totalExpenseForecast.toFixed(2)}
+                    </div>
+                    <div style={{ 
+                      color: consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '#52c41a' : '#ff4d4f',
+                      fontWeight: 600
+                    }}>
+                      差异: {consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '-' : '+'}
+                      RM {Math.abs(consolidationData.totalExpenseActual - consolidationData.totalExpenseForecast).toFixed(2)}
+                      ({((consolidationData.totalExpenseActual / consolidationData.totalExpenseForecast) * 100).toFixed(1)}%)
+                    </div>
+                  </div>
+                </Card>
+              </Col>
 
-                        <Col xs={24} md={8}>
-                          <Card size="small" className="comparison-stat-card">
-                            <Statistic
-                              title="📊 支出对比"
-                              value={consolidationData.totalExpenseActual}
-                              precision={2}
-                              prefix={<FallOutlined style={{ color: '#ff4d4f' }} />}
-                              valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
-                              suffix="RM"
-                            />
-                            <div style={{ marginTop: 12, fontSize: '13px' }}>
-                              <div style={{ color: '#8c8c8c' }}>
-                                预算: RM {consolidationData.totalExpenseForecast.toFixed(2)}
-                              </div>
-                              <div style={{ 
-                                color: consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '#52c41a' : '#ff4d4f',
-                                fontWeight: 600
-                              }}>
-                                差异: {consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '-' : '+'}
-                                RM {Math.abs(consolidationData.totalExpenseActual - consolidationData.totalExpenseForecast).toFixed(2)}
-                                ({((consolidationData.totalExpenseActual / consolidationData.totalExpenseForecast) * 100).toFixed(1)}%)
-                              </div>
-                            </div>
-                          </Card>
-                        </Col>
-
-                        <Col xs={24} md={8}>
-                          <Card size="small" className="comparison-stat-card">
-                            <Statistic
-                              title="📊 净利润对比"
-                              value={consolidationData.profitActual}
-                              precision={2}
-                              valueStyle={{ 
-                                color: consolidationData.profitActual >= 0 ? '#52c41a' : '#ff4d4f',
-                                fontSize: '20px'
-                              }}
-                              suffix="RM"
-                            />
-                            <div style={{ marginTop: 12, fontSize: '13px' }}>
-                              <div style={{ color: '#8c8c8c' }}>
-                                预测: RM {consolidationData.profitForecast.toFixed(2)}
-                              </div>
-                              <div style={{ 
-                                color: consolidationData.profitActual >= consolidationData.profitForecast ? '#52c41a' : '#ff4d4f',
-                                fontWeight: 600
-                              }}>
-                                差异: {consolidationData.profitActual >= consolidationData.profitForecast ? '+' : ''}
-                                RM {(consolidationData.profitActual - consolidationData.profitForecast).toFixed(2)}
-                              </div>
-                            </div>
-                          </Card>
-                        </Col>
-                      </Row>
-                    )}
-                    
-                    {/* 财务计划与银行交易记录并排显示 */}
-                    <Row gutter={16}>
-                      <Col xs={24} lg={12}>
-                        {/* 1. 活动财务计划 */}
-                        <ActivityFinancialPlan
-                          accountId={account?.id || ''}
-                          items={planItems}
-                          loading={planLoading}
-                          onAdd={handleAddPlan}
-                          onUpdate={handleUpdatePlan}
-                          onDelete={handleDeletePlan}
-                          onRefresh={loadPlans}
-                        />
-                      </Col>
-                      
-                      <Col xs={24} lg={12}>
-                        {/* 2. 银行交易记录 */}
-                        <BankTransactionList
-                          accountId={account?.id || ''}
-                          transactions={bankTransactions}
-                          loading={loading}
-                          onRefresh={loadBankTransactions}
-                          onExport={() => message.info('导出功能开发中...')}
-                        />
-                      </Col>
-                    </Row>
-                    
-                    {/* 3. 户口核对 */}
-                    {consolidationData && (
-                      <AccountConsolidation
-                        data={consolidationData}
-                        loading={loading}
-                        onExport={() => message.info('导出功能开发中...')}
-                        onGenerateReport={() => message.info('报表生成功能开发中...')}
-                      />
-                    )}
-                  </Space>
-                ),
-              },
-            ]}
-          />
-        </Card>
+              <Col xs={24} md={8}>
+                <Card size="small" className="comparison-stat-card">
+                  <Statistic
+                    title="📊 净利润对比"
+                    value={consolidationData.profitActual}
+                    precision={2}
+                    valueStyle={{ 
+                      color: consolidationData.profitActual >= 0 ? '#52c41a' : '#ff4d4f',
+                      fontSize: '20px'
+                    }}
+                    suffix="RM"
+                  />
+                  <div style={{ marginTop: 12, fontSize: '13px' }}>
+                    <div style={{ color: '#8c8c8c' }}>
+                      预测: RM {consolidationData.profitForecast.toFixed(2)}
+                    </div>
+                    <div style={{ 
+                      color: consolidationData.profitActual >= consolidationData.profitForecast ? '#52c41a' : '#ff4d4f',
+                      fontWeight: 600
+                    }}>
+                      差异: {consolidationData.profitActual >= consolidationData.profitForecast ? '+' : ''}
+                      RM {(consolidationData.profitActual - consolidationData.profitForecast).toFixed(2)}
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          )}
+          
+          {/* 财务计划与银行交易记录并排显示 */}
+          <Row gutter={16}>
+            <Col xs={24} lg={12}>
+              {/* 1. 活动财务计划 */}
+              <ActivityFinancialPlan
+                accountId={account?.id || ''}
+                items={planItems}
+                loading={planLoading}
+                onAdd={handleAddPlan}
+                onUpdate={handleUpdatePlan}
+                onDelete={handleDeletePlan}
+                onRefresh={loadPlans}
+              />
+            </Col>
+            
+            <Col xs={24} lg={12}>
+              {/* 2. 银行交易记录 */}
+              <BankTransactionList
+                accountId={account?.id || ''}
+                transactions={bankTransactions}
+                loading={loading}
+                onRefresh={loadBankTransactions}
+                onExport={() => message.info('导出功能开发中...')}
+              />
+            </Col>
+          </Row>
+          
+          {/* 3. 户口核对 */}
+          {consolidationData && (
+            <AccountConsolidation
+              data={consolidationData}
+              loading={loading}
+              onExport={() => message.info('导出功能开发中...')}
+              onGenerateReport={() => message.info('报表生成功能开发中...')}
+            />
+          )}
+        </Space>
 
         {/* Add Transaction Modal */}
         <Modal
