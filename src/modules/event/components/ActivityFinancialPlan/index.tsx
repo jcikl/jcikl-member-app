@@ -12,7 +12,6 @@ import {
   Button,
   Space,
   Modal,
-  Form,
   Input,
   InputNumber,
   DatePicker,
@@ -394,6 +393,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '项目/类别',
       dataIndex: 'description',
+      width: '35%',
       render: (_: unknown, record: GroupedRow) => {
         // 类型标题行 (Incomes / Expenses)
         if (record.isTypeHeader) {
@@ -517,7 +517,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         if (editMode) {
           const currentValue = getEditedValue(record.id!, 'description') ?? record.description;
           return (
-            <div style={{ paddingLeft: '48px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ paddingLeft: '48px', display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
               <Popconfirm
                 title="确认删除此项目？"
                 onConfirm={() => handleDelete(record.id!)}
@@ -530,7 +530,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   danger
                   icon={<DeleteOutlined />}
                   onClick={(e) => e.stopPropagation()}
-                  style={{ padding: 0 }}
+                  style={{ padding: 0, minWidth: '24px', flexShrink: 0 }}
                 />
               </Popconfirm>
               <Input
@@ -538,7 +538,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                 value={currentValue}
                 onChange={(e) => handleFieldChange(record.id!, 'description', e.target.value)}
                 placeholder="项目描述"
-                style={{ flex: 1 }}
+                style={{ flex: 1, minWidth: 0 }}
               />
             </div>
           );
@@ -566,17 +566,17 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           const currentStatus = getEditedValue(record.id!, 'status') ?? record.status;
           
           return (
-            <Space size="small" style={{ width: '100%' }}>
+            <div style={{ display: 'flex', gap: '4px', width: '100%', alignItems: 'center' }}>
               <Input
                 size="small"
                 value={currentRemark}
                 onChange={(e) => handleFieldChange(record.id!, 'remark', e.target.value)}
                 placeholder="备注"
-                style={{ flex: 1 }}
+                style={{ flex: 1, minWidth: 0 }}
               />
               <Select
                 size="small"
-                style={{ width: 90 }}
+                style={{ width: 90, flexShrink: 0 }}
                 value={currentStatus}
                 onChange={(value) => handleFieldChange(record.id!, 'status', value)}
                 placeholder="状态"
@@ -587,7 +587,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                 <Option value="completed">已完成</Option>
                 <Option value="cancelled">已取消</Option>
               </Select>
-            </Space>
+            </div>
           );
         }
         
@@ -639,16 +639,18 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         if (editMode) {
           const currentValue = getEditedValue(record.id!, 'amount') ?? record.amount;
           return (
-            <InputNumber
-              size="small"
-              style={{ width: '100%' }}
-              min={0}
-              precision={2}
-              prefix="RM"
-              placeholder="0.00"
-              value={currentValue}
-              onChange={(value) => handleFieldChange(record.id!, 'amount', value || 0)}
-            />
+            <div style={{ width: '100%' }}>
+              <InputNumber
+                size="small"
+                style={{ width: '100%' }}
+                min={0}
+                precision={2}
+                prefix="RM"
+                placeholder="0.00"
+                value={currentValue}
+                onChange={(value) => handleFieldChange(record.id!, 'amount', value || 0)}
+              />
+            </div>
           );
         }
         
@@ -666,7 +668,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '预计日期',
       dataIndex: 'expectedDate',
-      width: 110,
+      width: 10,
       render: (date: string, record: GroupedRow) => {
         // 只在项目行显示日期
         if (record.isTypeHeader || record.isCategoryHeader) return null;
@@ -775,7 +777,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                 <strong style={{ fontSize: '16px' }}>Total Income</strong>
                       </Table.Summary.Cell>
               <Table.Summary.Cell index={2} align="right">
-                <strong style={{ color: '#52c41a', fontSize: '18px', fontWeight: 700 }}>
+                <strong style={{ color: '#52c41a', fontSize: '16px', fontWeight: 700 }}>
                           RM {totalIncome.toFixed(2)}
                         </strong>
                       </Table.Summary.Cell>
