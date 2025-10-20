@@ -67,6 +67,16 @@ const BankTransactionList: React.FC<Props> = ({
   onRefresh,
   onExport,
 }) => {
+  console.log('🔍 [BankTransactionList] Component rendered', {
+    transactionsCount: transactions.length,
+    loading,
+    transactions: transactions.slice(0, 3).map(t => ({
+      id: t.id,
+      number: t.transactionNumber,
+      description: t.description,
+    })),
+  });
+  
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [searchText, setSearchText] = useState('');
 

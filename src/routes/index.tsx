@@ -8,6 +8,7 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import GlobalSettingsPage from '@/modules/system/pages/GlobalSettingsPage';
 import FinancialCategoryManagementPage from '@/modules/system/pages/FinancialCategoryManagementPage';
 import InitializationPage from '@/pages/InitializationPage';
+import QuickAddEventTransactionPage from '@/pages/QuickAddEventTransactionPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
 import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage';
@@ -96,6 +97,10 @@ export const router = createBrowserRouter(
             element: <InitializationPage />,
           },
         ],
+      },
+      {
+        path: 'quick-add-event-transaction',
+        element: <QuickAddEventTransactionPage />,
       },
       {
         path: 'firebase-test',

@@ -126,9 +126,21 @@ const EventAccountManagementPage: React.FC = () => {
 
   // 加载财务计划和交易记录
   useEffect(() => {
+    console.log('🔍 [useEffect] Triggered for plans and transactions', {
+      hasAccount: !!account,
+      accountId: account?.id,
+      selectedEventId,
+    });
+    
     if (account && selectedEventId) {
+      console.log('✅ [useEffect] Conditions met, loading data...');
       loadPlans();
       loadBankTransactions();
+    } else {
+      console.log('⚠️ [useEffect] Conditions not met', {
+        hasAccount: !!account,
+        hasSelectedEventId: !!selectedEventId,
+      });
     }
   }, [account, selectedEventId]);
 
@@ -312,10 +324,26 @@ const EventAccountManagementPage: React.FC = () => {
 
   // 加载银行交易记录
   const loadBankTransactions = async () => {
-    if (!selectedEventId) return;
+    console.log('🔍 [loadBankTransactions] Starting...', { selectedEventId });
+    
+    if (!selectedEventId) {
+      console.log('⚠️ [loadBankTransactions] No selectedEventId, skipping');
+      return;
+    }
     
     try {
+      console.log('📡 [loadBankTransactions] Calling getTransactionsByEventId...', selectedEventId);
       const transactions = await getTransactionsByEventId(selectedEventId);
+      console.log('✅ [loadBankTransactions] Loaded transactions:', {
+        count: transactions.length,
+        transactions: transactions.map(t => ({
+          id: t.id,
+          number: t.transactionNumber,
+          description: t.mainDescription,
+          amount: t.amount,
+          relatedEventId: t.relatedEventId,
+        })),
+      });
       
       // 转换为 BankTransaction 格式
       const bankTxns: BankTransaction[] = transactions.map(txn => ({
@@ -335,9 +363,19 @@ const EventAccountManagementPage: React.FC = () => {
         createdAt: txn.createdAt,
       }));
       
+      console.log('🔄 [loadBankTransactions] Converted to BankTransaction format:', {
+        count: bankTxns.length,
+        bankTxns: bankTxns.map(b => ({
+          id: b.id,
+          number: b.transactionNumber,
+          description: b.description,
+        })),
+      });
+      
       setBankTransactions(bankTxns);
+      console.log('✅ [loadBankTransactions] State updated');
     } catch (error) {
-      console.error('Failed to load bank transactions:', error);
+      console.error('❌ [loadBankTransactions] Failed to load bank transactions:', error);
       setBankTransactions([]);
     }
   };

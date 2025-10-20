@@ -1909,6 +1909,11 @@ export const batchSetCategory = async (
  * 获取关联到特定活动的交易记录（方案C）
  */
 export const getTransactionsByEventId = async (eventId: string): Promise<Transaction[]> => {
+  console.log('🔍 [getTransactionsByEventId] Starting query...', { 
+    eventId,
+    collection: GLOBAL_COLLECTIONS.TRANSACTIONS,
+  });
+  
   try {
     const q = query(
       collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
@@ -1916,17 +1921,44 @@ export const getTransactionsByEventId = async (eventId: string): Promise<Transac
       orderBy('transactionDate', 'desc')
     );
 
+    console.log('📡 [getTransactionsByEventId] Executing Firestore query...');
     const snapshot = await getDocs(q);
+    console.log('✅ [getTransactionsByEventId] Query completed', {
+      totalDocs: snapshot.size,
+      isEmpty: snapshot.empty,
+    });
 
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      transactionDate: safeTimestampToISO(doc.data().transactionDate) || '',
-      createdAt: safeTimestampToISO(doc.data().createdAt) || '',
-      updatedAt: safeTimestampToISO(doc.data().updatedAt) || '',
-      approvedAt: doc.data().approvedAt ? safeTimestampToISO(doc.data().approvedAt) : undefined,
-    } as Transaction));
+    const transactions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log('📄 [getTransactionsByEventId] Document data:', {
+        id: doc.id,
+        transactionNumber: data.transactionNumber,
+        relatedEventId: data.relatedEventId,
+        mainDescription: data.mainDescription,
+        amount: data.amount,
+      });
+      
+      return {
+        id: doc.id,
+        ...data,
+        transactionDate: safeTimestampToISO(data.transactionDate) || '',
+        createdAt: safeTimestampToISO(data.createdAt) || '',
+        updatedAt: safeTimestampToISO(data.updatedAt) || '',
+        approvedAt: data.approvedAt ? safeTimestampToISO(data.approvedAt) : undefined,
+      } as Transaction;
+    });
+
+    console.log('✅ [getTransactionsByEventId] Returning transactions:', {
+      count: transactions.length,
+      firstTransaction: transactions[0] ? {
+        id: transactions[0].id,
+        number: transactions[0].transactionNumber,
+      } : null,
+    });
+
+    return transactions;
   } catch (error: any) {
+    console.error('❌ [getTransactionsByEventId] Query failed:', error);
     globalSystemService.log('error', 'Failed to get transactions by event ID', 'transactionService', { 
       error, 
       eventId 
