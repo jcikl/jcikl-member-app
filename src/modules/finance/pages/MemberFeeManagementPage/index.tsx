@@ -98,6 +98,10 @@ const MemberFeeManagementPage: React.FC = () => {
   const [modalSelectedMemberId, setModalSelectedMemberId] = useState<string>('');
   const [memberSearchOptions, setMemberSearchOptions] = useState<{ value: string; label: string }[]>([]);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
+  
+  // 🆕 类别统计数据
+  const [categoryStats, setCategoryStats] = useState<Record<string, { count: number; amount: number }>>({});
+  const [selectedCategoryCard, setSelectedCategoryCard] = useState<string>('all'); // 当前选中的类别卡片
   // 批量选择与分类
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [bulkClassifyModalVisible, setBulkClassifyModalVisible] = useState(false);
@@ -158,6 +162,9 @@ const MemberFeeManagementPage: React.FC = () => {
       // Load statistics
       const stats = await getMemberFeeStatistics();
       setStatistics(stats);
+      
+      // 🆕 计算类别统计数据
+      await calculateCategoryStats(selectedYear);
 
     } catch (error: any) {
       message.error('加载会员费用数据失败');
@@ -171,6 +178,35 @@ const MemberFeeManagementPage: React.FC = () => {
       setLoading(false);
     }
   };
+  
+  // 🆕 计算各类别统计数据
+  const calculateCategoryStats = async (year: string) => {
+    try {
+      const categories = ['all', 'Official Member', 'Associate Member', 'Honorary Member', 'Visiting Member', 'Alumni', 'JCI Friend'];
+      const stats: Record<string, { count: number; amount: number }> = {};
+      
+      for (const category of categories) {
+        const result = await getMemberFees({
+          page: 1,
+          limit: 10000, // 获取所有数据用于统计
+          fiscalYear: year,
+          memberCategory: category !== 'all' ? (category as MemberCategoryType) : undefined,
+        });
+        
+        const totalAmount = result.data.reduce((sum, fee) => sum + (fee.expectedAmount || 0), 0);
+        
+        stats[category] = {
+          count: result.total,
+          amount: totalAmount,
+        };
+      }
+      
+      console.log('📊 [MemberFeeManagement] Category stats calculated:', stats);
+      setCategoryStats(stats);
+    } catch (error) {
+      console.error('❌ [MemberFeeManagement] Failed to calculate category stats:', error);
+    }
+  };
 
   const handleSearch = (value: string) => {
     setSearchText(value);
@@ -181,9 +217,12 @@ const MemberFeeManagementPage: React.FC = () => {
     setStatusFilter(value as MemberFeeStatus | 'all');
     setCurrentPage(1);
   };
-
-  const handleCategoryFilterChange = (value: MemberCategoryType | 'all') => {
-    setCategoryFilter(value);
+  
+  // 🆕 处理类别卡片点击
+  const handleCategoryCardClick = (category: string) => {
+    console.log('🔗 [MemberFeeManagement] Category card clicked:', category);
+    setSelectedCategoryCard(category);
+    setCategoryFilter(category as MemberCategoryType | 'all');
     setCurrentPage(1);
   };
 
@@ -779,83 +818,279 @@ const MemberFeeManagementPage: React.FC = () => {
                 key: 'member-fees',
                 label: '会员费用追踪',
                 children: (
-                  <>
-                    {/* Filters and Actions */}
-                    <Card className="mb-6">
-                      <Row gutter={[16, 16]} align="middle">
-                        <Col xs={24} md={8}>
-                          <Search
-                            placeholder="搜索会员姓名或ID..."
-                            onSearch={handleSearch}
-                            allowClear
-                            enterButton={<SearchOutlined />}
-                          />
-                        </Col>
-                        <Col xs={12} md={4}>
-                          <Select
-                            style={{ width: '100%' }}
-                            placeholder="类别"
-                            value={categoryFilter}
-                            onChange={(value) => handleCategoryFilterChange(value as MemberCategoryType | 'all')}
-                          >
-                            <Option value="all">所有类别</Option>
-                            <Option value="Official Member">正式会员</Option>
-                            <Option value="Associate Member">准会员</Option>
-                            <Option value="Honorary Member">荣誉会员</Option>
-                            <Option value="Visiting Member">访问会员</Option>
-                            <Option value="Alumni">校友</Option>
-                            <Option value="JCI Friend">青商好友</Option>
-                          </Select>
-                        </Col>
-                        <Col xs={12} md={4}>
-                          <Select
-                            style={{ width: '100%' }}
-                            placeholder="状态"
-                            value={statusFilter}
-                            onChange={handleStatusFilterChange}
-                          >
-                            <Option value="all">所有状态</Option>
-                            <Option value="paid">已付</Option>
-                            <Option value="unpaid">未付</Option>
-                            <Option value="overdue">逾期</Option>
-                          </Select>
-                        </Col>
-                        <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-                          <Space>
-                            <Button icon={<SendOutlined />} onClick={handleSendBulkReminders}>
-                              批量提醒
-                            </Button>
-                            <Button icon={<DownloadOutlined />} onClick={handleExportReport}>
-                              导出报告
-                            </Button>
-                          </Space>
-                        </Col>
-                      </Row>
-                    </Card>
-
-                    {/* Member Fees Table */}
-                    <Card title="会员费用详情">
-                      <Table
-                        {...tableConfig}
-                        columns={columns}
-                        dataSource={memberFees}
-                        rowKey="id"
-                        loading={loading}
-                        pagination={{
-                          current: currentPage,
-                          pageSize,
-                          total,
-                          onChange: (page, size) => {
-                            setCurrentPage(page);
-                            setPageSize(size || 20);
-                          },
-                          showSizeChanger: true,
-                          showTotal: (total) => `共 ${total} 条记录`,
+                  <Row gutter={16}>
+                    {/* 🆕 左侧类别筛选卡片 */}
+                    <Col xs={24} lg={6} style={{ marginBottom: 16 }}>
+                      {/* 年份筛选 */}
+                      <Card style={{ marginBottom: 16 }}>
+                        <div style={{ marginBottom: 8, fontWeight: 600 }}>📅 年份筛选</div>
+                        <Select
+                          style={{ width: '100%' }}
+                          value={selectedYear}
+                          onChange={(value) => {
+                            setSelectedYear(value);
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <Option value="FY2025">2025</Option>
+                          <Option value="FY2024">2024</Option>
+                          <Option value="FY2023">2023</Option>
+                        </Select>
+                      </Card>
+                      
+                      {/* 类别统计卡片 */}
+                      <div style={{ fontWeight: 600, marginBottom: 12 }}>💼 会员类别筛选</div>
+                      
+                      {/* 所有类别 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedCategoryCard === 'all' ? '#e6f7ff' : '#fff',
+                          border: selectedCategoryCard === 'all' ? '2px solid #1890ff' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
                         }}
-                        scroll={undefined}
-                      />
-                    </Card>
-                  </>
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleCategoryCardClick('all')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>📊</span>
+                          <span style={{ fontSize: 16, fontWeight: 600 }}>所有类别</span>
+                        </div>
+                        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
+                          👥 {categoryStats['all']?.count || 0} 人
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 600, color: '#52c41a' }}>
+                          💰 RM {(categoryStats['all']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                        {selectedCategoryCard === 'all' && (
+                          <div style={{ marginTop: 8, color: '#1890ff', fontSize: 12 }}>
+                            ✓ 当前筛选
+                          </div>
+                        )}
+                      </Card>
+                      
+                      {/* 正式会员 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedCategoryCard === 'Official Member' ? '#e6f7ff' : '#fff',
+                          border: selectedCategoryCard === 'Official Member' ? '2px solid #52c41a' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleCategoryCardClick('Official Member')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>👔</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#52c41a' }}>正式会员</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          👥 {categoryStats['Official Member']?.count || 0} 人
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#52c41a' }}>
+                          💰 RM {(categoryStats['Official Member']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                      
+                      {/* 准会员 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedCategoryCard === 'Associate Member' ? '#e6f7ff' : '#fff',
+                          border: selectedCategoryCard === 'Associate Member' ? '2px solid #13c2c2' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleCategoryCardClick('Associate Member')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🎓</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#13c2c2' }}>准会员</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          👥 {categoryStats['Associate Member']?.count || 0} 人
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#13c2c2' }}>
+                          💰 RM {(categoryStats['Associate Member']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                      
+                      {/* 荣誉会员 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedCategoryCard === 'Honorary Member' ? '#e6f7ff' : '#fff',
+                          border: selectedCategoryCard === 'Honorary Member' ? '2px solid #722ed1' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleCategoryCardClick('Honorary Member')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🏆</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#722ed1' }}>荣誉会员</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          👥 {categoryStats['Honorary Member']?.count || 0} 人
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#722ed1' }}>
+                          💰 RM {(categoryStats['Honorary Member']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                        <div style={{ marginTop: 4, color: '#8c8c8c', fontSize: 12 }}>
+                          💡 免费会员
+                        </div>
+                      </Card>
+                      
+                      {/* 访问会员 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedCategoryCard === 'Visiting Member' ? '#e6f7ff' : '#fff',
+                          border: selectedCategoryCard === 'Visiting Member' ? '2px solid #1890ff' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleCategoryCardClick('Visiting Member')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🌏</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#1890ff' }}>访问会员</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          👥 {categoryStats['Visiting Member']?.count || 0} 人
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#1890ff' }}>
+                          💰 RM {(categoryStats['Visiting Member']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                      
+                      {/* 校友 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedCategoryCard === 'Alumni' ? '#e6f7ff' : '#fff',
+                          border: selectedCategoryCard === 'Alumni' ? '2px solid #fa8c16' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleCategoryCardClick('Alumni')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🎓</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#fa8c16' }}>校友</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          👥 {categoryStats['Alumni']?.count || 0} 人
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#fa8c16' }}>
+                          💰 RM {(categoryStats['Alumni']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                      
+                      {/* 青商好友 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedCategoryCard === 'JCI Friend' ? '#e6f7ff' : '#fff',
+                          border: selectedCategoryCard === 'JCI Friend' ? '2px solid #eb2f96' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleCategoryCardClick('JCI Friend')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🤝</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#eb2f96' }}>青商好友</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          👥 {categoryStats['JCI Friend']?.count || 0} 人
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#eb2f96' }}>
+                          💰 RM {(categoryStats['JCI Friend']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                    </Col>
+                    
+                    {/* 右侧详情列表 */}
+                    <Col xs={24} lg={18}>
+                      {/* Filters and Actions */}
+                      <Card className="mb-6">
+                        <Row gutter={[16, 16]} align="middle">
+                          <Col xs={24} md={8}>
+                            <Search
+                              placeholder="搜索会员姓名或ID..."
+                              onSearch={handleSearch}
+                              allowClear
+                              enterButton={<SearchOutlined />}
+                            />
+                          </Col>
+                          <Col xs={12} md={6}>
+                            <Select
+                              style={{ width: '100%' }}
+                              placeholder="状态"
+                              value={statusFilter}
+                              onChange={handleStatusFilterChange}
+                            >
+                              <Option value="all">所有状态</Option>
+                              <Option value="paid">已付</Option>
+                              <Option value="unpaid">未付</Option>
+                              <Option value="overdue">逾期</Option>
+                            </Select>
+                          </Col>
+                          <Col xs={24} md={10} style={{ textAlign: 'right' }}>
+                            <Space>
+                              <Button icon={<ReloadOutlined />} onClick={() => loadMemberFees()}>
+                                刷新
+                              </Button>
+                              <Button icon={<SendOutlined />} onClick={handleSendBulkReminders}>
+                                批量提醒
+                              </Button>
+                              <Button icon={<DownloadOutlined />} onClick={handleExportReport}>
+                                导出报告
+                              </Button>
+                            </Space>
+                          </Col>
+                        </Row>
+                      </Card>
+
+                      {/* Member Fees Table */}
+                      <Card title="会员费用详情">
+                        <Table
+                          {...tableConfig}
+                          columns={columns}
+                          dataSource={memberFees}
+                          rowKey="id"
+                          loading={loading}
+                          pagination={{
+                            current: currentPage,
+                            pageSize,
+                            total,
+                            onChange: (page, size) => {
+                              setCurrentPage(page);
+                              setPageSize(size || 20);
+                            },
+                            showSizeChanger: true,
+                            showTotal: (total) => `共 ${total} 条记录`,
+                          }}
+                          scroll={{ x: 1200 }}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
                 ),
               },
               {
