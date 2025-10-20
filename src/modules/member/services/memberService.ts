@@ -649,15 +649,15 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
     
     members.forEach(member => {
       if (member.profile?.birthDate) {
-        // Try multiple date formats
-        let birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
+        // Try to parse the date string
+        let birthDate = dayjs(member.profile.birthDate);
         
-        // If invalid, try ISO format
+        // If invalid, try with format
         if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate);
+          birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
         }
         
-        // If still invalid, try other formats
+        // If still invalid, try other format
         if (!birthDate.isValid()) {
           birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD');
         }
@@ -667,16 +667,29 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
           return;
         }
         
-        // Get this year's birthday
-        const thisYearBirthday = birthDate.year(today.year());
+        // Get birth month and day
+        const birthMonth = birthDate.month();
+        const birthDay = birthDate.date();
+        
+        // Create this year's birthday (use set to avoid mutation)
+        const thisYearBirthday = dayjs()
+          .year(today.year())
+          .month(birthMonth)
+          .date(birthDay)
+          .startOf('day');
         
         // Calculate days until birthday
-        let daysUntil = thisYearBirthday.diff(today, 'day');
+        const todayStart = today.startOf('day');
+        let daysUntil = thisYearBirthday.diff(todayStart, 'day');
         
         // If birthday already passed this year, check next year
         if (daysUntil < 0) {
-          const nextYearBirthday = birthDate.year(today.year() + 1);
-          daysUntil = nextYearBirthday.diff(today, 'day');
+          const nextYearBirthday = dayjs()
+            .year(today.year() + 1)
+            .month(birthMonth)
+            .date(birthDay)
+            .startOf('day');
+          daysUntil = nextYearBirthday.diff(todayStart, 'day');
         }
         
         // Only include birthdays within the next X days
@@ -731,15 +744,15 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
     
     members.forEach(member => {
       if (member.profile?.birthDate) {
-        // Try multiple date formats
-        let birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
+        // Try to parse the date string
+        let birthDate = dayjs(member.profile.birthDate);
         
-        // If invalid, try ISO format
+        // If invalid, try with format
         if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate);
+          birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
         }
         
-        // If still invalid, try other formats
+        // If still invalid, try other format
         if (!birthDate.isValid()) {
           birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD');
         }
