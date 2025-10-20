@@ -28,3 +28,30 @@
   font-size: 14px;
 }
 
+/* 分组行样式 */
+.activity-financial-plan-card .type-header-row {
+  background: #fafafa;
+  font-weight: 700;
+}
+
+.activity-financial-plan-card .type-header-row:hover {
+  background: #fafafa !important;
+}
+
+.activity-financial-plan-card .category-header-row {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+.activity-financial-plan-card .category-header-row:hover {
+  background: #f0f0f0 !important;
+}
+
+.activity-financial-plan-card .item-row {
+  background: #ffffff;
+}
+
+.activity-financial-plan-card .item-row:hover {
+  background: #fafafa !important;
+}
+

@@ -127,6 +127,116 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     const category = categories.find(cat => cat.value === value);
     return category?.label || value;
   };
+
+  // 扩展数据类型：用于分组行
+  interface GroupedRow extends Partial<FinancialPlanItem> {
+    key: string;
+    isTypeHeader?: boolean;
+    isCategoryHeader?: boolean;
+    typeLabel?: string;
+    categoryLabel?: string;
+    categoryTotal?: number;
+    indentLevel?: number;
+  }
+
+  // 构建分组数据结构
+  const buildGroupedData = (): GroupedRow[] => {
+    const grouped: GroupedRow[] = [];
+    
+    // 收入组
+    if (incomeItems.length > 0) {
+      // 类型标题行
+      grouped.push({
+        key: 'income-header',
+        isTypeHeader: true,
+        typeLabel: 'Incomes',
+        type: 'income',
+        indentLevel: 0,
+      });
+      
+      // 按类别分组
+      const incomeByCategory = incomeItems.reduce((acc, item) => {
+        const cat = item.category;
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+      }, {} as Record<string, FinancialPlanItem[]>);
+      
+      // 渲染每个类别
+      Object.entries(incomeByCategory).forEach(([category, categoryItems]) => {
+        const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
+        
+        // 类别标题行
+        grouped.push({
+          key: `income-cat-${category}`,
+          isCategoryHeader: true,
+          type: 'income',
+          category,
+          categoryLabel: getCategoryLabel('income', category),
+          categoryTotal,
+          indentLevel: 1,
+        });
+        
+        // 类别下的项目
+        categoryItems.forEach(item => {
+          grouped.push({
+            ...item,
+            key: item.id,
+            indentLevel: 2,
+          } as GroupedRow);
+        });
+      });
+    }
+    
+    // 支出组
+    if (expenseItems.length > 0) {
+      // 类型标题行
+      grouped.push({
+        key: 'expense-header',
+        isTypeHeader: true,
+        typeLabel: 'Expenses',
+        type: 'expense',
+        indentLevel: 0,
+      });
+      
+      // 按类别分组
+      const expenseByCategory = expenseItems.reduce((acc, item) => {
+        const cat = item.category;
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+      }, {} as Record<string, FinancialPlanItem[]>);
+      
+      // 渲染每个类别
+      Object.entries(expenseByCategory).forEach(([category, categoryItems]) => {
+        const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
+        
+        // 类别标题行
+        grouped.push({
+          key: `expense-cat-${category}`,
+          isCategoryHeader: true,
+          type: 'expense',
+          category,
+          categoryLabel: getCategoryLabel('expense', category),
+          categoryTotal,
+          indentLevel: 1,
+        });
+        
+        // 类别下的项目
+        categoryItems.forEach(item => {
+          grouped.push({
+            ...item,
+            key: item.id,
+            indentLevel: 2,
+          } as GroupedRow);
+        });
+      });
+    }
+    
+    return grouped;
+  };
+
+  const groupedData = buildGroupedData();
   
   // 批量粘贴解析
   const parseBulkPasteData = (text: string): Array<Partial<FinancialPlanItem>> => {
@@ -241,61 +351,110 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 统一表格列定义
-  const columns: ColumnsType<FinancialPlanItem> = [
+  // 分组表格列定义
+  const columns: ColumnsType<GroupedRow> = [
     {
-      title: '类型',
-      dataIndex: 'type',
-      width: 100,
-      render: (type: 'income' | 'expense') => (
-        <Tag color={type === 'income' ? 'green' : 'red'}>
-          {type === 'income' ? (
-            <><RiseOutlined /> 收入</>
-          ) : (
-            <><FallOutlined /> 支出</>
-          )}
-        </Tag>
-      ),
-    },
-    {
-      title: '类别',
-      dataIndex: 'category',
-      width: 140,
-      render: (value: string, record: FinancialPlanItem) => getCategoryLabel(record.type, value),
-    },
-    {
-      title: '描述',
+      title: '项目/类别',
       dataIndex: 'description',
-      ellipsis: true,
+      render: (_: unknown, record: GroupedRow) => {
+        // 类型标题行 (Incomes / Expenses)
+        if (record.isTypeHeader) {
+          return (
+            <div style={{ 
+              fontWeight: 700, 
+              fontSize: '16px',
+              color: record.type === 'income' ? '#52c41a' : '#ff4d4f',
+              padding: '8px 0'
+            }}>
+              {record.type === 'income' ? <RiseOutlined /> : <FallOutlined />} {record.typeLabel}
+            </div>
+          );
+        }
+        
+        // 类别标题行 (Ticketing, Sponsor, etc.)
+        if (record.isCategoryHeader) {
+          return (
+            <div style={{ 
+              fontWeight: 600, 
+              fontSize: '14px',
+              paddingLeft: '24px',
+              color: '#595959'
+            }}>
+              - {record.categoryLabel}
+            </div>
+          );
+        }
+        
+        // 项目行 (Eddie, Andy, etc.)
+        return (
+          <div style={{ paddingLeft: '48px', color: '#262626' }}>
+            -- {record.description}
+          </div>
+        );
+      },
     },
     {
       title: '备注',
       dataIndex: 'remark',
+      width: 200,
       ellipsis: true,
-      render: (text: string) => text || '-',
+      render: (text: string, record: GroupedRow) => {
+        // 只在项目行显示备注
+        if (record.isTypeHeader || record.isCategoryHeader) return null;
+        return <span style={{ color: '#8c8c8c' }}>{text || '-'}</span>;
+      },
     },
     {
       title: '金额',
       dataIndex: 'amount',
-      width: 120,
+      width: 150,
       align: 'right',
-      render: (value: number, record: FinancialPlanItem) => (
-        <span style={{ color: record.type === 'income' ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
-          RM {value.toFixed(2)}
-        </span>
-      ),
+      render: (_: unknown, record: GroupedRow) => {
+        // 类型标题行不显示金额
+        if (record.isTypeHeader) return null;
+        
+        // 类别标题行显示类别小计
+        if (record.isCategoryHeader) {
+          return (
+            <span style={{ 
+              fontWeight: 600, 
+              fontSize: '14px',
+              color: record.type === 'income' ? '#52c41a' : '#ff4d4f'
+            }}>
+              RM {record.categoryTotal?.toFixed(2)}
+            </span>
+          );
+        }
+        
+        // 项目行显示金额
+        return (
+          <span style={{ 
+            color: record.type === 'income' ? '#52c41a' : '#ff4d4f',
+            fontWeight: 500
+          }}>
+            RM {record.amount?.toFixed(2)}
+          </span>
+        );
+      },
     },
     {
       title: '预计日期',
       dataIndex: 'expectedDate',
       width: 120,
-      render: (date: string) => globalDateService.formatDate(date, 'display'),
+      render: (date: string, record: GroupedRow) => {
+        // 只在项目行显示日期
+        if (record.isTypeHeader || record.isCategoryHeader) return null;
+        return globalDateService.formatDate(date, 'display');
+      },
     },
     {
       title: '状态',
       dataIndex: 'status',
       width: 100,
-      render: (status: string) => {
+      render: (status: string, record: GroupedRow) => {
+        // 只在项目行显示状态
+        if (record.isTypeHeader || record.isCategoryHeader) return null;
+        
         const statusMap = {
           planned: { label: '计划中', color: 'blue' },
           'pending-approval': { label: '待审批', color: 'gold' },
@@ -312,29 +471,34 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       key: 'action',
       width: 100,
       fixed: 'right',
-      render: (_: unknown, record: FinancialPlanItem) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          />
-          <Popconfirm
-            title="确认删除此项目？"
-            onConfirm={() => handleDelete(record.id)}
-            okText="确认"
-            cancelText="取消"
-          >
+      render: (_: unknown, record: GroupedRow) => {
+        // 只在项目行显示操作按钮
+        if (record.isTypeHeader || record.isCategoryHeader) return null;
+        
+        return (
+          <Space size="small">
             <Button
               type="link"
               size="small"
-              danger
-              icon={<DeleteOutlined />}
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record as FinancialPlanItem)}
             />
-          </Popconfirm>
-        </Space>
-      ),
+            <Popconfirm
+              title="确认删除此项目？"
+              onConfirm={() => handleDelete(record.id!)}
+              okText="确认"
+              cancelText="取消"
+            >
+              <Button
+                type="link"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -374,7 +538,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       }
       className="activity-financial-plan-card"
     >
-      {/* 统一表格 */}
+      {/* 分组表格 */}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Space>
           <span style={{ fontSize: 14, color: '#8c8c8c' }}>
@@ -392,53 +556,57 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       <Table
         {...tableConfig}
         columns={columns}
-        dataSource={items}
-        rowKey="id"
+        dataSource={groupedData}
+        rowKey="key"
         loading={loading}
-        pagination={{
-          pageSize: 20,
-          showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 条记录`,
+        pagination={false}
+        scroll={{ x: 1000 }}
+        rowClassName={(record) => {
+          if (record.isTypeHeader) return 'type-header-row';
+          if (record.isCategoryHeader) return 'category-header-row';
+          return 'item-row';
         }}
-        scroll={{ x: 1100 }}
         summary={() => (
           <Table.Summary fixed>
             <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={4}>
-                <strong>收入小计</strong>
+              <Table.Summary.Cell index={0}>
+                <strong style={{ fontSize: '16px' }}>Total Income</strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={4} align="right">
-                <strong style={{ color: '#52c41a', fontSize: '16px' }}>
+              <Table.Summary.Cell index={1} />
+              <Table.Summary.Cell index={2} align="right">
+                <strong style={{ color: '#52c41a', fontSize: '18px', fontWeight: 700 }}>
                   RM {totalIncome.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={5} colSpan={3} />
+              <Table.Summary.Cell index={3} colSpan={3} />
             </Table.Summary.Row>
             <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={4}>
-                <strong>支出小计</strong>
+              <Table.Summary.Cell index={0}>
+                <strong style={{ fontSize: '16px' }}>Total Expenses</strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={4} align="right">
-                <strong style={{ color: '#ff4d4f', fontSize: '16px' }}>
+              <Table.Summary.Cell index={1} />
+              <Table.Summary.Cell index={2} align="right">
+                <strong style={{ color: '#ff4d4f', fontSize: '18px', fontWeight: 700 }}>
                   RM {totalExpense.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={5} colSpan={3} />
+              <Table.Summary.Cell index={3} colSpan={3} />
             </Table.Summary.Row>
             <Table.Summary.Row style={{ backgroundColor: '#fafafa' }}>
-              <Table.Summary.Cell index={0} colSpan={4}>
-                <strong style={{ fontSize: '16px' }}>净利润</strong>
+              <Table.Summary.Cell index={0}>
+                <strong style={{ fontSize: '18px' }}>Net Profit</strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={4} align="right">
+              <Table.Summary.Cell index={1} />
+              <Table.Summary.Cell index={2} align="right">
                 <strong style={{ 
                   color: netProfit >= 0 ? '#52c41a' : '#ff4d4f', 
-                  fontSize: '18px',
+                  fontSize: '20px',
                   fontWeight: 700 
                 }}>
                   RM {netProfit.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={5} colSpan={3} />
+              <Table.Summary.Cell index={3} colSpan={3} />
             </Table.Summary.Row>
           </Table.Summary>
         )}
