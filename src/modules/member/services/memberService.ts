@@ -635,6 +635,9 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
     const snapshot = await getDocs(query(getMembersRef(), where('status', '==', 'active')));
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
     
+    console.log('🎂 [Birthday] Total active members:', members.length);
+    console.log('🎂 [Birthday] Members with birthDate:', members.filter(m => m.profile?.birthDate).length);
+    
     const today = dayjs();
     const upcomingBirthdays: Array<{
       id: string;
@@ -646,9 +649,23 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
     
     members.forEach(member => {
       if (member.profile?.birthDate) {
-        // Parse birthDate (format: dd-mmm-yyyy)
-        const birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
-        if (!birthDate.isValid()) return;
+        // Try multiple date formats
+        let birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
+        
+        // If invalid, try ISO format
+        if (!birthDate.isValid()) {
+          birthDate = dayjs(member.profile.birthDate);
+        }
+        
+        // If still invalid, try other formats
+        if (!birthDate.isValid()) {
+          birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD');
+        }
+        
+        if (!birthDate.isValid()) {
+          console.warn('🎂 [Birthday] Invalid date format:', member.name, member.profile.birthDate);
+          return;
+        }
         
         // Get this year's birthday
         const thisYearBirthday = birthDate.year(today.year());
@@ -675,6 +692,8 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
       }
     });
     
+    console.log('🎂 [Birthday] Upcoming birthdays found:', upcomingBirthdays.length);
+    
     // Sort by days until birthday
     upcomingBirthdays.sort((a, b) => a.daysUntilBirthday - b.daysUntilBirthday);
     
@@ -700,6 +719,8 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
     const snapshot = await getDocs(query(getMembersRef(), where('status', '==', 'active')));
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
     
+    console.log('🎂 [Birthday Month] Checking month:', month, 'Total members:', members.length);
+    
     const birthdayList: Array<{
       id: string;
       name: string;
@@ -710,9 +731,23 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
     
     members.forEach(member => {
       if (member.profile?.birthDate) {
-        // Parse birthDate (format: dd-mmm-yyyy)
-        const birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
-        if (!birthDate.isValid()) return;
+        // Try multiple date formats
+        let birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
+        
+        // If invalid, try ISO format
+        if (!birthDate.isValid()) {
+          birthDate = dayjs(member.profile.birthDate);
+        }
+        
+        // If still invalid, try other formats
+        if (!birthDate.isValid()) {
+          birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD');
+        }
+        
+        if (!birthDate.isValid()) {
+          console.warn('🎂 [Birthday Month] Invalid date format:', member.name, member.profile.birthDate);
+          return;
+        }
         
         // Check if birthday month matches
         if (birthDate.month() === month) {
@@ -726,6 +761,8 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
         }
       }
     });
+    
+    console.log('🎂 [Birthday Month] Found birthdays:', birthdayList.length);
     
     // Sort by day of month
     birthdayList.sort((a, b) => a.day - b.day);

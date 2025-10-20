@@ -120,11 +120,15 @@ const DashboardPage: React.FC = () => {
     const loadBirthdays = async () => {
       setListsLoading(true);
       try {
+        console.log('📊 [Dashboard] Loading birthdays, mode:', birthdayViewMode, 'month:', selectedMonth);
+        
         if (birthdayViewMode === 'upcoming') {
           const birthdays = await getUpcomingBirthdays(30);
+          console.log('📊 [Dashboard] Loaded upcoming birthdays:', birthdays.length);
           setUpcomingBirthdays(birthdays);
         } else {
           const birthdays = await getBirthdaysByMonth(selectedMonth);
+          console.log('📊 [Dashboard] Loaded month birthdays:', birthdays.length);
           setUpcomingBirthdays(birthdays);
         }
       } catch (error) {
@@ -223,7 +227,16 @@ const DashboardPage: React.FC = () => {
             <List
               loading={listsLoading}
               dataSource={upcomingBirthdays.slice(0, 10)}
-              locale={{ emptyText: birthdayViewMode === 'upcoming' ? '未来30天无生日会员' : '本月无生日会员' }}
+              locale={{ 
+                emptyText: (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#8c8c8c' }}>
+                    <div>{birthdayViewMode === 'upcoming' ? '未来30天无生日会员' : '本月无生日会员'}</div>
+                    <div style={{ fontSize: '12px', marginTop: '8px' }}>
+                      💡 请在会员管理中录入会员出生日期
+                    </div>
+                  </div>
+                )
+              }}
               renderItem={item => (
                 <List.Item style={{ padding: '8px 0' }}>
                   <List.Item.Meta
@@ -255,6 +268,18 @@ const DashboardPage: React.FC = () => {
                 </List.Item>
               )}
             />
+            {upcomingBirthdays.length > 0 && (
+              <div style={{ 
+                marginTop: 12, 
+                padding: '8px 12px', 
+                backgroundColor: '#f0f5ff', 
+                borderRadius: 4,
+                fontSize: '12px',
+                color: '#595959'
+              }}>
+                💡 共找到 {upcomingBirthdays.length} 位会员，显示前 10 位
+              </div>
+            )}
           </Card>
         </Col>
 
