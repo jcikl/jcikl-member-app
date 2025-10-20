@@ -22,7 +22,6 @@ import {
   Tabs,
   Row,
   Col,
-  Statistic,
   Tag,
 } from 'antd';
 import {
@@ -116,13 +115,9 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 计算统计数据
+  // 按类型筛选数据
   const incomeItems = items.filter(item => item.type === 'income');
   const expenseItems = items.filter(item => item.type === 'expense');
-  
-  const totalIncome = incomeItems.reduce((sum, item) => sum + item.amount, 0);
-  const totalExpense = expenseItems.reduce((sum, item) => sum + item.amount, 0);
-  const netProfit = totalIncome - totalExpense;
 
   // 获取类别标签
   const getCategoryLabel = (type: 'income' | 'expense', value: string) => {
@@ -364,53 +359,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       }
       className="activity-financial-plan-card"
     >
-      {/* 统计卡片 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={8}>
-          <Card size="small">
-            <Statistic
-              title="预计收入"
-              value={totalIncome}
-              precision={2}
-              prefix={<RiseOutlined style={{ color: '#52c41a' }} />}
-              valueStyle={{ color: '#52c41a' }}
-              suffix="RM"
-            />
-            <div style={{ marginTop: 8, fontSize: '12px', color: '#8c8c8c' }}>
-              {incomeItems.length} 个项目
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card size="small">
-            <Statistic
-              title="预算支出"
-              value={totalExpense}
-              precision={2}
-              prefix={<FallOutlined style={{ color: '#ff4d4f' }} />}
-              valueStyle={{ color: '#ff4d4f' }}
-              suffix="RM"
-            />
-            <div style={{ marginTop: 8, fontSize: '12px', color: '#8c8c8c' }}>
-              {expenseItems.length} 个项目
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card size="small">
-            <Statistic
-              title="预测净利润"
-              value={netProfit}
-              precision={2}
-              valueStyle={{ color: netProfit >= 0 ? '#52c41a' : '#ff4d4f' }}
-              suffix="RM"
-            />
-            <div style={{ marginTop: 8, fontSize: '12px', color: '#8c8c8c' }}>
-              收入 - 支出
-            </div>
-          </Card>
-        </Col>
-      </Row>
+      {/* 统计卡片已移除 - 使用预测标签页顶部的对比统计卡片 */}
 
       {/* 表格标签页 */}
       <Tabs
@@ -446,7 +395,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                       </Table.Summary.Cell>
                       <Table.Summary.Cell index={3} align="right">
                         <strong style={{ color: '#52c41a', fontSize: '16px' }}>
-                          RM {totalIncome.toFixed(2)}
+                          RM {incomeItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
                         </strong>
                       </Table.Summary.Cell>
                       <Table.Summary.Cell index={4} colSpan={3} />
@@ -485,7 +434,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                       </Table.Summary.Cell>
                       <Table.Summary.Cell index={3} align="right">
                         <strong style={{ color: '#ff4d4f', fontSize: '16px' }}>
-                          RM {totalExpense.toFixed(2)}
+                          RM {expenseItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
                         </strong>
                       </Table.Summary.Cell>
                       <Table.Summary.Cell index={4} colSpan={3} />

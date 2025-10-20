@@ -16,7 +16,6 @@ import {
   Select,
   Row,
   Col,
-  Statistic,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -104,13 +103,6 @@ const BankTransactionList: React.FC<Props> = ({
 
     return true;
   });
-
-  // 计算统计数据
-  const incomeTransactions = filteredTransactions.filter(txn => txn.transactionType === 'income');
-  const expenseTransactions = filteredTransactions.filter(txn => txn.transactionType === 'expense');
-  
-  const totalIncome = incomeTransactions.reduce((sum, txn) => sum + txn.amount, 0);
-  const totalExpense = expenseTransactions.reduce((sum, txn) => sum + txn.amount, 0);
 
   // 表格列定义
   const columns: ColumnsType<BankTransaction> = [
@@ -259,53 +251,7 @@ const BankTransactionList: React.FC<Props> = ({
       }
       className="bank-transaction-list-card"
     >
-      {/* 统计卡片 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={8}>
-          <Card size="small">
-            <Statistic
-              title="实际收入"
-              value={totalIncome}
-              precision={2}
-              prefix={<RiseOutlined style={{ color: '#52c41a' }} />}
-              valueStyle={{ color: '#52c41a' }}
-              suffix="RM"
-            />
-            <div style={{ marginTop: 8, fontSize: '12px', color: '#8c8c8c' }}>
-              {incomeTransactions.length} 笔交易
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card size="small">
-            <Statistic
-              title="实际支出"
-              value={totalExpense}
-              precision={2}
-              prefix={<FallOutlined style={{ color: '#ff4d4f' }} />}
-              valueStyle={{ color: '#ff4d4f' }}
-              suffix="RM"
-            />
-            <div style={{ marginTop: 8, fontSize: '12px', color: '#8c8c8c' }}>
-              {expenseTransactions.length} 笔交易
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card size="small">
-            <Statistic
-              title="净额"
-              value={totalIncome - totalExpense}
-              precision={2}
-              valueStyle={{ color: totalIncome - totalExpense >= 0 ? '#52c41a' : '#ff4d4f' }}
-              suffix="RM"
-            />
-            <div style={{ marginTop: 8, fontSize: '12px', color: '#8c8c8c' }}>
-              收入 - 支出
-            </div>
-          </Card>
-        </Col>
-      </Row>
+      {/* 统计卡片已移除 - 使用预测标签页顶部的对比统计卡片 */}
 
       {/* 筛选工具栏 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
