@@ -15,7 +15,11 @@
     "firebase:deploy:indexes": "firebase deploy --only firestore:indexes",
     "firebase:deploy:all": "firebase deploy --only firestore",
     "seed:database": "vite-node src/scripts/seedDatabase.ts",
-    "seed:settings": "vite-node src/scripts/seedGlobalSettings.ts"
+    "seed:settings": "vite-node src/scripts/seedGlobalSettings.ts",
+    "backup:firestore": "vite-node src/scripts/backupFirestore.ts",
+    "migrate:subcategory": "vite-node src/scripts/migrateSubCategoryToTxAccount.ts",
+    "migrate:subcategory:dry": "vite-node src/scripts/migrateSubCategoryToTxAccount.ts -- --dry-run",
+    "migrate:subcategory:rollback": "vite-node src/scripts/migrateSubCategoryToTxAccount.ts -- --rollback"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.3",
