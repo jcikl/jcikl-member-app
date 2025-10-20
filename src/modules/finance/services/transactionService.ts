@@ -415,7 +415,7 @@ export const updateTransaction = async (
       try {
         const finalAmount = updates.amount ?? existingData.amount;
         const finalTransactionType = updates.transactionType ?? existingData.transactionType;
-        const finalSubCategory = updates.txAccount ?? existingData.txAccount;
+        const finalTxAccount = updates.txAccount ?? existingData.txAccount;
         const finalPayerPayee = updates.payerPayee ?? existingData.payerPayee;
 
         // 🆕 获取会员信息（如果有 memberId）
@@ -437,7 +437,7 @@ export const updateTransaction = async (
           eventName: finalMetadata.eventName || 'Unknown Event',
           eventDate: finalMetadata.eventDate,
           fiscalYear: updates.fiscalYear ?? existingData.fiscalYear,
-          txAccount: finalSubCategory,
+          txAccount: finalTxAccount,
           payerPayee: finalPayerPayee, // 🆕 传递付款人/收款人
           memberId: linkedMemberId, // 🆕 传递会员ID
           memberName, // 🆕 传递会员名字
@@ -481,7 +481,7 @@ export const updateTransaction = async (
       try {
         const finalAmount = updates.amount ?? existingData.amount;
         const finalTransactionType = updates.transactionType ?? existingData.transactionType;
-        const finalSubCategory = updates.txAccount ?? existingData.txAccount;
+        const finalTxAccount = updates.txAccount ?? existingData.txAccount;
         const finalPayerPayee = updates.payerPayee ?? existingData.payerPayee;
 
         // 🆕 获取会员信息（如果有 memberId）
@@ -500,7 +500,7 @@ export const updateTransaction = async (
 
         await upsertGeneralFinancialRecordFromTransaction({
           category: finalCategory,
-          txAccount: finalSubCategory,
+          txAccount: finalTxAccount,
           fiscalYear: updates.fiscalYear ?? existingData.fiscalYear,
           payerPayee: finalPayerPayee, // 🆕 传递付款人/收款人
           memberId: linkedMemberId, // 🆕 传递会员ID
@@ -512,13 +512,13 @@ export const updateTransaction = async (
           userId,
         });
 
-        await reconcileGeneralFinancialRecord(finalCategory, finalSubCategory);
+        await reconcileGeneralFinancialRecord(finalCategory, finalTxAccount);
 
         console.log('✅ [updateTransaction] General financial record auto-synced successfully');
         globalSystemService.log('info', 'General financial auto-synced from transaction', 'transactionService.updateTransaction', {
           transactionId,
           category: finalCategory,
-          txAccount: finalSubCategory,
+          txAccount: finalTxAccount,
           userId,
         });
       } catch (syncError: any) {

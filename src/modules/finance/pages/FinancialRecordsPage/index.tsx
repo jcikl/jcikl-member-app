@@ -74,7 +74,7 @@ const FinancialRecordsPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<MemberFeeStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all'); // 改为记录类型
-  const [txAccountFilter, setSubCategoryFilter] = useState<string>('all');
+  const [txAccountFilter, setTxAccountFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FinancialRecord | null>(null);
@@ -437,8 +437,8 @@ const FinancialRecordsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const handleSubCategoryChange = (value: string) => {
-    setSubCategoryFilter(value);
+  const handleTxAccountChange = (value: string) => {
+    setTxAccountFilter(value);
     setCurrentPage(1);
   };
 
@@ -789,8 +789,8 @@ const FinancialRecordsPage: React.FC = () => {
                 <Select
                   style={{ width: '100%' }}
                   value={txAccountFilter}
-                  onChange={handleSubCategoryChange}
-                  placeholder="二次分类"
+                  onChange={handleTxAccountChange}
+                  placeholder="交易账户"
                 >
                   <Option value="all">全部分类</Option>
                   {availableSubCategories.map(cat => (

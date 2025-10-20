@@ -48,13 +48,13 @@ const GeneralAccountsPage: React.FC = () => {
   const [transactionTotal, setTransactionTotal] = useState(0);
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionPageSize, setTransactionPageSize] = useState(20);
-  const [txAccountFilter, setSubCategoryFilter] = useState<string>('all');
+  const [txAccountFilter, setTxAccountFilter] = useState<string>('all');
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   // 🆕 会员搜索相关状态
   const [modalSelectedMemberId, setModalSelectedMemberId] = useState<string>('');
   const [modalPayerPayee, setModalPayerPayee] = useState<string>(''); // 手动填写的乙方
-  const [modalSubCategory, setModalSubCategory] = useState<string>(''); // 二次分类
+  const [modalTxAccount, setModalTxAccount] = useState<string>(''); // 交易账户
   const [memberSearchOptions, setMemberSearchOptions] = useState<{ value: string; label: string }[]>([]);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   
@@ -148,7 +148,7 @@ const GeneralAccountsPage: React.FC = () => {
     setSelectedTransaction(transaction);
     
     // 🆕 预填现有信息
-    setModalSubCategory(transaction.txAccount || '');
+    setModalTxAccount(transaction.txAccount || '');
     const existingMemberId = (transaction as any)?.metadata?.memberId as string | undefined;
     const existingPayerPayee = transaction.payerPayee || '';
     
@@ -185,14 +185,14 @@ const GeneralAccountsPage: React.FC = () => {
   const handleClassifySubmit = async () => {
     if (!user || !selectedTransaction) return;
     
-    if (!modalSubCategory.trim()) {
-      message.warning('请选择或输入分类');
+    if (!modalTxAccount.trim()) {
+      message.warning('请选择或输入交易账户');
       return;
     }
     
     try {
       // 🆕 构建更新数据
-      const updateData: any = { txAccount: modalSubCategory };
+      const updateData: any = { txAccount: modalTxAccount };
       
       // 🆕 处理付款人/收款人信息
       let finalPayerPayee = modalPayerPayee.trim();
@@ -219,7 +219,7 @@ const GeneralAccountsPage: React.FC = () => {
       }
       
       console.log('🔗 [GeneralAccountsPage] Updating transaction with:', {
-        txAccount: modalSubCategory,
+        txAccount: modalTxAccount,
         memberId: modalSelectedMemberId || 'none',
         payerPayee: finalPayerPayee || 'none',
       });
@@ -235,7 +235,7 @@ const GeneralAccountsPage: React.FC = () => {
       setSelectedTransaction(null);
       setModalSelectedMemberId('');
       setModalPayerPayee('');
-      setModalSubCategory('');
+      setModalTxAccount('');
       setMemberSearchOptions([]);
       loadTransactions();
     } catch (error: any) {
@@ -450,7 +450,7 @@ const GeneralAccountsPage: React.FC = () => {
                   style={{ width: '100%' }}
                   placeholder="二次分类"
                   value={txAccountFilter}
-                  onChange={setSubCategoryFilter}
+                  onChange={setTxAccountFilter}
                 >
                   <Option value="all">所有分类</Option>
                   <optgroup label="收入类">
@@ -520,7 +520,7 @@ const GeneralAccountsPage: React.FC = () => {
             setSelectedTransaction(null);
             setModalSelectedMemberId('');
             setModalPayerPayee('');
-            setModalSubCategory('');
+            setModalTxAccount('');
             setMemberSearchOptions([]);
           }}
           footer={null}
@@ -620,8 +620,8 @@ const GeneralAccountsPage: React.FC = () => {
                         key={cat.key}
                         block 
                         size="large"
-                        type={modalSubCategory === cat.key ? 'primary' : 'default'}
-                        onClick={() => setModalSubCategory(cat.key)}
+                        type={modalTxAccount === cat.key ? 'primary' : 'default'}
+                        onClick={() => setModalTxAccount(cat.key)}
                       >
                         {cat.label}
                       </Button>
@@ -645,8 +645,8 @@ const GeneralAccountsPage: React.FC = () => {
                         key={cat.key}
                         block 
                         size="large"
-                        type={modalSubCategory === cat.key ? 'primary' : 'default'}
-                        onClick={() => setModalSubCategory(cat.key)}
+                        type={modalTxAccount === cat.key ? 'primary' : 'default'}
+                        onClick={() => setModalTxAccount(cat.key)}
                       >
                         {cat.label}
                       </Button>
@@ -661,7 +661,7 @@ const GeneralAccountsPage: React.FC = () => {
                   size="large"
                   style={{ marginTop: 16 }}
                   onClick={handleClassifySubmit}
-                  disabled={!modalSubCategory}
+                  disabled={!modalTxAccount}
                 >
                   确认保存
                 </Button>

@@ -78,7 +78,7 @@ const EventFinancialPage: React.FC = () => {
   const [transactionTotal, setTransactionTotal] = useState(0);
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionPageSize, setTransactionPageSize] = useState(20);
-  const [txAccountFilter, setSubCategoryFilter] = useState<string>('all');
+  const [txAccountFilter, setTxAccountFilter] = useState<string>('all');
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -1026,7 +1026,7 @@ const EventFinancialPage: React.FC = () => {
                             style={{ width: '100%' }}
                             placeholder="按活动筛选"
                             value={txAccountFilter}
-                            onChange={setSubCategoryFilter}
+                            onChange={setTxAccountFilter}
                           >
                             <Option value="all">所有活动</Option>
                             {financeEvents.map(event => (

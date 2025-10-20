@@ -33,7 +33,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string>('');
+  const [selectedTxAccount, setSelectedTxAccount] = useState<string>('');
 
   const handleOk = async () => {
     try {
@@ -43,10 +43,10 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       }
 
       setLoading(true);
-      await onOk(selectedCategory, selectedSubCategory || undefined);
+      await onOk(selectedCategory, selectedTxAccount || undefined);
       message.success(`已为 ${selectedCount} 条交易设置类别`);
       setSelectedCategory('');
-      setSelectedSubCategory('');
+      setSelectedTxAccount('');
     } catch (error: any) {
       message.error(error.message || '批量设置类别失败');
     } finally {
@@ -56,7 +56,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
 
   const handleCancel = () => {
     setSelectedCategory('');
-    setSelectedSubCategory('');
+    setSelectedTxAccount('');
     onCancel();
   };
 
@@ -127,9 +127,9 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
             <Select
               style={{ width: '100%' }}
               size="large"
-              value={selectedSubCategory}
-              onChange={setSelectedSubCategory}
-              placeholder="请选择会员费二次分类"
+              value={selectedTxAccount}
+              onChange={setSelectedTxAccount}
+              placeholder="请选择会员费交易账户"
               allowClear
             >
               <Option value="2025-new-member-fee">2025 新会员费</Option>
@@ -142,9 +142,9 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
             <Select
               style={{ width: '100%' }}
               size="large"
-              value={selectedSubCategory}
-              onChange={setSelectedSubCategory}
-              placeholder="请选择活动财务二次分类"
+              value={selectedTxAccount}
+              onChange={setSelectedTxAccount}
+              placeholder="请选择活动财务交易账户"
               allowClear
             >
               <Option value="ticket-income">门票收入</Option>
@@ -157,9 +157,9 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
             <Select
               style={{ width: '100%' }}
               size="large"
-              value={selectedSubCategory}
-              onChange={setSelectedSubCategory}
-              placeholder="请选择日常账户二次分类"
+              value={selectedTxAccount}
+              onChange={setSelectedTxAccount}
+              placeholder="请选择日常账户交易账户"
               allowClear
             >
               <Option value="office-supplies">办公用品</Option>

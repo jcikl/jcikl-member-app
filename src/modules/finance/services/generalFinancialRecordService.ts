@@ -74,8 +74,8 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
       
       // 🆕 如果 category/txAccount 变了，需要先对旧分类进行对账同步，再更新到新分类
       const oldCategory = existingByTransaction.category;
-      const oldSubCategory = existingByTransaction.txAccount;
-      const categoryChanged = oldCategory !== params.category || oldSubCategory !== params.txAccount;
+      const oldTxAccount = existingByTransaction.txAccount;
+      const categoryChanged = oldCategory !== params.category || oldTxAccount !== params.txAccount;
 
       // 从旧列表中移除此交易ID
       let oldRevenueIds = (existingByTransaction.revenueTransactionIds || []).filter(id => id !== params.transactionId);
@@ -104,7 +104,7 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
       // 对账同步：如果分类变了，需要同步旧分类和新分类
       if (categoryChanged) {
         console.log('🔄 [upsertGeneralFinancialRecord] Category changed, reconciling both old and new category');
-        await reconcileGeneralFinancialRecord(oldCategory, oldSubCategory); // 同步旧分类
+        await reconcileGeneralFinancialRecord(oldCategory, oldTxAccount); // 同步旧分类
         await reconcileGeneralFinancialRecord(params.category, params.txAccount); // 同步新分类
       } else {
         await reconcileGeneralFinancialRecord(params.category, params.txAccount);
