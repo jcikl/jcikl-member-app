@@ -621,6 +621,155 @@ export const checkPhoneExists = async (phone: string, excludeMemberId?: string):
 };
 
 /**
+ * Get members with upcoming birthdays (next 30 days)
+ * 获取即将过生日的会员（未来30天）
+ */
+export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
+  id: string;
+  name: string;
+  birthDate: string;
+  daysUntilBirthday: number;
+  avatar?: string;
+}>> => {
+  try {
+    const snapshot = await getDocs(query(getMembersRef(), where('status', '==', 'active')));
+    const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
+    
+    const today = dayjs();
+    const upcomingBirthdays: Array<{
+      id: string;
+      name: string;
+      birthDate: string;
+      daysUntilBirthday: number;
+      avatar?: string;
+    }> = [];
+    
+    members.forEach(member => {
+      if (member.profile?.birthDate) {
+        // Parse birthDate (format: dd-mmm-yyyy)
+        const birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
+        if (!birthDate.isValid()) return;
+        
+        // Get this year's birthday
+        const thisYearBirthday = birthDate.year(today.year());
+        
+        // Calculate days until birthday
+        let daysUntil = thisYearBirthday.diff(today, 'day');
+        
+        // If birthday already passed this year, check next year
+        if (daysUntil < 0) {
+          const nextYearBirthday = birthDate.year(today.year() + 1);
+          daysUntil = nextYearBirthday.diff(today, 'day');
+        }
+        
+        // Only include birthdays within the next X days
+        if (daysUntil >= 0 && daysUntil <= days) {
+          upcomingBirthdays.push({
+            id: member.id,
+            name: member.name,
+            birthDate: member.profile.birthDate,
+            daysUntilBirthday: daysUntil,
+            avatar: member.profile?.avatar,
+          });
+        }
+      }
+    });
+    
+    // Sort by days until birthday
+    upcomingBirthdays.sort((a, b) => a.daysUntilBirthday - b.daysUntilBirthday);
+    
+    return upcomingBirthdays;
+  } catch (error) {
+    console.error('Error fetching upcoming birthdays:', error);
+    throw new Error('获取生日列表失败');
+  }
+};
+
+/**
+ * Get member industry distribution
+ * 获取会员行业分布
+ */
+export const getIndustryDistribution = async (): Promise<Array<{
+  industry: string;
+  count: number;
+  percentage: number;
+}>> => {
+  try {
+    const snapshot = await getDocs(query(getMembersRef(), where('status', '==', 'active')));
+    const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
+    
+    const industryCount: Record<string, number> = {};
+    let totalWithIndustry = 0;
+    
+    members.forEach(member => {
+      const industries = member.profile?.ownIndustry || [];
+      if (industries.length > 0) {
+        totalWithIndustry++;
+        industries.forEach(industry => {
+          industryCount[industry] = (industryCount[industry] || 0) + 1;
+        });
+      }
+    });
+    
+    const distribution = Object.entries(industryCount)
+      .map(([industry, count]) => ({
+        industry,
+        count,
+        percentage: totalWithIndustry > 0 ? (count / totalWithIndustry) * 100 : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 industries
+    
+    return distribution;
+  } catch (error) {
+    console.error('Error fetching industry distribution:', error);
+    throw new Error('获取行业分布失败');
+  }
+};
+
+/**
+ * Get member interest distribution
+ * 获取会员兴趣分布
+ */
+export const getInterestDistribution = async (): Promise<Array<{
+  industry: string;
+  count: number;
+  percentage: number;
+}>> => {
+  try {
+    const snapshot = await getDocs(query(getMembersRef(), where('status', '==', 'active')));
+    const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
+    
+    const interestCount: Record<string, number> = {};
+    let totalWithInterest = 0;
+    
+    members.forEach(member => {
+      const interests = member.profile?.interestedIndustries || [];
+      if (interests.length > 0) {
+        totalWithInterest++;
+        interests.forEach(interest => {
+          interestCount[interest] = (interestCount[interest] || 0) + 1;
+        });
+      }
+    });
+    
+    const distribution = Object.entries(interestCount)
+      .map(([industry, count]) => ({
+        industry,
+        count,
+        percentage: totalWithInterest > 0 ? (count / totalWithInterest) * 100 : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 interests
+    
+    return distribution;
+  } catch (error) {
+    console.error('Error fetching interest distribution:', error);
+    throw new Error('获取兴趣分布失败');
+  }
+};
+
+/**
  * Get all active members (for dropdown selections)
  * 获取所有活跃会员（用于下拉选择）
  */

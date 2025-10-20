@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col } from 'antd';
-import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined } from '@ant-design/icons';
+import { Card, Row, Col, List, Avatar, Tag, Progress } from 'antd';
+import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined } from '@ant-design/icons';
 
 // Components
 import { MetricCard, PermissionGuard } from '@/components';
 
 // Services
-import { getMemberStats } from '@/modules/member/services/memberService';
+import { 
+  getMemberStats, 
+  getUpcomingBirthdays, 
+  getIndustryDistribution, 
+  getInterestDistribution 
+} from '@/modules/member/services/memberService';
 
 /**
  * Dashboard Page
@@ -20,6 +25,28 @@ const DashboardPage: React.FC = () => {
     totalAwards: 0,
     loading: true,
   });
+
+  const [upcomingBirthdays, setUpcomingBirthdays] = useState<Array<{
+    id: string;
+    name: string;
+    birthDate: string;
+    daysUntilBirthday: number;
+    avatar?: string;
+  }>>([]);
+
+  const [industryDistribution, setIndustryDistribution] = useState<Array<{
+    industry: string;
+    count: number;
+    percentage: number;
+  }>>([]);
+
+  const [interestDistribution, setInterestDistribution] = useState<Array<{
+    industry: string;
+    count: number;
+    percentage: number;
+  }>>([]);
+
+  const [listsLoading, setListsLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -41,6 +68,29 @@ const DashboardPage: React.FC = () => {
     };
 
     fetchStats();
+  }, []);
+
+  useEffect(() => {
+    const fetchLists = async () => {
+      setListsLoading(true);
+      try {
+        const [birthdays, industries, interests] = await Promise.all([
+          getUpcomingBirthdays(30),
+          getIndustryDistribution(),
+          getInterestDistribution(),
+        ]);
+
+        setUpcomingBirthdays(birthdays);
+        setIndustryDistribution(industries);
+        setInterestDistribution(interests);
+      } catch (error) {
+        console.error('Failed to fetch lists:', error);
+      } finally {
+        setListsLoading(false);
+      }
+    };
+
+    fetchLists();
   }, []);
 
   return (
@@ -91,6 +141,135 @@ const DashboardPage: React.FC = () => {
         </Col>
       </Row>
 
+      {/* 会员信息列表 */}
+      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+        {/* 会员生日列表 */}
+        <Col xs={24} lg={8}>
+          <Card 
+            title={
+              <span>
+                <GiftOutlined style={{ marginRight: 8, color: '#f5222d' }} />
+                即将过生日的会员
+              </span>
+            } 
+            className="content-card"
+            extra={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>未来30天</span>}
+          >
+            <List
+              loading={listsLoading}
+              dataSource={upcomingBirthdays.slice(0, 8)}
+              locale={{ emptyText: '暂无即将过生日的会员' }}
+              renderItem={item => (
+                <List.Item style={{ padding: '8px 0' }}>
+                  <List.Item.Meta
+                    avatar={
+                      <Avatar 
+                        src={item.avatar} 
+                        icon={<UserOutlined />}
+                        size="small"
+                      />
+                    }
+                    title={
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '13px' }}>{item.name}</span>
+                        <Tag color={item.daysUntilBirthday === 0 ? 'red' : item.daysUntilBirthday <= 7 ? 'orange' : 'blue'}>
+                          {item.daysUntilBirthday === 0 ? '今天' : `${item.daysUntilBirthday}天后`}
+                        </Tag>
+                      </div>
+                    }
+                    description={
+                      <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                        {item.birthDate}
+                      </span>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+
+        {/* 会员行业分布 */}
+        <Col xs={24} lg={8}>
+          <Card 
+            title={
+              <span>
+                <ShopOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                会员行业分布
+              </span>
+            } 
+            className="content-card"
+            extra={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>}
+          >
+            <List
+              loading={listsLoading}
+              dataSource={industryDistribution}
+              locale={{ emptyText: '暂无行业数据' }}
+              renderItem={item => (
+                <List.Item style={{ padding: '8px 0', display: 'block' }}>
+                  <div style={{ marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#262626' }}>
+                        {item.industry}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                        {item.count} 人
+                      </span>
+                    </div>
+                  </div>
+                  <Progress 
+                    percent={item.percentage} 
+                    size="small" 
+                    strokeColor="#1890ff"
+                    showInfo={false}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+
+        {/* 会员兴趣分布 */}
+        <Col xs={24} lg={8}>
+          <Card 
+            title={
+              <span>
+                <HeartOutlined style={{ marginRight: 8, color: '#52c41a' }} />
+                会员兴趣分布
+              </span>
+            } 
+            className="content-card"
+            extra={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>}
+          >
+            <List
+              loading={listsLoading}
+              dataSource={interestDistribution}
+              locale={{ emptyText: '暂无兴趣数据' }}
+              renderItem={item => (
+                <List.Item style={{ padding: '8px 0', display: 'block' }}>
+                  <div style={{ marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#262626' }}>
+                        {item.industry}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                        {item.count} 人
+                      </span>
+                    </div>
+                  </div>
+                  <Progress 
+                    percent={item.percentage} 
+                    size="small" 
+                    strokeColor="#52c41a"
+                    showInfo={false}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} lg={16}>
           <Card title="系统状态" className="content-card">
@@ -120,5 +299,3 @@ const DashboardPage: React.FC = () => {
 };
 
 export default DashboardPage;
-
-
