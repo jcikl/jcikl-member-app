@@ -76,6 +76,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 }) => {
   const [editingKey, setEditingKey] = useState<string>('');
   const [addingInType, setAddingInType] = useState<'income' | 'expense' | null>(null);
+  const [addingInCategory, setAddingInCategory] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [form] = Form.useForm();
   
@@ -155,18 +156,26 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       return acc;
     }, {} as Record<string, FinancialPlanItem[]>);
     
-    // 如果正在添加新项目（在类型下，未指定类别）
-    if (addingInType === 'income' && editingKey) {
+    // 如果正在添加新项目（在类型下）
+    if (addingInType === 'income' && editingKey && !addingInCategory) {
+      // 从类型行添加：需要用户选择类别（层级1）
       grouped.push({
         key: editingKey,
         type: 'income',
         isNew: true,
         indentLevel: 1,
+        // category: undefined - 用户需要选择
       } as GroupedRow);
     }
     
-    // 只渲染有项目的类别
-    Object.entries(incomeByCategory).forEach(([category, categoryItems]) => {
+    // 只渲染有项目的类别（或正在添加到的类别）
+    const allIncomeCategories = new Set([
+      ...Object.keys(incomeByCategory),
+      ...(addingInType === 'income' && addingInCategory ? [addingInCategory] : [])
+    ]);
+    
+    allIncomeCategories.forEach((category) => {
+      const categoryItems = incomeByCategory[category] || [];
       const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
       
       // 类别标题行
@@ -188,6 +197,17 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           indentLevel: 2,
         } as GroupedRow);
       });
+      
+      // 如果正在添加新项目到这个类别（从类别行添加）
+      if (addingInType === 'income' && addingInCategory === category && editingKey) {
+        grouped.push({
+          key: editingKey,
+          type: 'income',
+          category: category,  // 预设类别
+          isNew: true,
+          indentLevel: 2,
+        } as GroupedRow);
+      }
     });
     
     // 支出组 - 始终显示
@@ -207,18 +227,26 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       return acc;
     }, {} as Record<string, FinancialPlanItem[]>);
     
-    // 如果正在添加新项目（在类型下，未指定类别）
-    if (addingInType === 'expense' && editingKey) {
+    // 如果正在添加新项目（在类型下）
+    if (addingInType === 'expense' && editingKey && !addingInCategory) {
+      // 从类型行添加：需要用户选择类别（层级1）
       grouped.push({
         key: editingKey,
         type: 'expense',
         isNew: true,
         indentLevel: 1,
+        // category: undefined - 用户需要选择
       } as GroupedRow);
     }
     
-    // 只渲染有项目的类别
-    Object.entries(expenseByCategory).forEach(([category, categoryItems]) => {
+    // 只渲染有项目的类别（或正在添加到的类别）
+    const allExpenseCategories = new Set([
+      ...Object.keys(expenseByCategory),
+      ...(addingInType === 'expense' && addingInCategory ? [addingInCategory] : [])
+    ]);
+    
+    allExpenseCategories.forEach((category) => {
+      const categoryItems = expenseByCategory[category] || [];
       const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
       
       // 类别标题行
@@ -240,6 +268,17 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           indentLevel: 2,
         } as GroupedRow);
       });
+      
+      // 如果正在添加新项目到这个类别（从类别行添加）
+      if (addingInType === 'expense' && addingInCategory === category && editingKey) {
+        grouped.push({
+          key: editingKey,
+          type: 'expense',
+          category: category,  // 预设类别
+          isNew: true,
+          indentLevel: 2,
+        } as GroupedRow);
+      }
     });
     
     return grouped;
@@ -371,6 +410,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       setEditMode(false);
       setEditingKey('');
       setAddingInType(null);
+      setAddingInCategory(null);
       form.resetFields();
     } catch (error) {
       console.error('保存失败:', error);
@@ -378,16 +418,14 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 在类型下添加新项目
+  // 在类型下添加新项目（需要用户选择类别）
   const handleAddInType = (type: 'income' | 'expense') => {
     const newKey = `new-${Date.now()}`;
     setAddingInType(type);
+    setAddingInCategory(null);  // 不预设类别
     setEditingKey(newKey);
-    const defaultCategory = type === 'income' 
-      ? (incomeCategories[0]?.value || '') 
-      : (expenseCategories[0]?.value || '');
     form.setFieldsValue({
-      category: defaultCategory,
+      category: undefined,  // 用户必须选择
       description: '',
       remark: '',
       amount: 0,
@@ -400,9 +438,10 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const handleAddItemInCategory = (type: 'income' | 'expense', category: string) => {
     const newKey = `new-${Date.now()}`;
     setAddingInType(type);
+    setAddingInCategory(category);  // 记录预设类别
     setEditingKey(newKey);
     form.setFieldsValue({
-      category: category,
+      category: category,  // 预设类别
       description: '',
       remark: '',
       amount: 0,
@@ -477,7 +516,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         // 项目行 - 可编辑
         const editing = isEditing(record);
         if (editing) {
-          // 新行需要添加类别选择器
+          // 新行需要添加类别选择器（从类型行添加）
           if (record.isNew && !record.category) {
             const categories = record.type === 'income' ? incomeCategories : expenseCategories;
             return (
@@ -506,7 +545,25 @@ const ActivityFinancialPlan: React.FC<Props> = ({
             );
           }
           
-          // 已有类别的新行或编辑现有项目
+          // 从类别行添加的新行：显示类别名称（不可编辑）
+          if (record.isNew && record.category) {
+            return (
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <div style={{ paddingLeft: '24px', color: '#8c8c8c', fontSize: '12px' }}>
+                  类别: {getCategoryLabel(record.type!, record.category)}
+                </div>
+                <Form.Item
+                  name="description"
+                  style={{ margin: 0, paddingLeft: '48px' }}
+                  rules={[{ required: true, message: '请输入描述' }]}
+                >
+                  <Input placeholder="项目描述" size="small" />
+                </Form.Item>
+              </Space>
+            );
+          }
+          
+          // 编辑现有项目
           return (
             <Form.Item
               name="description"
@@ -518,26 +575,10 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           );
         }
         
-        // 正常显示模式 - 描述 + 状态标签
-        const statusMap = {
-          planned: { label: '计划中', color: 'blue' },
-          'pending-approval': { label: '待审批', color: 'gold' },
-          confirmed: { label: '已确认', color: 'orange' },
-          completed: { label: '已完成', color: 'green' },
-          cancelled: { label: '已取消', color: 'default' },
-        };
-        const statusConfig = statusMap[record.status as keyof typeof statusMap] || statusMap.planned;
-        
+        // 正常显示模式 - 只显示描述
         return (
-          <div style={{ paddingLeft: '48px' }}>
-            <div style={{ color: '#262626' }}>
-              -- {record.description}
-            </div>
-            <div style={{ marginTop: 4 }}>
-              <Tag color={statusConfig.color} style={{ fontSize: '11px' }}>
-                {statusConfig.label}
-              </Tag>
-            </div>
+          <div style={{ paddingLeft: '48px', color: '#262626' }}>
+            -- {record.description}
           </div>
         );
       },
@@ -570,9 +611,26 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           );
         }
         
+        // 正常模式 - 显示备注和状态标签
+        const statusMap = {
+          planned: { label: '计划中', color: 'blue' },
+          'pending-approval': { label: '待审批', color: 'gold' },
+          confirmed: { label: '已确认', color: 'orange' },
+          completed: { label: '已完成', color: 'green' },
+          cancelled: { label: '已取消', color: 'default' },
+        };
+        const statusConfig = statusMap[record.status as keyof typeof statusMap] || statusMap.planned;
+        
         return (
           <div>
-            <div style={{ color: '#8c8c8c', fontSize: '13px' }}>{text || '-'}</div>
+            <div style={{ color: '#8c8c8c', fontSize: '13px', marginBottom: 4 }}>
+              {text || '-'}
+            </div>
+            <div>
+              <Tag color={statusConfig.color} style={{ fontSize: '11px' }}>
+                {statusConfig.label}
+              </Tag>
+            </div>
           </div>
         );
       },
@@ -778,6 +836,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   setEditMode(false);
                   setEditingKey('');
                   setAddingInType(null);
+                  setAddingInCategory(null);
                   form.resetFields();
                 }}
               >
