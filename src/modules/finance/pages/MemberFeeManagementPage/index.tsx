@@ -99,9 +99,9 @@ const MemberFeeManagementPage: React.FC = () => {
   const [memberSearchOptions, setMemberSearchOptions] = useState<{ value: string; label: string }[]>([]);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   
-  // 🆕 类别统计数据
-  const [categoryStats, setCategoryStats] = useState<Record<string, { count: number; amount: number }>>({});
-  const [selectedCategoryCard, setSelectedCategoryCard] = useState<string>('all'); // 当前选中的类别卡片
+  // 🆕 交易二次分类统计数据
+  const [subCategoryStats, setSubCategoryStats] = useState<Record<string, { count: number; amount: number }>>({});
+  const [selectedSubCategoryCard, setSelectedSubCategoryCard] = useState<string>('all'); // 当前选中的二次分类卡片
   // 批量选择与分类
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [bulkClassifyModalVisible, setBulkClassifyModalVisible] = useState(false);
@@ -119,6 +119,7 @@ const MemberFeeManagementPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'transactions') {
       loadTransactions();
+      calculateSubCategoryStats(transactionYearFilter);
     }
   }, [activeTab, transactionPage, transactionPageSize, subCategoryFilter, transactionYearFilter]);
 
@@ -162,9 +163,6 @@ const MemberFeeManagementPage: React.FC = () => {
       // Load statistics
       const stats = await getMemberFeeStatistics();
       setStatistics(stats);
-      
-      // 🆕 计算类别统计数据
-      await calculateCategoryStats(selectedYear);
 
     } catch (error: any) {
       message.error('加载会员费用数据失败');
@@ -179,32 +177,37 @@ const MemberFeeManagementPage: React.FC = () => {
     }
   };
   
-  // 🆕 计算各类别统计数据
-  const calculateCategoryStats = async (year: string) => {
+  // 🆕 计算交易二次分类统计数据
+  const calculateSubCategoryStats = async (year: string) => {
     try {
-      const categories = ['all', 'Official Member', 'Associate Member', 'Honorary Member', 'Visiting Member', 'Alumni', 'JCI Friend'];
+      const subCategories = ['all', 'uncategorized', 'new-member-fee', 'renewal-fee', 'alumni-fee', 'visiting-member-fee'];
       const stats: Record<string, { count: number; amount: number }> = {};
       
-      for (const category of categories) {
-        const result = await getMemberFees({
+      for (const subCategory of subCategories) {
+        const result = await getTransactions({
           page: 1,
           limit: 10000, // 获取所有数据用于统计
-          fiscalYear: year,
-          memberCategory: category !== 'all' ? (category as MemberCategoryType) : undefined,
+          category: 'member-fees',
+          subCategory: subCategory === 'all' ? undefined : (subCategory === 'uncategorized' ? '' : subCategory),
+          // 年份筛选（基于交易日期）
+          ...(year !== 'all' && {
+            startDate: new Date(`${year}-01-01`).toISOString(),
+            endDate: new Date(`${year}-12-31`).toISOString(),
+          }),
         });
         
-        const totalAmount = result.data.reduce((sum, fee) => sum + (fee.expectedAmount || 0), 0);
+        const totalAmount = result.data.reduce((sum, tx) => sum + (tx.amount || 0), 0);
         
-        stats[category] = {
+        stats[subCategory] = {
           count: result.total,
           amount: totalAmount,
         };
       }
       
-      console.log('📊 [MemberFeeManagement] Category stats calculated:', stats);
-      setCategoryStats(stats);
+      console.log('📊 [MemberFeeManagement] SubCategory stats calculated:', stats);
+      setSubCategoryStats(stats);
     } catch (error) {
-      console.error('❌ [MemberFeeManagement] Failed to calculate category stats:', error);
+      console.error('❌ [MemberFeeManagement] Failed to calculate subCategory stats:', error);
     }
   };
 
@@ -218,12 +221,12 @@ const MemberFeeManagementPage: React.FC = () => {
     setCurrentPage(1);
   };
   
-  // 🆕 处理类别卡片点击
-  const handleCategoryCardClick = (category: string) => {
-    console.log('🔗 [MemberFeeManagement] Category card clicked:', category);
-    setSelectedCategoryCard(category);
-    setCategoryFilter(category as MemberCategoryType | 'all');
-    setCurrentPage(1);
+  // 🆕 处理交易二次分类卡片点击
+  const handleSubCategoryCardClick = (subCategory: string) => {
+    console.log('🔗 [MemberFeeManagement] SubCategory card clicked:', subCategory);
+    setSelectedSubCategoryCard(subCategory);
+    setSubCategoryFilter(subCategory);
+    setTransactionPage(1);
   };
 
   const handleSendReminder = async (feeId: string) => {
@@ -818,388 +821,353 @@ const MemberFeeManagementPage: React.FC = () => {
                 key: 'member-fees',
                 label: '会员费用追踪',
                 children: (
-                  <Row gutter={16}>
-                    {/* 🆕 左侧类别筛选卡片 */}
-                    <Col xs={24} lg={6} style={{ marginBottom: 16 }}>
-                      {/* 年份筛选 */}
-                      <Card style={{ marginBottom: 16 }}>
-                        <div style={{ marginBottom: 8, fontWeight: 600 }}>📅 年份筛选</div>
-                        <Select
-                          style={{ width: '100%' }}
-                          value={selectedYear}
-                          onChange={(value) => {
-                            setSelectedYear(value);
-                            setCurrentPage(1);
-                          }}
-                        >
-                          <Option value="FY2025">2025</Option>
-                          <Option value="FY2024">2024</Option>
-                          <Option value="FY2023">2023</Option>
-                        </Select>
-                      </Card>
-                      
-                      {/* 类别统计卡片 */}
-                      <div style={{ fontWeight: 600, marginBottom: 12 }}>💼 会员类别筛选</div>
-                      
-                      {/* 所有类别 */}
-                      <Card
-                        style={{
-                          marginBottom: 12,
-                          cursor: 'pointer',
-                          backgroundColor: selectedCategoryCard === 'all' ? '#e6f7ff' : '#fff',
-                          border: selectedCategoryCard === 'all' ? '2px solid #1890ff' : '1px solid #e8e8e8',
-                          transition: 'all 0.3s',
-                        }}
-                        bodyStyle={{ padding: 16 }}
-                        onClick={() => handleCategoryCardClick('all')}
-                        hoverable
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 20, marginRight: 8 }}>📊</span>
-                          <span style={{ fontSize: 16, fontWeight: 600 }}>所有类别</span>
-                        </div>
-                        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
-                          👥 {categoryStats['all']?.count || 0} 人
-                        </div>
-                        <div style={{ fontSize: 20, fontWeight: 600, color: '#52c41a' }}>
-                          💰 RM {(categoryStats['all']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
-                        {selectedCategoryCard === 'all' && (
-                          <div style={{ marginTop: 8, color: '#1890ff', fontSize: 12 }}>
-                            ✓ 当前筛选
-                          </div>
-                        )}
-                      </Card>
-                      
-                      {/* 正式会员 */}
-                      <Card
-                        style={{
-                          marginBottom: 12,
-                          cursor: 'pointer',
-                          backgroundColor: selectedCategoryCard === 'Official Member' ? '#e6f7ff' : '#fff',
-                          border: selectedCategoryCard === 'Official Member' ? '2px solid #52c41a' : '1px solid #e8e8e8',
-                          transition: 'all 0.3s',
-                        }}
-                        bodyStyle={{ padding: 16 }}
-                        onClick={() => handleCategoryCardClick('Official Member')}
-                        hoverable
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 20, marginRight: 8 }}>👔</span>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: '#52c41a' }}>正式会员</span>
-                        </div>
-                        <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          👥 {categoryStats['Official Member']?.count || 0} 人
-                        </div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: '#52c41a' }}>
-                          💰 RM {(categoryStats['Official Member']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
-                      </Card>
-                      
-                      {/* 准会员 */}
-                      <Card
-                        style={{
-                          marginBottom: 12,
-                          cursor: 'pointer',
-                          backgroundColor: selectedCategoryCard === 'Associate Member' ? '#e6f7ff' : '#fff',
-                          border: selectedCategoryCard === 'Associate Member' ? '2px solid #13c2c2' : '1px solid #e8e8e8',
-                          transition: 'all 0.3s',
-                        }}
-                        bodyStyle={{ padding: 16 }}
-                        onClick={() => handleCategoryCardClick('Associate Member')}
-                        hoverable
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 20, marginRight: 8 }}>🎓</span>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: '#13c2c2' }}>准会员</span>
-                        </div>
-                        <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          👥 {categoryStats['Associate Member']?.count || 0} 人
-                        </div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: '#13c2c2' }}>
-                          💰 RM {(categoryStats['Associate Member']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
-                      </Card>
-                      
-                      {/* 荣誉会员 */}
-                      <Card
-                        style={{
-                          marginBottom: 12,
-                          cursor: 'pointer',
-                          backgroundColor: selectedCategoryCard === 'Honorary Member' ? '#e6f7ff' : '#fff',
-                          border: selectedCategoryCard === 'Honorary Member' ? '2px solid #722ed1' : '1px solid #e8e8e8',
-                          transition: 'all 0.3s',
-                        }}
-                        bodyStyle={{ padding: 16 }}
-                        onClick={() => handleCategoryCardClick('Honorary Member')}
-                        hoverable
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 20, marginRight: 8 }}>🏆</span>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: '#722ed1' }}>荣誉会员</span>
-                        </div>
-                        <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          👥 {categoryStats['Honorary Member']?.count || 0} 人
-                        </div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: '#722ed1' }}>
-                          💰 RM {(categoryStats['Honorary Member']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
-                        <div style={{ marginTop: 4, color: '#8c8c8c', fontSize: 12 }}>
-                          💡 免费会员
-                        </div>
-                      </Card>
-                      
-                      {/* 访问会员 */}
-                      <Card
-                        style={{
-                          marginBottom: 12,
-                          cursor: 'pointer',
-                          backgroundColor: selectedCategoryCard === 'Visiting Member' ? '#e6f7ff' : '#fff',
-                          border: selectedCategoryCard === 'Visiting Member' ? '2px solid #1890ff' : '1px solid #e8e8e8',
-                          transition: 'all 0.3s',
-                        }}
-                        bodyStyle={{ padding: 16 }}
-                        onClick={() => handleCategoryCardClick('Visiting Member')}
-                        hoverable
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 20, marginRight: 8 }}>🌏</span>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: '#1890ff' }}>访问会员</span>
-                        </div>
-                        <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          👥 {categoryStats['Visiting Member']?.count || 0} 人
-                        </div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: '#1890ff' }}>
-                          💰 RM {(categoryStats['Visiting Member']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
-                      </Card>
-                      
-                      {/* 校友 */}
-                      <Card
-                        style={{
-                          marginBottom: 12,
-                          cursor: 'pointer',
-                          backgroundColor: selectedCategoryCard === 'Alumni' ? '#e6f7ff' : '#fff',
-                          border: selectedCategoryCard === 'Alumni' ? '2px solid #fa8c16' : '1px solid #e8e8e8',
-                          transition: 'all 0.3s',
-                        }}
-                        bodyStyle={{ padding: 16 }}
-                        onClick={() => handleCategoryCardClick('Alumni')}
-                        hoverable
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 20, marginRight: 8 }}>🎓</span>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: '#fa8c16' }}>校友</span>
-                        </div>
-                        <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          👥 {categoryStats['Alumni']?.count || 0} 人
-                        </div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: '#fa8c16' }}>
-                          💰 RM {(categoryStats['Alumni']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
-                      </Card>
-                      
-                      {/* 青商好友 */}
-                      <Card
-                        style={{
-                          marginBottom: 12,
-                          cursor: 'pointer',
-                          backgroundColor: selectedCategoryCard === 'JCI Friend' ? '#e6f7ff' : '#fff',
-                          border: selectedCategoryCard === 'JCI Friend' ? '2px solid #eb2f96' : '1px solid #e8e8e8',
-                          transition: 'all 0.3s',
-                        }}
-                        bodyStyle={{ padding: 16 }}
-                        onClick={() => handleCategoryCardClick('JCI Friend')}
-                        hoverable
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 20, marginRight: 8 }}>🤝</span>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: '#eb2f96' }}>青商好友</span>
-                        </div>
-                        <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          👥 {categoryStats['JCI Friend']?.count || 0} 人
-                        </div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: '#eb2f96' }}>
-                          💰 RM {(categoryStats['JCI Friend']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
-                      </Card>
-                    </Col>
-                    
-                    {/* 右侧详情列表 */}
-                    <Col xs={24} lg={18}>
-                      {/* Filters and Actions */}
-                      <Card className="mb-6">
-                        <Row gutter={[16, 16]} align="middle">
-                          <Col xs={24} md={8}>
-                            <Search
-                              placeholder="搜索会员姓名或ID..."
-                              onSearch={handleSearch}
-                              allowClear
-                              enterButton={<SearchOutlined />}
-                            />
-                          </Col>
-                          <Col xs={12} md={6}>
-                            <Select
-                              style={{ width: '100%' }}
-                              placeholder="状态"
-                              value={statusFilter}
-                              onChange={handleStatusFilterChange}
-                            >
-                              <Option value="all">所有状态</Option>
-                              <Option value="paid">已付</Option>
-                              <Option value="unpaid">未付</Option>
-                              <Option value="overdue">逾期</Option>
-                            </Select>
-                          </Col>
-                          <Col xs={24} md={10} style={{ textAlign: 'right' }}>
-                            <Space>
-                              <Button icon={<ReloadOutlined />} onClick={() => loadMemberFees()}>
-                                刷新
-                              </Button>
-                              <Button icon={<SendOutlined />} onClick={handleSendBulkReminders}>
-                                批量提醒
-                              </Button>
-                              <Button icon={<DownloadOutlined />} onClick={handleExportReport}>
-                                导出报告
-                              </Button>
-                            </Space>
-                          </Col>
-                        </Row>
-                      </Card>
-
-                      {/* Member Fees Table */}
-                      <Card title="会员费用详情">
-                        <Table
-                          {...tableConfig}
-                          columns={columns}
-                          dataSource={memberFees}
-                          rowKey="id"
-                          loading={loading}
-                          pagination={{
-                            current: currentPage,
-                            pageSize,
-                            total,
-                            onChange: (page, size) => {
-                              setCurrentPage(page);
-                              setPageSize(size || 20);
-                            },
-                            showSizeChanger: true,
-                            showTotal: (total) => `共 ${total} 条记录`,
-                          }}
-                          scroll={{ x: 1200 }}
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
-                ),
-              },
-              {
-                key: 'transactions',
-                label: '会员费交易记录（二次分类）',
-                children: (
                   <>
-                    {/* 交易筛选器 */}
+                    {/* Filters and Actions */}
                     <Card className="mb-6">
                       <Row gutter={[16, 16]} align="middle">
-                        <Col xs={12} md={6}>
+                        <Col xs={24} md={8}>
+                          <Search
+                            placeholder="搜索会员姓名或ID..."
+                            onSearch={handleSearch}
+                            allowClear
+                            enterButton={<SearchOutlined />}
+                          />
+                        </Col>
+                        <Col xs={12} md={4}>
                           <Select
                             style={{ width: '100%' }}
-                            placeholder="年份"
-                            value={transactionYearFilter}
-                            onChange={setTransactionYearFilter}
+                            placeholder="类别"
+                            value={categoryFilter}
+                            onChange={(value) => {
+                              setCategoryFilter(value as MemberCategoryType | 'all');
+                              setCurrentPage(1);
+                            }}
                           >
-                            <Option value="all">所有年份</Option>
-                            <Option value="2025">2025</Option>
-                            <Option value="2024">2024</Option>
-                            <Option value="2023">2023</Option>
-                            <Option value="2022">2022</Option>
+                            <Option value="all">所有类别</Option>
+                            <Option value="Official Member">正式会员</Option>
+                            <Option value="Associate Member">准会员</Option>
+                            <Option value="Honorary Member">荣誉会员</Option>
+                            <Option value="Visiting Member">访问会员</Option>
+                            <Option value="Alumni">校友</Option>
+                            <Option value="JCI Friend">青商好友</Option>
                           </Select>
                         </Col>
-                        <Col xs={12} md={6}>
+                        <Col xs={12} md={4}>
                           <Select
                             style={{ width: '100%' }}
-                            placeholder="分类"
-                            value={subCategoryFilter}
-                            onChange={setSubCategoryFilter}
+                            placeholder="状态"
+                            value={statusFilter}
+                            onChange={handleStatusFilterChange}
                           >
-                            <Option value="all">所有分类</Option>
-                            <Option value="uncategorized">未分类</Option>
-                            <Option value="new-member-fee">新会员费</Option>
-                            <Option value="renewal-fee">续会费</Option>
-                            <Option value="alumni-fee">校友会</Option>
-                            <Option value="visiting-member-fee">拜访会员</Option>
+                            <Option value="all">所有状态</Option>
+                            <Option value="paid">已付</Option>
+                            <Option value="unpaid">未付</Option>
+                            <Option value="overdue">逾期</Option>
                           </Select>
                         </Col>
-                        <Col xs={24} md={12} style={{ textAlign: 'right' }}>
+                        <Col xs={24} md={8} style={{ textAlign: 'right' }}>
                           <Space>
-                            <Button
-                              icon={<ReloadOutlined />}
-                              onClick={() => {
-                                setTransactionYearFilter('all');
-                                setSubCategoryFilter('all');
-                                setTransactionPage(1);
-                                loadTransactions();
-                              }}
-                            >
-                              重置筛选
+                            <Button icon={<SendOutlined />} onClick={handleSendBulkReminders}>
+                              批量提醒
                             </Button>
-                            <span style={{ color: '#999', fontSize: '14px' }}>
-                              共 {transactionTotal} 笔会员费相关交易
-                            </span>
-                            <Button icon={<DownloadOutlined />}>
-                              导出交易报表
+                            <Button icon={<DownloadOutlined />} onClick={handleExportReport}>
+                              导出报告
                             </Button>
                           </Space>
                         </Col>
                       </Row>
                     </Card>
 
-                    {/* 交易表格 */}
-                    <Card
-                      title="会员费交易记录"
-                      extra={
-                        <Space>
-                          <span style={{ color: '#999' }}>已选 {selectedTransactionIds.length} 条</span>
-                          <Button
-                            type="primary"
-                            disabled={selectedTransactionIds.length === 0}
-                            onClick={() => {
-                              setBulkClassifyModalVisible(true);
-                              setModalSelectedCategory('');
-                              setModalYearInput('');
-                              setModalSelectedMemberId('');
-                            }}
-                          >
-                            批量分类
-                          </Button>
-                        </Space>
-                      }
-                    >
+                    {/* Member Fees Table */}
+                    <Card title="会员费用详情">
                       <Table
                         {...tableConfig}
-                        columns={transactionColumns}
-                        dataSource={transactions}
+                        columns={columns}
+                        dataSource={memberFees}
                         rowKey="id"
-                        loading={transactionsLoading}
-                        rowSelection={{
-                          selectedRowKeys: selectedTransactionIds,
-                          onChange: (keys) => setSelectedTransactionIds(keys as string[]),
-                        }}
+                        loading={loading}
                         pagination={{
-                          current: transactionPage,
-                          pageSize: transactionPageSize,
-                          total: transactionTotal,
+                          current: currentPage,
+                          pageSize,
+                          total,
                           onChange: (page, size) => {
-                            setTransactionPage(page);
-                            setTransactionPageSize(size || 20);
+                            setCurrentPage(page);
+                            setPageSize(size || 20);
                           },
                           showSizeChanger: true,
-                          showTotal: (total) => `共 ${total} 条交易`,
+                          showTotal: (total) => `共 ${total} 条记录`,
                         }}
+                        scroll={undefined}
                       />
-                      
                     </Card>
                   </>
+                ),
+              },
+              {
+                key: 'transactions',
+                label: '会员费交易记录（二次分类）',
+                children: (
+                  <Row gutter={16}>
+                    {/* 🆕 左侧二次分类筛选卡片 */}
+                    <Col xs={24} lg={6} style={{ marginBottom: 16 }}>
+                      {/* 年份筛选 */}
+                      <Card style={{ marginBottom: 16 }}>
+                        <div style={{ marginBottom: 8, fontWeight: 600 }}>📅 年份筛选</div>
+                        <Select
+                          style={{ width: '100%' }}
+                          value={transactionYearFilter}
+                          onChange={(value) => {
+                            setTransactionYearFilter(value);
+                            setTransactionPage(1);
+                          }}
+                        >
+                          <Option value="all">所有年份</Option>
+                          <Option value="2025">2025</Option>
+                          <Option value="2024">2024</Option>
+                          <Option value="2023">2023</Option>
+                          <Option value="2022">2022</Option>
+                        </Select>
+                      </Card>
+                      
+                      {/* 二次分类统计卡片 */}
+                      <div style={{ fontWeight: 600, marginBottom: 12 }}>💼 会员费用二次分类</div>
+                      
+                      {/* 所有分类 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedSubCategoryCard === 'all' ? '#e6f7ff' : '#fff',
+                          border: selectedSubCategoryCard === 'all' ? '2px solid #1890ff' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleSubCategoryCardClick('all')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>📊</span>
+                          <span style={{ fontSize: 16, fontWeight: 600 }}>所有分类</span>
+                        </div>
+                        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
+                          📝 {subCategoryStats['all']?.count || 0} 笔
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 600, color: '#52c41a' }}>
+                          💰 RM {(subCategoryStats['all']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                        {selectedSubCategoryCard === 'all' && (
+                          <div style={{ marginTop: 8, color: '#1890ff', fontSize: 12 }}>
+                            ✓ 当前筛选
+                          </div>
+                        )}
+                      </Card>
+                      
+                      {/* 未分类 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedSubCategoryCard === 'uncategorized' ? '#e6f7ff' : '#fff',
+                          border: selectedSubCategoryCard === 'uncategorized' ? '2px solid #d9d9d9' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleSubCategoryCardClick('uncategorized')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>❓</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#8c8c8c' }}>未分类</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          📝 {subCategoryStats['uncategorized']?.count || 0} 笔
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#8c8c8c' }}>
+                          💰 RM {(subCategoryStats['uncategorized']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                        <div style={{ marginTop: 4, color: '#faad14', fontSize: 12 }}>
+                          ⚠️ 需要分类
+                        </div>
+                      </Card>
+                      
+                      {/* 新会员费 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedSubCategoryCard === 'new-member-fee' ? '#e6f7ff' : '#fff',
+                          border: selectedSubCategoryCard === 'new-member-fee' ? '2px solid #52c41a' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleSubCategoryCardClick('new-member-fee')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🆕</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#52c41a' }}>新会员费</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          📝 {subCategoryStats['new-member-fee']?.count || 0} 笔
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#52c41a' }}>
+                          💰 RM {(subCategoryStats['new-member-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                      
+                      {/* 续会费 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedSubCategoryCard === 'renewal-fee' ? '#e6f7ff' : '#fff',
+                          border: selectedSubCategoryCard === 'renewal-fee' ? '2px solid #13c2c2' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleSubCategoryCardClick('renewal-fee')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🔄</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#13c2c2' }}>续会费</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          📝 {subCategoryStats['renewal-fee']?.count || 0} 笔
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#13c2c2' }}>
+                          💰 RM {(subCategoryStats['renewal-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                      
+                      {/* 校友会费 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedSubCategoryCard === 'alumni-fee' ? '#e6f7ff' : '#fff',
+                          border: selectedSubCategoryCard === 'alumni-fee' ? '2px solid #fa8c16' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleSubCategoryCardClick('alumni-fee')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🎓</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#fa8c16' }}>校友会费</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          📝 {subCategoryStats['alumni-fee']?.count || 0} 笔
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#fa8c16' }}>
+                          💰 RM {(subCategoryStats['alumni-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                      
+                      {/* 拜访会员费 */}
+                      <Card
+                        style={{
+                          marginBottom: 12,
+                          cursor: 'pointer',
+                          backgroundColor: selectedSubCategoryCard === 'visiting-member-fee' ? '#e6f7ff' : '#fff',
+                          border: selectedSubCategoryCard === 'visiting-member-fee' ? '2px solid #1890ff' : '1px solid #e8e8e8',
+                          transition: 'all 0.3s',
+                        }}
+                        bodyStyle={{ padding: 16 }}
+                        onClick={() => handleSubCategoryCardClick('visiting-member-fee')}
+                        hoverable
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 20, marginRight: 8 }}>🌏</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#1890ff' }}>拜访会员费</span>
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700 }}>
+                          📝 {subCategoryStats['visiting-member-fee']?.count || 0} 笔
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#1890ff' }}>
+                          💰 RM {(subCategoryStats['visiting-member-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
+                      </Card>
+                    </Col>
+                    
+                    {/* 右侧交易列表 */}
+                    <Col xs={24} lg={18}>
+                      {/* 顶部操作栏 */}
+                      <Card className="mb-6">
+                        <Row gutter={[16, 16]} align="middle">
+                          <Col xs={24} md={12} style={{ textAlign: 'right' }}>
+                            <Space>
+                              <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => {
+                                  setTransactionYearFilter('all');
+                                  setSubCategoryFilter('all');
+                                  setSelectedSubCategoryCard('all');
+                                  setTransactionPage(1);
+                                  loadTransactions();
+                                }}
+                              >
+                                重置筛选
+                              </Button>
+                              <span style={{ color: '#999', fontSize: '14px' }}>
+                                共 {transactionTotal} 笔会员费相关交易
+                              </span>
+                              <Button icon={<DownloadOutlined />}>
+                                导出交易报表
+                              </Button>
+                            </Space>
+                          </Col>
+                        </Row>
+                      </Card>
+
+                      {/* 交易表格 */}
+                      <Card
+                        title="会员费交易记录"
+                        extra={
+                          <Space>
+                            <span style={{ color: '#999' }}>已选 {selectedTransactionIds.length} 条</span>
+                            <Button
+                              type="primary"
+                              disabled={selectedTransactionIds.length === 0}
+                              onClick={() => {
+                                setBulkClassifyModalVisible(true);
+                                setModalSelectedCategory('');
+                                setModalYearInput('');
+                                setModalSelectedMemberId('');
+                              }}
+                            >
+                              批量分类
+                            </Button>
+                          </Space>
+                        }
+                      >
+                        <Table
+                          {...tableConfig}
+                          columns={transactionColumns}
+                          dataSource={transactions}
+                          rowKey="id"
+                          loading={transactionsLoading}
+                          rowSelection={{
+                            selectedRowKeys: selectedTransactionIds,
+                            onChange: (keys) => setSelectedTransactionIds(keys as string[]),
+                          }}
+                          pagination={{
+                            current: transactionPage,
+                            pageSize: transactionPageSize,
+                            total: transactionTotal,
+                            onChange: (page, size) => {
+                              setTransactionPage(page);
+                              setTransactionPageSize(size || 20);
+                            },
+                            showSizeChanger: true,
+                            showTotal: (total) => `共 ${total} 条交易`,
+                          }}
+                          scroll={{ x: 1500 }}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
                 ),
               },
             ]}
