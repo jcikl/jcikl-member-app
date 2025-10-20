@@ -19,7 +19,6 @@ import {
   Row,
   Col,
   Statistic,
-  Progress,
   DatePicker,
   Radio,
   InputNumber,
@@ -618,13 +617,7 @@ const EventAccountManagementPage: React.FC = () => {
     );
   }
 
-  const incomeProgress = account.budgetIncome > 0
-    ? (account.actualIncome / account.budgetIncome) * 100
-    : 0;
-  
-  const expenseProgress = account.budgetExpense > 0
-    ? (account.actualExpense / account.budgetExpense) * 100
-    : 0;
+  // 旧的进度计算已移除（统计卡片已删除）
 
   return (
     <ErrorBoundary>
@@ -661,126 +654,8 @@ const EventAccountManagementPage: React.FC = () => {
           }
         />
 
-        {/* Overview Cards */}
-        <div className="mb-6">
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={8}>
-              <Card title="💰 预算目标">
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
-                  <Statistic
-                    title="收入目标"
-                    value={account.budgetIncome}
-                    precision={2}
-                    prefix="RM"
-                    valueStyle={{ color: '#52c41a' }}
-                  />
-                  <Statistic
-                    title="支出目标"
-                    value={account.budgetExpense}
-                    precision={2}
-                    prefix="RM"
-                    valueStyle={{ color: '#ff4d4f' }}
-                  />
-                  <Statistic
-                    title="目标利润"
-                    value={account.targetProfit}
-                    precision={2}
-                    prefix="RM"
-                    valueStyle={{ color: '#1890ff' }}
-                  />
-                  <Button
-                    type="primary"
-                    block
-                    onClick={() => {
-                      budgetForm.setFieldsValue({
-                        budgetIncome: account.budgetIncome,
-                        budgetExpense: account.budgetExpense,
-                        targetProfit: account.targetProfit,
-                      });
-                      setBudgetModalVisible(true);
-                    }}
-                  >
-                    更新预算
-                  </Button>
-                </Space>
-              </Card>
-            </Col>
-
-            <Col xs={24} md={8}>
-              <Card title="📊 实际数据">
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
-                  <div>
-                    <Statistic
-                      title="实际收入"
-                      value={account.actualIncome}
-                      precision={2}
-                      prefix="RM"
-                      valueStyle={{ color: '#52c41a' }}
-                    />
-                    <Progress
-                      percent={Number(incomeProgress.toFixed(0))}
-                      status={incomeProgress >= 100 ? 'success' : 'active'}
-                      size="small"
-                    />
-                  </div>
-                  <div>
-                    <Statistic
-                      title="实际支出"
-                      value={account.actualExpense}
-                      precision={2}
-                      prefix="RM"
-                      valueStyle={{ color: '#ff4d4f' }}
-                    />
-                    <Progress
-                      percent={Number(expenseProgress.toFixed(0))}
-                      status={expenseProgress > 100 ? 'exception' : 'active'}
-                      size="small"
-                    />
-                  </div>
-                  <Statistic
-                    title="实际利润"
-                    value={account.actualProfit}
-                    precision={2}
-                    prefix="RM"
-                    valueStyle={{
-                      color: account.actualProfit >= 0 ? '#52c41a' : '#ff4d4f',
-                    }}
-                  />
-                </Space>
-              </Card>
-            </Col>
-
-            <Col xs={24} md={8}>
-              <Card title="🔮 财务预测">
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
-                  <Statistic
-                    title="预测收入"
-                    value={account.forecastIncome}
-                    precision={2}
-                    prefix="RM"
-                    valueStyle={{ color: '#52c41a' }}
-                  />
-                  <Statistic
-                    title="预测支出"
-                    value={account.forecastExpense}
-                    precision={2}
-                    prefix="RM"
-                    valueStyle={{ color: '#ff4d4f' }}
-                  />
-                  <Statistic
-                    title="预测利润"
-                    value={account.forecastProfit}
-                    precision={2}
-                    prefix="RM"
-                    valueStyle={{
-                      color: account.forecastProfit >= 0 ? '#52c41a' : '#ff4d4f',
-                    }}
-                  />
-                </Space>
-              </Card>
-            </Col>
-          </Row>
-        </div>
+        {/* 旧的统计卡片已移除：预算目标、实际数据、财务预测 */}
+        {/* 改用预测标签页中的对比统计卡片 */}
 
         {/* Transaction Management */}
         <Card title="交易管理">
@@ -837,6 +712,90 @@ const EventAccountManagementPage: React.FC = () => {
                 ),
                 children: (
                   <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    {/* 对比统计卡片 */}
+                    {consolidationData && (
+                      <Row gutter={[16, 16]}>
+                        <Col xs={24} md={8}>
+                          <Card size="small" className="comparison-stat-card">
+                            <Statistic
+                              title="📊 收入对比"
+                              value={consolidationData.totalIncomeActual}
+                              precision={2}
+                              prefix={<RiseOutlined style={{ color: '#52c41a' }} />}
+                              valueStyle={{ color: '#52c41a', fontSize: '20px' }}
+                              suffix="RM"
+                            />
+                            <div style={{ marginTop: 12, fontSize: '13px' }}>
+                              <div style={{ color: '#8c8c8c' }}>
+                                预测: RM {consolidationData.totalIncomeForecast.toFixed(2)}
+                              </div>
+                              <div style={{ 
+                                color: consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '#52c41a' : '#ff4d4f',
+                                fontWeight: 600
+                              }}>
+                                差异: {consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '+' : ''}
+                                RM {(consolidationData.totalIncomeActual - consolidationData.totalIncomeForecast).toFixed(2)}
+                                ({((consolidationData.totalIncomeActual / consolidationData.totalIncomeForecast) * 100).toFixed(1)}%)
+                              </div>
+                            </div>
+                          </Card>
+                        </Col>
+
+                        <Col xs={24} md={8}>
+                          <Card size="small" className="comparison-stat-card">
+                            <Statistic
+                              title="📊 支出对比"
+                              value={consolidationData.totalExpenseActual}
+                              precision={2}
+                              prefix={<FallOutlined style={{ color: '#ff4d4f' }} />}
+                              valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
+                              suffix="RM"
+                            />
+                            <div style={{ marginTop: 12, fontSize: '13px' }}>
+                              <div style={{ color: '#8c8c8c' }}>
+                                预算: RM {consolidationData.totalExpenseForecast.toFixed(2)}
+                              </div>
+                              <div style={{ 
+                                color: consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '#52c41a' : '#ff4d4f',
+                                fontWeight: 600
+                              }}>
+                                差异: {consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '-' : '+'}
+                                RM {Math.abs(consolidationData.totalExpenseActual - consolidationData.totalExpenseForecast).toFixed(2)}
+                                ({((consolidationData.totalExpenseActual / consolidationData.totalExpenseForecast) * 100).toFixed(1)}%)
+                              </div>
+                            </div>
+                          </Card>
+                        </Col>
+
+                        <Col xs={24} md={8}>
+                          <Card size="small" className="comparison-stat-card">
+                            <Statistic
+                              title="📊 净利润对比"
+                              value={consolidationData.profitActual}
+                              precision={2}
+                              valueStyle={{ 
+                                color: consolidationData.profitActual >= 0 ? '#52c41a' : '#ff4d4f',
+                                fontSize: '20px'
+                              }}
+                              suffix="RM"
+                            />
+                            <div style={{ marginTop: 12, fontSize: '13px' }}>
+                              <div style={{ color: '#8c8c8c' }}>
+                                预测: RM {consolidationData.profitForecast.toFixed(2)}
+                              </div>
+                              <div style={{ 
+                                color: consolidationData.profitActual >= consolidationData.profitForecast ? '#52c41a' : '#ff4d4f',
+                                fontWeight: 600
+                              }}>
+                                差异: {consolidationData.profitActual >= consolidationData.profitForecast ? '+' : ''}
+                                RM {(consolidationData.profitActual - consolidationData.profitForecast).toFixed(2)}
+                              </div>
+                            </div>
+                          </Card>
+                        </Col>
+                      </Row>
+                    )}
+                    
                     {/* 1. 活动财务计划 */}
                     <ActivityFinancialPlan
                       accountId={account?.id || ''}
