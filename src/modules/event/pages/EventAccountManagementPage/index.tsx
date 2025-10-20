@@ -60,6 +60,8 @@ import {
   deleteEventAccountPlan,
 } from '../../services/eventAccountPlanService';
 import { getTransactionsByEventId } from '@/modules/finance/services/transactionService';
+import { getAllBankAccounts } from '@/modules/finance/services/bankAccountService';
+import type { BankAccount } from '@/modules/finance/types';
 import type {
   EventAccount,
   EventAccountTransactionType,
@@ -113,10 +115,21 @@ const EventAccountManagementPage: React.FC = () => {
   const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
   const [consolidationData, setConsolidationData] = useState<ConsolidationData | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
 
   useEffect(() => {
     loadEvents();
+    loadBankAccounts();
   }, []);
+  
+  const loadBankAccounts = async () => {
+    try {
+      const accounts = await getAllBankAccounts();
+      setBankAccounts(accounts);
+    } catch (error) {
+      console.error('❌ Failed to load bank accounts:', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedEventId) {
@@ -365,22 +378,30 @@ const EventAccountManagementPage: React.FC = () => {
       }
       
       // 转换为 BankTransaction 格式
-      const bankTxns: BankTransaction[] = transactions.map(txn => ({
-        id: txn.id,
-        transactionDate: txn.transactionDate,
-        transactionNumber: txn.transactionNumber,
-        transactionType: txn.transactionType as 'income' | 'expense',
-        description: txn.mainDescription,
-        amount: txn.amount,
-        bankAccount: txn.bankAccountId,
-        status: txn.status === 'completed' ? 'verified' : 'pending',
-        category: txn.confirmedCategory || txn.autoMatchedCategory || txn.category,
-        payerPayee: txn.payerPayee,
-        paymentMethod: txn.paymentMethod,
-        receiptNumber: txn.receiptNumber,
-        invoiceNumber: txn.invoiceNumber,
-        createdAt: txn.createdAt,
-      }));
+      const bankTxns: BankTransaction[] = transactions.map(txn => {
+        // 查找银行账户详细信息
+        const bankAccount = bankAccounts.find(acc => acc.id === txn.bankAccountId);
+        
+        return {
+          id: txn.id,
+          transactionDate: txn.transactionDate,
+          transactionNumber: txn.transactionNumber,
+          transactionType: txn.transactionType as 'income' | 'expense',
+          description: txn.mainDescription,
+          amount: txn.amount,
+          bankAccount: txn.bankAccountId,
+          bankAccountName: bankAccount?.accountName,
+          bankName: bankAccount?.bankName,
+          accountNumber: bankAccount?.accountNumber,
+          status: txn.status === 'completed' ? 'verified' : 'pending',
+          category: txn.confirmedCategory || txn.autoMatchedCategory || txn.category,
+          payerPayee: txn.payerPayee,
+          paymentMethod: txn.paymentMethod,
+          receiptNumber: txn.receiptNumber,
+          invoiceNumber: txn.invoiceNumber,
+          createdAt: txn.createdAt,
+        };
+      });
       
       console.log('🔄 [loadBankTransactions] Converted to BankTransaction format:', {
         count: bankTxns.length,

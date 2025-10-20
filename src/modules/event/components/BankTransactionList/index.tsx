@@ -42,7 +42,10 @@ export interface BankTransaction {
   transactionType: 'income' | 'expense';
   description: string;
   amount: number;
-  bankAccount: string;
+  bankAccount: string;           // bankAccountId
+  bankAccountName?: string;      // 银行账户名称
+  bankName?: string;             // 银行名称
+  accountNumber?: string;        // 账户号码
   status: 'verified' | 'pending';
   category?: string;
   payerPayee?: string;           // 付款人/收款人
@@ -187,8 +190,24 @@ const BankTransactionList: React.FC<Props> = ({
     {
       title: '银行账户',
       dataIndex: 'bankAccount',
-      width: 120,
-      ellipsis: true,
+      width: 180,
+      render: (_: string, record: BankTransaction) => {
+        if (record.bankAccountName && record.bankName) {
+          return (
+            <div>
+              <div style={{ fontWeight: 500 }}>
+                {record.bankAccountName} ({record.bankName})
+              </div>
+              {record.accountNumber && (
+                <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                  {record.accountNumber}
+                </div>
+              )}
+            </div>
+          );
+        }
+        return record.bankAccount || '-';
+      },
     },
     {
       title: '状态',
