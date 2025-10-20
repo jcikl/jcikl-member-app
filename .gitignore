@@ -38,4 +38,8 @@ ui-debug.log
 backups/
 *.backup.json
 
+# Firebase Service Account (NEVER COMMIT!)
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
 

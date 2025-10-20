@@ -2,47 +2,50 @@
  * Data Migration Script: subCategory → txAccount
  * 数据迁移脚本：将 subCategory 字段重命名为 txAccount
  * 
- * ⚠️ IMPORTANT: This script modifies production data!
+ * ⚠️ IMPORTANT: This script uses Firebase Admin SDK and requires service account credentials
+ * 
+ * Setup:
+ *   1. Download service account key from Firebase Console
+ *   2. Save as 'serviceAccountKey.json' in project root
+ *   3. Add to .gitignore (already done)
  * 
  * Usage:
- *   npm run migrate:subcategory -- --dry-run    # 预览模式（不写入）
- *   npm run migrate:subcategory                 # 执行迁移
- *   npm run migrate:subcategory -- --rollback   # 回滚迁移
- * 
- * What it does:
- * 1. Scans all documents with 'subCategory' field
- * 2. Copies 'subCategory' value to 'txAccount'
- * 3. Optionally removes old 'subCategory' field
- * 4. Provides rollback capability
+ *   npm run migrate:subcategory:dry     # 预览模式（不写入）
+ *   npm run migrate:subcategory         # 执行迁移
+ *   npm run migrate:subcategory:rollback # 回滚迁移
  */
 
-import { initializeApp } from 'firebase/app';
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  updateDoc,
-  doc,
-  writeBatch,
-  query,
-  where,
-  Timestamp,
-} from 'firebase/firestore';
+import * as admin from 'firebase-admin';
 import * as readline from 'readline';
+import * as path from 'path';
+import * as fs from 'fs';
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY,
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID,
-};
+// Initialize Firebase Admin
+let serviceAccount: any;
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+try {
+  const serviceAccountPath = path.join(process.cwd(), 'serviceAccountKey.json');
+  
+  if (fs.existsSync(serviceAccountPath)) {
+    serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    console.log('✅ Service account key loaded');
+  } else {
+    console.error('❌ serviceAccountKey.json not found!');
+    console.error('📝 Please download it from Firebase Console:');
+    console.error('   Project Settings → Service Accounts → Generate new private key');
+    console.error('   Save as: serviceAccountKey.json');
+    process.exit(1);
+  }
+} catch (error) {
+  console.error('❌ Failed to load service account key:', error);
+  process.exit(1);
+}
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+const db = admin.firestore();
 
 // Migration configuration
 const COLLECTIONS_TO_MIGRATE = [
@@ -58,7 +61,7 @@ const BATCH_SIZE = 500; // Firestore batch limit
 interface MigrationStats {
   collectionName: string;
   totalDocs: number;
-  docsWithSubCategory: number;
+  docsWithField: number;
   migrated: number;
   failed: number;
   skipped: number;
@@ -103,7 +106,7 @@ async function migrateCollection(
   const stats: MigrationStats = {
     collectionName,
     totalDocs: 0,
-    docsWithSubCategory: 0,
+    docsWithField: 0,
     migrated: 0,
     failed: 0,
     skipped: 0,
@@ -111,8 +114,8 @@ async function migrateCollection(
 
   try {
     // Get all documents
-    const collectionRef = collection(db, collectionName);
-    const snapshot = await getDocs(collectionRef);
+    const collectionRef = db.collection(collectionName);
+    const snapshot = await collectionRef.get();
     
     stats.totalDocs = snapshot.size;
     console.log(`📊 Total documents: ${stats.totalDocs}`);
@@ -133,6 +136,7 @@ async function migrateCollection(
         if (data.txAccount !== undefined) {
           docsToMigrate.push({
             id: docSnapshot.id,
+            ref: docSnapshot.ref,
             data: data,
           });
         }
@@ -141,16 +145,17 @@ async function migrateCollection(
         if (data.subCategory !== undefined) {
           docsToMigrate.push({
             id: docSnapshot.id,
+            ref: docSnapshot.ref,
             data: data,
           });
         }
       }
     });
 
-    stats.docsWithSubCategory = docsToMigrate.length;
-    console.log(`📝 Documents to migrate: ${stats.docsWithSubCategory}`);
+    stats.docsWithField = docsToMigrate.length;
+    console.log(`📝 Documents to migrate: ${stats.docsWithField}`);
 
-    if (stats.docsWithSubCategory === 0) {
+    if (stats.docsWithField === 0) {
       console.log(`✅ No documents need migration`);
       return stats;
     }
@@ -169,7 +174,7 @@ async function migrateCollection(
 
     if (dryRun) {
       console.log(`\n🔍 DRY RUN MODE - No changes will be made`);
-      stats.skipped = stats.docsWithSubCategory;
+      stats.skipped = stats.docsWithField;
       return stats;
     }
 
@@ -177,41 +182,39 @@ async function migrateCollection(
     console.log(`\n🚀 Starting migration...`);
     
     for (let i = 0; i < docsToMigrate.length; i += BATCH_SIZE) {
-      const batch = writeBatch(db);
+      const batch = db.batch();
       const batchDocs = docsToMigrate.slice(i, i + BATCH_SIZE);
       
       console.log(`📦 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(docsToMigrate.length / BATCH_SIZE)}`);
       
       for (const docToMigrate of batchDocs) {
         try {
-          const docRef = doc(db, collectionName, docToMigrate.id);
-          
           if (rollback) {
             // Rollback: txAccount → subCategory
             const updates: any = {
               subCategory: docToMigrate.data.txAccount,
-              updatedAt: Timestamp.now().toDate().toISOString(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             };
             
             if (removeOld) {
               // Remove txAccount field
-              updates.txAccount = null;
+              updates.txAccount = admin.firestore.FieldValue.delete();
             }
             
-            batch.update(docRef, updates);
+            batch.update(docToMigrate.ref, updates);
           } else {
             // Forward: subCategory → txAccount
             const updates: any = {
               txAccount: docToMigrate.data.subCategory,
-              updatedAt: Timestamp.now().toDate().toISOString(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             };
             
             if (removeOld) {
               // Remove subCategory field
-              updates.subCategory = null;
+              updates.subCategory = admin.firestore.FieldValue.delete();
             }
             
-            batch.update(docRef, updates);
+            batch.update(docToMigrate.ref, updates);
           }
           
           stats.migrated++;
@@ -238,7 +241,7 @@ async function migrateCollection(
 
     console.log(`\n✅ Collection migration completed!`);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error(`❌ Migration failed for ${collectionName}:`, error);
   }
 
@@ -255,7 +258,7 @@ function generateReport(allStats: MigrationStats[]): void {
 
   const totalStats = {
     totalDocs: 0,
-    docsWithSubCategory: 0,
+    docsWithField: 0,
     migrated: 0,
     failed: 0,
     skipped: 0,
@@ -268,14 +271,14 @@ function generateReport(allStats: MigrationStats[]): void {
   allStats.forEach((stats) => {
     console.log(
       `│ ${stats.collectionName.padEnd(23)} │ ${String(stats.totalDocs).padStart(5)} │ ${String(
-        stats.docsWithSubCategory
+        stats.docsWithField
       ).padStart(8)} │ ${String(stats.migrated).padStart(8)} │ ${String(stats.failed).padStart(6)} │ ${String(
         stats.skipped
       ).padStart(7)} │`
     );
 
     totalStats.totalDocs += stats.totalDocs;
-    totalStats.docsWithSubCategory += stats.docsWithSubCategory;
+    totalStats.docsWithField += stats.docsWithField;
     totalStats.migrated += stats.migrated;
     totalStats.failed += stats.failed;
     totalStats.skipped += stats.skipped;
@@ -284,7 +287,7 @@ function generateReport(allStats: MigrationStats[]): void {
   console.log(`├─────────────────────────┼───────┼──────────┼──────────┼────────┼─────────┤`);
   console.log(
     `│ ${'TOTAL'.padEnd(23)} │ ${String(totalStats.totalDocs).padStart(5)} │ ${String(
-      totalStats.docsWithSubCategory
+      totalStats.docsWithField
     ).padStart(8)} │ ${String(totalStats.migrated).padStart(8)} │ ${String(
       totalStats.failed
     ).padStart(6)} │ ${String(totalStats.skipped).padStart(7)} │`
@@ -304,7 +307,7 @@ function generateReport(allStats: MigrationStats[]): void {
     console.log(`🔍 DRY RUN: ${totalStats.skipped} documents would be migrated`);
   }
 
-  if (totalStats.docsWithSubCategory === 0) {
+  if (totalStats.docsWithField === 0) {
     console.log(`✨ All collections are already migrated!`);
   }
 }
@@ -400,6 +403,3 @@ main().catch((error) => {
   console.error('\n❌ Migration failed:', error);
   process.exit(1);
 });
-
-console.log('✅ Migration Script Loaded');
-

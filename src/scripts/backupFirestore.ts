@@ -4,32 +4,44 @@
  * 
  * 快速备份关键集合到本地 JSON 文件
  * 
+ * Setup:
+ *   1. Download service account key from Firebase Console
+ *   2. Save as 'serviceAccountKey.json' in project root
+ * 
  * Usage:
  *   npm run backup:firestore
  */
 
-import { initializeApp } from 'firebase/app';
-import {
-  getFirestore,
-  collection,
-  getDocs,
-} from 'firebase/firestore';
+import * as admin from 'firebase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY,
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID,
-};
+// Initialize Firebase Admin
+let serviceAccount: any;
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+try {
+  const serviceAccountPath = path.join(process.cwd(), 'serviceAccountKey.json');
+  
+  if (fs.existsSync(serviceAccountPath)) {
+    serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    console.log('✅ Service account key loaded');
+  } else {
+    console.error('❌ serviceAccountKey.json not found!');
+    console.error('📝 Please download it from Firebase Console:');
+    console.error('   Project Settings → Service Accounts → Generate new private key');
+    console.error('   Save as: serviceAccountKey.json');
+    process.exit(1);
+  }
+} catch (error) {
+  console.error('❌ Failed to load service account key:', error);
+  process.exit(1);
+}
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+const db = admin.firestore();
 
 // Collections to backup
 const COLLECTIONS_TO_BACKUP = [
@@ -49,15 +61,27 @@ async function backupCollection(collectionName: string, outputDir: string): Prom
   console.log(`📦 Backing up collection: ${collectionName}`);
 
   try {
-    const collectionRef = collection(db, collectionName);
-    const snapshot = await getDocs(collectionRef);
+    const collectionRef = db.collection(collectionName);
+    const snapshot = await collectionRef.get();
 
     const data: any[] = [];
     snapshot.forEach((doc) => {
-      data.push({
-        id: doc.id,
-        ...doc.data(),
+      const docData = doc.data();
+      
+      // Convert Firestore Timestamps to ISO strings for JSON serialization
+      const serializedData: any = { id: doc.id };
+      
+      Object.keys(docData).forEach(key => {
+        const value = docData[key];
+        if (value && typeof value === 'object' && value.toDate) {
+          // Firestore Timestamp
+          serializedData[key] = value.toDate().toISOString();
+        } else {
+          serializedData[key] = value;
+        }
       });
+      
+      data.push(serializedData);
     });
 
     // Save to JSON file
@@ -81,7 +105,7 @@ async function main() {
   console.log(`${'='.repeat(80)}\n`);
 
   // Create backup directory
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T').join('_').substring(0, 19);
   const outputDir = path.join(process.cwd(), 'backups', `backup-${timestamp}`);
 
   if (!fs.existsSync(outputDir)) {
@@ -131,4 +155,3 @@ main().catch((error) => {
   console.error('\n❌ Backup failed:', error);
   process.exit(1);
 });
-
