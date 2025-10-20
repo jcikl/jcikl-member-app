@@ -796,25 +796,32 @@ const EventAccountManagementPage: React.FC = () => {
                       </Row>
                     )}
                     
-                    {/* 1. 活动财务计划 */}
-                    <ActivityFinancialPlan
-                      accountId={account?.id || ''}
-                      items={planItems}
-                      loading={planLoading}
-                      onAdd={handleAddPlan}
-                      onUpdate={handleUpdatePlan}
-                      onDelete={handleDeletePlan}
-                      onRefresh={loadPlans}
-                    />
-                    
-                    {/* 2. 银行交易记录 */}
-                    <BankTransactionList
-                      accountId={account?.id || ''}
-                      transactions={bankTransactions}
-                      loading={loading}
-                      onRefresh={loadBankTransactions}
-                      onExport={() => message.info('导出功能开发中...')}
-                    />
+                    {/* 财务计划与银行交易记录并排显示 */}
+                    <Row gutter={16}>
+                      <Col xs={24} lg={12}>
+                        {/* 1. 活动财务计划 */}
+                        <ActivityFinancialPlan
+                          accountId={account?.id || ''}
+                          items={planItems}
+                          loading={planLoading}
+                          onAdd={handleAddPlan}
+                          onUpdate={handleUpdatePlan}
+                          onDelete={handleDeletePlan}
+                          onRefresh={loadPlans}
+                        />
+                      </Col>
+                      
+                      <Col xs={24} lg={12}>
+                        {/* 2. 银行交易记录 */}
+                        <BankTransactionList
+                          accountId={account?.id || ''}
+                          transactions={bankTransactions}
+                          loading={loading}
+                          onRefresh={loadBankTransactions}
+                          onExport={() => message.info('导出功能开发中...')}
+                        />
+                      </Col>
+                    </Row>
                     
                     {/* 3. 户口核对 */}
                     {consolidationData && (
