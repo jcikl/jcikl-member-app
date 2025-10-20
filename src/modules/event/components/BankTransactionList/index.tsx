@@ -13,9 +13,6 @@ import {
   Space,
   Tag,
   Input,
-  Select,
-  Row,
-  Col,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -31,7 +28,6 @@ import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
 import './BankTransactionList.css';
 
-const { Option } = Select;
 const { Search } = Input;
 
 export interface BankTransaction {
@@ -79,30 +75,33 @@ const BankTransactionList: React.FC<Props> = ({
     })),
   });
   
-  const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [searchText, setSearchText] = useState('');
 
   const tableConfig = globalComponentService.getTableConfig();
 
-  // 筛选交易记录
-  const filteredTransactions = transactions.filter(txn => {
-    // 类型筛选
-    if (typeFilter !== 'all' && txn.transactionType !== typeFilter) {
-      return false;
-    }
+  // 分离收入和支出交易
+  const incomeTransactions = transactions.filter(txn => txn.transactionType === 'income');
+  const expenseTransactions = transactions.filter(txn => txn.transactionType === 'expense');
 
-    // 搜索筛选
-    if (searchText) {
-      const searchLower = searchText.toLowerCase();
-      return (
-        txn.description.toLowerCase().includes(searchLower) ||
-        txn.transactionNumber.toLowerCase().includes(searchLower) ||
-        txn.amount.toString().includes(searchLower)
-      );
-    }
+  // 搜索筛选函数
+  const filterBySearch = (txn: BankTransaction) => {
+    if (!searchText) return true;
+    const searchLower = searchText.toLowerCase();
+    return (
+      txn.description.toLowerCase().includes(searchLower) ||
+      txn.transactionNumber.toLowerCase().includes(searchLower) ||
+      txn.amount.toString().includes(searchLower) ||
+      (txn.payerPayee && txn.payerPayee.toLowerCase().includes(searchLower))
+    );
+  };
 
-    return true;
-  });
+  const filteredIncomeTransactions = incomeTransactions.filter(filterBySearch);
+  const filteredExpenseTransactions = expenseTransactions.filter(filterBySearch);
+
+  // 统计数据
+  const totalIncome = filteredIncomeTransactions.reduce((sum, txn) => sum + txn.amount, 0);
+  const totalExpense = filteredExpenseTransactions.reduce((sum, txn) => sum + txn.amount, 0);
+  const netAmount = totalIncome - totalExpense;
 
   // 表格列定义
   const columns: ColumnsType<BankTransaction> = [
@@ -120,29 +119,22 @@ const BankTransactionList: React.FC<Props> = ({
       ellipsis: true,
     },
     {
-      title: '类型',
-      dataIndex: 'transactionType',
-      width: 80,
-      filters: [
-        { text: '收入', value: 'income' },
-        { text: '支出', value: 'expense' },
-      ],
-      onFilter: (value, record) => record.transactionType === value,
-      render: (type: string) => (
-        <Tag color={type === 'income' ? 'green' : 'red'}>
-          {type === 'income' ? '收入' : '支出'}
-        </Tag>
-      ),
-    },
-    {
       title: '描述',
       dataIndex: 'description',
+      width: '25%',
       ellipsis: true,
+    },
+    {
+      title: '付款人/收款人',
+      dataIndex: 'payerPayee',
+      width: '15%',
+      ellipsis: true,
+      render: (text: string) => text || '-',
     },
     {
       title: '金额',
       dataIndex: 'amount',
-      width: 130,
+      width: 140,
       align: 'right',
       sorter: (a, b) => a.amount - b.amount,
       render: (value: number, record: BankTransaction) => {
@@ -153,31 +145,10 @@ const BankTransactionList: React.FC<Props> = ({
             fontWeight: 600,
             fontSize: '14px'
           }}>
-            {isIncome ? '+' : '-'}RM {value.toFixed(2)}
+            RM {value.toFixed(2)}
           </span>
         );
       },
-    },
-    {
-      title: '付款人/收款人',
-      dataIndex: 'payerPayee',
-      width: 130,
-      ellipsis: true,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: '付款方式',
-      dataIndex: 'paymentMethod',
-      width: 100,
-      ellipsis: true,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: '收据号',
-      dataIndex: 'receiptNumber',
-      width: 120,
-      ellipsis: true,
-      render: (text: string) => text || '-',
     },
     {
       title: '银行账户',
@@ -187,11 +158,11 @@ const BankTransactionList: React.FC<Props> = ({
         if (record.bankAccountName && record.bankName) {
           return (
             <div>
-              <div style={{ fontWeight: 500 }}>
+              <div style={{ fontWeight: 500, fontSize: '13px' }}>
                 {record.bankAccountName} ({record.bankName})
               </div>
               {record.accountNumber && (
-                <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                <div style={{ fontSize: '11px', color: '#8c8c8c' }}>
                   {record.accountNumber}
                 </div>
               )}
@@ -213,13 +184,13 @@ const BankTransactionList: React.FC<Props> = ({
       render: (status: string) => {
         if (status === 'verified') {
           return (
-            <Tag icon={<CheckCircleOutlined />} color="success">
+            <Tag icon={<CheckCircleOutlined />} color="success" style={{ fontSize: '11px' }}>
               已核对
             </Tag>
           );
         }
         return (
-          <Tag icon={<ClockCircleOutlined />} color="warning">
+          <Tag icon={<ClockCircleOutlined />} color="warning" style={{ fontSize: '11px' }}>
             待核对
           </Tag>
         );
@@ -232,10 +203,20 @@ const BankTransactionList: React.FC<Props> = ({
       title="💰 实际银行交易记录（Bank Transaction Records）"
       extra={
         <Space>
+          <Search
+            placeholder="搜索描述/金额/交易号"
+            allowClear
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            prefix={<SearchOutlined />}
+            style={{ width: 250 }}
+            size="small"
+          />
           <Button
             icon={<ReloadOutlined />}
             onClick={onRefresh}
             loading={loading}
+            size="small"
           >
             刷新
           </Button>
@@ -243,6 +224,7 @@ const BankTransactionList: React.FC<Props> = ({
             <Button
               icon={<DownloadOutlined />}
               onClick={onExport}
+              size="small"
             >
               导出Excel
             </Button>
@@ -251,51 +233,129 @@ const BankTransactionList: React.FC<Props> = ({
       }
       className="bank-transaction-list-card"
     >
-      {/* 统计卡片已移除 - 使用预测标签页顶部的对比统计卡片 */}
+      {/* 收入交易区域 */}
+      <div style={{ marginBottom: 24 }}>
+        {/* 收入标题 - 独立显示 */}
+        <div style={{ 
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 16px',
+          backgroundColor: '#f0f9ff',
+          borderRadius: '8px 8px 0 0',
+          borderBottom: '2px solid #52c41a'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <RiseOutlined style={{ color: '#52c41a', fontSize: '20px' }} />
+            <span style={{ fontSize: '18px', fontWeight: 700, color: '#52c41a' }}>
+              Income Transactions
+            </span>
+            <span style={{ fontSize: '14px', color: '#8c8c8c' }}>
+              {filteredIncomeTransactions.length} 笔
+            </span>
+          </div>
+          <div style={{ fontSize: '16px', fontWeight: 600, color: '#52c41a' }}>
+            Total: RM {totalIncome.toFixed(2)}
+          </div>
+        </div>
 
-      {/* 筛选工具栏 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} md={8}>
-          <Select
-            style={{ width: '100%' }}
-            value={typeFilter}
-            onChange={setTypeFilter}
-            placeholder="按类型筛选"
-          >
-            <Option value="all">全部类型</Option>
-            <Option value="income">
-              <RiseOutlined style={{ color: '#52c41a' }} /> 收入
-            </Option>
-            <Option value="expense">
-              <FallOutlined style={{ color: '#ff4d4f' }} /> 支出
-            </Option>
-          </Select>
-        </Col>
-        <Col xs={24} sm={12} md={8}>
-          <Search
-            placeholder="搜索描述/金额/交易号"
-            allowClear
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            prefix={<SearchOutlined />}
-          />
-        </Col>
-      </Row>
+        <Table
+          {...tableConfig}
+          columns={columns}
+          dataSource={filteredIncomeTransactions}
+          rowKey="id"
+          loading={loading}
+          pagination={false}
+          showHeader={true}
+          locale={{ emptyText: '暂无收入交易记录' }}
+        />
+      </div>
 
-      {/* 交易记录表格 */}
-      <Table
-        {...tableConfig}
-        columns={columns}
-        dataSource={filteredTransactions}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          pageSize: 20,
-          showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 笔交易`,
-        }}
-        scroll={{ x: 1400 }}
-      />
+      {/* 支出交易区域 */}
+      <div style={{ marginBottom: 24 }}>
+        {/* 支出标题 - 独立显示 */}
+        <div style={{ 
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 16px',
+          backgroundColor: '#fff1f0',
+          borderRadius: '8px 8px 0 0',
+          borderBottom: '2px solid #ff4d4f'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <FallOutlined style={{ color: '#ff4d4f', fontSize: '20px' }} />
+            <span style={{ fontSize: '18px', fontWeight: 700, color: '#ff4d4f' }}>
+              Expense Transactions
+            </span>
+            <span style={{ fontSize: '14px', color: '#8c8c8c' }}>
+              {filteredExpenseTransactions.length} 笔
+            </span>
+          </div>
+          <div style={{ fontSize: '16px', fontWeight: 600, color: '#ff4d4f' }}>
+            Total: RM {totalExpense.toFixed(2)}
+          </div>
+        </div>
+
+        <Table
+          {...tableConfig}
+          columns={columns}
+          dataSource={filteredExpenseTransactions}
+          rowKey="id"
+          loading={loading}
+          pagination={false}
+          showHeader={true}
+          locale={{ emptyText: '暂无支出交易记录' }}
+        />
+      </div>
+
+      {/* 独立统计区域 */}
+      <div style={{ 
+        marginTop: 16, 
+        padding: '16px 24px', 
+        backgroundColor: '#fafafa',
+        borderRadius: 8,
+        border: '1px solid #f0f0f0'
+      }}>
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          {/* Total Income */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '16px', fontWeight: 600, color: '#262626' }}>
+              Total Income (Actual)
+            </span>
+            <span style={{ color: '#52c41a', fontSize: '20px', fontWeight: 700 }}>
+              RM {totalIncome.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Total Expenses */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '16px', fontWeight: 600, color: '#262626' }}>
+              Total Expenses (Actual)
+            </span>
+            <span style={{ color: '#ff4d4f', fontSize: '20px', fontWeight: 700 }}>
+              RM {totalExpense.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, backgroundColor: '#d9d9d9', margin: '4px 0' }} />
+
+          {/* Net Amount */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '18px', fontWeight: 700, color: '#262626' }}>
+              Net Amount (Actual)
+            </span>
+            <span style={{ 
+              color: netAmount >= 0 ? '#52c41a' : '#ff4d4f', 
+              fontSize: '24px',
+              fontWeight: 700 
+            }}>
+              RM {netAmount.toFixed(2)}
+            </span>
+          </div>
+        </Space>
+      </div>
 
       {/* 说明文字 */}
       <div style={{ 
