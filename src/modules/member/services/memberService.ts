@@ -686,6 +686,58 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
 };
 
 /**
+ * Get members by birthday month
+ * 按月份获取生日会员
+ */
+export const getBirthdaysByMonth = async (month: number): Promise<Array<{
+  id: string;
+  name: string;
+  birthDate: string;
+  day: number;
+  avatar?: string;
+}>> => {
+  try {
+    const snapshot = await getDocs(query(getMembersRef(), where('status', '==', 'active')));
+    const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
+    
+    const birthdayList: Array<{
+      id: string;
+      name: string;
+      birthDate: string;
+      day: number;
+      avatar?: string;
+    }> = [];
+    
+    members.forEach(member => {
+      if (member.profile?.birthDate) {
+        // Parse birthDate (format: dd-mmm-yyyy)
+        const birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
+        if (!birthDate.isValid()) return;
+        
+        // Check if birthday month matches
+        if (birthDate.month() === month) {
+          birthdayList.push({
+            id: member.id,
+            name: member.name,
+            birthDate: member.profile.birthDate,
+            day: birthDate.date(),
+            avatar: member.profile?.avatar,
+          });
+        }
+      }
+    });
+    
+    // Sort by day of month
+    birthdayList.sort((a, b) => a.day - b.day);
+    
+    return birthdayList;
+  } catch (error) {
+    console.error('Error fetching birthdays by month:', error);
+    throw new Error('获取月度生日列表失败');
+  }
+};
+
+/**
  * Get member industry distribution
  * 获取会员行业分布
  */

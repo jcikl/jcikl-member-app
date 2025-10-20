@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, List, Avatar, Tag, Progress } from 'antd';
+import { Card, Row, Col, List, Avatar, Tag, Progress, Select } from 'antd';
 import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 // Components
 import { MetricCard, PermissionGuard } from '@/components';
@@ -9,9 +10,12 @@ import { MetricCard, PermissionGuard } from '@/components';
 import { 
   getMemberStats, 
   getUpcomingBirthdays, 
+  getBirthdaysByMonth,
   getIndustryDistribution, 
   getInterestDistribution 
 } from '@/modules/member/services/memberService';
+
+const { Option } = Select;
 
 /**
  * Dashboard Page
@@ -26,11 +30,15 @@ const DashboardPage: React.FC = () => {
     loading: true,
   });
 
+  const [birthdayViewMode, setBirthdayViewMode] = useState<'upcoming' | 'month'>('upcoming');
+  const [selectedMonth, setSelectedMonth] = useState<number>(dayjs().month()); // 0-11
+  
   const [upcomingBirthdays, setUpcomingBirthdays] = useState<Array<{
     id: string;
     name: string;
     birthDate: string;
-    daysUntilBirthday: number;
+    daysUntilBirthday?: number;
+    day?: number;
     avatar?: string;
   }>>([]);
 
@@ -47,6 +55,22 @@ const DashboardPage: React.FC = () => {
   }>>([]);
 
   const [listsLoading, setListsLoading] = useState(true);
+
+  // 月份选项
+  const monthOptions = [
+    { label: '一月 (January)', value: 0 },
+    { label: '二月 (February)', value: 1 },
+    { label: '三月 (March)', value: 2 },
+    { label: '四月 (April)', value: 3 },
+    { label: '五月 (May)', value: 4 },
+    { label: '六月 (June)', value: 5 },
+    { label: '七月 (July)', value: 6 },
+    { label: '八月 (August)', value: 7 },
+    { label: '九月 (September)', value: 8 },
+    { label: '十月 (October)', value: 9 },
+    { label: '十一月 (November)', value: 10 },
+    { label: '十二月 (December)', value: 11 },
+  ];
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -74,13 +98,11 @@ const DashboardPage: React.FC = () => {
     const fetchLists = async () => {
       setListsLoading(true);
       try {
-        const [birthdays, industries, interests] = await Promise.all([
-          getUpcomingBirthdays(30),
+        const [industries, interests] = await Promise.all([
           getIndustryDistribution(),
           getInterestDistribution(),
         ]);
 
-        setUpcomingBirthdays(birthdays);
         setIndustryDistribution(industries);
         setInterestDistribution(interests);
       } catch (error) {
@@ -92,6 +114,28 @@ const DashboardPage: React.FC = () => {
 
     fetchLists();
   }, []);
+
+  // 加载生日数据
+  useEffect(() => {
+    const loadBirthdays = async () => {
+      setListsLoading(true);
+      try {
+        if (birthdayViewMode === 'upcoming') {
+          const birthdays = await getUpcomingBirthdays(30);
+          setUpcomingBirthdays(birthdays);
+        } else {
+          const birthdays = await getBirthdaysByMonth(selectedMonth);
+          setUpcomingBirthdays(birthdays);
+        }
+      } catch (error) {
+        console.error('Failed to fetch birthdays:', error);
+      } finally {
+        setListsLoading(false);
+      }
+    };
+
+    loadBirthdays();
+  }, [birthdayViewMode, selectedMonth]);
 
   return (
     <PermissionGuard permissions="DASHBOARD_VIEW">
@@ -149,16 +193,37 @@ const DashboardPage: React.FC = () => {
             title={
               <span>
                 <GiftOutlined style={{ marginRight: 8, color: '#f5222d' }} />
-                即将过生日的会员
+                会员生日列表
               </span>
             } 
             className="content-card"
-            extra={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>未来30天</span>}
+            extra={
+              <Select
+                size="small"
+                value={birthdayViewMode === 'upcoming' ? 'upcoming' : selectedMonth}
+                onChange={(value) => {
+                  if (value === 'upcoming') {
+                    setBirthdayViewMode('upcoming');
+                  } else {
+                    setBirthdayViewMode('month');
+                    setSelectedMonth(value as number);
+                  }
+                }}
+                style={{ width: 140 }}
+              >
+                <Option value="upcoming">即将到来</Option>
+                {monthOptions.map(opt => (
+                  <Option key={opt.value} value={opt.value}>
+                    {opt.label.split(' ')[0]}
+                  </Option>
+                ))}
+              </Select>
+            }
           >
             <List
               loading={listsLoading}
-              dataSource={upcomingBirthdays.slice(0, 8)}
-              locale={{ emptyText: '暂无即将过生日的会员' }}
+              dataSource={upcomingBirthdays.slice(0, 10)}
+              locale={{ emptyText: birthdayViewMode === 'upcoming' ? '未来30天无生日会员' : '本月无生日会员' }}
               renderItem={item => (
                 <List.Item style={{ padding: '8px 0' }}>
                   <List.Item.Meta
@@ -172,9 +237,13 @@ const DashboardPage: React.FC = () => {
                     title={
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '13px' }}>{item.name}</span>
-                        <Tag color={item.daysUntilBirthday === 0 ? 'red' : item.daysUntilBirthday <= 7 ? 'orange' : 'blue'}>
-                          {item.daysUntilBirthday === 0 ? '今天' : `${item.daysUntilBirthday}天后`}
-                        </Tag>
+                        {birthdayViewMode === 'upcoming' ? (
+                          <Tag color={item.daysUntilBirthday === 0 ? 'red' : item.daysUntilBirthday! <= 7 ? 'orange' : 'blue'}>
+                            {item.daysUntilBirthday === 0 ? '今天' : `${item.daysUntilBirthday}天后`}
+                          </Tag>
+                        ) : (
+                          <Tag color="blue">{item.day}日</Tag>
+                        )}
                       </div>
                     }
                     description={
