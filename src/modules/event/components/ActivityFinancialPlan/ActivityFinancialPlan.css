@@ -55,3 +55,20 @@
   background: #fafafa !important;
 }
 
+/* Inline编辑行样式 */
+.activity-financial-plan-card .editing-row {
+  background: #e6f7ff !important;
+}
+
+.activity-financial-plan-card .editing-row:hover {
+  background: #e6f7ff !important;
+}
+
+.activity-financial-plan-card .editing-row .ant-form-item {
+  margin-bottom: 0;
+}
+
+.activity-financial-plan-card .editing-row .ant-form-item-explain-error {
+  display: none;
+}
+

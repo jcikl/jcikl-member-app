@@ -19,8 +19,6 @@ import {
   Select,
   message,
   Popconfirm,
-  Row,
-  Col,
   Tag,
 } from 'antd';
 import {
@@ -76,16 +74,14 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   onDelete,
   onRefresh,
 }) => {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState<FinancialPlanItem | null>(null);
-  const [addingType, setAddingType] = useState<'income' | 'expense'>('income');
-  const [preSelectedCategory, setPreSelectedCategory] = useState<string | null>(null);
+  const [editingKey, setEditingKey] = useState<string>('');
+  const [addingInCategory, setAddingInCategory] = useState<{type: 'income' | 'expense', category: string} | null>(null);
+  const [editMode, setEditMode] = useState(false);
   const [form] = Form.useForm();
   
   // 动态类别
   const [incomeCategories, setIncomeCategories] = useState<Array<{label: string; value: string}>>([]);
   const [expenseCategories, setExpenseCategories] = useState<Array<{label: string; value: string}>>([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
   
   // 批量粘贴
   const [bulkPasteVisible, setBulkPasteVisible] = useState(false);
@@ -100,7 +96,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   
   const loadCategories = async () => {
     try {
-      setLoadingCategories(true);
       const [income, expense] = await Promise.all([
         getActiveIncomeCategories(),
         getActiveExpenseCategories(),
@@ -110,8 +105,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     } catch (error) {
       message.error('加载类别失败');
       console.error(error);
-    } finally {
-      setLoadingCategories(false);
     }
   };
 
@@ -134,6 +127,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     key: string;
     isTypeHeader?: boolean;
     isCategoryHeader?: boolean;
+    isNew?: boolean;
     typeLabel?: string;
     categoryLabel?: string;
     categoryTotal?: number;
@@ -145,7 +139,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     const grouped: GroupedRow[] = [];
     
     // 收入组
-    if (incomeItems.length > 0) {
+    if (incomeItems.length > 0 || (addingInCategory?.type === 'income')) {
       // 类型标题行
       grouped.push({
         key: 'income-header',
@@ -162,6 +156,11 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         acc[cat].push(item);
         return acc;
       }, {} as Record<string, FinancialPlanItem[]>);
+      
+      // 如果正在添加新项目，确保类别存在
+      if (addingInCategory?.type === 'income' && !incomeByCategory[addingInCategory.category]) {
+        incomeByCategory[addingInCategory.category] = [];
+      }
       
       // 渲染每个类别
       Object.entries(incomeByCategory).forEach(([category, categoryItems]) => {
@@ -186,11 +185,22 @@ const ActivityFinancialPlan: React.FC<Props> = ({
             indentLevel: 2,
           } as GroupedRow);
         });
+        
+        // 如果正在添加新项目到这个类别
+        if (addingInCategory?.type === 'income' && addingInCategory.category === category && editingKey) {
+          grouped.push({
+            key: editingKey,
+            type: 'income',
+            category,
+            isNew: true,
+            indentLevel: 2,
+          } as GroupedRow);
+        }
       });
     }
     
     // 支出组
-    if (expenseItems.length > 0) {
+    if (expenseItems.length > 0 || (addingInCategory?.type === 'expense')) {
       // 类型标题行
       grouped.push({
         key: 'expense-header',
@@ -207,6 +217,11 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         acc[cat].push(item);
         return acc;
       }, {} as Record<string, FinancialPlanItem[]>);
+      
+      // 如果正在添加新项目，确保类别存在
+      if (addingInCategory?.type === 'expense' && !expenseByCategory[addingInCategory.category]) {
+        expenseByCategory[addingInCategory.category] = [];
+      }
       
       // 渲染每个类别
       Object.entries(expenseByCategory).forEach(([category, categoryItems]) => {
@@ -231,6 +246,17 @@ const ActivityFinancialPlan: React.FC<Props> = ({
             indentLevel: 2,
           } as GroupedRow);
         });
+        
+        // 如果正在添加新项目到这个类别
+        if (addingInCategory?.type === 'expense' && addingInCategory.category === category && editingKey) {
+          grouped.push({
+            key: editingKey,
+            type: 'expense',
+            category,
+            isNew: true,
+            indentLevel: 2,
+          } as GroupedRow);
+        }
       });
     }
     
@@ -238,6 +264,9 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   };
 
   const groupedData = buildGroupedData();
+  
+  // 判断是否正在编辑
+  const isEditing = (record: GroupedRow) => record.key === editingKey;
   
   // 批量粘贴解析
   const parseBulkPasteData = (text: string): Array<Partial<FinancialPlanItem>> => {
@@ -270,20 +299,19 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         return;
       }
       
-      const defaultCategory = addingType === 'income' 
-        ? (incomeCategories[0]?.value || 'other-income')
-        : (expenseCategories[0]?.value || 'other-expense');
+      // 默认使用收入类型
+      const defaultCategory = incomeCategories[0]?.value || 'other-income';
       
       for (const item of items) {
         await onAdd({
-          type: addingType,
+          type: 'income',
           category: defaultCategory,
           ...item,
           status: 'planned',
         } as any);
       }
       
-      message.success(`成功导入 ${items.length} 条记录`);
+      message.success(`成功导入 ${items.length} 条记录（默认为收入类型）`);
       setBulkPasteVisible(false);
       setBulkPasteText('');
       await onRefresh();
@@ -293,22 +321,88 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 打开添加模态框
-  const handleAdd = (type: 'income' | 'expense', category?: string) => {
-    setEditingItem(null);
-    setAddingType(type);
-    setPreSelectedCategory(category || null);
-    form.resetFields();
-    form.setFieldsValue({ 
-      type,
-      ...(category && { category })
+  // 开始编辑
+  const handleEdit = (record: FinancialPlanItem) => {
+    form.setFieldsValue({
+      description: record.description,
+      remark: record.remark,
+      amount: record.amount,
+      expectedDate: record.expectedDate ? dayjs(record.expectedDate) : null,
+      status: record.status,
     });
-    setModalVisible(true);
+    setEditingKey(record.id);
+  };
+
+  // 取消编辑
+  const handleCancel = () => {
+    setEditingKey('');
+    setAddingInCategory(null);
+    form.resetFields();
+  };
+
+  // 保存编辑
+  const handleSave = async (id: string) => {
+    try {
+      const values = await form.validateFields();
+      
+      const itemData = {
+        description: values.description,
+        remark: values.remark || '',
+        amount: values.amount,
+        expectedDate: values.expectedDate ? values.expectedDate.toISOString() : new Date().toISOString(),
+        status: values.status || 'planned',
+      };
+
+      await onUpdate(id, itemData);
+      message.success('更新成功');
+      setEditingKey('');
+      form.resetFields();
+    } catch (error) {
+      console.error('保存失败:', error);
+      message.error('保存失败');
+    }
   };
 
   // 在特定类别下添加项目
   const handleAddItemInCategory = (type: 'income' | 'expense', category: string) => {
-    handleAdd(type, category);
+    const newKey = `new-${Date.now()}`;
+    setAddingInCategory({ type, category });
+    setEditingKey(newKey);
+    form.setFieldsValue({
+      description: '',
+      remark: '',
+      amount: 0,
+      expectedDate: dayjs(),
+      status: 'planned',
+    });
+  };
+
+  // 保存新项目
+  const handleSaveNew = async () => {
+    if (!addingInCategory) return;
+    
+    try {
+      const values = await form.validateFields();
+      
+      const itemData = {
+        type: addingInCategory.type,
+        category: addingInCategory.category,
+        description: values.description,
+        remark: values.remark || '',
+        amount: values.amount,
+        expectedDate: values.expectedDate ? values.expectedDate.toISOString() : new Date().toISOString(),
+        status: values.status || 'planned',
+      };
+
+      await onAdd(itemData as any);
+      message.success('添加成功');
+      setEditingKey('');
+      setAddingInCategory(null);
+      form.resetFields();
+    } catch (error) {
+      console.error('添加失败:', error);
+      message.error('添加失败');
+    }
   };
 
   // 删除整个类别及其下的所有项目
@@ -326,47 +420,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     } catch (error) {
       message.error('删除类别失败');
       console.error(error);
-    }
-  };
-
-  // 打开编辑模态框
-  const handleEdit = (item: FinancialPlanItem) => {
-    setEditingItem(item);
-    form.setFieldsValue({
-      ...item,
-      expectedDate: item.expectedDate ? dayjs(item.expectedDate) : null,
-    });
-    setModalVisible(true);
-  };
-
-  // 提交表单
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      
-      const itemData = {
-        type: values.type,
-        category: values.category,
-        description: values.description,
-        remark: values.remark || '',
-        amount: values.amount,
-        expectedDate: values.expectedDate ? values.expectedDate.toISOString() : new Date().toISOString(),
-        status: values.status || 'planned',
-      };
-
-      if (editingItem) {
-        await onUpdate(editingItem.id, itemData);
-        message.success('更新成功');
-      } else {
-        await onAdd(itemData as any);
-        message.success('添加成功');
-      }
-
-      setModalVisible(false);
-      setPreSelectedCategory(null);
-      form.resetFields();
-    } catch (error) {
-      console.error('提交失败:', error);
     }
   };
 
@@ -415,23 +468,77 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           );
         }
         
-        // 项目行 (Eddie, Andy, etc.)
+        // 项目行 - 可编辑
+        const editing = isEditing(record);
+        if (editing) {
+          return (
+            <Form.Item
+              name="description"
+              style={{ margin: 0, paddingLeft: '48px' }}
+              rules={[{ required: true, message: '请输入描述' }]}
+            >
+              <Input placeholder="项目描述" />
+            </Form.Item>
+          );
+        }
+        
+        // 正常显示模式 - 描述 + 状态标签
+        const statusMap = {
+          planned: { label: '计划中', color: 'blue' },
+          'pending-approval': { label: '待审批', color: 'gold' },
+          confirmed: { label: '已确认', color: 'orange' },
+          completed: { label: '已完成', color: 'green' },
+          cancelled: { label: '已取消', color: 'default' },
+        };
+        const statusConfig = statusMap[record.status as keyof typeof statusMap] || statusMap.planned;
+        
         return (
-          <div style={{ paddingLeft: '48px', color: '#262626' }}>
-            -- {record.description}
+          <div style={{ paddingLeft: '48px' }}>
+            <div style={{ color: '#262626' }}>
+              -- {record.description}
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <Tag color={statusConfig.color} style={{ fontSize: '11px' }}>
+                {statusConfig.label}
+              </Tag>
+            </div>
           </div>
         );
       },
     },
     {
-      title: '备注',
+      title: '备注 / 状态',
       dataIndex: 'remark',
-      width: '20%',
-      ellipsis: true,
+      width: '25%',
       render: (text: string, record: GroupedRow) => {
         // 只在项目行显示备注
         if (record.isTypeHeader || record.isCategoryHeader) return null;
-        return <span style={{ color: '#8c8c8c' }}>{text || '-'}</span>;
+        
+        const editing = isEditing(record);
+        if (editing) {
+          return (
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Form.Item name="remark" style={{ margin: 0 }}>
+                <Input placeholder="备注" size="small" />
+              </Form.Item>
+              <Form.Item name="status" style={{ margin: 0 }}>
+                <Select style={{ width: '100%' }} size="small" placeholder="选择状态">
+                  <Option value="planned">计划中</Option>
+                  <Option value="pending-approval">待审批</Option>
+                  <Option value="confirmed">已确认</Option>
+                  <Option value="completed">已完成</Option>
+                  <Option value="cancelled">已取消</Option>
+                </Select>
+              </Form.Item>
+            </Space>
+          );
+        }
+        
+        return (
+          <div>
+            <div style={{ color: '#8c8c8c', fontSize: '13px' }}>{text || '-'}</div>
+          </div>
+        );
       },
     },
     {
@@ -456,8 +563,23 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           );
         }
         
-        // 项目行显示金额
-        return (
+        // 项目行 - 可编辑
+        const editing = isEditing(record);
+        return editing ? (
+          <Form.Item
+            name="amount"
+            style={{ margin: 0 }}
+            rules={[{ required: true, message: '请输入金额' }]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              precision={2}
+              prefix="RM"
+              placeholder="0.00"
+            />
+          </Form.Item>
+        ) : (
           <span style={{ 
             color: record.type === 'income' ? '#52c41a' : '#ff4d4f',
             fontWeight: 500
@@ -470,39 +592,39 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '预计日期',
       dataIndex: 'expectedDate',
-      width: 110,
+      width: 130,
       render: (date: string, record: GroupedRow) => {
         // 只在项目行显示日期
         if (record.isTypeHeader || record.isCategoryHeader) return null;
-        return globalDateService.formatDate(date, 'display');
-      },
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      width: 90,
-      render: (status: string, record: GroupedRow) => {
-        // 只在项目行显示状态
-        if (record.isTypeHeader || record.isCategoryHeader) return null;
         
-        const statusMap = {
-          planned: { label: '计划中', color: 'blue' },
-          'pending-approval': { label: '待审批', color: 'gold' },
-          confirmed: { label: '已确认', color: 'orange' },
-          completed: { label: '已完成', color: 'green' },
-          cancelled: { label: '已取消', color: 'default' },
-        };
-        const config = statusMap[status as keyof typeof statusMap] || statusMap.planned;
-        return <Tag color={config.color}>{config.label}</Tag>;
+        const editing = isEditing(record);
+        return editing ? (
+          <Form.Item
+            name="expectedDate"
+            style={{ margin: 0 }}
+            rules={[{ required: true, message: '请选择日期' }]}
+          >
+            <DatePicker
+              style={{ width: '100%' }}
+              format="DD-MMM-YYYY"
+              placeholder="选择日期"
+            />
+          </Form.Item>
+        ) : (
+          globalDateService.formatDate(date, 'display')
+        );
       },
     },
     {
       title: '操作',
       key: 'action',
-      width: 110,
+      width: 140,
       render: (_: unknown, record: GroupedRow) => {
         // 类型标题行不显示操作
         if (record.isTypeHeader) return null;
+        
+        // 非编辑模式下，不显示任何操作按钮
+        if (!editMode) return null;
         
         // 类别标题行显示添加项目和删除类别按钮
         if (record.isCategoryHeader) {
@@ -515,6 +637,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                 onClick={() => handleAddItemInCategory(record.type!, record.category!)}
                 title="添加项目"
                 style={{ color: '#1890ff' }}
+                disabled={!!editingKey}
               >
                 添加
               </Button>
@@ -531,13 +654,38 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   danger
                   icon={<DeleteOutlined />}
                   title="删除类别"
+                  disabled={!!editingKey}
                 />
               </Popconfirm>
             </Space>
           );
         }
         
-        // 项目行显示编辑和删除按钮
+        // 项目行 - 正在编辑此行
+        const editing = isEditing(record);
+        if (editing) {
+          return (
+            <Space size="small">
+              <Button
+                type="link"
+                size="small"
+                onClick={() => record.isNew ? handleSaveNew() : handleSave(record.id!)}
+                style={{ color: '#52c41a' }}
+              >
+                保存
+              </Button>
+              <Button
+                type="link"
+                size="small"
+                onClick={handleCancel}
+              >
+                取消
+              </Button>
+            </Space>
+          );
+        }
+        
+        // 项目行 - 编辑模式但未编辑此行
         return (
           <Space size="small">
             <Button
@@ -546,6 +694,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
               icon={<EditOutlined />}
               onClick={() => handleEdit(record as FinancialPlanItem)}
               title="编辑"
+              disabled={!!editingKey}
             />
             <Popconfirm
               title="确认删除此项目？"
@@ -559,6 +708,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                 danger
                 icon={<DeleteOutlined />}
                 title="删除"
+                disabled={!!editingKey}
               />
             </Popconfirm>
           </Space>
@@ -573,14 +723,29 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       extra={
         <Space>
           <Button
+            type={editMode ? 'primary' : 'default'}
+            icon={<EditOutlined />}
+            onClick={() => {
+              setEditMode(!editMode);
+              if (editMode) {
+                // 退出编辑模式时取消所有编辑
+                handleCancel();
+              }
+            }}
+          >
+            {editMode ? '退出编辑' : '编辑模式'}
+          </Button>
+          <Button
             icon={<ImportOutlined />}
             onClick={() => setBulkPasteVisible(true)}
+            disabled={editMode}
           >
             批量粘贴
           </Button>
           <Button
             icon={<DownloadOutlined />}
             onClick={() => message.info('导出功能开发中...')}
+            disabled={editMode}
           >
             导出Excel
           </Button>
@@ -603,18 +768,25 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         </Space>
       </div>
 
-      <Table
-        {...tableConfig}
-        columns={columns}
-        dataSource={groupedData}
-        rowKey="key"
-        loading={loading}
-        pagination={false}
-        rowClassName={(record) => {
-          if (record.isTypeHeader) return 'type-header-row';
-          if (record.isCategoryHeader) return 'category-header-row';
-          return 'item-row';
-        }}
+      <Form form={form} component={false}>
+        <Table
+          {...tableConfig}
+          components={{
+            body: {
+              cell: (props: any) => <td {...props} />,
+            },
+          }}
+          columns={columns}
+          dataSource={groupedData}
+          rowKey="key"
+          loading={loading}
+          pagination={false}
+          rowClassName={(record) => {
+            if (record.isTypeHeader) return 'type-header-row';
+            if (record.isCategoryHeader) return 'category-header-row';
+            if (isEditing(record)) return 'item-row editing-row';
+            return 'item-row';
+          }}
         summary={() => (
           <Table.Summary>
             <Table.Summary.Row>
@@ -626,7 +798,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   RM {totalIncome.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} colSpan={3} />
+              <Table.Summary.Cell index={3} colSpan={2} />
             </Table.Summary.Row>
             <Table.Summary.Row>
               <Table.Summary.Cell index={0} colSpan={2}>
@@ -637,7 +809,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   RM {totalExpense.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} colSpan={3} />
+              <Table.Summary.Cell index={3} colSpan={2} />
             </Table.Summary.Row>
             <Table.Summary.Row style={{ backgroundColor: '#fafafa' }}>
               <Table.Summary.Cell index={0} colSpan={2}>
@@ -652,133 +824,12 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   RM {netProfit.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} colSpan={3} />
+              <Table.Summary.Cell index={3} colSpan={2} />
             </Table.Summary.Row>
           </Table.Summary>
         )}
-      />
-
-      {/* 添加/编辑模态框 */}
-      <Modal
-        title={editingItem ? '编辑财务项目' : preSelectedCategory ? `添加财务项目到 ${getCategoryLabel(addingType, preSelectedCategory)}` : '添加财务项目'}
-        open={modalVisible}
-        onOk={handleSubmit}
-        onCancel={() => {
-          setModalVisible(false);
-          setPreSelectedCategory(null);
-          form.resetFields();
-        }}
-        width={600}
-        okText="保存"
-        cancelText="取消"
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{
-            type: 'income',
-            status: 'planned',
-          }}
-        >
-          <Form.Item name="type" label="类型" rules={[{ required: true }]}>
-            <Select disabled={!!editingItem}>
-              <Option value="income">
-                <RiseOutlined style={{ color: '#52c41a' }} /> 收入
-              </Option>
-              <Option value="expense">
-                <FallOutlined style={{ color: '#ff4d4f' }} /> 支出
-              </Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}
-          >
-            {({ getFieldValue }) => {
-              const type = getFieldValue('type');
-              const categories = type === 'income' ? incomeCategories : expenseCategories;
-              
-              return (
-                <Form.Item
-                  name="category"
-                  label="类别"
-                  rules={[{ required: true, message: '请选择类别' }]}
-                  tooltip={preSelectedCategory ? '在特定类别下添加项目时，类别不可更改' : undefined}
-                >
-                  <Select 
-                    placeholder="选择类别" 
-                    loading={loadingCategories}
-                    disabled={!!preSelectedCategory}
-                  >
-                    {categories.map(cat => (
-                      <Option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              );
-            }}
-          </Form.Item>
-
-          <Form.Item
-            name="description"
-            label="描述"
-            rules={[{ required: true, message: '请输入描述' }]}
-          >
-            <Input placeholder="例如：正式会员报名、ABC公司赞助" maxLength={100} />
-          </Form.Item>
-
-          <Form.Item name="remark" label="备注">
-            <TextArea
-              placeholder="例如：预计30人、金级赞助"
-              rows={2}
-              maxLength={200}
-            />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="amount"
-                label="金额 (RM)"
-                rules={[{ required: true, message: '请输入金额' }]}
-              >
-                <InputNumber
-                  style={{ width: '100%' }}
-                  min={0}
-                  precision={2}
-                  placeholder="0.00"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="expectedDate"
-                label="预计日期"
-                rules={[{ required: true, message: '请选择日期' }]}
-              >
-                <DatePicker
-                  style={{ width: '100%' }}
-                  format="DD-MMM-YYYY"
-                  placeholder="选择日期"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="status" label="状态">
-            <Select>
-              <Option value="planned">计划中</Option>
-              <Option value="pending-approval">待审批</Option>
-              <Option value="confirmed">已确认</Option>
-              <Option value="completed">已完成</Option>
-              <Option value="cancelled">已取消</Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
+        />
+      </Form>
 
       {/* 批量粘贴模态框 */}
       <Modal
