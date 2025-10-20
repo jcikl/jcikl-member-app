@@ -138,127 +138,135 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const buildGroupedData = (): GroupedRow[] => {
     const grouped: GroupedRow[] = [];
     
-    // 收入组
-    if (incomeItems.length > 0 || (addingInCategory?.type === 'income')) {
-      // 类型标题行
-      grouped.push({
-        key: 'income-header',
-        isTypeHeader: true,
-        typeLabel: 'Incomes',
-        type: 'income',
-        indentLevel: 0,
-      });
-      
-      // 按类别分组
-      const incomeByCategory = incomeItems.reduce((acc, item) => {
-        const cat = item.category;
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(item);
-        return acc;
-      }, {} as Record<string, FinancialPlanItem[]>);
-      
-      // 如果正在添加新项目，确保类别存在
-      if (addingInCategory?.type === 'income' && !incomeByCategory[addingInCategory.category]) {
-        incomeByCategory[addingInCategory.category] = [];
+    // 收入组 - 始终显示
+    grouped.push({
+      key: 'income-header',
+      isTypeHeader: true,
+      typeLabel: 'Incomes',
+      type: 'income',
+      indentLevel: 0,
+    });
+    
+    // 按类别分组
+    const incomeByCategory = incomeItems.reduce((acc, item) => {
+      const cat = item.category;
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
+      return acc;
+    }, {} as Record<string, FinancialPlanItem[]>);
+    
+    // 确保所有收入类别都显示（即使没有项目）
+    incomeCategories.forEach(cat => {
+      if (!incomeByCategory[cat.value]) {
+        incomeByCategory[cat.value] = [];
       }
-      
-      // 渲染每个类别
-      Object.entries(incomeByCategory).forEach(([category, categoryItems]) => {
-        const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
-        
-        // 类别标题行
-        grouped.push({
-          key: `income-cat-${category}`,
-          isCategoryHeader: true,
-          type: 'income',
-          category,
-          categoryLabel: getCategoryLabel('income', category),
-          categoryTotal,
-          indentLevel: 1,
-        });
-        
-        // 类别下的项目
-        categoryItems.forEach(item => {
-          grouped.push({
-            ...item,
-            key: item.id,
-            indentLevel: 2,
-          } as GroupedRow);
-        });
-        
-        // 如果正在添加新项目到这个类别
-        if (addingInCategory?.type === 'income' && addingInCategory.category === category && editingKey) {
-          grouped.push({
-            key: editingKey,
-            type: 'income',
-            category,
-            isNew: true,
-            indentLevel: 2,
-          } as GroupedRow);
-        }
-      });
+    });
+    
+    // 如果正在添加新项目，确保类别存在
+    if (addingInCategory?.type === 'income' && !incomeByCategory[addingInCategory.category]) {
+      incomeByCategory[addingInCategory.category] = [];
     }
     
-    // 支出组
-    if (expenseItems.length > 0 || (addingInCategory?.type === 'expense')) {
-      // 类型标题行
+    // 渲染每个类别
+    Object.entries(incomeByCategory).forEach(([category, categoryItems]) => {
+      const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
+      
+      // 类别标题行
       grouped.push({
-        key: 'expense-header',
-        isTypeHeader: true,
-        typeLabel: 'Expenses',
-        type: 'expense',
-        indentLevel: 0,
+        key: `income-cat-${category}`,
+        isCategoryHeader: true,
+        type: 'income',
+        category,
+        categoryLabel: getCategoryLabel('income', category),
+        categoryTotal,
+        indentLevel: 1,
       });
       
-      // 按类别分组
-      const expenseByCategory = expenseItems.reduce((acc, item) => {
-        const cat = item.category;
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(item);
-        return acc;
-      }, {} as Record<string, FinancialPlanItem[]>);
-      
-      // 如果正在添加新项目，确保类别存在
-      if (addingInCategory?.type === 'expense' && !expenseByCategory[addingInCategory.category]) {
-        expenseByCategory[addingInCategory.category] = [];
-      }
-      
-      // 渲染每个类别
-      Object.entries(expenseByCategory).forEach(([category, categoryItems]) => {
-        const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
-        
-        // 类别标题行
+      // 类别下的项目
+      categoryItems.forEach(item => {
         grouped.push({
-          key: `expense-cat-${category}`,
-          isCategoryHeader: true,
+          ...item,
+          key: item.id,
+          indentLevel: 2,
+        } as GroupedRow);
+      });
+      
+      // 如果正在添加新项目到这个类别
+      if (addingInCategory?.type === 'income' && addingInCategory.category === category && editingKey) {
+        grouped.push({
+          key: editingKey,
+          type: 'income',
+          category,
+          isNew: true,
+          indentLevel: 2,
+        } as GroupedRow);
+      }
+    });
+    
+    // 支出组 - 始终显示
+    grouped.push({
+      key: 'expense-header',
+      isTypeHeader: true,
+      typeLabel: 'Expenses',
+      type: 'expense',
+      indentLevel: 0,
+    });
+    
+    // 按类别分组
+    const expenseByCategory = expenseItems.reduce((acc, item) => {
+      const cat = item.category;
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
+      return acc;
+    }, {} as Record<string, FinancialPlanItem[]>);
+    
+    // 确保所有支出类别都显示（即使没有项目）
+    expenseCategories.forEach(cat => {
+      if (!expenseByCategory[cat.value]) {
+        expenseByCategory[cat.value] = [];
+      }
+    });
+    
+    // 如果正在添加新项目，确保类别存在
+    if (addingInCategory?.type === 'expense' && !expenseByCategory[addingInCategory.category]) {
+      expenseByCategory[addingInCategory.category] = [];
+    }
+    
+    // 渲染每个类别
+    Object.entries(expenseByCategory).forEach(([category, categoryItems]) => {
+      const categoryTotal = categoryItems.reduce((sum, item) => sum + item.amount, 0);
+      
+      // 类别标题行
+      grouped.push({
+        key: `expense-cat-${category}`,
+        isCategoryHeader: true,
+        type: 'expense',
+        category,
+        categoryLabel: getCategoryLabel('expense', category),
+        categoryTotal,
+        indentLevel: 1,
+      });
+      
+      // 类别下的项目
+      categoryItems.forEach(item => {
+        grouped.push({
+          ...item,
+          key: item.id,
+          indentLevel: 2,
+        } as GroupedRow);
+      });
+      
+      // 如果正在添加新项目到这个类别
+      if (addingInCategory?.type === 'expense' && addingInCategory.category === category && editingKey) {
+        grouped.push({
+          key: editingKey,
           type: 'expense',
           category,
-          categoryLabel: getCategoryLabel('expense', category),
-          categoryTotal,
-          indentLevel: 1,
-        });
-        
-        // 类别下的项目
-        categoryItems.forEach(item => {
-          grouped.push({
-            ...item,
-            key: item.id,
-            indentLevel: 2,
-          } as GroupedRow);
-        });
-        
-        // 如果正在添加新项目到这个类别
-        if (addingInCategory?.type === 'expense' && addingInCategory.category === category && editingKey) {
-          grouped.push({
-            key: editingKey,
-            type: 'expense',
-            category,
-            isNew: true,
-            indentLevel: 2,
-          } as GroupedRow);
-        }
-      });
-    }
+          isNew: true,
+          indentLevel: 2,
+        } as GroupedRow);
+      }
+    });
     
     return grouped;
   };
