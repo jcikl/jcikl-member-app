@@ -356,6 +356,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '项目/类别',
       dataIndex: 'description',
+      ellipsis: true,
       render: (_: unknown, record: GroupedRow) => {
         // 类型标题行 (Incomes / Expenses)
         if (record.isTypeHeader) {
@@ -396,7 +397,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '备注',
       dataIndex: 'remark',
-      width: 200,
+      width: '20%',
       ellipsis: true,
       render: (text: string, record: GroupedRow) => {
         // 只在项目行显示备注
@@ -407,7 +408,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '金额',
       dataIndex: 'amount',
-      width: 150,
+      width: 140,
       align: 'right',
       render: (_: unknown, record: GroupedRow) => {
         // 类型标题行不显示金额
@@ -440,7 +441,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '预计日期',
       dataIndex: 'expectedDate',
-      width: 120,
+      width: 110,
       render: (date: string, record: GroupedRow) => {
         // 只在项目行显示日期
         if (record.isTypeHeader || record.isCategoryHeader) return null;
@@ -450,7 +451,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
+      width: 90,
       render: (status: string, record: GroupedRow) => {
         // 只在项目行显示状态
         if (record.isTypeHeader || record.isCategoryHeader) return null;
@@ -469,8 +470,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '操作',
       key: 'action',
-      width: 100,
-      fixed: 'right',
+      width: 90,
       render: (_: unknown, record: GroupedRow) => {
         // 只在项目行显示操作按钮
         if (record.isTypeHeader || record.isCategoryHeader) return null;
@@ -560,19 +560,17 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         rowKey="key"
         loading={loading}
         pagination={false}
-        scroll={{ x: 1000 }}
         rowClassName={(record) => {
           if (record.isTypeHeader) return 'type-header-row';
           if (record.isCategoryHeader) return 'category-header-row';
           return 'item-row';
         }}
         summary={() => (
-          <Table.Summary fixed>
+          <Table.Summary>
             <Table.Summary.Row>
-              <Table.Summary.Cell index={0}>
+              <Table.Summary.Cell index={0} colSpan={2}>
                 <strong style={{ fontSize: '16px' }}>Total Income</strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={1} />
               <Table.Summary.Cell index={2} align="right">
                 <strong style={{ color: '#52c41a', fontSize: '18px', fontWeight: 700 }}>
                   RM {totalIncome.toFixed(2)}
@@ -581,10 +579,9 @@ const ActivityFinancialPlan: React.FC<Props> = ({
               <Table.Summary.Cell index={3} colSpan={3} />
             </Table.Summary.Row>
             <Table.Summary.Row>
-              <Table.Summary.Cell index={0}>
+              <Table.Summary.Cell index={0} colSpan={2}>
                 <strong style={{ fontSize: '16px' }}>Total Expenses</strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={1} />
               <Table.Summary.Cell index={2} align="right">
                 <strong style={{ color: '#ff4d4f', fontSize: '18px', fontWeight: 700 }}>
                   RM {totalExpense.toFixed(2)}
@@ -593,10 +590,9 @@ const ActivityFinancialPlan: React.FC<Props> = ({
               <Table.Summary.Cell index={3} colSpan={3} />
             </Table.Summary.Row>
             <Table.Summary.Row style={{ backgroundColor: '#fafafa' }}>
-              <Table.Summary.Cell index={0}>
+              <Table.Summary.Cell index={0} colSpan={2}>
                 <strong style={{ fontSize: '18px' }}>Net Profit</strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={1} />
               <Table.Summary.Cell index={2} align="right">
                 <strong style={{ 
                   color: netProfit >= 0 ? '#52c41a' : '#ff4d4f', 
