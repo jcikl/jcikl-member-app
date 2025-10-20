@@ -14,7 +14,7 @@
 │                                                               │
 │  1️⃣ 交易管理 (Transaction)                                   │
 │     ├─ projectAccountId (指向 FinanceEvent)                   │
-│     ├─ subCategory (二次分类，通常 = 活动名称)                 │
+│     ├─ txAccount (二次分类，通常 = 活动名称)                 │
 │     └─ relatedEventId (🆕 指向 Event) ← 新增字段              │
 │                                                               │
 │  2️⃣ 活动编辑 - 费用设置 (Event.financialAccount)              │
@@ -32,7 +32,7 @@
 
 ## 🔍 详细关系分析
 
-### 1️⃣ 交易管理页面 - 二次分类（subCategory）
+### 1️⃣ 交易管理页面 - 二次分类（txAccount）
 
 #### 数据模型
 ```typescript
@@ -45,7 +45,7 @@ interface Transaction {
   
   // 分类系统
   category?: string;              // 一级分类（会员费、活动财务、日常账户）
-  subCategory?: string;           // 二次分类（具体活动名称、会员名称等）
+  txAccount?: string;           // 二次分类（具体活动名称、会员名称等）
   
   // 🆕 活动关联（新系统 - 方案C）
   relatedEventId?: string;        // 指向 Event.id
@@ -60,7 +60,7 @@ interface Transaction {
 // 在交易管理页面
 Transaction {
   category: "event-financial",           // 活动财务
-  subCategory: "Hope For Nature 6.0",    // 具体活动名称（手动输入）
+  txAccount: "Hope For Nature 6.0",    // 具体活动名称（手动输入）
   projectAccountId: "QyHKtwgvbr5a2LPj2S1q", // 财务账户ID
   
   // ❌ 但缺少 relatedEventId
@@ -151,7 +151,7 @@ Event (活动)
   ↓ Event.financialAccount
 FinanceEvent (财务账户)
   ↑ Transaction.projectAccountId (旧)
-  ← Transaction.subCategory (描述)
+  ← Transaction.txAccount (描述)
   
 🆕 新增关联：
 Event (活动)
@@ -181,7 +181,7 @@ Transaction {
   
   // 🔗 关联3：分类信息
   category: "event-financial",              // 活动财务
-  subCategory: "Hope For Nature 6.0",       // 活动名称（二次分类）
+  txAccount: "Hope For Nature 6.0",       // 活动名称（二次分类）
 }
 ```
 
@@ -194,7 +194,7 @@ Transaction {
 
 **原因**: 
 - Transaction 中没有 `relatedEventId` 字段
-- 只有 `projectAccountId` 和 `subCategory`
+- 只有 `projectAccountId` 和 `txAccount`
 
 **解决**: 
 - 创建交易时同时设置 `relatedEventId`
@@ -222,7 +222,7 @@ Transaction {
   // 保留旧字段（向后兼容）
   projectAccountId: "xxx",      // 指向 FinanceEvent
   category: "event-financial",
-  subCategory: "活动名称",
+  txAccount: "活动名称",
   
   // 新增字段
   relatedEventId: "xxx",        // 指向 Event
@@ -252,7 +252,7 @@ Transaction {
   
   // 废弃旧字段
   // projectAccountId: deprecated
-  // subCategory: deprecated
+  // txAccount: deprecated
 }
 ```
 
@@ -275,7 +275,7 @@ Transaction {
 {
   // 旧系统字段
   projectAccountId: event.financialAccount,  // 从 Event 获取
-  subCategory: event.name,
+  txAccount: event.name,
   
   // 新系统字段
   relatedEventId: event.id,
@@ -288,9 +288,9 @@ Transaction {
 // 优先使用 relatedEventId
 const transactions = await getTransactionsByEventId(eventId);
 
-// 兜底使用 subCategory
+// 兜底使用 txAccount
 if (transactions.length === 0) {
-  const fallback = await getTransactionsBySubCategory(event.name);
+  const fallback = await getTransactionsByTxAccount(event.name);
 }
 ```
 
@@ -312,7 +312,7 @@ const handleSubmit = async (values: any) => {
     // 🔗 完整关联（三个字段都设置）
     projectAccountId: selectedEvent?.financialAccount,  // FinanceEvent.id
     category: 'event-financial',
-    subCategory: selectedEvent?.name,                   // 活动名称
+    txAccount: selectedEvent?.name,                   // 活动名称
     
     relatedEventId: values.eventId,                     // Event.id
     relatedEventName: selectedEvent?.name,
@@ -341,7 +341,7 @@ const handleSubmit = async (values: any) => {
 ┌─────────────────────────────────────────────────────────┐
 │ 2. 创建交易记录（应该设置三个关联）                        │
 │    ├─ projectAccountId = Event.financialAccount           │
-│    ├─ subCategory = Event.name                            │
+│    ├─ txAccount = Event.name                            │
 │    └─ relatedEventId = Event.id 🆕                        │
 └─────────────────────────────────────────────────────────┘
                            ↓
@@ -372,7 +372,7 @@ const transactionData = {
   // 🔗 完整关联设置
   projectAccountId: selectedEvent?.financialAccount,  // FinanceEvent.id
   category: 'event-financial',
-  subCategory: selectedEvent?.name,                   // 活动名称
+  txAccount: selectedEvent?.name,                   // 活动名称
   
   relatedEventId: values.eventId,                     // Event.id
   relatedEventName: selectedEvent?.name,
@@ -387,7 +387,7 @@ const transactionData = {
 |-------|------|---------|------|------|
 | `projectAccountId` | string | FinanceEvent.id | 旧系统的项目账户关联 | ⚠️ 兼容保留 |
 | `category` | string | 固定值 | 一级分类："event-financial" | ✅ 使用中 |
-| `subCategory` | string | Event.name | 二次分类：活动名称 | ✅ 使用中 |
+| `txAccount` | string | Event.name | 二次分类：活动名称 | ✅ 使用中 |
 | `relatedEventId` | string | Event.id | 新系统的活动关联 | 🆕 新增 |
 | `relatedEventName` | string | Event.name | 活动名称（冗余存储） | 🆕 新增 |
 
@@ -397,7 +397,7 @@ const transactionData = {
 
 ### 立即修改：QuickAddEventTransactionPage
 
-添加自动设置 `projectAccountId`, `category`, `subCategory`：
+添加自动设置 `projectAccountId`, `category`, `txAccount`：
 
 ```typescript
 const selectedEvent = events.find(e => e.id === values.eventId);
@@ -408,7 +408,7 @@ const transactionData = {
   // 完整的关联字段
   projectAccountId: selectedEvent?.financialAccount || null,
   category: 'event-financial',
-  subCategory: selectedEvent?.name || '',
+  txAccount: selectedEvent?.name || '',
   
   relatedEventId: values.eventId,
   relatedEventName: selectedEvent?.name || '',

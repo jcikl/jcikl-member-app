@@ -92,7 +92,7 @@ transactions = transactions.filter(t => {
     t.notes || '',              // 🆕 备注
     t.amount.toString(),
     t.category || '',
-    t.subCategory || '',        // 🆕 二次分类
+    t.txAccount || '',        // 🆕 二次分类
     t.receiptNumber || '',      // 🆕 收据号
     t.invoiceNumber || '',      // 🆕 发票号
     t.inputByName || '',        // 🆕 录入人
@@ -123,7 +123,7 @@ transactions = transactions.filter(t => {
 | amount | ✅ | ✅ |
 | category | ✅ | ✅ |
 | notes | ❌ | ✅ 新增 |
-| subCategory | ❌ | ✅ 新增 |
+| txAccount | ❌ | ✅ 新增 |
 | receiptNumber | ❌ | ✅ 新增 |
 | invoiceNumber | ❌ | ✅ 新增 |
 | inputByName | ❌ | ✅ 新增 |
@@ -212,7 +212,7 @@ const searchLower = search.toLowerCase().trim();
 | `01234567` | 收据号、发票号、账户号 |
 | `john` | 录入人名字 |
 | `备注内容` | notes字段 |
-| `未分配` | subCategory字段 |
+| `未分配` | txAccount字段 |
 
 ---
 
@@ -282,7 +282,7 @@ k = 关键词数量（通常1-3个）
 5. ✅ `notes` - 备注 🆕
 6. ✅ `amount` - 金额
 7. ✅ `category` - 类别
-8. ✅ `subCategory` - 二次分类 🆕
+8. ✅ `txAccount` - 二次分类 🆕
 9. ✅ `receiptNumber` - 收据号 🆕
 10. ✅ `invoiceNumber` - 发票号 🆕
 11. ✅ `inputByName` - 录入人 🆕
@@ -370,7 +370,7 @@ k = 关键词数量（通常1-3个）
 ## 🎉 改进总结
 
 ### 功能增强
-- ✅ **5个新搜索字段**（notes, subCategory, receiptNumber, invoiceNumber, inputByName）
+- ✅ **5个新搜索字段**（notes, txAccount, receiptNumber, invoiceNumber, inputByName）
 - ✅ **多关键词搜索**（空格分隔）
 - ✅ **更智能的匹配**（AND逻辑）
 - ✅ **更宽的搜索框**（300px → 400px）

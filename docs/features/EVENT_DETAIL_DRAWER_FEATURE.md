@@ -55,7 +55,7 @@
 - ✅ 交易状态
 
 **特点：**
-- 自动加载该活动的所有交易（`subCategory = 活动名称`）
+- 自动加载该活动的所有交易（`txAccount = 活动名称`）
 - 包含父交易和子交易
 - 按交易日期降序排列
 - 每页显示10条记录
@@ -142,7 +142,7 @@ const loadEventTransactions = async (eventName: string) => {
     page: 1,
     limit: 100, // 加载所有交易
     category: 'event-finance',
-    subCategory: eventName, // 🔑 按活动名称过滤
+    txAccount: eventName, // 🔑 按活动名称过滤
     sortBy: 'transactionDate',
     sortOrder: 'desc',
     includeVirtual: true,
@@ -266,7 +266,7 @@ handleEventSelect(eventId)
     ↓
 调用 getTransactions({
   category: 'event-finance',
-  subCategory: eventName,  // 🔑 关键过滤
+  txAccount: eventName,  // 🔑 关键过滤
   includeVirtual: true,
 })
     ↓
@@ -452,7 +452,7 @@ setEventTransactions(result.data)
 // 🔑 关键查询参数
 await getTransactions({
   category: 'event-finance',    // 只查询活动财务
-  subCategory: eventName,       // 只查询该活动
+  txAccount: eventName,       // 只查询该活动
   includeVirtual: true,         // 包含子交易
 });
 ```

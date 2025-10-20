@@ -144,11 +144,11 @@ if (!includeVirtual) {
 1. **点击子交易的"分类"按钮**
 2. **选择一个二次分类（如"新会员费"）**
 3. **保存并刷新页面**
-4. **检查子交易的 `subCategory` 是否已更新**
+4. **检查子交易的 `txAccount` 是否已更新**
 
 **预期结果：**
-- ✅ 可以成功设置 `subCategory`
-- ✅ 刷新后 `subCategory` 显示正确
+- ✅ 可以成功设置 `txAccount`
+- ✅ 刷新后 `txAccount` 显示正确
 
 ---
 
@@ -224,7 +224,7 @@ category: 'member-fees'  // ✅ 必须完全相同
 - 子交易被过滤器过滤掉了（如 status, date range）
 
 **解决方案：**
-1. 检查是否有其他过滤器（status, date, subCategory）过滤掉了子交易
+1. 检查是否有其他过滤器（status, date, txAccount）过滤掉了子交易
 2. 临时移除所有过滤器，只保留category过滤
 3. 检查表格的 `rowKey` 是否正确
 
@@ -241,7 +241,7 @@ category: 'member-fees'  // ✅ 必须完全相同
 
 **解决方案：**
 1. 确认按钮没有 disabled 限制
-2. 检查 `updateTransaction` 是否允许更新子交易的 subCategory
+2. 检查 `updateTransaction` 是否允许更新子交易的 txAccount
 
 ---
 
@@ -314,7 +314,7 @@ category: 'member-fees'  // ✅ 必须完全相同
   "mainDescription": "会员费 - RM 400.00",
   "amount": 400.00,
   "category": "member-fees",      // ✅ 必须有值
-  "subCategory": null,             // 可以是null（未分类）
+  "txAccount": null,             // 可以是null（未分类）
   "isVirtual": true,               // ✅ 必须是true
   "parentTransactionId": "parent_transaction_id", // ✅ 必须有值
   "isSplit": false,

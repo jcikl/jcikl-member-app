@@ -23,7 +23,7 @@
 
 ### 2️⃣ 活动分类
 
-- 使用活动名称作为交易的 `subCategory`
+- 使用活动名称作为交易的 `txAccount`
 - 所有交易可以按活动进行分类和筛选
 - 动态活动列表，无需硬编码
 
@@ -272,11 +272,11 @@ handleCreateEvent()      // 创建活动
     ↓
 用户选择活动
     ↓
-调用 updateTransaction({ subCategory: eventName })
+调用 updateTransaction({ txAccount: eventName })
     ↓
 更新 Firestore: transactions 集合
     ↓
-subCategory = 活动名称 ✅
+txAccount = 活动名称 ✅
     ↓
 筛选器可以按活动筛选 ✅
 ```
@@ -374,7 +374,7 @@ subCategory = 活动名称 ✅
 
 1. ✅ 打开分类Modal显示所有活动
 2. ✅ 点击活动后成功更新交易
-3. ✅ 交易的 `subCategory` 等于活动名称
+3. ✅ 交易的 `txAccount` 等于活动名称
 4. ✅ 刷新后分类仍然保留
 
 ---

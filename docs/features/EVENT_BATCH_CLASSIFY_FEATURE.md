@@ -42,7 +42,7 @@
 ### 4️⃣ 批量更新逻辑
 
 - ✅ 遍历所有选中的交易
-- ✅ 批量更新 `subCategory` 字段
+- ✅ 批量更新 `txAccount` 字段
 - ✅ 显示成功提示（包含数量）
 - ✅ 自动清空选择
 - ✅ 自动刷新交易列表
@@ -180,7 +180,7 @@ const handleBatchClassify = async (eventName: string) => {
   for (const transactionId of selectedRowKeys) {
     await updateTransaction(
       transactionId as string,
-      { subCategory: eventName },
+      { txAccount: eventName },
       user.id
     );
   }

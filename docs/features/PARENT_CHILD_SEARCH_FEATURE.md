@@ -478,7 +478,7 @@ directMatches.forEach(matched => {
 5. `payerPayee` - 付款人/收款人
 6. `notes` - 备注
 7. `category` - 类别（如 "member-fees"）
-8. `subCategory` - 二次分类
+8. `txAccount` - 二次分类
 9. `receiptNumber` - 收据号
 10. `invoiceNumber` - 发票号
 11. `inputByName` - 录入人姓名
