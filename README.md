@@ -169,8 +169,15 @@ npm run firebase:deploy:all           # 部署规则和索引
 
 ### 数据库
 ```bash
-npm run seed:database    # 初始化数据库数据
 npm run seed:settings    # 初始化全局设置
+npm run backup:firestore # 备份 Firestore 数据
+```
+
+### 数据迁移
+```bash
+npm run migrate:subcategory:dry      # 预览迁移（不执行）
+npm run migrate:subcategory          # 执行迁移
+npm run migrate:subcategory:rollback # 回滚迁移
 ```
 
 ---
@@ -190,15 +197,21 @@ npm run seed:settings    # 初始化全局设置
 - [Netlify 部署指南](docs/deployment/NETLIFY_DEPLOYMENT.md) - SPA 路由、环境变量、部署步骤
 
 #### 功能指南
-- [会员 Firestore 数据模型](MEMBER_FIRESTORE_SCHEMA.md) - 52 个集合的完整架构
+- [会员 Firestore 数据模型](docs/guides/MEMBER_FIRESTORE_SCHEMA.md) - 52 个集合的完整架构
 - [财务模块设置](docs/guides/FINANCE_MODULE_SETUP.md) - 财务系统配置
 - [交易管理完整指南](docs/guides/TRANSACTION_MANAGEMENT_COMPLETE_GUIDE.md) - 交易、拆分、分类
 - [余额计算实现](docs/guides/RUNNING_BALANCE_IMPLEMENTATION.md) - 累计余额算法
+- [活动财务关系分析](docs/guides/EVENT_FINANCIAL_RELATIONSHIP_ANALYSIS.md) - 活动与财务关系详解
 
 #### 功能文档
 - [活动账户批量输入](docs/features/EVENT_ACCOUNT_BULK_INPUT_DESIGN.md)
+- [活动预测功能](docs/features/EVENT_FORECAST_FEATURE_COMPLETE.md)
 - [交易拆分功能](docs/features/TRANSACTION_SPLIT_FEATURE.md)
 - [搜索功能指南](docs/guides/SEARCH_FEATURE_GUIDE.md)
+
+#### 部署与迁移
+- [服务账户设置](docs/deployment/SERVICE_ACCOUNT_SETUP.md) - Firebase Admin SDK 配置
+- [数据迁移指南](docs/guides/DATA_MIGRATION_SUBCATEGORY_TO_TXACCOUNT.md) - 字段重命名迁移
 
 ---
 
@@ -280,7 +293,7 @@ npm run build
 ## 🧪 测试
 
 ### UI 测试清单
-参考 [UI_CHECKLIST.md](UI_CHECKLIST.md) 进行手动测试。
+参考 [UI_CHECKLIST.md](docs/guides/UI_CHECKLIST.md) 进行手动测试。
 
 ### 快速测试
 ```bash
@@ -350,7 +363,7 @@ git revert [commit]
 - `online_users` - 在线用户
 - `page_views` - 页面浏览统计
 
-完整数据模型请参考 **[MEMBER_FIRESTORE_SCHEMA.md](MEMBER_FIRESTORE_SCHEMA.md)**
+完整数据模型请参考 **[MEMBER_FIRESTORE_SCHEMA.md](docs/guides/MEMBER_FIRESTORE_SCHEMA.md)**
 
 ---
 
@@ -406,9 +419,36 @@ git revert [commit]
 
 ---
 
+## 🧹 项目清理记录
+
+### 最近清理 (2025-10-20)
+
+#### 删除的脚本（4个）
+- ❌ `checkFinancialRecords.ts` - 调试工具
+- ❌ `resetFinancialRecords.ts` - 危险的开发工具
+- ❌ `seedDatabase.ts` - 过时的种子数据
+- ❌ `updateFinancialRecordsPayerInfo.ts` - 已完成的临时脚本
+
+#### 保留的生产脚本（5个）
+- ✅ `initializeFiscalYear.ts` - 财年初始化
+- ✅ `seedGlobalSettings.ts` - 全局设置初始化
+- ✅ `migrateSubCategoryToTxAccount.ts` - 数据迁移
+- ✅ `backupFirestore.ts` - Firestore 备份
+- ✅ `initializeFinancialCategories.ts` - 财务类别初始化
+
+#### 文档整理
+- ✅ 删除 9 个过时/临时文档
+- ✅ 移动 10 个文档到正确的 docs/ 目录
+- ✅ 更新文档索引和结构
+- ✅ 修正所有文档路径引用
+
+---
+
 ## 📝 更新日志
 
 ### 最近更新
+- **2025-10-20**: 项目清理 - 删除无用脚本和文档，重新组织文档结构
+- **2025-10-20**: 完成 `subCategory` → `txAccount` 数据迁移
 - **2025-10-19**: 文档重组，创建结构化文档索引
 - **2025-10-18**: 添加 Netlify 部署配置，修复 SPA 路由 404
 - **2025-10-18**: 修复 Ant Design 静态 API 警告，更新到 Context API
@@ -424,5 +464,5 @@ MIT License
 
 **JCI KL 会员管理系统** - 为超级国际青年商会吉隆坡分会打造的现代化管理平台
 
-**版本**: 2.0  
-**最后更新**: 2025-10-19
+**版本**: 3.0  
+**最后更新**: 2025-10-20
