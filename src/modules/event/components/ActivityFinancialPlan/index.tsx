@@ -19,7 +19,6 @@ import {
   Select,
   message,
   Popconfirm,
-  Tabs,
   Row,
   Col,
   Tag,
@@ -79,7 +78,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<FinancialPlanItem | null>(null);
-  const [activeTab, setActiveTab] = useState<'income' | 'expense'>('income');
+  const [addingType, setAddingType] = useState<'income' | 'expense'>('income');
   const [form] = Form.useForm();
   
   // 动态类别
@@ -115,9 +114,12 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 按类型筛选数据
+  // 统计数据
   const incomeItems = items.filter(item => item.type === 'income');
   const expenseItems = items.filter(item => item.type === 'expense');
+  const totalIncome = incomeItems.reduce((sum, item) => sum + item.amount, 0);
+  const totalExpense = expenseItems.reduce((sum, item) => sum + item.amount, 0);
+  const netProfit = totalIncome - totalExpense;
 
   // 获取类别标签
   const getCategoryLabel = (type: 'income' | 'expense', value: string) => {
@@ -157,13 +159,13 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         return;
       }
       
-      const defaultCategory = activeTab === 'income' 
+      const defaultCategory = addingType === 'income' 
         ? (incomeCategories[0]?.value || 'other-income')
         : (expenseCategories[0]?.value || 'other-expense');
       
       for (const item of items) {
         await onAdd({
-          type: activeTab,
+          type: addingType,
           category: defaultCategory,
           ...item,
           status: 'planned',
@@ -183,7 +185,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   // 打开添加模态框
   const handleAdd = (type: 'income' | 'expense') => {
     setEditingItem(null);
-    setActiveTab(type);
+    setAddingType(type);
     form.resetFields();
     form.setFieldsValue({ type });
     setModalVisible(true);
@@ -192,7 +194,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   // 打开编辑模态框
   const handleEdit = (item: FinancialPlanItem) => {
     setEditingItem(item);
-    setActiveTab(item.type);
     form.setFieldsValue({
       ...item,
       expectedDate: item.expectedDate ? dayjs(item.expectedDate) : null,
@@ -240,13 +241,27 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 表格列定义
-  const getColumns = (type: 'income' | 'expense'): ColumnsType<FinancialPlanItem> => [
+  // 统一表格列定义
+  const columns: ColumnsType<FinancialPlanItem> = [
+    {
+      title: '类型',
+      dataIndex: 'type',
+      width: 100,
+      render: (type: 'income' | 'expense') => (
+        <Tag color={type === 'income' ? 'green' : 'red'}>
+          {type === 'income' ? (
+            <><RiseOutlined /> 收入</>
+          ) : (
+            <><FallOutlined /> 支出</>
+          )}
+        </Tag>
+      ),
+    },
     {
       title: '类别',
       dataIndex: 'category',
       width: 140,
-      render: (value: string) => getCategoryLabel(type, value),
+      render: (value: string, record: FinancialPlanItem) => getCategoryLabel(record.type, value),
     },
     {
       title: '描述',
@@ -264,8 +279,8 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       dataIndex: 'amount',
       width: 120,
       align: 'right',
-      render: (value: number) => (
-        <span style={{ color: type === 'income' ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+      render: (value: number, record: FinancialPlanItem) => (
+        <span style={{ color: record.type === 'income' ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
           RM {value.toFixed(2)}
         </span>
       ),
@@ -359,92 +374,74 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       }
       className="activity-financial-plan-card"
     >
-      {/* 统计卡片已移除 - 使用预测标签页顶部的对比统计卡片 */}
+      {/* 统一表格 */}
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Space>
+          <span style={{ fontSize: 14, color: '#8c8c8c' }}>
+            <RiseOutlined style={{ color: '#52c41a' }} /> 收入: {incomeItems.length} 项
+          </span>
+          <span style={{ fontSize: 14, color: '#8c8c8c' }}>
+            <FallOutlined style={{ color: '#ff4d4f' }} /> 支出: {expenseItems.length} 项
+          </span>
+          <span style={{ fontSize: 14, color: '#8c8c8c' }}>
+            共 {items.length} 条记录
+          </span>
+        </Space>
+      </div>
 
-      {/* 表格标签页 */}
-      <Tabs
-        activeKey={activeTab}
-        onChange={(key) => setActiveTab(key as 'income' | 'expense')}
-        items={[
-          {
-            key: 'income',
-            label: (
-              <span>
-                <RiseOutlined style={{ color: '#52c41a' }} />
-                {' '}收入计划 ({incomeItems.length})
-              </span>
-            ),
-            children: (
-              <Table
-                {...tableConfig}
-                columns={getColumns('income')}
-                dataSource={incomeItems}
-                rowKey="id"
-                loading={loading}
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showTotal: (total) => `共 ${total} 条记录`,
-                }}
-                scroll={{ x: 900 }}
-                summary={() => (
-                  <Table.Summary fixed>
-                    <Table.Summary.Row>
-                      <Table.Summary.Cell index={0} colSpan={3}>
-                        <strong>收入小计</strong>
-                      </Table.Summary.Cell>
-                      <Table.Summary.Cell index={3} align="right">
-                        <strong style={{ color: '#52c41a', fontSize: '16px' }}>
-                          RM {incomeItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
-                        </strong>
-                      </Table.Summary.Cell>
-                      <Table.Summary.Cell index={4} colSpan={3} />
-                    </Table.Summary.Row>
-                  </Table.Summary>
-                )}
-              />
-            ),
-          },
-          {
-            key: 'expense',
-            label: (
-              <span>
-                <FallOutlined style={{ color: '#ff4d4f' }} />
-                {' '}支出计划 ({expenseItems.length})
-              </span>
-            ),
-            children: (
-              <Table
-                {...tableConfig}
-                columns={getColumns('expense')}
-                dataSource={expenseItems}
-                rowKey="id"
-                loading={loading}
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showTotal: (total) => `共 ${total} 条记录`,
-                }}
-                scroll={{ x: 900 }}
-                summary={() => (
-                  <Table.Summary fixed>
-                    <Table.Summary.Row>
-                      <Table.Summary.Cell index={0} colSpan={3}>
-                        <strong>支出小计</strong>
-                      </Table.Summary.Cell>
-                      <Table.Summary.Cell index={3} align="right">
-                        <strong style={{ color: '#ff4d4f', fontSize: '16px' }}>
-                          RM {expenseItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
-                        </strong>
-                      </Table.Summary.Cell>
-                      <Table.Summary.Cell index={4} colSpan={3} />
-                    </Table.Summary.Row>
-                  </Table.Summary>
-                )}
-              />
-            ),
-          },
-        ]}
+      <Table
+        {...tableConfig}
+        columns={columns}
+        dataSource={items}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (total) => `共 ${total} 条记录`,
+        }}
+        scroll={{ x: 1100 }}
+        summary={() => (
+          <Table.Summary fixed>
+            <Table.Summary.Row>
+              <Table.Summary.Cell index={0} colSpan={4}>
+                <strong>收入小计</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="right">
+                <strong style={{ color: '#52c41a', fontSize: '16px' }}>
+                  RM {totalIncome.toFixed(2)}
+                </strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={5} colSpan={3} />
+            </Table.Summary.Row>
+            <Table.Summary.Row>
+              <Table.Summary.Cell index={0} colSpan={4}>
+                <strong>支出小计</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="right">
+                <strong style={{ color: '#ff4d4f', fontSize: '16px' }}>
+                  RM {totalExpense.toFixed(2)}
+                </strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={5} colSpan={3} />
+            </Table.Summary.Row>
+            <Table.Summary.Row style={{ backgroundColor: '#fafafa' }}>
+              <Table.Summary.Cell index={0} colSpan={4}>
+                <strong style={{ fontSize: '16px' }}>净利润</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="right">
+                <strong style={{ 
+                  color: netProfit >= 0 ? '#52c41a' : '#ff4d4f', 
+                  fontSize: '18px',
+                  fontWeight: 700 
+                }}>
+                  RM {netProfit.toFixed(2)}
+                </strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={5} colSpan={3} />
+            </Table.Summary.Row>
+          </Table.Summary>
+        )}
       />
 
       {/* 添加/编辑模态框 */}
