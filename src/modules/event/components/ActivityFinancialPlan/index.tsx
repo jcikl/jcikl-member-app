@@ -573,21 +573,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       extra={
         <Space>
           <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleAdd('income')}
-          >
-            添加收入
-          </Button>
-          <Button
-            type="primary"
-            danger
-            icon={<PlusOutlined />}
-            onClick={() => handleAdd('expense')}
-          >
-            添加支出
-          </Button>
-          <Button
             icon={<ImportOutlined />}
             onClick={() => setBulkPasteVisible(true)}
           >
