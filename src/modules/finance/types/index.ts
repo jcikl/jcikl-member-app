@@ -28,7 +28,6 @@ export interface Transaction {
   payerPayee?: string; // 付款人/收款人
   transactionPurpose?: string; // Purpose ID
   transactionPurposeDetails?: TransactionPurpose;
-  projectAccountId?: string;
   category?: string;
   txAccount?: string; // 交易账户/交易用途（用于会员费、活动财务、日常账户的细分）
   paymentMethod?: PaymentMethod;
@@ -77,7 +76,6 @@ export interface TransactionFormData {
   amount: number;
   payerPayee?: string;
   transactionPurpose?: string;
-  projectAccountId?: string;
   category?: string;
   txAccount?: string;
   paymentMethod?: PaymentMethod;

@@ -22,7 +22,8 @@
     "migrate:subcategory:rollback": "vite-node src/scripts/migrateSubCategoryToTxAccount.ts -- --rollback",
     "migrate:collections": "vite-node src/scripts/migrateCollectionNames.ts",
     "migrate:collections:dry": "vite-node src/scripts/migrateCollectionNames.ts -- --dry-run",
-    "migrate:collections:rollback": "vite-node src/scripts/migrateCollectionNames.ts -- --rollback"
+    "migrate:collections:rollback": "vite-node src/scripts/migrateCollectionNames.ts -- --rollback",
+    "migrate:eventid": "vite-node src/scripts/migrateMetadataEventIdToRelatedEventId.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.3",

@@ -129,7 +129,6 @@ export const createTransaction = async (
       amount: data.amount,
       payerPayee: data.payerPayee,
       transactionPurpose: data.transactionPurpose,
-      projectAccountId: data.projectAccountId,
       category: data.category,
       paymentMethod: data.paymentMethod,
       status: 'pending',
@@ -245,7 +244,6 @@ export const updateTransaction = async (
     // Update other fields
     if (data.payerPayee !== undefined) updates.payerPayee = data.payerPayee ?? null;
     if (data.transactionPurpose !== undefined) updates.transactionPurpose = data.transactionPurpose ?? null;
-    if (data.projectAccountId !== undefined) updates.projectAccountId = data.projectAccountId ?? null;
     if (data.category !== undefined) updates.category = data.category ?? null;
     if (data.txAccount !== undefined) updates.txAccount = data.txAccount ?? null; // 🔑 二次分类
     if (data.paymentMethod !== undefined) updates.paymentMethod = data.paymentMethod ?? null;

@@ -59,7 +59,7 @@ import {
   updateEventAccountPlan,
   deleteEventAccountPlan,
 } from '../../services/eventAccountPlanService';
-import { getTransactionsByEventId, getTransactionsByProjectAccountId } from '@/modules/finance/services/transactionService';
+import { getTransactionsByEventId } from '@/modules/finance/services/transactionService';
 import type {
   EventAccount,
   EventAccountTransactionType,
@@ -332,61 +332,22 @@ const EventAccountManagementPage: React.FC = () => {
     }
     
     try {
-      // 🔄 方案B：通过 Event.financialAccount 匹配交易
-      const selectedEvent = events.find(e => e.id === selectedEventId);
-      const financeAccountId = selectedEvent?.financialAccount;
-      
-      console.log('🔍 [loadBankTransactions] Event financial account:', {
+      // 🔄 直接通过 relatedEventId 查询
+      // metadata.eventId 已迁移到 relatedEventId 字段
+      console.log('🔍 [loadBankTransactions] Querying by relatedEventId:', {
         eventId: selectedEventId,
-        eventName: selectedEvent?.name,
-        financialAccount: financeAccountId,
       });
       
-      if (!financeAccountId) {
-        console.log('⚠️ [loadBankTransactions] Event has no financialAccount, trying relatedEventId fallback...');
-        // 兜底方案：使用 relatedEventId
-        const transactions = await getTransactionsByEventId(selectedEventId);
-        console.log('📡 [loadBankTransactions] Fallback query result:', { count: transactions.length });
-        
-        if (transactions.length === 0) {
-          console.log('ℹ️ [loadBankTransactions] No transactions found');
-          setBankTransactions([]);
-          return;
-        }
-        
-        const bankTxns: BankTransaction[] = transactions.map(txn => ({
-          id: txn.id,
-          transactionDate: txn.transactionDate,
-          transactionNumber: txn.transactionNumber,
-          transactionType: txn.transactionType as 'income' | 'expense',
-          description: txn.mainDescription,
-          amount: txn.amount,
-          bankAccount: txn.bankAccountId,
-          status: txn.status === 'completed' ? 'verified' : 'pending',
-          category: txn.confirmedCategory || txn.autoMatchedCategory || txn.category,
-          payerPayee: txn.payerPayee,
-          paymentMethod: txn.paymentMethod,
-          receiptNumber: txn.receiptNumber,
-          invoiceNumber: txn.invoiceNumber,
-          createdAt: txn.createdAt,
-        }));
-        
-        setBankTransactions(bankTxns);
-        return;
-      }
-      
-      console.log('📡 [loadBankTransactions] Calling getTransactionsByProjectAccountId...', financeAccountId);
-      const transactions = await getTransactionsByProjectAccountId(financeAccountId);
+      const transactions = await getTransactionsByEventId(selectedEventId);
       console.log('✅ [loadBankTransactions] Loaded transactions:', {
         count: transactions.length,
-        transactions: transactions.map(t => ({
-          id: t.id,
-          number: t.transactionNumber,
-          description: t.mainDescription,
-          amount: t.amount,
-          relatedEventId: t.relatedEventId,
-        })),
       });
+      
+      if (transactions.length === 0) {
+        console.log('ℹ️ [loadBankTransactions] No transactions found');
+        setBankTransactions([]);
+        return;
+      }
       
       // 转换为 BankTransaction 格式
       const bankTxns: BankTransaction[] = transactions.map(txn => ({
@@ -408,11 +369,6 @@ const EventAccountManagementPage: React.FC = () => {
       
       console.log('🔄 [loadBankTransactions] Converted to BankTransaction format:', {
         count: bankTxns.length,
-        bankTxns: bankTxns.map(b => ({
-          id: b.id,
-          number: b.transactionNumber,
-          description: b.description,
-        })),
       });
       
       setBankTransactions(bankTxns);
