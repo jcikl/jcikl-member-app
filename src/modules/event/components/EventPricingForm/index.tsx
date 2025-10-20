@@ -20,21 +20,33 @@ const EventPricingForm: React.FC<Props> = ({ initialValues, onSubmit, loading })
   const formConfig = globalComponentService.getFormConfig();
 
   useEffect(() => {
+    console.log('📋 [EventPricingForm] Component mounted, loading finance events...');
     loadFinanceEvents();
   }, []);
 
   const loadFinanceEvents = async () => {
     try {
       setLoadingEvents(true);
+      console.log('🔄 [EventPricingForm] Fetching all finance events...');
       const events = await getAllFinanceEvents();
+      console.log('✅ [EventPricingForm] Fetched finance events:', {
+        total: events.length,
+        events: events.map(e => ({ id: e.id, name: e.eventName, status: e.status }))
+      });
+      
       // 只显示活跃和计划中的活动
       const activeEvents = events.filter(e => 
         e.status === 'active' || e.status === 'planned'
       );
+      console.log('🎯 [EventPricingForm] Filtered active/planned events:', {
+        total: activeEvents.length,
+        events: activeEvents.map(e => ({ id: e.id, name: e.eventName, status: e.status }))
+      });
+      
       setFinanceEvents(activeEvents);
     } catch (error) {
+      console.error('❌ [EventPricingForm] Failed to load finance events:', error);
       message.error('加载财务账户列表失败');
-      console.error('Failed to load finance events:', error);
     } finally {
       setLoadingEvents(false);
     }
@@ -53,9 +65,37 @@ const EventPricingForm: React.FC<Props> = ({ initialValues, onSubmit, loading })
     financialAccount: initialValues.financialAccount,
   };
 
+  console.log('📝 [EventPricingForm] Initialized form values:', {
+    eventId: initialValues.id,
+    eventName: initialValues.name,
+    isFree: init.isFree,
+    financialAccount: init.financialAccount,
+    financialAccountName: initialValues.financialAccountName,
+    pricing: {
+      regularPrice: init.regularPrice,
+      memberPrice: init.memberPrice,
+      alumniPrice: init.alumniPrice,
+      earlyBirdPrice: init.earlyBirdPrice,
+      committeePrice: init.committeePrice,
+      earlyBirdDeadline: init.earlyBirdDeadline?.format('YYYY-MM-DD HH:mm:ss'),
+    }
+  });
+
   const handleFinish = async (values: any) => {
+    console.log('💾 [EventPricingForm] Form submitted with values:', values);
+    
     // 查找选中的财务账户以获取其名称
     const selectedEvent = financeEvents.find(e => e.id === values.financialAccount);
+    console.log('🔍 [EventPricingForm] Looking up selected finance event:', {
+      selectedId: values.financialAccount,
+      foundEvent: selectedEvent ? {
+        id: selectedEvent.id,
+        name: selectedEvent.eventName,
+        status: selectedEvent.status,
+        eventDate: selectedEvent.eventDate
+      } : null,
+      availableEvents: financeEvents.length
+    });
     
     const payload: Partial<Event> = {
       isFree: values.isFree || false,
@@ -73,7 +113,17 @@ const EventPricingForm: React.FC<Props> = ({ initialValues, onSubmit, loading })
       financialAccountName: selectedEvent?.eventName, // 存储名称用于显示
     } as any;
 
+    console.log('📤 [EventPricingForm] Submitting payload:', {
+      eventId: initialValues.id,
+      eventName: initialValues.name,
+      isFree: payload.isFree,
+      financialAccount: payload.financialAccount,
+      financialAccountName: payload.financialAccountName,
+      pricing: payload.pricing
+    });
+
     await onSubmit(payload);
+    console.log('✅ [EventPricingForm] Pricing settings saved successfully');
   };
 
   return (
@@ -135,6 +185,18 @@ const EventPricingForm: React.FC<Props> = ({ initialValues, onSubmit, loading })
             notFoundContent={loadingEvents ? <Spin size="small" /> : '暂无可用的财务账户'}
             showSearch
             optionFilterProp="children"
+            onChange={(value) => {
+              const selected = financeEvents.find(e => e.id === value);
+              console.log('🔗 [EventPricingForm] Financial account selected:', {
+                id: value,
+                event: selected ? {
+                  id: selected.id,
+                  name: selected.eventName,
+                  status: selected.status,
+                  eventDate: selected.eventDate
+                } : null
+              });
+            }}
             filterOption={(input, option) => {
               const label = option?.children as unknown;
               if (typeof label === 'string') {
