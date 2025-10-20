@@ -89,9 +89,9 @@ const BankTransactionList: React.FC<Props> = ({
     const searchLower = searchText.toLowerCase();
     return (
       txn.description.toLowerCase().includes(searchLower) ||
-      txn.transactionNumber.toLowerCase().includes(searchLower) ||
       txn.amount.toString().includes(searchLower) ||
-      (txn.payerPayee && txn.payerPayee.toLowerCase().includes(searchLower))
+      (txn.payerPayee && txn.payerPayee.toLowerCase().includes(searchLower)) ||
+      (txn.bankAccountName && txn.bankAccountName.toLowerCase().includes(searchLower))
     );
   };
 
@@ -113,23 +113,23 @@ const BankTransactionList: React.FC<Props> = ({
       render: (date: string) => globalDateService.formatDate(date, 'display'),
     },
     {
-      title: '交易号',
-      dataIndex: 'transactionNumber',
-      width: 150,
-      ellipsis: true,
-    },
-    {
       title: '描述',
       dataIndex: 'description',
-      width: '25%',
-      ellipsis: true,
-    },
-    {
-      title: '付款人/收款人',
-      dataIndex: 'payerPayee',
-      width: '15%',
-      ellipsis: true,
-      render: (text: string) => text || '-',
+      width: '35%',
+      render: (_: string, record: BankTransaction) => {
+        return (
+          <div>
+            <div style={{ fontWeight: 500, fontSize: '13px', color: '#262626' }}>
+              {record.description}
+            </div>
+            {record.payerPayee && (
+              <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '4px' }}>
+                {record.transactionType === 'income' ? '来自: ' : '支付给: '}{record.payerPayee}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: '金额',
@@ -153,7 +153,7 @@ const BankTransactionList: React.FC<Props> = ({
     {
       title: '银行账户',
       dataIndex: 'bankAccount',
-      width: 180,
+      width: '20%',
       render: (_: string, record: BankTransaction) => {
         if (record.bankAccountName && record.bankName) {
           return (
@@ -204,7 +204,7 @@ const BankTransactionList: React.FC<Props> = ({
       extra={
         <Space>
           <Search
-            placeholder="搜索描述/金额/交易号"
+            placeholder="搜索描述/金额/付款人/账户"
             allowClear
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
