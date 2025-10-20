@@ -332,15 +332,30 @@ const EventAccountManagementPage: React.FC = () => {
     }
     
     try {
-      // 🔄 直接通过 relatedEventId 查询
-      // metadata.eventId 已迁移到 relatedEventId 字段
-      console.log('🔍 [loadBankTransactions] Querying by relatedEventId:', {
+      // 🔄 正确的查询逻辑：
+      // 1. 读取 projects collection 的 financialAccount 字段
+      // 2. 使用 financialAccount 匹配 fin_transactions 的 relatedEventId
+      const selectedEvent = events.find(e => e.id === selectedEventId);
+      const financialAccountId = selectedEvent?.financialAccount;
+      
+      console.log('🔍 [loadBankTransactions] Event financial account:', {
         eventId: selectedEventId,
+        eventName: selectedEvent?.name,
+        financialAccount: financialAccountId,
       });
       
-      const transactions = await getTransactionsByEventId(selectedEventId);
+      if (!financialAccountId) {
+        console.log('⚠️ [loadBankTransactions] Event has no financialAccount, no transactions to display');
+        setBankTransactions([]);
+        return;
+      }
+      
+      // 使用 financialAccount 查询 relatedEventId
+      const transactions = await getTransactionsByEventId(financialAccountId);
       console.log('✅ [loadBankTransactions] Loaded transactions:', {
         count: transactions.length,
+        queryField: 'relatedEventId',
+        queryValue: financialAccountId,
       });
       
       if (transactions.length === 0) {
