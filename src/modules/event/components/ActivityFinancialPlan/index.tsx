@@ -79,6 +79,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<FinancialPlanItem | null>(null);
   const [addingType, setAddingType] = useState<'income' | 'expense'>('income');
+  const [preSelectedCategory, setPreSelectedCategory] = useState<string | null>(null);
   const [form] = Form.useForm();
   
   // 动态类别
@@ -293,12 +294,39 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   };
 
   // 打开添加模态框
-  const handleAdd = (type: 'income' | 'expense') => {
+  const handleAdd = (type: 'income' | 'expense', category?: string) => {
     setEditingItem(null);
     setAddingType(type);
+    setPreSelectedCategory(category || null);
     form.resetFields();
-    form.setFieldsValue({ type });
+    form.setFieldsValue({ 
+      type,
+      ...(category && { category })
+    });
     setModalVisible(true);
+  };
+
+  // 在特定类别下添加项目
+  const handleAddItemInCategory = (type: 'income' | 'expense', category: string) => {
+    handleAdd(type, category);
+  };
+
+  // 删除整个类别及其下的所有项目
+  const handleDeleteCategory = async (type: 'income' | 'expense', category: string) => {
+    const categoryItems = items.filter(item => item.type === type && item.category === category);
+    
+    if (categoryItems.length === 0) return;
+    
+    try {
+      // 删除该类别下的所有项目
+      for (const item of categoryItems) {
+        await onDelete(item.id);
+      }
+      message.success(`已删除 ${getCategoryLabel(type, category)} 类别及其 ${categoryItems.length} 个项目`);
+    } catch (error) {
+      message.error('删除类别失败');
+      console.error(error);
+    }
   };
 
   // 打开编辑模态框
@@ -335,6 +363,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       }
 
       setModalVisible(false);
+      setPreSelectedCategory(null);
       form.resetFields();
     } catch (error) {
       console.error('提交失败:', error);
@@ -470,11 +499,45 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '操作',
       key: 'action',
-      width: 90,
+      width: 110,
       render: (_: unknown, record: GroupedRow) => {
-        // 只在项目行显示操作按钮
-        if (record.isTypeHeader || record.isCategoryHeader) return null;
+        // 类型标题行不显示操作
+        if (record.isTypeHeader) return null;
         
+        // 类别标题行显示添加项目和删除类别按钮
+        if (record.isCategoryHeader) {
+          return (
+            <Space size="small">
+              <Button
+                type="link"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => handleAddItemInCategory(record.type!, record.category!)}
+                title="添加项目"
+                style={{ color: '#1890ff' }}
+              >
+                添加
+              </Button>
+              <Popconfirm
+                title={`确认删除 ${record.categoryLabel} 类别及其所有项目？`}
+                description={`该类别下有 ${items.filter(i => i.type === record.type && i.category === record.category).length} 个项目`}
+                onConfirm={() => handleDeleteCategory(record.type!, record.category!)}
+                okText="确认"
+                cancelText="取消"
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  title="删除类别"
+                />
+              </Popconfirm>
+            </Space>
+          );
+        }
+        
+        // 项目行显示编辑和删除按钮
         return (
           <Space size="small">
             <Button
@@ -482,6 +545,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
               size="small"
               icon={<EditOutlined />}
               onClick={() => handleEdit(record as FinancialPlanItem)}
+              title="编辑"
             />
             <Popconfirm
               title="确认删除此项目？"
@@ -494,6 +558,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                 size="small"
                 danger
                 icon={<DeleteOutlined />}
+                title="删除"
               />
             </Popconfirm>
           </Space>
@@ -610,11 +675,12 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 
       {/* 添加/编辑模态框 */}
       <Modal
-        title={editingItem ? '编辑财务项目' : '添加财务项目'}
+        title={editingItem ? '编辑财务项目' : preSelectedCategory ? `添加财务项目到 ${getCategoryLabel(addingType, preSelectedCategory)}` : '添加财务项目'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => {
           setModalVisible(false);
+          setPreSelectedCategory(null);
           form.resetFields();
         }}
         width={600}
@@ -653,8 +719,13 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   name="category"
                   label="类别"
                   rules={[{ required: true, message: '请选择类别' }]}
+                  tooltip={preSelectedCategory ? '在特定类别下添加项目时，类别不可更改' : undefined}
                 >
-                  <Select placeholder="选择类别" loading={loadingCategories}>
+                  <Select 
+                    placeholder="选择类别" 
+                    loading={loadingCategories}
+                    disabled={!!preSelectedCategory}
+                  >
                     {categories.map(cat => (
                       <Option key={cat.value} value={cat.value}>
                         {cat.label}
