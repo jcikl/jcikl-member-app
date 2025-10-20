@@ -248,7 +248,25 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const groupedData = buildGroupedData();
   
   // 判断是否正在编辑
-  const isEditing = (record: GroupedRow) => record.key === editingKey;
+  const isEditing = (record: GroupedRow) => {
+    // 在编辑模式下，点击的行进入编辑状态
+    return record.key === editingKey;
+  };
+
+  // 点击行进入编辑状态
+  const handleRowClick = (record: GroupedRow) => {
+    // 只有在编辑模式下才能点击编辑
+    if (!editMode) return;
+    // 标题行和类别行不可编辑
+    if (record.isTypeHeader || record.isCategoryHeader) return;
+    // 新行不需要再次点击
+    if (record.isNew) return;
+    // 如果已经在编辑其他行，不允许切换
+    if (editingKey && editingKey !== record.key) return;
+    
+    // 进入编辑状态
+    handleEdit(record as FinancialPlanItem);
+  };
   
   // 批量粘贴解析
   const parseBulkPasteData = (text: string): Array<Partial<FinancialPlanItem>> => {
@@ -315,33 +333,48 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     setEditingKey(record.id);
   };
 
-  // 取消编辑
-  const handleCancel = () => {
-    setEditingKey('');
-    setAddingInType(null);
-    form.resetFields();
-  };
-
-  // 保存编辑
-  const handleSave = async (id: string) => {
+  // 保存所有编辑并退出编辑模式
+  const handleSaveAndExitEdit = async () => {
     try {
-      const values = await form.validateFields();
+      // 如果有正在编辑的行，先验证并保存
+      if (editingKey) {
+        const values = await form.validateFields();
+        
+        // 保存新项目
+        if (addingInType) {
+          const itemData = {
+            type: addingInType,
+            category: values.category,
+            description: values.description,
+            remark: values.remark || '',
+            amount: values.amount,
+            expectedDate: values.expectedDate ? values.expectedDate.toISOString() : new Date().toISOString(),
+            status: values.status || 'planned',
+          };
+          await onAdd(itemData as any);
+          message.success('添加成功');
+        } else {
+          // 更新现有项目
+          const itemData = {
+            description: values.description,
+            remark: values.remark || '',
+            amount: values.amount,
+            expectedDate: values.expectedDate ? values.expectedDate.toISOString() : new Date().toISOString(),
+            status: values.status || 'planned',
+          };
+          await onUpdate(editingKey, itemData);
+          message.success('更新成功');
+        }
+      }
       
-      const itemData = {
-        description: values.description,
-        remark: values.remark || '',
-        amount: values.amount,
-        expectedDate: values.expectedDate ? values.expectedDate.toISOString() : new Date().toISOString(),
-        status: values.status || 'planned',
-      };
-
-      await onUpdate(id, itemData);
-      message.success('更新成功');
+      // 退出编辑模式
+      setEditMode(false);
       setEditingKey('');
+      setAddingInType(null);
       form.resetFields();
     } catch (error) {
       console.error('保存失败:', error);
-      message.error('保存失败');
+      message.error('请检查必填字段');
     }
   };
 
@@ -376,34 +409,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       expectedDate: dayjs(),
       status: 'planned',
     });
-  };
-
-  // 保存新项目
-  const handleSaveNew = async () => {
-    if (!addingInType) return;
-    
-    try {
-      const values = await form.validateFields();
-      
-      const itemData = {
-        type: addingInType,
-        category: values.category,
-        description: values.description,
-        remark: values.remark || '',
-        amount: values.amount,
-        expectedDate: values.expectedDate ? values.expectedDate.toISOString() : new Date().toISOString(),
-        status: values.status || 'planned',
-      };
-
-      await onAdd(itemData as any);
-      message.success('添加成功');
-      setEditingKey('');
-      setAddingInType(null);
-      form.resetFields();
-    } catch (error) {
-      console.error('添加失败:', error);
-      message.error('添加失败');
-    }
   };
 
   // 删除整个类别及其下的所有项目
@@ -649,7 +654,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     {
       title: '操作',
       key: 'action',
-      width: 140,
+      width: 60,
       render: (_: unknown, record: GroupedRow) => {
         // 类型标题行显示添加按钮
         if (record.isTypeHeader) {
@@ -660,12 +665,14 @@ const ActivityFinancialPlan: React.FC<Props> = ({
               type="link"
               size="small"
               icon={<PlusOutlined />}
-              onClick={() => handleAddInType(record.type!)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddInType(record.type!);
+              }}
               disabled={!!editingKey}
               style={{ color: '#1890ff' }}
-            >
-              添加
-            </Button>
+              title="添加新项目"
+            />
           );
         }
         
@@ -680,13 +687,14 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                 type="link"
                 size="small"
                 icon={<PlusOutlined />}
-                onClick={() => handleAddItemInCategory(record.type!, record.category!)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddItemInCategory(record.type!, record.category!);
+                }}
                 title="添加项目"
                 style={{ color: '#1890ff' }}
                 disabled={!!editingKey}
-              >
-                添加
-              </Button>
+              />
               <Popconfirm
                 title={`确认删除 ${record.categoryLabel} 类别及其所有项目？`}
                 description={`该类别下有 ${items.filter(i => i.type === record.type && i.category === record.category).length} 个项目`}
@@ -701,63 +709,31 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   icon={<DeleteOutlined />}
                   title="删除类别"
                   disabled={!!editingKey}
+                  onClick={(e) => e.stopPropagation()}
                 />
               </Popconfirm>
             </Space>
           );
         }
         
-        // 项目行 - 正在编辑此行
-        const editing = isEditing(record);
-        if (editing) {
-          return (
-            <Space size="small">
-              <Button
-                type="link"
-                size="small"
-                onClick={() => record.isNew ? handleSaveNew() : handleSave(record.id!)}
-                style={{ color: '#52c41a' }}
-              >
-                保存
-              </Button>
-              <Button
-                type="link"
-                size="small"
-                onClick={handleCancel}
-              >
-                取消
-              </Button>
-            </Space>
-          );
-        }
-        
-        // 项目行 - 编辑模式但未编辑此行
+        // 项目行 - 只显示删除按钮（编辑通过点击行）
         return (
-          <Space size="small">
+          <Popconfirm
+            title="确认删除此项目？"
+            onConfirm={() => handleDelete(record.id!)}
+            okText="确认"
+            cancelText="取消"
+          >
             <Button
               type="link"
               size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record as FinancialPlanItem)}
-              title="编辑"
+              danger
+              icon={<DeleteOutlined />}
+              title="删除"
               disabled={!!editingKey}
+              onClick={(e) => e.stopPropagation()}
             />
-            <Popconfirm
-              title="确认删除此项目？"
-              onConfirm={() => handleDelete(record.id!)}
-              okText="确认"
-              cancelText="取消"
-            >
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                title="删除"
-                disabled={!!editingKey}
-              />
-            </Popconfirm>
-          </Space>
+          </Popconfirm>
         );
       },
     },
@@ -768,33 +744,47 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       title="🔮 活动财务计划（Activity Financial Plan）"
       extra={
         <Space>
-          <Button
-            type={editMode ? 'primary' : 'default'}
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditMode(!editMode);
-              if (editMode) {
-                // 退出编辑模式时取消所有编辑
-                handleCancel();
-              }
-            }}
-          >
-            {editMode ? '退出编辑' : '编辑模式'}
-          </Button>
-          <Button
-            icon={<ImportOutlined />}
-            onClick={() => setBulkPasteVisible(true)}
-            disabled={editMode}
-          >
-            批量粘贴
-          </Button>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={() => message.info('导出功能开发中...')}
-            disabled={editMode}
-          >
-            导出Excel
-          </Button>
+          {!editMode ? (
+            <>
+              <Button
+                icon={<EditOutlined />}
+                onClick={() => setEditMode(true)}
+              >
+                编辑模式
+              </Button>
+              <Button
+                icon={<ImportOutlined />}
+                onClick={() => setBulkPasteVisible(true)}
+              >
+                批量粘贴
+              </Button>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={() => message.info('导出功能开发中...')}
+              >
+                导出Excel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="primary"
+                onClick={handleSaveAndExitEdit}
+              >
+                保存编辑
+              </Button>
+              <Button
+                onClick={() => {
+                  setEditMode(false);
+                  setEditingKey('');
+                  setAddingInType(null);
+                  form.resetFields();
+                }}
+              >
+                取消
+              </Button>
+            </>
+          )}
         </Space>
       }
       className="activity-financial-plan-card"
@@ -827,10 +817,17 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           rowKey="key"
           loading={loading}
           pagination={false}
+          onRow={(record) => ({
+            onClick: () => handleRowClick(record),
+            style: {
+              cursor: editMode && !record.isTypeHeader && !record.isCategoryHeader && !record.isNew ? 'pointer' : 'default'
+            }
+          })}
           rowClassName={(record) => {
             if (record.isTypeHeader) return 'type-header-row';
             if (record.isCategoryHeader) return 'category-header-row';
             if (isEditing(record)) return 'item-row editing-row';
+            if (editMode && !record.isTypeHeader && !record.isCategoryHeader) return 'item-row editable-row';
             return 'item-row';
           }}
         summary={() => (
@@ -844,7 +841,8 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   RM {totalIncome.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} colSpan={2} />
+              <Table.Summary.Cell index={3} />
+              <Table.Summary.Cell index={4} />
             </Table.Summary.Row>
             <Table.Summary.Row>
               <Table.Summary.Cell index={0} colSpan={2}>
@@ -855,7 +853,8 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   RM {totalExpense.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} colSpan={2} />
+              <Table.Summary.Cell index={3} />
+              <Table.Summary.Cell index={4} />
             </Table.Summary.Row>
             <Table.Summary.Row style={{ backgroundColor: '#fafafa' }}>
               <Table.Summary.Cell index={0} colSpan={2}>
@@ -870,7 +869,8 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                   RM {netProfit.toFixed(2)}
                 </strong>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={3} colSpan={2} />
+              <Table.Summary.Cell index={3} />
+              <Table.Summary.Cell index={4} />
             </Table.Summary.Row>
           </Table.Summary>
         )}
