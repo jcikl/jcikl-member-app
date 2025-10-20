@@ -132,17 +132,9 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   }
 
   // 构建分组数据结构
-  const buildGroupedData = (): GroupedRow[] => {
+  // 构建收入数据
+  const buildIncomeData = (): GroupedRow[] => {
     const grouped: GroupedRow[] = [];
-    
-    // 收入组 - 始终显示
-    grouped.push({
-      key: 'income-header',
-      isTypeHeader: true,
-      typeLabel: 'Incomes',
-      type: 'income',
-      indentLevel: 0,
-    });
     
     // 按类别分组
     const incomeByCategory = incomeItems.reduce((acc, item) => {
@@ -164,7 +156,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         category,
         categoryLabel: getCategoryLabel('income', category),
         categoryTotal,
-        indentLevel: 1,
+        indentLevel: 0,
       });
       
       // 类别下的项目
@@ -172,19 +164,17 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         grouped.push({
           ...item,
           key: item.id,
-          indentLevel: 2,
+          indentLevel: 1,
         } as GroupedRow);
       });
     });
     
-    // 支出组 - 始终显示
-    grouped.push({
-      key: 'expense-header',
-      isTypeHeader: true,
-      typeLabel: 'Expenses',
-      type: 'expense',
-      indentLevel: 0,
-    });
+    return grouped;
+  };
+
+  // 构建支出数据
+  const buildExpenseData = (): GroupedRow[] => {
+    const grouped: GroupedRow[] = [];
     
     // 按类别分组
     const expenseByCategory = expenseItems.reduce((acc, item) => {
@@ -206,7 +196,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         category,
         categoryLabel: getCategoryLabel('expense', category),
         categoryTotal,
-        indentLevel: 1,
+        indentLevel: 0,
       });
       
       // 类别下的项目
@@ -214,7 +204,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         grouped.push({
           ...item,
           key: item.id,
-          indentLevel: 2,
+          indentLevel: 1,
         } as GroupedRow);
       });
     });
@@ -222,7 +212,8 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     return grouped;
   };
 
-  const groupedData = buildGroupedData();
+  const incomeData = buildIncomeData();
+  const expenseData = buildExpenseData();
   
   // 获取编辑的值（如果有编辑过）
   const getEditedValue = (id: string, field: keyof FinancialPlanItem) => {
@@ -395,76 +386,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       dataIndex: 'description',
       width: '35%',
       render: (_: unknown, record: GroupedRow) => {
-        // 类型标题行 (Incomes / Expenses)
-        if (record.isTypeHeader) {
-          const type = record.type!;
-          const allCategories = type === 'income' ? incomeCategories : expenseCategories;
-          // 过滤已存在的类别
-          const existingCategories = items
-            .filter(item => item.type === type)
-            .map(item => item.category);
-          const availableCategories = allCategories.filter(
-            cat => !existingCategories.includes(cat.value)
-          );
-          const selectedCategory = type === 'income' ? quickAddCategory.income : quickAddCategory.expense;
-          
-          return (
-            <div style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontWeight: 700, 
-              fontSize: '16px',
-              color: record.type === 'income' ? '#52c41a' : '#ff4d4f',
-              padding: '8px 0'
-            }}>
-              <div>
-                {record.type === 'income' ? <RiseOutlined /> : <FallOutlined />} {record.typeLabel}
-              </div>
-              {editMode && (
-                <Space size="small">
-                  <Select
-                    size="small"
-                    style={{ width: 150 }}
-                    placeholder="选择新类别"
-                    value={selectedCategory}
-                    onChange={(value) => {
-                      setQuickAddCategory(prev => ({
-                        ...prev,
-                        [type]: value
-                      }));
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {availableCategories.map(cat => (
-                      <Option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </Option>
-                    ))}
-                  </Select>
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<PlusOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (selectedCategory) {
-                        handleQuickAddInType(type, selectedCategory);
-                      } else {
-                        message.warning('请先选择类别');
-                      }
-                    }}
-                    disabled={!selectedCategory}
-                    style={{ color: '#1890ff' }}
-                    title="快速添加"
-                  >
-                  </Button>
-                </Space>
-              )}
-            </div>
-          );
-        }
-        
         // 类别标题行 (Ticketing, Sponsor, etc.)
         if (record.isCategoryHeader) {
           return (
@@ -474,15 +395,14 @@ const ActivityFinancialPlan: React.FC<Props> = ({
               justifyContent: 'space-between',
               fontWeight: 600, 
               fontSize: '14px',
-              paddingLeft: '24px',
               color: '#595959'
             }}>
-              <div>- {record.categoryLabel}</div>
+              <div>{record.categoryLabel}</div>
               {editMode && (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
+                <Space size="small">
+                  <Button
+                    type="link"
+                    size="small"
                     icon={<PlusOutlined />}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -490,24 +410,24 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                     }}
                     title="添加项目"
                     style={{ color: '#1890ff' }}
-          />
-          <Popconfirm
+                  />
+                  <Popconfirm
                     title={`确认删除 ${record.categoryLabel} 类别及其所有项目？`}
                     description={`该类别下有 ${items.filter(i => i.type === record.type && i.category === record.category).length} 个项目`}
                     onConfirm={() => handleDeleteCategory(record.type!, record.category!)}
-            okText="确认"
-            cancelText="取消"
-          >
-            <Button
-              type="link"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
+                    okText="确认"
+                    cancelText="取消"
+                  >
+                    <Button
+                      type="link"
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
                       title="删除类别"
                       onClick={(e) => e.stopPropagation()}
-            />
-          </Popconfirm>
-        </Space>
+                    />
+                  </Popconfirm>
+                </Space>
               )}
             </div>
           );
@@ -517,7 +437,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         if (editMode) {
           const currentValue = getEditedValue(record.id!, 'description') ?? record.description;
           return (
-            <div style={{ paddingLeft: '48px', display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+            <div style={{ paddingLeft: '24px', display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
               <Popconfirm
                 title="确认删除此项目？"
                 onConfirm={() => handleDelete(record.id!)}
@@ -546,8 +466,8 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         
         // 正常显示模式
         return (
-          <div style={{ paddingLeft: '48px', color: '#262626' }}>
-            -- {record.description}
+          <div style={{ paddingLeft: '24px', color: '#262626' }}>
+            {record.description}
           </div>
         );
       },
@@ -742,35 +662,165 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       }
       className="activity-financial-plan-card"
     >
-      {/* 分组表格 */}
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Space>
-          <span style={{ fontSize: 14, color: '#8c8c8c' }}>
-            <RiseOutlined style={{ color: '#52c41a' }} /> 收入: {incomeItems.length} 项
-          </span>
-          <span style={{ fontSize: 14, color: '#8c8c8c' }}>
-            <FallOutlined style={{ color: '#ff4d4f' }} /> 支出: {expenseItems.length} 项
-          </span>
-          <span style={{ fontSize: 14, color: '#8c8c8c' }}>
-            共 {items.length} 条记录
-          </span>
-        </Space>
+      {/* 收入区域 */}
+      <div style={{ marginBottom: 24 }}>
+        {/* 收入标题 - 独立显示 */}
+        <div style={{ 
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 16px',
+          backgroundColor: '#f0f9ff',
+          borderRadius: '8px 8px 0 0',
+          borderBottom: '2px solid #52c41a'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <RiseOutlined style={{ color: '#52c41a', fontSize: '20px' }} />
+            <span style={{ fontSize: '18px', fontWeight: 700, color: '#52c41a' }}>
+              Incomes
+            </span>
+            <span style={{ fontSize: '14px', color: '#8c8c8c' }}>
+              {incomeItems.length} 项
+            </span>
+            </div>
+          {editMode && (
+            <Space size="small">
+              <Select
+                size="small"
+                style={{ width: 200 }}
+                placeholder="选择新类别"
+                value={quickAddCategory.income}
+                onChange={(value) => {
+                  setQuickAddCategory(prev => ({
+                    ...prev,
+                    income: value
+                  }));
+                }}
+              >
+                {incomeCategories
+                  .filter(cat => !incomeItems.map(i => i.category).includes(cat.value))
+                  .map(cat => (
+                    <Option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </Option>
+                  ))}
+              </Select>
+              <Button
+                type="link"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  if (quickAddCategory.income) {
+                    handleQuickAddInType('income', quickAddCategory.income);
+                  } else {
+                    message.warning('请先选择类别');
+                  }
+                }}
+                disabled={!quickAddCategory.income}
+                style={{ color: '#1890ff' }}
+                title="快速添加"
+              >
+                添加
+              </Button>
+            </Space>
+          )}
             </div>
 
               <Table
                 {...tableConfig}
-        columns={columns}
-        dataSource={groupedData}
-        rowKey="key"
+          columns={columns}
+          dataSource={incomeData}
+          rowKey="key"
                 loading={loading}
-        pagination={false}
-        rowClassName={(record) => {
-          if (record.isTypeHeader) return 'type-header-row';
-          if (record.isCategoryHeader) return 'category-header-row';
-          if (editMode && !record.isTypeHeader && !record.isCategoryHeader) return 'item-row editable-row';
-          return 'item-row';
-        }}
-      />
+          pagination={false}
+          showHeader={true}
+          rowClassName={(record) => {
+            if (record.isCategoryHeader) return 'category-header-row';
+            if (editMode && !record.isCategoryHeader) return 'item-row editable-row';
+            return 'item-row';
+          }}
+        />
+      </div>
+
+      {/* 支出区域 */}
+      <div style={{ marginBottom: 24 }}>
+        {/* 支出标题 - 独立显示 */}
+        <div style={{ 
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 16px',
+          backgroundColor: '#fff1f0',
+          borderRadius: '8px 8px 0 0',
+          borderBottom: '2px solid #ff4d4f'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <FallOutlined style={{ color: '#ff4d4f', fontSize: '20px' }} />
+            <span style={{ fontSize: '18px', fontWeight: 700, color: '#ff4d4f' }}>
+              Expenses
+            </span>
+            <span style={{ fontSize: '14px', color: '#8c8c8c' }}>
+              {expenseItems.length} 项
+              </span>
+          </div>
+          {editMode && (
+            <Space size="small">
+              <Select
+                size="small"
+                style={{ width: 200 }}
+                placeholder="选择新类别"
+                value={quickAddCategory.expense}
+                onChange={(value) => {
+                  setQuickAddCategory(prev => ({
+                    ...prev,
+                    expense: value
+                  }));
+                }}
+              >
+                {expenseCategories
+                  .filter(cat => !expenseItems.map(i => i.category).includes(cat.value))
+                  .map(cat => (
+                      <Option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </Option>
+                    ))}
+                  </Select>
+              <Button
+                type="link"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  if (quickAddCategory.expense) {
+                    handleQuickAddInType('expense', quickAddCategory.expense);
+                  } else {
+                    message.warning('请先选择类别');
+                  }
+                }}
+                disabled={!quickAddCategory.expense}
+                style={{ color: '#1890ff' }}
+                title="快速添加"
+              >
+                添加
+              </Button>
+            </Space>
+          )}
+        </div>
+
+        <Table
+          {...tableConfig}
+          columns={columns}
+          dataSource={expenseData}
+          rowKey="key"
+          loading={loading}
+          pagination={false}
+          showHeader={true}
+          rowClassName={(record) => {
+            if (record.isCategoryHeader) return 'category-header-row';
+            if (editMode && !record.isCategoryHeader) return 'item-row editable-row';
+            return 'item-row';
+          }}
+        />
+      </div>
 
       {/* 独立统计区域 */}
       <div style={{ 

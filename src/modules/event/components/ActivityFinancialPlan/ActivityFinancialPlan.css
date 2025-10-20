@@ -29,15 +29,6 @@
 }
 
 /* 分组行样式 */
-.activity-financial-plan-card .type-header-row {
-  background: #fafafa;
-  font-weight: 700;
-}
-
-.activity-financial-plan-card .type-header-row:hover {
-  background: #fafafa !important;
-}
-
 .activity-financial-plan-card .category-header-row {
   background: #f5f5f5;
   font-weight: 600;
