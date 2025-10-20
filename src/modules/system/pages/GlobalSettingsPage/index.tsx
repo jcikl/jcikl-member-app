@@ -6,7 +6,7 @@ import {
   SafetyCertificateOutlined,
   CalendarOutlined,
   SettingOutlined,
-  DatabaseOutlined,
+  // DatabaseOutlined, // 已删除（DataInitializer 组件已移除）
   UserOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '@/components';
@@ -20,7 +20,7 @@ import ValidationSettings from './components/ValidationSettings';
 import DateFormatSettings from './components/DateFormatSettings';
 import SystemSettings from './components/SystemSettings';
 import ConfigExport from './components/ConfigExport';
-import DataInitializer from '@/components/admin/DataInitializer';
+// import DataInitializer from '@/components/admin/DataInitializer'; // 已删除
 import './styles.css';
 
 /**
@@ -194,16 +194,17 @@ const GlobalSettingsPage: React.FC = () => {
       ),
       children: <SystemSettings />,
     },
-    {
-      key: 'database',
-      label: (
-        <span>
-          <DatabaseOutlined />
-          数据初始化
-        </span>
-      ),
-      children: <DataInitializer />,
-    },
+    // 数据初始化标签页已移除（DataInitializer 组件已删除）
+    // {
+    //   key: 'database',
+    //   label: (
+    //     <span>
+    //       <DatabaseOutlined />
+    //       数据初始化
+    //     </span>
+    //   ),
+    //   children: <DataInitializer />,
+    // },
   ];
 
   return (

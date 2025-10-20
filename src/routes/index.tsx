@@ -11,7 +11,7 @@ import InitializationPage from '@/pages/InitializationPage';
 import QuickAddEventTransactionPage from '@/pages/QuickAddEventTransactionPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
-import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage';
+// import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage'; // 已删除
 
 // Member Module
 import MemberListPage from '@/modules/member/pages/MemberListPage';
@@ -110,10 +110,11 @@ export const router = createBrowserRouter(
         path: 'financial-records-debug',
         element: <FinancialRecordsDebugPage />,
       },
-      {
-        path: 'update-financial-records-payer-info',
-        element: <UpdateFinancialRecordsPayerInfoPage />,
-      },
+      // 已删除：UpdateFinancialRecordsPayerInfoPage 路由
+      // {
+      //   path: 'update-financial-records-payer-info',
+      //   element: <UpdateFinancialRecordsPayerInfoPage />,
+      // },
       // Member Module Routes
       {
         path: 'members',

@@ -19,7 +19,10 @@
     "backup:firestore": "vite-node src/scripts/backupFirestore.ts",
     "migrate:subcategory": "vite-node src/scripts/migrateSubCategoryToTxAccount.ts",
     "migrate:subcategory:dry": "vite-node src/scripts/migrateSubCategoryToTxAccount.ts -- --dry-run",
-    "migrate:subcategory:rollback": "vite-node src/scripts/migrateSubCategoryToTxAccount.ts -- --rollback"
+    "migrate:subcategory:rollback": "vite-node src/scripts/migrateSubCategoryToTxAccount.ts -- --rollback",
+    "migrate:collections": "vite-node src/scripts/migrateCollectionNames.ts",
+    "migrate:collections:dry": "vite-node src/scripts/migrateCollectionNames.ts -- --dry-run",
+    "migrate:collections:rollback": "vite-node src/scripts/migrateCollectionNames.ts -- --rollback"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.3",

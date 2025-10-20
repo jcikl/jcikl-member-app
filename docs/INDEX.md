@@ -59,6 +59,7 @@
 - **[搜索增强完成报告](guides/SEARCH_ENHANCEMENT_COMPLETE.md)** - 搜索优化总结
 
 ### 数据迁移
+- **[Firestore 集合重命名指南](guides/FIRESTORE_COLLECTION_RENAME_GUIDE.md)** - 集合名称标准化迁移（v4.0）
 - **[迁移快速参考](guides/MIGRATION_QUICK_REFERENCE.md)** - 数据迁移步骤
 - **[subCategory 到 txAccount 迁移](guides/DATA_MIGRATION_SUBCATEGORY_TO_TXACCOUNT.md)** - 字段重命名迁移指南
 
@@ -137,8 +138,9 @@
 
 ### 更新日期
 - 最后更新：2025-10-20
-- 文档版本：3.0
+- 文档版本：4.0
 - 清理版本：1.0
+- 集合重命名：v4.0 (2025-10-20)
 
 ---
 

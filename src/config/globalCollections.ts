@@ -15,26 +15,26 @@ export const GLOBAL_COLLECTIONS = {
   RECRUITMENT_STATS: 'recruitmentStats',
 
   // ========== Finance Domain (财务域) ==========
-  TRANSACTIONS: 'transactions',
+  TRANSACTIONS: 'fin_transactions', // 重命名: transactions → fin_transactions
   TRANSACTIONS_PROJECT: 'transactionsProject',
   BANK_ACCOUNTS: 'bankAccounts',
-  TRANSACTION_PURPOSES: 'transactionPurposes',
+  TRANSACTION_PURPOSES: 'fin_txPurpose', // 重命名: transactionPurposes → fin_txPurpose
   TRANSACTION_SPLITS: 'transactionSplits',
   BILL_PAYMENTS: 'billPayments',
   PAYMENT_REQUESTS: 'paymentRequests',
   PAYMENT_VOUCHERS: 'paymentVouchers',
-  FINANCIAL_RECORDS: 'financialRecords',
+  FINANCIAL_RECORDS: 'fin_records', // 重命名: financialRecords → fin_records
   BUDGETS: 'budgets',
   BUDGET_CATEGORIES: 'budgetCategories',
   PROJECT_ACCOUNTS: 'projectAccounts',
   FISCAL_YEARS: 'fiscalYears',
-  FINANCE_EVENTS: 'financeEvents', // 活动管理（用于活动财务分类）
+  FINANCE_EVENTS: 'fin_projects', // 重命名: financeEvents → fin_projects（活动管理/用于活动财务分类）
 
   // ========== Event Domain (活动域) ==========
-  EVENTS: 'events',
+  EVENTS: 'projects', // 重命名: events → projects
   EVENT_REGISTRATIONS: 'eventRegistrations',
   EVENT_PARTICIPANTS: 'eventParticipants',
-  EVENT_ACCOUNTS: 'eventAccounts', // 活动专用财务账户
+  EVENT_ACCOUNTS: 'projectAccounts', // 重命名: eventAccounts → projectAccounts（活动专用财务账户）
   EVENT_ACCOUNT_PLANS: 'eventAccountPlans', // 活动财务计划
 
   // ========== Permission Domain (权限域 - RBAC) ==========
@@ -70,7 +70,7 @@ export const GLOBAL_COLLECTIONS = {
   ONLINE_USERS_STATS: 'onlineUsersStats',
   PAGE_VIEWS: 'pageViews',
   PAGE_VIEWS_STATS: 'pageViewsStats',
-  FINANCIAL_CATEGORIES: 'financialCategories', // 财务类别管理
+  FINANCIAL_CATEGORIES: 'fin_txCat', // 重命名: financialCategories → fin_txCat（财务类别管理）
 
   // ========== Organizational Hierarchy (组织架构) ==========
   WORLD_REGIONS: 'worldRegions',

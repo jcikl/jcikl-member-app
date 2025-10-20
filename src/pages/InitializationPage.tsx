@@ -8,7 +8,7 @@
 import React from 'react';
 import { Row, Col, Space } from 'antd';
 import { PageHeader } from '@/components/common/PageHeader';
-import { DataInitializer } from '@/components/admin/DataInitializer';
+// import { DataInitializer } from '@/components/admin/DataInitializer'; // 已删除
 import FinancialCategoryInitializer from '@/components/admin/FinancialCategoryInitializer';
 
 const InitializationPage: React.FC = () => {
@@ -25,9 +25,10 @@ const InitializationPage: React.FC = () => {
 
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Row gutter={[16, 16]}>
-          <Col xs={24}>
+          {/* DataInitializer 已删除 */}
+          {/* <Col xs={24}>
             <DataInitializer />
-          </Col>
+          </Col> */}
           
           <Col xs={24}>
             <FinancialCategoryInitializer />

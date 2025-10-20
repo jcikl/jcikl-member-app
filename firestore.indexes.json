@@ -29,7 +29,7 @@
       ]
     },
     {
-      "collectionGroup": "transactions",
+      "collectionGroup": "fin_transactions",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -89,7 +89,7 @@
       ]
     },
     {
-      "collectionGroup": "financeEvents",
+      "collectionGroup": "fin_projects",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -103,7 +103,7 @@
       ]
     },
     {
-      "collectionGroup": "financeEvents",
+      "collectionGroup": "fin_projects",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -131,7 +131,7 @@
       ]
     },
     {
-      "collectionGroup": "transactions",
+      "collectionGroup": "fin_transactions",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -145,7 +145,7 @@
       ]
     },
     {
-      "collectionGroup": "financialCategories",
+      "collectionGroup": "fin_txCat",
       "queryScope": "COLLECTION",
       "fields": [
         {
