@@ -657,7 +657,7 @@ const TransactionManagementPage: React.FC = () => {
     setBatchCategoryModalVisible(true);
   };
 
-  const handleBatchSetCategoryOk = async (category: string, subCategory?: string) => {
+  const handleBatchSetCategoryOk = async (category: string, txAccount?: string) => {
     if (!user) return;
 
     try {
@@ -668,10 +668,10 @@ const TransactionManagementPage: React.FC = () => {
       );
 
       // 如选择了二次分类，则追加一次批量更新二次分类
-      if (subCategory) {
+      if (txAccount) {
         await Promise.all(
           (selectedRowKeys as string[]).map(id =>
-            updateTransaction(id, { subCategory }, user.id)
+            updateTransaction(id, { txAccount }, user.id)
           )
         );
       }
@@ -827,12 +827,12 @@ const TransactionManagementPage: React.FC = () => {
     },
     {
       title: '二次分类',
-      dataIndex: 'subCategory',
-      key: 'subCategory',
+      dataIndex: 'txAccount',
+      key: 'txAccount',
       width: 150,
       render: (subCat: string, record: Transaction) => {
         // 二次分类配置（支持多种类别）
-        const subCategoryConfig: Record<string, { color: string; text: string }> = {
+        const txAccountConfig: Record<string, { color: string; text: string }> = {
           // 会员费二次分类
           'official-member': { color: 'blue', text: '官方会员' },
           'associate-member': { color: 'cyan', text: '准会员' },
@@ -862,8 +862,8 @@ const TransactionManagementPage: React.FC = () => {
           return <Tag color="default">未分类</Tag>;
         }
         
-        // 如果是活动财务，subCategory 可能是活动名称
-        if (record.category === 'event-finance' && !subCategoryConfig[subCat]) {
+        // 如果是活动财务，txAccount 可能是活动名称
+        if (record.category === 'event-finance' && !txAccountConfig[subCat]) {
           return (
             <Tooltip title={`活动: ${subCat}`}>
               <Tag color="green" style={{ maxWidth: 120 }}>
@@ -882,7 +882,7 @@ const TransactionManagementPage: React.FC = () => {
           );
         }
         
-        const config = subCategoryConfig[subCat] || { color: 'default', text: subCat };
+        const config = txAccountConfig[subCat] || { color: 'default', text: subCat };
         return <Tag color={config.color}>{config.text}</Tag>;
       },
     },

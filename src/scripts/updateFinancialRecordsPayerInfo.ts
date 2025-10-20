@@ -214,7 +214,7 @@ export const updateGeneralFinancialRecordsPayerInfo = async (): Promise<void> =>
 
           console.log(`✅ [updateGeneralFinancialRecordsPayerInfo] Updated record ${record.id}:`, {
             category: record.category,
-            subCategory: record.subCategory,
+            txAccount: record.txAccount,
             payerPayee: payerInfo.payerPayee,
             memberId: payerInfo.memberId,
             memberEmail: payerInfo.memberEmail, // 🆕 日志包含邮箱

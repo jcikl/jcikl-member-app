@@ -78,7 +78,7 @@ const EventFinancialPage: React.FC = () => {
   const [transactionTotal, setTransactionTotal] = useState(0);
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionPageSize, setTransactionPageSize] = useState(20);
-  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
+  const [txAccountFilter, setSubCategoryFilter] = useState<string>('all');
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -132,7 +132,7 @@ const EventFinancialPage: React.FC = () => {
     if (activeTab === 'transactions') {
       loadTransactions();
     }
-  }, [activeTab, transactionPage, transactionPageSize, subCategoryFilter]);
+  }, [activeTab, transactionPage, transactionPageSize, txAccountFilter]);
 
   const loadEventFinancials = async () => {
     if (!user) return;
@@ -158,7 +158,7 @@ const EventFinancialPage: React.FC = () => {
         financeEventsList.map(async (event) => {
           // 🔑 筛选该活动的交易记录
           const eventTransactions = allEventTransactions.data.filter(
-            t => t.subCategory === event.eventName
+            t => t.txAccount === event.eventName
           );
           
           // 🔑 计算该活动的财务统计
@@ -239,7 +239,7 @@ const EventFinancialPage: React.FC = () => {
         page: 1,
         limit: 100, // 加载所有交易
         category: 'event-finance',
-        subCategory: eventName, // 🔑 按活动名称过滤
+        txAccount: eventName, // 🔑 按活动名称过滤
         sortBy: 'transactionDate',
         sortOrder: 'desc',
         includeVirtual: true,
@@ -394,7 +394,7 @@ const EventFinancialPage: React.FC = () => {
         page: transactionPage,
         limit: transactionPageSize,
         category: 'event-finance',
-        subCategory: subCategoryFilter !== 'all' ? subCategoryFilter : undefined,
+        txAccount: txAccountFilter !== 'all' ? txAccountFilter : undefined,
         sortBy: 'transactionDate',
         sortOrder: 'desc',
         includeVirtual: true, // 🔑 包含子交易（拆分的活动财务）
@@ -447,7 +447,7 @@ const EventFinancialPage: React.FC = () => {
     setSelectedTransaction(transaction);
     
     // 🆕 预填活动选择
-    setModalSelectedEvent(transaction.subCategory || '');
+    setModalSelectedEvent(transaction.txAccount || '');
     
     // 🆕 预填会员信息或付款人信息
     const existingMemberId = (transaction as any)?.metadata?.memberId as string | undefined;
@@ -497,7 +497,7 @@ const EventFinancialPage: React.FC = () => {
       const selectedEvent = financeEvents.find(e => e.eventName === modalSelectedEvent);
       
       // 🆕 构建更新数据，包含 metadata.eventId 和乙方信息
-      const updateData: any = { subCategory: modalSelectedEvent };
+      const updateData: any = { txAccount: modalSelectedEvent };
       
       // 🆕 处理付款人/收款人信息
       let finalPayerPayee = modalPayerPayee.trim();
@@ -568,7 +568,7 @@ const EventFinancialPage: React.FC = () => {
       // 批量更新所有选中的交易
       for (const transactionId of selectedRowKeys) {
         // 🆕 构建更新数据，包含 metadata.eventId
-        const updateData: any = { subCategory: eventName };
+        const updateData: any = { txAccount: eventName };
         
         if (selectedEvent) {
           updateData.metadata = {
@@ -779,8 +779,8 @@ const EventFinancialPage: React.FC = () => {
     },
     {
       title: '活动分类',
-      dataIndex: 'subCategory',
-      key: 'subCategory',
+      dataIndex: 'txAccount',
+      key: 'txAccount',
       width: 150,
       render: (subCat: string) => {
         if (!subCat) {
@@ -822,7 +822,7 @@ const EventFinancialPage: React.FC = () => {
             size="small"
             onClick={() => handleClassify(record)}
           >
-            {record.subCategory ? '重新分类' : '分类'}
+            {record.txAccount ? '重新分类' : '分类'}
           </Button>
           <Button type="link" size="small">
             查看
@@ -1025,7 +1025,7 @@ const EventFinancialPage: React.FC = () => {
                           <Select
                             style={{ width: '100%' }}
                             placeholder="按活动筛选"
-                            value={subCategoryFilter}
+                            value={txAccountFilter}
                             onChange={setSubCategoryFilter}
                           >
                             <Option value="all">所有活动</Option>
@@ -1114,8 +1114,8 @@ const EventFinancialPage: React.FC = () => {
                 <p><strong>交易描述：</strong>{selectedTransaction.mainDescription}</p>
                 <p><strong>交易金额：</strong>RM {selectedTransaction.amount?.toFixed(2)}</p>
                 <p><strong>交易日期：</strong>{globalDateService.formatDate(new Date(selectedTransaction.transactionDate), 'display')}</p>
-                {selectedTransaction.subCategory && (
-                  <p><strong>当前分类：</strong>{selectedTransaction.subCategory}</p>
+                {selectedTransaction.txAccount && (
+                  <p><strong>当前分类：</strong>{selectedTransaction.txAccount}</p>
                 )}
                 {selectedTransaction.payerPayee && (
                   <p><strong>当前乙方：</strong>{selectedTransaction.payerPayee}</p>

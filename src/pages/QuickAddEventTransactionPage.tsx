@@ -82,7 +82,7 @@ const QuickAddEventTransactionPage: React.FC = () => {
         
         // 2. 分类系统
         category: 'event-financial',
-        subCategory: selectedEvent?.name || '',
+        txAccount: selectedEvent?.name || '',
         
         // 3. 活动关联（新系统 - 方案C）
         relatedEventId: values.eventId,

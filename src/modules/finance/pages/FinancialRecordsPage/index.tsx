@@ -74,7 +74,7 @@ const FinancialRecordsPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<MemberFeeStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all'); // 改为记录类型
-  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
+  const [txAccountFilter, setSubCategoryFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FinancialRecord | null>(null);
@@ -108,8 +108,8 @@ const FinancialRecordsPage: React.FC = () => {
     // Extract unique sub-categories from records
     const subCategories = Array.from(new Set(
       records
-        .filter(r => r.subCategory)
-        .map(r => r.subCategory!)
+        .filter(r => r.txAccount)
+        .map(r => r.txAccount!)
     )).sort();
     setAvailableSubCategories(subCategories);
 
@@ -146,19 +146,19 @@ const FinancialRecordsPage: React.FC = () => {
     // 遍历记录并分组
     records.forEach(record => {
       const type = record.type || 'other';
-      const subCategory = record.subCategory || 'uncategorized';
+      const txAccount = record.txAccount || 'uncategorized';
       
       // 判断是收入还是支出
       const isIncome = determineIsIncome(record);
 
       if (isIncome) {
         if (!incomeGroups[type]) incomeGroups[type] = {};
-        if (!incomeGroups[type][subCategory]) incomeGroups[type][subCategory] = [];
-        incomeGroups[type][subCategory].push(record);
+        if (!incomeGroups[type][txAccount]) incomeGroups[type][txAccount] = [];
+        incomeGroups[type][txAccount].push(record);
       } else {
         if (!expenseGroups[type]) expenseGroups[type] = {};
-        if (!expenseGroups[type][subCategory]) expenseGroups[type][subCategory] = [];
-        expenseGroups[type][subCategory].push(record);
+        if (!expenseGroups[type][txAccount]) expenseGroups[type][txAccount] = [];
+        expenseGroups[type][txAccount].push(record);
       }
     });
 
@@ -190,7 +190,7 @@ const FinancialRecordsPage: React.FC = () => {
         children: [],
       };
 
-      Object.entries(subGroups).forEach(([subCategory, items]) => {
+      Object.entries(subGroups).forEach(([txAccount, items]) => {
         const subTotal = items.reduce((sum, r) => {
           const paid = r.paidAmount || 0;
           return sum + (r.type === 'memberFee' ? paid : (r.totalRevenue || 0));
@@ -199,13 +199,13 @@ const FinancialRecordsPage: React.FC = () => {
         typeNode.children!.push({
           title: (
             <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-              {subCategory === 'uncategorized' ? '未分类' : subCategory}
+              {txAccount === 'uncategorized' ? '未分类' : txAccount}
               <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                 ({items.length}) RM {subTotal.toFixed(2)}
               </Text>
             </span>
           ),
-          key: `income-${type}-${subCategory}`,
+          key: `income-${type}-${txAccount}`,
           isLeaf: true,
         });
       });
@@ -234,19 +234,19 @@ const FinancialRecordsPage: React.FC = () => {
         children: [],
       };
 
-      Object.entries(subGroups).forEach(([subCategory, items]) => {
+      Object.entries(subGroups).forEach(([txAccount, items]) => {
         const subTotal = items.reduce((sum, r) => sum + (r.totalExpense || 0), 0);
 
         typeNode.children!.push({
           title: (
             <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-              {subCategory === 'uncategorized' ? '未分类' : subCategory}
+              {txAccount === 'uncategorized' ? '未分类' : txAccount}
               <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                 ({items.length}) RM {subTotal.toFixed(2)}
               </Text>
             </span>
           ),
-          key: `expense-${type}-${subCategory}`,
+          key: `expense-${type}-${txAccount}`,
           isLeaf: true,
         });
       });
@@ -296,7 +296,7 @@ const FinancialRecordsPage: React.FC = () => {
 
   useEffect(() => {
     filterRecords();
-  }, [records, searchText, statusFilter, typeFilter, subCategoryFilter, dateRange]);
+  }, [records, searchText, statusFilter, typeFilter, txAccountFilter, dateRange]);
 
   const loadFinancialRecords = async () => {
     if (!user) return;
@@ -325,35 +325,35 @@ const FinancialRecordsPage: React.FC = () => {
       // 🆕 关联交易以补充二次分类（从 Transactions 表获取）
       try {
         const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
-        const subCategoryByMember: Record<string, string> = {};
+        const txAccountByMember: Record<string, string> = {};
 
-        // 遍历所有会员费交易，获取最新的 subCategory
+        // 遍历所有会员费交易，获取最新的 txAccount
         txnSnap.docs
           .filter(d => d.data().category === 'member-fees')
           .forEach(d => {
             const txnData = d.data() as any;
             const memberId = txnData?.metadata?.memberId;
-            if (memberId && txnData.subCategory) {
+            if (memberId && txnData.txAccount) {
               // 如果已有记录，保留最新的（这里假设后遍历的是最新的）
-              subCategoryByMember[memberId] = txnData.subCategory;
+              txAccountByMember[memberId] = txnData.txAccount;
             }
           });
 
-        // 将 subCategory 合并到会费记录中
+        // 将 txAccount 合并到会费记录中
         data = data.map(record => {
           if (record.type === 'memberFee' && record.memberId) {
-            const subCategory = subCategoryByMember[record.memberId];
-            if (subCategory) {
-              return { ...record, subCategory };
+            const txAccount = txAccountByMember[record.memberId];
+            if (txAccount) {
+              return { ...record, txAccount };
             }
           }
           return record;
         });
 
-        console.log('[FinancialRecords] Merged subCategory from transactions:', 
-          Object.keys(subCategoryByMember).length, 'members');
+        console.log('[FinancialRecords] Merged txAccount from transactions:', 
+          Object.keys(txAccountByMember).length, 'members');
       } catch (error) {
-        console.warn('[FinancialRecords] Failed to merge subCategory from transactions:', error);
+        console.warn('[FinancialRecords] Failed to merge txAccount from transactions:', error);
       }
 
       setRecords(data);
@@ -406,8 +406,8 @@ const FinancialRecordsPage: React.FC = () => {
     }
 
     // Sub-category filter
-    if (subCategoryFilter !== 'all') {
-      filtered = filtered.filter(r => r.subCategory === subCategoryFilter);
+    if (txAccountFilter !== 'all') {
+      filtered = filtered.filter(r => r.txAccount === txAccountFilter);
     }
 
     // Date range filter
@@ -505,11 +505,11 @@ const FinancialRecordsPage: React.FC = () => {
     },
     {
       title: '交易用途',
-      dataIndex: 'subCategory',
-      key: 'subCategory',
+      dataIndex: 'txAccount',
+      key: 'txAccount',
       width: 150,
-      render: (subCategory?: string) => subCategory ? (
-        <Tag color="geekblue">{subCategory}</Tag>
+      render: (txAccount?: string) => txAccount ? (
+        <Tag color="geekblue">{txAccount}</Tag>
       ) : (
         <Text type="secondary">-</Text>
       ),
@@ -788,7 +788,7 @@ const FinancialRecordsPage: React.FC = () => {
               <Col xs={12} sm={6} md={4}>
                 <Select
                   style={{ width: '100%' }}
-                  value={subCategoryFilter}
+                  value={txAccountFilter}
                   onChange={handleSubCategoryChange}
                   placeholder="二次分类"
                 >
@@ -900,8 +900,8 @@ const FinancialRecordsPage: React.FC = () => {
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="二次分类">
-                {selectedRecord.subCategory ? (
-                  <Tag color="geekblue">{selectedRecord.subCategory}</Tag>
+                {selectedRecord.txAccount ? (
+                  <Tag color="geekblue">{selectedRecord.txAccount}</Tag>
                 ) : (
                   '-'
                 )}

@@ -88,7 +88,7 @@ const MemberFeeManagementPage: React.FC = () => {
   const [transactionTotal, setTransactionTotal] = useState(0);
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionPageSize, setTransactionPageSize] = useState(20);
-  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all'); // 分类（new-member-fee 等）
+  const [txAccountFilter, setSubCategoryFilter] = useState<string>('all'); // 分类（new-member-fee 等）
   const [transactionYearFilter, setTransactionYearFilter] = useState<string>('all'); // 年份（YYYY）
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -100,7 +100,7 @@ const MemberFeeManagementPage: React.FC = () => {
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   
   // 🆕 交易二次分类统计数据
-  const [subCategoryStats, setSubCategoryStats] = useState<Record<string, { count: number; amount: number }>>({});
+  const [txAccountStats, setSubCategoryStats] = useState<Record<string, { count: number; amount: number }>>({});
   const [selectedSubCategoryCard, setSelectedSubCategoryCard] = useState<string>('all'); // 当前选中的二次分类卡片
   // 批量选择与分类
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
@@ -121,7 +121,7 @@ const MemberFeeManagementPage: React.FC = () => {
       loadTransactions();
       calculateSubCategoryStats(transactionYearFilter);
     }
-  }, [activeTab, transactionPage, transactionPageSize, subCategoryFilter, transactionYearFilter]);
+  }, [activeTab, transactionPage, transactionPageSize, txAccountFilter, transactionYearFilter]);
 
   const initializeData = async () => {
     try {
@@ -183,12 +183,12 @@ const MemberFeeManagementPage: React.FC = () => {
       const subCategories = ['all', 'uncategorized', 'new-member-fee', 'renewal-fee', 'alumni-fee', 'visiting-member-fee'];
       const stats: Record<string, { count: number; amount: number }> = {};
       
-      for (const subCategory of subCategories) {
+      for (const txAccount of subCategories) {
         const result = await getTransactions({
           page: 1,
           limit: 10000, // 获取所有数据用于统计
           category: 'member-fees',
-          subCategory: subCategory === 'all' ? undefined : (subCategory === 'uncategorized' ? '' : subCategory),
+          txAccount: txAccount === 'all' ? undefined : (txAccount === 'uncategorized' ? '' : txAccount),
           // 年份筛选（基于交易日期）
           ...(year !== 'all' && {
             startDate: new Date(`${year}-01-01`).toISOString(),
@@ -198,7 +198,7 @@ const MemberFeeManagementPage: React.FC = () => {
         
         const totalAmount = result.data.reduce((sum, tx) => sum + (tx.amount || 0), 0);
         
-        stats[subCategory] = {
+        stats[txAccount] = {
           count: result.total,
           amount: totalAmount,
         };
@@ -207,7 +207,7 @@ const MemberFeeManagementPage: React.FC = () => {
       console.log('📊 [MemberFeeManagement] SubCategory stats calculated:', stats);
       setSubCategoryStats(stats);
     } catch (error) {
-      console.error('❌ [MemberFeeManagement] Failed to calculate subCategory stats:', error);
+      console.error('❌ [MemberFeeManagement] Failed to calculate txAccount stats:', error);
     }
   };
 
@@ -222,10 +222,10 @@ const MemberFeeManagementPage: React.FC = () => {
   };
   
   // 🆕 处理交易二次分类卡片点击
-  const handleSubCategoryCardClick = (subCategory: string) => {
-    console.log('🔗 [MemberFeeManagement] SubCategory card clicked:', subCategory);
-    setSelectedSubCategoryCard(subCategory);
-    setSubCategoryFilter(subCategory);
+  const handleSubCategoryCardClick = (txAccount: string) => {
+    console.log('🔗 [MemberFeeManagement] SubCategory card clicked:', txAccount);
+    setSelectedSubCategoryCard(txAccount);
+    setSubCategoryFilter(txAccount);
     setTransactionPage(1);
   };
 
@@ -290,14 +290,14 @@ const MemberFeeManagementPage: React.FC = () => {
     try {
       setTransactionsLoading(true);
       
-      // 服务端不再根据 subCategory 精确匹配（存储为 YYYY-category），统一改为客户端筛选
-      const subCategoryFilterValue = undefined;
+      // 服务端不再根据 txAccount 精确匹配（存储为 YYYY-category），统一改为客户端筛选
+      const txAccountFilterValue = undefined;
       
       const result = await getTransactions({
         page: transactionPage,
         limit: transactionPageSize,
         category: 'member-fees',
-        subCategory: subCategoryFilterValue,
+        txAccount: txAccountFilterValue,
         sortBy: 'transactionDate',
         sortOrder: 'desc',
         includeVirtual: true, // 🔑 包含子交易（拆分的会员费）
@@ -307,24 +307,24 @@ const MemberFeeManagementPage: React.FC = () => {
       let filteredTransactions = result.data;
       const applyYear = (list: Transaction[]) => {
         if (transactionYearFilter !== 'all') {
-          return list.filter(t => t.subCategory && t.subCategory.startsWith(`${transactionYearFilter}-`));
+          return list.filter(t => t.txAccount && t.txAccount.startsWith(`${transactionYearFilter}-`));
         }
-        if (subCategoryFilter.startsWith('year-')) {
-          const year = subCategoryFilter.replace('year-', '');
-          return list.filter(t => t.subCategory && t.subCategory.startsWith(`${year}-`));
+        if (txAccountFilter.startsWith('year-')) {
+          const year = txAccountFilter.replace('year-', '');
+          return list.filter(t => t.txAccount && t.txAccount.startsWith(`${year}-`));
         }
         return list;
       };
       const applyCategory = (list: Transaction[]) => {
-        if (subCategoryFilter === 'uncategorized') {
-          return list.filter(t => !t.subCategory);
+        if (txAccountFilter === 'uncategorized') {
+          return list.filter(t => !t.txAccount);
         }
-        if (subCategoryFilter !== 'all' && !subCategoryFilter.startsWith('year-')) {
+        if (txAccountFilter !== 'all' && !txAccountFilter.startsWith('year-')) {
           return list.filter(t => {
-            if (!t.subCategory) return false;
-            const parts = t.subCategory.split('-');
-            const key = /^\d{4}$/.test(parts[0]) ? parts.slice(1).join('-') : t.subCategory;
-            return key === subCategoryFilter;
+            if (!t.txAccount) return false;
+            const parts = t.txAccount.split('-');
+            const key = /^\d{4}$/.test(parts[0]) ? parts.slice(1).join('-') : t.txAccount;
+            return key === txAccountFilter;
           });
         }
         return list;
@@ -346,7 +346,7 @@ const MemberFeeManagementPage: React.FC = () => {
       // });
       
       // 🆕 加载会员信息缓存
-      const finalTransactions = transactionYearFilter !== 'all' || subCategoryFilter.startsWith('year-') || (subCategoryFilter !== 'all' && !subCategoryFilter.startsWith('year-')) 
+      const finalTransactions = transactionYearFilter !== 'all' || txAccountFilter.startsWith('year-') || (txAccountFilter !== 'all' && !txAccountFilter.startsWith('year-')) 
         ? filteredTransactions 
         : result.data;
       
@@ -383,7 +383,7 @@ const MemberFeeManagementPage: React.FC = () => {
         setMemberInfoCache(newMemberCache);
       }
       
-      if (transactionYearFilter !== 'all' || subCategoryFilter.startsWith('year-') || (subCategoryFilter !== 'all' && !subCategoryFilter.startsWith('year-'))) {
+      if (transactionYearFilter !== 'all' || txAccountFilter.startsWith('year-') || (txAccountFilter !== 'all' && !txAccountFilter.startsWith('year-'))) {
         setTransactions(filteredTransactions);
         setTransactionTotal(filteredTransactions.length);
       } else {
@@ -402,7 +402,7 @@ const MemberFeeManagementPage: React.FC = () => {
   const handleClassify = async (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     // 初始化本地分类与年份
-    const existing = transaction.subCategory || '';
+    const existing = transaction.txAccount || '';
     const parts = existing.split('-');
     // 年份置于前端：形如 2024-new-member-fee
     if (parts.length >= 2 && /^\d{4}$/.test(parts[0])) {
@@ -446,13 +446,13 @@ const MemberFeeManagementPage: React.FC = () => {
   };
   
   // 保存二次分类
-  const handleClassifySubmit = async (subCategory: string, memberId?: string) => {
+  const handleClassifySubmit = async (txAccount: string, memberId?: string) => {
     if (!user || !selectedTransaction) return;
     
     try {
       await updateTransaction(
         selectedTransaction.id,
-        { subCategory, metadata: memberId ? { memberId } : undefined },
+        { txAccount, metadata: memberId ? { memberId } : undefined },
         user.id
       );
       
@@ -541,13 +541,13 @@ const MemberFeeManagementPage: React.FC = () => {
     },
     {
       title: '二次分类',
-      dataIndex: 'subCategory',
-      key: 'subCategory',
-      render: (subCategory: string | undefined, record: any) => {
+      dataIndex: 'txAccount',
+      key: 'txAccount',
+      render: (txAccount: string | undefined, record: any) => {
         if (record.isPlaceholder) {
           return '-';
         }
-        return subCategory ? <Tag color="purple">{subCategory}</Tag> : <Tag color="default">未分类</Tag>;
+        return txAccount ? <Tag color="purple">{txAccount}</Tag> : <Tag color="default">未分类</Tag>;
       },
     },
     {
@@ -681,11 +681,11 @@ const MemberFeeManagementPage: React.FC = () => {
     },
     {
       title: '二次分类',
-      dataIndex: 'subCategory',
-      key: 'subCategory',
+      dataIndex: 'txAccount',
+      key: 'txAccount',
       width: 50,
       render: (subCat: string) => {
-        const subCategoryConfig: Record<string, { color: string; text: string }> = {
+        const txAccountConfig: Record<string, { color: string; text: string }> = {
           'new-member-fee': { color: 'blue', text: '新会员费' },
           'renewal-fee': { color: 'green', text: '续会费' },
           'alumni-fee': { color: 'purple', text: '校友会' },
@@ -701,7 +701,7 @@ const MemberFeeManagementPage: React.FC = () => {
           if (parts.length >= 2 && /^\d{4}$/.test(parts[0])) {
             const year = parts[0];
             const categoryKey = parts.slice(1).join('-');
-            const baseConfig = subCategoryConfig[categoryKey];
+            const baseConfig = txAccountConfig[categoryKey];
             
             if (baseConfig) {
               return {
@@ -712,7 +712,7 @@ const MemberFeeManagementPage: React.FC = () => {
           }
           
           // 返回基础分类配置
-          return subCategoryConfig[subCat] || { color: 'default', text: subCat };
+          return txAccountConfig[subCat] || { color: 'default', text: subCat };
         };
         
         if (!subCat) {
@@ -751,7 +751,7 @@ const MemberFeeManagementPage: React.FC = () => {
             size="small"
             onClick={() => handleClassify(record)}
           >
-            {record.subCategory ? '重新分类' : '分类'}
+            {record.txAccount ? '重新分类' : '分类'}
           </Button>
           <Button type="link" size="small">
             查看
@@ -950,10 +950,10 @@ const MemberFeeManagementPage: React.FC = () => {
                           <span style={{ fontSize: 16, fontWeight: 600 }}>所有分类</span>
                         </div>
                         <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
-                          📝 {subCategoryStats['all']?.count || 0} 笔
+                          📝 {txAccountStats['all']?.count || 0} 笔
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 600, color: '#52c41a' }}>
-                          💰 RM {(subCategoryStats['all']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                          💰 RM {(txAccountStats['all']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </div>
                         {selectedSubCategoryCard === 'all' && (
                           <div style={{ marginTop: 8, color: '#1890ff', fontSize: 12 }}>
@@ -980,10 +980,10 @@ const MemberFeeManagementPage: React.FC = () => {
                           <span style={{ fontSize: 14, fontWeight: 600, color: '#8c8c8c' }}>未分类</span>
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          📝 {subCategoryStats['uncategorized']?.count || 0} 笔
+                          📝 {txAccountStats['uncategorized']?.count || 0} 笔
                         </div>
                         <div style={{ fontSize: 16, fontWeight: 600, color: '#8c8c8c' }}>
-                          💰 RM {(subCategoryStats['uncategorized']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                          💰 RM {(txAccountStats['uncategorized']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </div>
                         <div style={{ marginTop: 4, color: '#faad14', fontSize: 12 }}>
                           ⚠️ 需要分类
@@ -1008,10 +1008,10 @@ const MemberFeeManagementPage: React.FC = () => {
                           <span style={{ fontSize: 14, fontWeight: 600, color: '#52c41a' }}>新会员费</span>
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          📝 {subCategoryStats['new-member-fee']?.count || 0} 笔
+                          📝 {txAccountStats['new-member-fee']?.count || 0} 笔
                         </div>
                         <div style={{ fontSize: 16, fontWeight: 600, color: '#52c41a' }}>
-                          💰 RM {(subCategoryStats['new-member-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                          💰 RM {(txAccountStats['new-member-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </div>
                       </Card>
                       
@@ -1033,10 +1033,10 @@ const MemberFeeManagementPage: React.FC = () => {
                           <span style={{ fontSize: 14, fontWeight: 600, color: '#13c2c2' }}>续会费</span>
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          📝 {subCategoryStats['renewal-fee']?.count || 0} 笔
+                          📝 {txAccountStats['renewal-fee']?.count || 0} 笔
                         </div>
                         <div style={{ fontSize: 16, fontWeight: 600, color: '#13c2c2' }}>
-                          💰 RM {(subCategoryStats['renewal-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                          💰 RM {(txAccountStats['renewal-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </div>
                       </Card>
                       
@@ -1058,10 +1058,10 @@ const MemberFeeManagementPage: React.FC = () => {
                           <span style={{ fontSize: 14, fontWeight: 600, color: '#fa8c16' }}>校友会费</span>
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          📝 {subCategoryStats['alumni-fee']?.count || 0} 笔
+                          📝 {txAccountStats['alumni-fee']?.count || 0} 笔
                         </div>
                         <div style={{ fontSize: 16, fontWeight: 600, color: '#fa8c16' }}>
-                          💰 RM {(subCategoryStats['alumni-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                          💰 RM {(txAccountStats['alumni-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </div>
                       </Card>
                       
@@ -1083,10 +1083,10 @@ const MemberFeeManagementPage: React.FC = () => {
                           <span style={{ fontSize: 14, fontWeight: 600, color: '#1890ff' }}>拜访会员费</span>
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 700 }}>
-                          📝 {subCategoryStats['visiting-member-fee']?.count || 0} 笔
+                          📝 {txAccountStats['visiting-member-fee']?.count || 0} 笔
                         </div>
                         <div style={{ fontSize: 16, fontWeight: 600, color: '#1890ff' }}>
-                          💰 RM {(subCategoryStats['visiting-member-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                          💰 RM {(txAccountStats['visiting-member-fee']?.amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </div>
                       </Card>
                     </Col>
@@ -1329,7 +1329,7 @@ const MemberFeeManagementPage: React.FC = () => {
               try {
                 await Promise.all(
                   selectedTransactionIds.map((id) =>
-                    updateTransaction(id, { subCategory: fullCategory, metadata: modalSelectedMemberId ? { memberId: modalSelectedMemberId } : undefined }, user?.id || '')
+                    updateTransaction(id, { txAccount: fullCategory, metadata: modalSelectedMemberId ? { memberId: modalSelectedMemberId } : undefined }, user?.id || '')
                   )
                 );
                 message.success('批量分类已完成');
@@ -1361,8 +1361,8 @@ const MemberFeeManagementPage: React.FC = () => {
                 <p><strong>交易描述：</strong>{selectedTransaction.mainDescription}</p>
                 <p><strong>交易金额：</strong>RM {selectedTransaction.amount?.toFixed(2)}</p>
                 <p><strong>交易日期：</strong>{globalDateService.formatDate(new Date(selectedTransaction.transactionDate), 'display')}</p>
-                {selectedTransaction.subCategory && (
-                  <p><strong>当前分类：</strong>{selectedTransaction.subCategory}</p>
+                {selectedTransaction.txAccount && (
+                  <p><strong>当前分类：</strong>{selectedTransaction.txAccount}</p>
                 )}
               </div>
               

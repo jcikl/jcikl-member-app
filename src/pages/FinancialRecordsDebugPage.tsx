@@ -48,35 +48,35 @@ export const FinancialRecordsDebugPage: React.FC = () => {
         id: doc.id,
       }));
 
-      // 🆕 从 Transactions 表中获取 subCategory 并合并
+      // 🆕 从 Transactions 表中获取 txAccount 并合并
       try {
         const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
-        const subCategoryByMember: Record<string, string> = {};
+        const txAccountByMember: Record<string, string> = {};
 
         txnSnap.docs
           .filter(d => d.data().category === 'member-fees')
           .forEach(d => {
             const txnData = d.data() as any;
             const memberId = txnData?.metadata?.memberId;
-            if (memberId && txnData.subCategory) {
-              subCategoryByMember[memberId] = txnData.subCategory;
+            if (memberId && txnData.txAccount) {
+              txAccountByMember[memberId] = txnData.txAccount;
             }
           });
 
-        // 合并 subCategory 到会费记录
+        // 合并 txAccount 到会费记录
         allRecords = allRecords.map(record => {
           if (record.type === 'memberFee' && record.memberId) {
-            const subCategory = subCategoryByMember[record.memberId];
-            if (subCategory) {
-              return { ...record, subCategory };
+            const txAccount = txAccountByMember[record.memberId];
+            if (txAccount) {
+              return { ...record, txAccount };
             }
           }
           return record;
         });
 
-        console.log('[DebugPage] Merged subCategory for', Object.keys(subCategoryByMember).length, 'members');
+        console.log('[DebugPage] Merged txAccount for', Object.keys(txAccountByMember).length, 'members');
       } catch (error) {
-        console.warn('[DebugPage] Failed to merge subCategory:', error);
+        console.warn('[DebugPage] Failed to merge txAccount:', error);
       }
 
       setRecords(allRecords);
@@ -231,11 +231,11 @@ export const FinancialRecordsDebugPage: React.FC = () => {
     },
     {
       title: '交易用途',
-      dataIndex: 'subCategory',
-      key: 'subCategory',
+      dataIndex: 'txAccount',
+      key: 'txAccount',
       width: 200,
-      render: (subCategory?: string) => subCategory ? (
-        <Tag color="geekblue">{subCategory}</Tag>
+      render: (txAccount?: string) => txAccount ? (
+        <Tag color="geekblue">{txAccount}</Tag>
       ) : (
         <span style={{ color: '#999' }}>-</span>
       ),

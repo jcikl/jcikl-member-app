@@ -323,7 +323,7 @@ const MemberListPage: React.FC = () => {
       { title: '日期', dataIndex: 'transactionDate', key: 'transactionDate', width: 120, render: (d: string) => d ? new Date(d).toLocaleDateString('zh-CN') : '-' },
       { title: '描述', dataIndex: 'mainDescription', key: 'mainDescription', width: 220 },
       { title: '金额', dataIndex: 'amount', key: 'amount', width: 100, align: 'right', render: (v: number, r: any) => `${r.transactionType === 'income' ? '+' : '-'}RM ${(v ?? 0).toFixed(2)}` },
-      { title: '二次分类', dataIndex: 'subCategory', key: 'subCategory', width: 140 },
+      { title: '二次分类', dataIndex: 'txAccount', key: 'txAccount', width: 140 },
       { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
     ];
 

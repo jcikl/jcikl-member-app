@@ -422,7 +422,7 @@ export const getMemberFees = async (
     // 5. 关联交易以补充付款日期和二次分类（会员费交易记录二次分类）
     try {
       const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
-      const latestPaidByMember: Record<string, { date: string; subCategory?: string }> = {};
+      const latestPaidByMember: Record<string, { date: string; txAccount?: string }> = {};
       let debugMatchCount = 0;
       txnSnap.docs
         .filter(d => d.data().category === 'member-fees')
@@ -435,11 +435,11 @@ export const getMemberFees = async (
           if (!prev || txDate > prev.date) {
             latestPaidByMember[mId] = { 
               date: txDate,
-              subCategory: data.subCategory, // 🆕 获取二次分类
+              txAccount: data.txAccount, // 🆕 获取二次分类
             };
           }
           if (debugMatchCount < 5) {
-            console.log('[MemberFees][Debug] txn hit member-fees:', { id: d.id, memberId: mId, txDate, amount: data.amount, type: data.transactionType, subCategory: data.subCategory });
+            console.log('[MemberFees][Debug] txn hit member-fees:', { id: d.id, memberId: mId, txDate, amount: data.amount, type: data.transactionType, txAccount: data.txAccount });
             debugMatchCount++;
           }
         });
@@ -449,8 +449,8 @@ export const getMemberFees = async (
           return { 
             ...f, 
             paymentDate: f.paymentDate || latest.date,
-            subCategory: latest.subCategory, // 🆕 添加二次分类字段
-          } as MemberFee & { subCategory?: string };
+            txAccount: latest.txAccount, // 🆕 添加二次分类字段
+          } as MemberFee & { txAccount?: string };
         }
         return f;
       });

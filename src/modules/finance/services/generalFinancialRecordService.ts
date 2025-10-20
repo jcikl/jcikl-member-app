@@ -25,7 +25,7 @@ import type { GeneralFinancialRecord } from '../types';
  */
 export const upsertGeneralFinancialRecordFromTransaction = async (params: {
   category: string;
-  subCategory?: string;
+  txAccount?: string;
   fiscalYear?: string;
   payerPayee?: string; // 🆕 付款人/收款人
   memberId?: string; // 🆕 会员ID
@@ -53,29 +53,29 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
     
     let existingByCategory = allRecords.find(r => {
       if (r.category !== params.category) return false;
-      if (params.subCategory) {
-        return r.subCategory === params.subCategory;
+      if (params.txAccount) {
+        return r.txAccount === params.txAccount;
       }
-      return !r.subCategory;
+      return !r.txAccount;
     });
 
     console.log('🔍 [upsertGeneralFinancialRecord] Search results:', {
       category: params.category,
-      subCategory: params.subCategory,
+      txAccount: params.txAccount,
       transactionId: params.transactionId,
       existingByTransaction: existingByTransaction ? { id: existingByTransaction.id, category: existingByTransaction.category } : null,
       existingByCategory: existingByCategory ? { id: existingByCategory.id, category: existingByCategory.category } : null,
     });
 
     if (existingByTransaction) {
-      // 情况 1: 这个交易已经有关联的财务记录 -> 更新关联分类（category/subCategory 可能变了）
+      // 情况 1: 这个交易已经有关联的财务记录 -> 更新关联分类（category/txAccount 可能变了）
       console.log('✏️ [upsertGeneralFinancialRecord] Updating existing record linked to this transaction');
       const feeRef = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS, existingByTransaction.id);
       
-      // 🆕 如果 category/subCategory 变了，需要先对旧分类进行对账同步，再更新到新分类
+      // 🆕 如果 category/txAccount 变了，需要先对旧分类进行对账同步，再更新到新分类
       const oldCategory = existingByTransaction.category;
-      const oldSubCategory = existingByTransaction.subCategory;
-      const categoryChanged = oldCategory !== params.category || oldSubCategory !== params.subCategory;
+      const oldSubCategory = existingByTransaction.txAccount;
+      const categoryChanged = oldCategory !== params.category || oldSubCategory !== params.txAccount;
 
       // 从旧列表中移除此交易ID
       let oldRevenueIds = (existingByTransaction.revenueTransactionIds || []).filter(id => id !== params.transactionId);
@@ -90,7 +90,7 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
 
       await updateDoc(feeRef, cleanUndefinedValues({
         category: params.category,
-        subCategory: params.subCategory,
+        txAccount: params.txAccount,
         fiscalYear: params.fiscalYear,
         payerPayee: params.payerPayee, // 🆕 存储付款人/收款人
         memberId: params.memberId, // 🆕 存储会员ID
@@ -105,9 +105,9 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
       if (categoryChanged) {
         console.log('🔄 [upsertGeneralFinancialRecord] Category changed, reconciling both old and new category');
         await reconcileGeneralFinancialRecord(oldCategory, oldSubCategory); // 同步旧分类
-        await reconcileGeneralFinancialRecord(params.category, params.subCategory); // 同步新分类
+        await reconcileGeneralFinancialRecord(params.category, params.txAccount); // 同步新分类
       } else {
-        await reconcileGeneralFinancialRecord(params.category, params.subCategory);
+        await reconcileGeneralFinancialRecord(params.category, params.txAccount);
       }
 
     } else if (existingByCategory) {
@@ -141,7 +141,7 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
       }));
 
       // 重新对账
-      await reconcileGeneralFinancialRecord(params.category, params.subCategory);
+      await reconcileGeneralFinancialRecord(params.category, params.txAccount);
 
     } else {
       // 情况 3: 完全新建财务记录
@@ -152,7 +152,7 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
 
       const record: Omit<GeneralFinancialRecord, 'id'> = {
         category: params.category,
-        subCategory: params.subCategory,
+        txAccount: params.txAccount,
         fiscalYear: params.fiscalYear,
         payerPayee: params.payerPayee, // 🆕 存储付款人/收款人
         memberId: params.memberId, // 🆕 存储会员ID
@@ -175,10 +175,10 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
       }));
 
       // 对账
-      await reconcileGeneralFinancialRecord(params.category, params.subCategory);
+      await reconcileGeneralFinancialRecord(params.category, params.txAccount);
     }
 
-    globalSystemService.log('info', 'Upsert general financial record from transaction', 'generalFinancialRecordService.upsertGeneralFinancialRecordFromTransaction', { category: params.category, subCategory: params.subCategory, transactionId: params.transactionId, userId: params.userId });
+    globalSystemService.log('info', 'Upsert general financial record from transaction', 'generalFinancialRecordService.upsertGeneralFinancialRecordFromTransaction', { category: params.category, txAccount: params.txAccount, transactionId: params.transactionId, userId: params.userId });
   } catch (error: any) {
     globalSystemService.log('error', 'Failed to upsert general financial record from transaction', 'generalFinancialRecordService.upsertGeneralFinancialRecordFromTransaction', { error: error.message, params });
     console.error('❌ [upsertGeneralFinancialRecord] Error:', error);
@@ -190,7 +190,7 @@ export const upsertGeneralFinancialRecordFromTransaction = async (params: {
  * Reconcile General Financial Record from Transactions
  * 根据交易记录汇总同步日常账户财务记录的总收入、总支出、净收益
  */
-export const reconcileGeneralFinancialRecord = async (category: string, subCategory?: string): Promise<void> => {
+export const reconcileGeneralFinancialRecord = async (category: string, txAccount?: string): Promise<void> => {
   try {
     // 读取该分类的财务记录
     const feesSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
@@ -198,14 +198,14 @@ export const reconcileGeneralFinancialRecord = async (category: string, subCateg
       const data = d.data();
       if (data.type !== 'generalFinancialRecord') return false;
       if (data.category !== category) return false;
-      if (subCategory) {
-        return data.subCategory === subCategory;
+      if (txAccount) {
+        return data.txAccount === txAccount;
       }
-      return !data.subCategory;
+      return !data.txAccount;
     });
 
     if (!feeDoc) {
-      console.log('⚠️ [reconcileGeneralFinancialRecord] No record found for:', { category, subCategory });
+      console.log('⚠️ [reconcileGeneralFinancialRecord] No record found for:', { category, txAccount });
       return;
     }
 
@@ -219,8 +219,8 @@ export const reconcileGeneralFinancialRecord = async (category: string, subCateg
     txnSnap.docs.forEach(d => {
       const data = d.data() as any;
       if (data.category !== category) return;
-      if (subCategory && data.subCategory !== subCategory) return;
-      if (!subCategory && data.subCategory) return;
+      if (txAccount && data.txAccount !== txAccount) return;
+      if (!txAccount && data.txAccount) return;
       if (!data.amount || !data.transactionType) return;
 
       if (data.transactionType === 'income') {
@@ -248,9 +248,9 @@ export const reconcileGeneralFinancialRecord = async (category: string, subCateg
       updatedAt: new Date().toISOString(),
     }));
 
-    console.log('✅ [reconcileGeneralFinancialRecord] Reconciled:', { category, subCategory, totalRevenue, totalExpense, netIncome, transactionCount });
+    console.log('✅ [reconcileGeneralFinancialRecord] Reconciled:', { category, txAccount, totalRevenue, totalExpense, netIncome, transactionCount });
   } catch (error: any) {
-    globalSystemService.log('warning', 'Failed to reconcile general financial record from transactions', 'generalFinancialRecordService.reconcileGeneralFinancialRecord', { error: error.message, category, subCategory });
+    globalSystemService.log('warning', 'Failed to reconcile general financial record from transactions', 'generalFinancialRecordService.reconcileGeneralFinancialRecord', { error: error.message, category, txAccount });
     console.error('❌ [reconcileGeneralFinancialRecord] Error:', error);
   }
 };

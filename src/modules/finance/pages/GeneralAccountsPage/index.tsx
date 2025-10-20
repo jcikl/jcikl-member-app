@@ -48,7 +48,7 @@ const GeneralAccountsPage: React.FC = () => {
   const [transactionTotal, setTransactionTotal] = useState(0);
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionPageSize, setTransactionPageSize] = useState(20);
-  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
+  const [txAccountFilter, setSubCategoryFilter] = useState<string>('all');
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   // 🆕 会员搜索相关状态
@@ -70,7 +70,7 @@ const GeneralAccountsPage: React.FC = () => {
 
   useEffect(() => {
     loadTransactions();
-  }, [transactionPage, transactionPageSize, subCategoryFilter]);
+  }, [transactionPage, transactionPageSize, txAccountFilter]);
 
   const loadTransactions = async () => {
     if (!user) return;
@@ -82,7 +82,7 @@ const GeneralAccountsPage: React.FC = () => {
         page: transactionPage,
         limit: transactionPageSize,
         category: 'general-accounts',
-        subCategory: subCategoryFilter !== 'all' ? subCategoryFilter : undefined,
+        txAccount: txAccountFilter !== 'all' ? txAccountFilter : undefined,
         sortBy: 'transactionDate',
         sortOrder: 'desc',
         includeVirtual: true, // 🔑 包含子交易（虚拟交易）
@@ -148,7 +148,7 @@ const GeneralAccountsPage: React.FC = () => {
     setSelectedTransaction(transaction);
     
     // 🆕 预填现有信息
-    setModalSubCategory(transaction.subCategory || '');
+    setModalSubCategory(transaction.txAccount || '');
     const existingMemberId = (transaction as any)?.metadata?.memberId as string | undefined;
     const existingPayerPayee = transaction.payerPayee || '';
     
@@ -192,7 +192,7 @@ const GeneralAccountsPage: React.FC = () => {
     
     try {
       // 🆕 构建更新数据
-      const updateData: any = { subCategory: modalSubCategory };
+      const updateData: any = { txAccount: modalSubCategory };
       
       // 🆕 处理付款人/收款人信息
       let finalPayerPayee = modalPayerPayee.trim();
@@ -219,7 +219,7 @@ const GeneralAccountsPage: React.FC = () => {
       }
       
       console.log('🔗 [GeneralAccountsPage] Updating transaction with:', {
-        subCategory: modalSubCategory,
+        txAccount: modalSubCategory,
         memberId: modalSelectedMemberId || 'none',
         payerPayee: finalPayerPayee || 'none',
       });
@@ -319,11 +319,11 @@ const GeneralAccountsPage: React.FC = () => {
     },
     {
       title: '二次分类',
-      dataIndex: 'subCategory',
-      key: 'subCategory',
+      dataIndex: 'txAccount',
+      key: 'txAccount',
       width: 150,
       render: (subCat: string) => {
-        const subCategoryConfig: Record<string, { color: string; text: string }> = {
+        const txAccountConfig: Record<string, { color: string; text: string }> = {
           // 收入类
           'donations': { color: 'blue', text: '捐赠' },
           'sponsorships': { color: 'green', text: '赞助' },
@@ -347,7 +347,7 @@ const GeneralAccountsPage: React.FC = () => {
           return <Tag color="default">未分类</Tag>;
         }
         
-        const config = subCategoryConfig[subCat] || { color: 'default', text: subCat };
+        const config = txAccountConfig[subCat] || { color: 'default', text: subCat };
         return <Tag color={config.color}>{config.text}</Tag>;
       },
     },
@@ -379,7 +379,7 @@ const GeneralAccountsPage: React.FC = () => {
             size="small"
             onClick={() => handleClassify(record)}
           >
-            {record.subCategory ? '重新分类' : '分类'}
+            {record.txAccount ? '重新分类' : '分类'}
           </Button>
           <Button type="link" size="small">
             查看
@@ -449,7 +449,7 @@ const GeneralAccountsPage: React.FC = () => {
                 <Select
                   style={{ width: '100%' }}
                   placeholder="二次分类"
-                  value={subCategoryFilter}
+                  value={txAccountFilter}
                   onChange={setSubCategoryFilter}
                 >
                   <Option value="all">所有分类</Option>
@@ -533,8 +533,8 @@ const GeneralAccountsPage: React.FC = () => {
                 <p><strong>交易金额：</strong>RM {selectedTransaction.amount?.toFixed(2)}</p>
                 <p><strong>交易类型：</strong>{selectedTransaction.transactionType === 'income' ? '收入' : '支出'}</p>
                 <p><strong>交易日期：</strong>{globalDateService.formatDate(new Date(selectedTransaction.transactionDate), 'display')}</p>
-                {selectedTransaction.subCategory && (
-                  <p><strong>当前分类：</strong>{selectedTransaction.subCategory}</p>
+                {selectedTransaction.txAccount && (
+                  <p><strong>当前分类：</strong>{selectedTransaction.txAccount}</p>
                 )}
                 {selectedTransaction.payerPayee && (
                   <p><strong>当前乙方：</strong>{selectedTransaction.payerPayee}</p>

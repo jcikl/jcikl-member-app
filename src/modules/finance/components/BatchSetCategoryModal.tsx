@@ -19,7 +19,7 @@ const { Option } = Select;
 interface BatchSetCategoryModalProps {
   visible: boolean;
   selectedCount: number;
-  onOk: (category: string, subCategory?: string) => Promise<void>;
+  onOk: (category: string, txAccount?: string) => Promise<void>;
   onCancel: () => void;
   onManageSubcategory?: (category: string) => void;
 }

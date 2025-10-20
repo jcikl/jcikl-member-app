@@ -247,7 +247,7 @@ export const updateTransaction = async (
     if (data.transactionPurpose !== undefined) updates.transactionPurpose = data.transactionPurpose ?? null;
     if (data.projectAccountId !== undefined) updates.projectAccountId = data.projectAccountId ?? null;
     if (data.category !== undefined) updates.category = data.category ?? null;
-    if (data.subCategory !== undefined) updates.subCategory = data.subCategory ?? null; // 🔑 二次分类
+    if (data.txAccount !== undefined) updates.txAccount = data.txAccount ?? null; // 🔑 二次分类
     if (data.paymentMethod !== undefined) updates.paymentMethod = data.paymentMethod ?? null;
     if (data.notes !== undefined) updates.notes = data.notes ?? null;
     if (data.attachments !== undefined) updates.attachments = data.attachments;
@@ -415,7 +415,7 @@ export const updateTransaction = async (
       try {
         const finalAmount = updates.amount ?? existingData.amount;
         const finalTransactionType = updates.transactionType ?? existingData.transactionType;
-        const finalSubCategory = updates.subCategory ?? existingData.subCategory;
+        const finalSubCategory = updates.txAccount ?? existingData.txAccount;
         const finalPayerPayee = updates.payerPayee ?? existingData.payerPayee;
 
         // 🆕 获取会员信息（如果有 memberId）
@@ -437,7 +437,7 @@ export const updateTransaction = async (
           eventName: finalMetadata.eventName || 'Unknown Event',
           eventDate: finalMetadata.eventDate,
           fiscalYear: updates.fiscalYear ?? existingData.fiscalYear,
-          subCategory: finalSubCategory,
+          txAccount: finalSubCategory,
           payerPayee: finalPayerPayee, // 🆕 传递付款人/收款人
           memberId: linkedMemberId, // 🆕 传递会员ID
           memberName, // 🆕 传递会员名字
@@ -475,13 +475,13 @@ export const updateTransaction = async (
       console.log('🔗 [updateTransaction] General financial transaction detected, auto-syncing...', {
         transactionId,
         category: finalCategory,
-        subCategory: updates.subCategory ?? existingData.subCategory,
+        txAccount: updates.txAccount ?? existingData.txAccount,
       });
 
       try {
         const finalAmount = updates.amount ?? existingData.amount;
         const finalTransactionType = updates.transactionType ?? existingData.transactionType;
-        const finalSubCategory = updates.subCategory ?? existingData.subCategory;
+        const finalSubCategory = updates.txAccount ?? existingData.txAccount;
         const finalPayerPayee = updates.payerPayee ?? existingData.payerPayee;
 
         // 🆕 获取会员信息（如果有 memberId）
@@ -500,7 +500,7 @@ export const updateTransaction = async (
 
         await upsertGeneralFinancialRecordFromTransaction({
           category: finalCategory,
-          subCategory: finalSubCategory,
+          txAccount: finalSubCategory,
           fiscalYear: updates.fiscalYear ?? existingData.fiscalYear,
           payerPayee: finalPayerPayee, // 🆕 传递付款人/收款人
           memberId: linkedMemberId, // 🆕 传递会员ID
@@ -518,7 +518,7 @@ export const updateTransaction = async (
         globalSystemService.log('info', 'General financial auto-synced from transaction', 'transactionService.updateTransaction', {
           transactionId,
           category: finalCategory,
-          subCategory: finalSubCategory,
+          txAccount: finalSubCategory,
           userId,
         });
       } catch (syncError: any) {
@@ -743,8 +743,8 @@ export const getTransactions = async (
       transactions = transactions.filter(t => t.category === category);
     }
     // 🔑 二次分类过滤
-    if (params.subCategory) {
-      transactions = transactions.filter(t => t.subCategory === params.subCategory);
+    if (params.txAccount) {
+      transactions = transactions.filter(t => t.txAccount === params.txAccount);
     }
     if (startDate) {
       transactions = transactions.filter(t => t.transactionDate >= startDate);
@@ -779,7 +779,7 @@ export const getTransactions = async (
           t.notes || '', // 🆕 添加备注搜索
           t.amount.toString(),
           t.category || '',
-          t.subCategory || '', // 🆕 添加二次分类搜索
+          t.txAccount || '', // 🆕 添加二次分类搜索
           t.receiptNumber || '', // 🆕 添加收据号搜索
           t.invoiceNumber || '', // 🆕 添加发票号搜索
           t.inputByName || '', // 🆕 添加录入人搜索

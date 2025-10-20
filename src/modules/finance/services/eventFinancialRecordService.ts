@@ -28,7 +28,7 @@ export const upsertEventFinancialRecordFromTransaction = async (params: {
   eventName: string;
   eventDate?: string;
   fiscalYear?: string;
-  subCategory?: string;
+  txAccount?: string;
   payerPayee?: string; // 🆕 付款人/收款人
   memberId?: string; // 🆕 会员ID
   memberName?: string; // 🆕 会员名字
@@ -87,7 +87,7 @@ export const upsertEventFinancialRecordFromTransaction = async (params: {
         eventName: params.eventName,
         eventDate: params.eventDate,
         fiscalYear: params.fiscalYear,
-        subCategory: params.subCategory,
+        txAccount: params.txAccount,
         payerPayee: params.payerPayee, // 🆕 存储付款人/收款人
         memberId: params.memberId, // 🆕 存储会员ID
         memberName: params.memberName, // 🆕 存储会员名字
@@ -129,7 +129,7 @@ export const upsertEventFinancialRecordFromTransaction = async (params: {
         eventName: params.eventName,
         eventDate: params.eventDate,
         fiscalYear: params.fiscalYear,
-        subCategory: params.subCategory,
+        txAccount: params.txAccount,
         payerPayee: params.payerPayee, // 🆕 存储付款人/收款人
         memberId: params.memberId, // 🆕 存储会员ID
         memberName: params.memberName, // 🆕 存储会员名字
@@ -154,7 +154,7 @@ export const upsertEventFinancialRecordFromTransaction = async (params: {
         eventName: params.eventName,
         eventDate: params.eventDate,
         fiscalYear: params.fiscalYear,
-        subCategory: params.subCategory,
+        txAccount: params.txAccount,
         payerPayee: params.payerPayee, // 🆕 存储付款人/收款人
         memberId: params.memberId, // 🆕 存储会员ID
         memberName: params.memberName, // 🆕 存储会员名字

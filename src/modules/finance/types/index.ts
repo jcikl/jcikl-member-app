@@ -30,7 +30,7 @@ export interface Transaction {
   transactionPurposeDetails?: TransactionPurpose;
   projectAccountId?: string;
   category?: string;
-  subCategory?: string; // 二次分类（用于会员费、活动财务、日常账户的细分）
+  txAccount?: string; // 交易账户/交易用途（用于会员费、活动财务、日常账户的细分）
   paymentMethod?: PaymentMethod;
   status: TransactionStatus;
   inputBy: string; // User ID
@@ -79,7 +79,7 @@ export interface TransactionFormData {
   transactionPurpose?: string;
   projectAccountId?: string;
   category?: string;
-  subCategory?: string;
+  txAccount?: string;
   paymentMethod?: PaymentMethod;
   notes?: string;
   attachments?: string[];
@@ -273,7 +273,7 @@ export interface MemberFee {
   notes?: string;
   remindersSent: number;
   lastReminderDate?: string;
-  subCategory?: string; // 🆕 二次分类（从关联交易继承）
+  txAccount?: string; // 🆕 交易账户（从关联交易继承）
   createdAt: string;
   updatedAt: string;
 }
@@ -288,7 +288,7 @@ export interface EventFinancialRecord {
   eventName: string;
   eventDate?: string;
   fiscalYear?: string;
-  subCategory?: string; // 二次分类（通常与 eventName 相同）
+  txAccount?: string; // 交易账户（通常与 eventName 相同）
   
   // 🆕 付款人/收款人信息（最新一笔交易的信息）
   payerPayee?: string; // 付款人/收款人姓名
@@ -322,7 +322,7 @@ export type GeneralFinancialRecordStatus = 'active' | 'archived';
 export interface GeneralFinancialRecord {
   id: string;
   category: string; // general-* 类别
-  subCategory?: string; // 二次分类
+  txAccount?: string; // 交易账户
   fiscalYear?: string;
   
   // 🆕 付款人/收款人信息（最新一笔交易的信息）
@@ -513,7 +513,7 @@ export interface TransactionQueryParams {
   transactionType?: TransactionType;
   status?: TransactionStatus;
   category?: string;
-  subCategory?: string;
+  txAccount?: string;
   fiscalYear?: string;
   startDate?: string;
   endDate?: string;
