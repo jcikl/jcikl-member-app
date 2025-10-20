@@ -237,17 +237,7 @@ const EventListPage: React.FC = () => {
       type: 'dateRange',
       placeholder: '选择日期范围',
     },
-    {
-      name: 'isOnline',
-      label: '在线活动',
-      type: 'select',
-      options: [
-        { label: '全部', value: '' },
-        { label: '是', value: 'true' },
-        { label: '否', value: 'false' },
-      ],
-      placeholder: '选择',
-    },
+    
   ];
 
   // ========== Table Columns ==========
@@ -333,10 +323,17 @@ const EventListPage: React.FC = () => {
       width: 120,
       align: 'center',
       render: (count: number, record: Event) => (
-        <span>
-          {count}
-          {record.maxParticipants && <span className="text-gray-400"> / {record.maxParticipants}</span>}
-        </span>
+        <a 
+          onClick={() => navigate(`/events/${record.id}/registrations`)}
+          className="text-primary hover:text-primary/80 cursor-pointer"
+          style={{ textDecoration: 'none' }}
+          title="查看报名管理"
+        >
+          <span style={{ fontWeight: 500 }}>
+            {count}
+            {record.maxParticipants && <span className="text-gray-400"> / {record.maxParticipants}</span>}
+          </span>
+        </a>
       ),
     },
     {
@@ -547,7 +544,7 @@ const EventListPage: React.FC = () => {
       <FilterPanel
         fields={filterFields}
         onFilter={handleFilter}
-        defaultCollapsed={false}
+        collapsible={false}
         showPresets={false}
       />
 

@@ -403,13 +403,25 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 </Col>
               ))
             )}
+
+            {/* 重置按钮 - 与筛选条件同排 */}
+            <Col xs={24} sm={12} md={7} lg={4}>
+              <Form.Item>
+                <Button 
+                  icon={<ReloadOutlined />} 
+                  onClick={handleReset}
+                  style={{ width: '100%' }}
+                >
+                  重置
+                </Button>
+              </Form.Item>
+            </Col>
           </Row>
         </div>
 
-        {/* 操作栏 */}
-        <div className="filter-panel__actions">
-          {/* 预设操作 */}
-          {showPresets && (
+        {/* 预设操作栏（仅在启用预设时显示）*/}
+        {showPresets && (
+          <div className="filter-panel__actions">
             <Space className="filter-panel__presets">
               <Input
                 placeholder="预设名称"
@@ -446,15 +458,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 加载
               </Button>
             </Space>
-          )}
-
-          {/* 主要操作 - 仅保留重置 */}
-          <Space className="filter-panel__main-actions">
-            <Button icon={<ReloadOutlined />} onClick={handleReset}>
-              重置
-            </Button>
-          </Space>
-        </div>
+          </div>
+        )}
       </Form>
     );
   };

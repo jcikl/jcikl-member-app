@@ -42,7 +42,7 @@ const MainLayout: React.FC = () => {
         
         <Content
           style={{
-            margin: '24px 16px',
+            margin: '0px 0px',
             padding: 24,
             background: '#fff',
             borderRadius: 8,
