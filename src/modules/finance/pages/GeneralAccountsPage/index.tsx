@@ -66,6 +66,10 @@ const GeneralAccountsPage: React.FC = () => {
   const [memberSearchOptions, setMemberSearchOptions] = useState<{ value: string; label: string }[]>([]);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   
+  // 🆕 批量选择与分类
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
+  const [bulkClassifyModalVisible, setBulkClassifyModalVisible] = useState(false);
+  
   // 统计数据
   const [statistics, setStatistics] = useState({
     totalIncome: 0,
@@ -283,6 +287,42 @@ const GeneralAccountsPage: React.FC = () => {
     } catch (error: any) {
       message.error('更新分类失败');
       globalSystemService.log('error', 'Failed to classify transaction', 'GeneralAccountsPage', { error });
+    }
+  };
+
+  // 🆕 批量分类
+  const handleBatchClassify = async (txAccount: string, memberId?: string) => {
+    if (!user) return;
+    
+    if (selectedTransactionIds.length === 0) {
+      message.warning('请先选择要分类的交易');
+      return;
+    }
+    
+    if (!txAccount.trim()) {
+      message.warning('请输入分类');
+      return;
+    }
+    
+    try {
+      // 批量更新所有选中的交易
+      await Promise.all(
+        selectedTransactionIds.map((id) => {
+          const updateData: any = { txAccount };
+          if (memberId) {
+            updateData.metadata = { memberId };
+          }
+          return updateTransaction(id, updateData, user.id);
+        })
+      );
+      
+      message.success(`成功将 ${selectedTransactionIds.length} 笔交易分类到【${txAccount}】`);
+      setBulkClassifyModalVisible(false);
+      setSelectedTransactionIds([]);
+      loadTransactions();
+    } catch (error: any) {
+      message.error('批量分类失败');
+      globalSystemService.log('error', 'Failed to batch classify transactions', 'GeneralAccountsPage', { error });
     }
   };
   
@@ -628,13 +668,34 @@ const GeneralAccountsPage: React.FC = () => {
                     key: 'transactions',
                     label: '日常账户交易记录（二次分类）',
                     children: (
-                      <Card title="日常账户交易记录">
+                      <Card 
+                        title="日常账户交易记录"
+                        extra={
+                          <Space>
+                            <span style={{ color: '#999' }}>已选 {selectedTransactionIds.length} 条</span>
+                            <Button
+                              type="primary"
+                              disabled={selectedTransactionIds.length === 0}
+                              onClick={() => setBulkClassifyModalVisible(true)}
+                            >
+                              批量分类
+                            </Button>
+                          </Space>
+                        }
+                      >
                         <Table
                           {...tableConfig}
                           columns={transactionColumns}
                           dataSource={transactions}
                           rowKey="id"
                           loading={transactionsLoading}
+                          rowSelection={{
+                            selectedRowKeys: selectedTransactionIds,
+                            onChange: (keys) => setSelectedTransactionIds(keys as string[]),
+                            getCheckboxProps: (record: Transaction) => ({
+                              disabled: record.parentTransactionId !== undefined, // 子交易不能单独选择
+                            }),
+                          }}
                           pagination={{
                             current: transactionPage,
                             pageSize: transactionPageSize,
@@ -656,6 +717,89 @@ const GeneralAccountsPage: React.FC = () => {
             </Card>
           </Col>
         </Row>
+
+        {/* 🆕 批量分类模态框 */}
+        <Modal
+          title={`批量分类（已选 ${selectedTransactionIds.length} 条）`}
+          open={bulkClassifyModalVisible}
+          onCancel={() => setBulkClassifyModalVisible(false)}
+          footer={null}
+          width={600}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* 二次分类输入 */}
+            <div>
+              <p style={{ fontWeight: 'bold', marginBottom: 8 }}>二次分类：</p>
+              <Select
+                style={{ width: '100%' }}
+                placeholder="选择分类"
+                value={modalTxAccount}
+                onChange={setModalTxAccount}
+                allowClear
+              >
+                <optgroup label="收入类">
+                  <Option value="donations">捐赠</Option>
+                  <Option value="sponsorships">赞助</Option>
+                  <Option value="investments">投资回报</Option>
+                  <Option value="grants">拨款</Option>
+                  <Option value="merchandise">商品销售</Option>
+                  <Option value="other-income">其他收入</Option>
+                </optgroup>
+                <optgroup label="支出类">
+                  <Option value="utilities">水电费</Option>
+                  <Option value="rent">租金</Option>
+                  <Option value="salaries">工资</Option>
+                  <Option value="equipment">设备用品</Option>
+                  <Option value="insurance">保险</Option>
+                  <Option value="professional">专业服务</Option>
+                  <Option value="marketing">营销费用</Option>
+                  <Option value="travel">差旅交通</Option>
+                  <Option value="miscellaneous">杂项</Option>
+                </optgroup>
+              </Select>
+            </div>
+
+            {/* 关联会员（可选） */}
+            <div>
+              <p style={{ fontWeight: 'bold', marginBottom: 8 }}>关联会员（可选）：</p>
+              <Select
+                showSearch
+                allowClear
+                placeholder="搜索姓名/邮箱/电话"
+                style={{ width: '100%' }}
+                value={modalSelectedMemberId || undefined}
+                filterOption={false}
+                notFoundContent={memberSearchLoading ? '加载中...' : '暂无数据'}
+                onSearch={async (value) => {
+                  setMemberSearchLoading(true);
+                  try {
+                    const res = await getMembers({ page: 1, search: value, limit: 10 });
+                    setMemberSearchOptions(
+                      res.data.map((m: any) => ({ value: m.id, label: `${m.name} (${m.email || m.phone || m.memberId || ''})` }))
+                    );
+                  } finally {
+                    setMemberSearchLoading(false);
+                  }
+                }}
+                onChange={(val) => setModalSelectedMemberId(val || '')}
+                options={memberSearchOptions}
+              />
+            </div>
+
+            {/* 确认按钮 */}
+            <Button
+              type="primary"
+              block
+              size="large"
+              onClick={async () => {
+                await handleBatchClassify(modalTxAccount, modalSelectedMemberId);
+              }}
+              disabled={!modalTxAccount}
+            >
+              确认批量分类
+            </Button>
+          </div>
+        </Modal>
 
         {/* 分类模态框 */}
         <Modal
