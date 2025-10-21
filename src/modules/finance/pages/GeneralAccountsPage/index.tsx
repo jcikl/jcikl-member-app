@@ -79,6 +79,10 @@ const GeneralAccountsPage: React.FC = () => {
   
   // 🆕 会员信息缓存（用于显示描述栏中的会员信息）
   const [memberInfoCache, setMemberInfoCache] = useState<Record<string, { name: string; email?: string; phone?: string }>>({});
+  
+  // 🆕 动态二次分类选项
+  const [availableSubCategories, setAvailableSubCategories] = useState<string[]>([]);
+  const [hasUncategorized, setHasUncategorized] = useState(false); // 是否有未分类交易
 
   useEffect(() => {
     loadTransactions();
@@ -123,7 +127,13 @@ const GeneralAccountsPage: React.FC = () => {
 
       // 🆕 二次分类筛选（txAccount）
       if (txAccountFilter !== 'all') {
-        filteredData = filteredData.filter(tx => tx.txAccount === txAccountFilter);
+        if (txAccountFilter === 'uncategorized') {
+          // 筛选未分类的交易
+          filteredData = filteredData.filter(tx => !tx.txAccount || tx.txAccount.trim() === '');
+        } else {
+          // 筛选指定分类的交易
+          filteredData = filteredData.filter(tx => tx.txAccount === txAccountFilter);
+        }
       }
 
       // 搜索文本筛选
@@ -146,6 +156,20 @@ const GeneralAccountsPage: React.FC = () => {
       
       setTransactions(paginatedData);
       setTransactionTotal(filteredData.length);
+      
+      // 🆕 提取所有唯一的二次分类选项
+      const uniqueSubCategories = Array.from(
+        new Set(
+          result.data
+            .map(t => t.txAccount)
+            .filter((cat): cat is string => Boolean(cat) && typeof cat === 'string' && cat.trim() !== '')
+        )
+      ).sort();
+      setAvailableSubCategories(uniqueSubCategories);
+      
+      // 🆕 检测是否有未分类交易
+      const uncategorizedCount = result.data.filter(t => !t.txAccount || t.txAccount.trim() === '').length;
+      setHasUncategorized(uncategorizedCount > 0);
       
       // 计算统计数据（基于筛选后的全部数据，不是分页后的）
       const stats = filteredData.reduce((acc, tx) => {
@@ -574,32 +598,37 @@ const GeneralAccountsPage: React.FC = () => {
                   placeholder="选择分类"
                   value={txAccountFilter}
                   onChange={setTxAccountFilter}
+                  showSearch
+                  filterOption={(input, option) => {
+                    const label = option?.children?.toString() || '';
+                    return label.toLowerCase().includes(input.toLowerCase());
+                  }}
                 >
                   <Option value="all">所有分类</Option>
-                  <optgroup label="收入类">
-                    <Option value="donations">捐赠</Option>
-                    <Option value="sponsorships">赞助</Option>
-                    <Option value="investments">投资回报</Option>
-                    <Option value="grants">拨款</Option>
-                    <Option value="merchandise">商品销售</Option>
-                    <Option value="other-income">其他收入</Option>
-                  </optgroup>
-                  <optgroup label="支出类">
-                    <Option value="utilities">水电费</Option>
-                    <Option value="rent">租金</Option>
-                    <Option value="salaries">工资</Option>
-                    <Option value="equipment">设备用品</Option>
-                    <Option value="insurance">保险</Option>
-                    <Option value="professional">专业服务</Option>
-                    <Option value="marketing">营销费用</Option>
-                    <Option value="travel">差旅交通</Option>
-                    <Option value="miscellaneous">杂项</Option>
-                  </optgroup>
+                  {availableSubCategories.map(category => (
+                    <Option key={category} value={category}>
+                      {category}
+                    </Option>
+                  ))}
                 </Select>
               </div>
               
               {/* 快速筛选按钮 */}
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+                {/* 🆕 未分类快速筛选 */}
+                <Button 
+                  type="default"
+                  size="small" 
+                  onClick={() => {
+                    setTxAccountFilter('uncategorized');
+                  }}
+                  disabled={!hasUncategorized}
+                  style={{ width: '100%', marginBottom: 8 }}
+                  danger={hasUncategorized}
+                >
+                  {hasUncategorized ? '🔴 显示未分类交易' : '✅ 无未分类交易'}
+                </Button>
+                
                 <Button 
                   type="link" 
                   size="small" 
