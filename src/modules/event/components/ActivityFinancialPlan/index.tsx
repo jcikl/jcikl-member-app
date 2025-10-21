@@ -1019,46 +1019,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
               bordered
               columns={[
                   {
-                    title: '类型',
-                    dataIndex: 'type',
-                    key: 'type',
-                    width: 100,
-                    render: (type, record) => (
-                      <Select
-                        value={type}
-                        onChange={(value) => handleBulkDataChange(record.key, 'type', value)}
-                        size="small"
-                        style={{ width: '100%' }}
-                      >
-                        <Option value="income">收入</Option>
-                        <Option value="expense">支出</Option>
-                      </Select>
-                    ),
-                  },
-                  {
-                    title: '类别',
-                    dataIndex: 'category',
-                    key: 'category',
-                    width: 150,
-                    render: (category, record) => (
-                      <Select
-                        value={category}
-                        onChange={(value) => handleBulkDataChange(record.key, 'category', value)}
-                        size="small"
-                        style={{ width: '100%' }}
-                      >
-                        {record.type === 'income' 
-                          ? incomeCategories.map(cat => (
-                              <Option key={cat.value} value={cat.value}>{cat.label}</Option>
-                            ))
-                          : expenseCategories.map(cat => (
-                              <Option key={cat.value} value={cat.value}>{cat.label}</Option>
-                            ))
-                        }
-                      </Select>
-                    ),
-                  },
-                  {
                     title: '描述 *',
                     dataIndex: 'description',
                     key: 'description',
@@ -1122,6 +1082,46 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                         style={{ width: '100%' }}
                         format="YYYY-MM-DD"
                       />
+                    ),
+                  },
+                  {
+                    title: '类型',
+                    dataIndex: 'type',
+                    key: 'type',
+                    width: 100,
+                    render: (type, record) => (
+                      <Select
+                        value={type}
+                        onChange={(value) => handleBulkDataChange(record.key, 'type', value)}
+                        size="small"
+                        style={{ width: '100%' }}
+                      >
+                        <Option value="income">收入</Option>
+                        <Option value="expense">支出</Option>
+                      </Select>
+                    ),
+                  },
+                  {
+                    title: '类别',
+                    dataIndex: 'category',
+                    key: 'category',
+                    width: 150,
+                    render: (category, record) => (
+                      <Select
+                        value={category}
+                        onChange={(value) => handleBulkDataChange(record.key, 'category', value)}
+                        size="small"
+                        style={{ width: '100%' }}
+                      >
+                        {record.type === 'income' 
+                          ? incomeCategories.map(cat => (
+                              <Option key={cat.value} value={cat.value}>{cat.label}</Option>
+                            ))
+                          : expenseCategories.map(cat => (
+                              <Option key={cat.value} value={cat.value}>{cat.label}</Option>
+                            ))
+                        }
+                      </Select>
                     ),
                   },
                   {
