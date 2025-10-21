@@ -298,6 +298,22 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     ));
   };
   
+  // 打开批量导入模态框
+  const handleOpenBulkImport = () => {
+    setBulkPasteVisible(true);
+    // 自动添加第一行
+    const defaultCategory = incomeCategories[0]?.value || 'other-income';
+    setBulkPasteData([{
+      key: `bulk-${Date.now()}`,
+      type: 'income',
+      category: defaultCategory,
+      description: '',
+      remark: '',
+      amount: 0,
+      expectedDate: dayjs().format('YYYY-MM-DD'),
+    }]);
+  };
+  
   // 批量粘贴提交
   const handleBulkPasteSubmit = async () => {
     try {
@@ -683,7 +699,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           </Button>
           <Button
             icon={<ImportOutlined />}
-            onClick={() => setBulkPasteVisible(true)}
+            onClick={handleOpenBulkImport}
           >
             批量粘贴
           </Button>
@@ -987,40 +1003,21 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           onPaste={handleTextPaste}
           style={{ position: 'relative' }}
         >
-          {bulkPasteData.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '60px 20px',
-              background: '#fafafa',
-              border: '2px dashed #d9d9d9',
-              borderRadius: 8,
-            }}>
-              <p style={{ fontSize: 16, color: '#999', marginBottom: 12 }}>
-                📋 暂无数据
-              </p>
-              <p style={{ fontSize: 13, color: '#bbb', marginBottom: 20 }}>
-                点击上方"添加行"按钮，或从Excel粘贴数据到此区域
-              </p>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddBulkRow}>
-                添加第一行
-              </Button>
+          <div>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
+              共 <strong style={{ color: '#1890ff' }}>{bulkPasteData.length}</strong> 条记录
+              <span style={{ marginLeft: 16, color: '#999' }}>
+                💡 提示：在表格内按 Ctrl+V 可粘贴Excel数据
+              </span>
             </div>
-          ) : (
-            <div>
-              <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
-                共 <strong style={{ color: '#1890ff' }}>{bulkPasteData.length}</strong> 条记录
-                <span style={{ marginLeft: 16, color: '#999' }}>
-                  💡 提示：在表格内按 Ctrl+V 可粘贴Excel数据
-                </span>
-              </div>
-              
-              <Table
-                dataSource={bulkPasteData}
-                pagination={false}
-                scroll={{ y: 400 }}
-                size="small"
-                bordered
-                columns={[
+            
+            <Table
+              dataSource={bulkPasteData}
+              pagination={false}
+              scroll={{ y: 400 }}
+              size="small"
+              bordered
+              columns={[
                   {
                     title: '类型',
                     dataIndex: 'type',
@@ -1146,7 +1143,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                 ]}
               />
             </div>
-          )}
         </div>
       </Modal>
     </Card>
