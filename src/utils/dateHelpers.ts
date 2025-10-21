@@ -200,6 +200,46 @@ export const formatDuration = (seconds: number): string => {
     : `${days} 天`;
 };
 
+/**
+ * Generate year options for dropdowns
+ * 生成年份选项（用于下拉框）
+ * 
+ * @param startYear - Starting year (default: 2020)
+ * @param futureYears - Number of future years to include (default: 2)
+ * @returns Array of year strings in descending order
+ */
+export const generateYearOptions = (startYear: number = 2020, futureYears: number = 2): string[] => {
+  const currentYear = new Date().getFullYear();
+  const endYear = currentYear + futureYears;
+  const years: string[] = [];
+  
+  for (let year = endYear; year >= startYear; year--) {
+    years.push(String(year));
+  }
+  
+  return years;
+};
+
+/**
+ * Generate fiscal year options for dropdowns
+ * 生成财年选项（用于下拉框）
+ * 
+ * @param startYear - Starting year (default: 2020)
+ * @param futureYears - Number of future years to include (default: 2)
+ * @returns Array of fiscal year strings (e.g., "FY2025") in descending order
+ */
+export const generateFiscalYearOptions = (startYear: number = 2020, futureYears: number = 2): string[] => {
+  const currentYear = new Date().getFullYear();
+  const endYear = currentYear + futureYears;
+  const fiscalYears: string[] = [];
+  
+  for (let year = endYear; year >= startYear; year--) {
+    fiscalYears.push(`FY${year}`);
+  }
+  
+  return fiscalYears;
+};
+
 console.log('✅ Date Helpers Loaded');
 
 

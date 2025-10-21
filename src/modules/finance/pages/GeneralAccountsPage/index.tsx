@@ -36,6 +36,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
 import { getMembers, getMemberById } from '../../../member/services/memberService';
+import { generateFiscalYearOptions } from '@/utils/dateHelpers';
 import type { Transaction } from '../../types';
 import './styles.css';
 
@@ -567,11 +568,13 @@ const GeneralAccountsPage: React.FC = () => {
                   value={selectedYear}
                   onChange={setSelectedYear}
                   placeholder="选择年份"
+                  showSearch
                 >
                   <Option value="all">所有年份</Option>
-                  <Option value="FY2025">2025财年</Option>
-                  <Option value="FY2024">2024财年</Option>
-                  <Option value="FY2023">2023财年</Option>
+                  {generateFiscalYearOptions().map(fy => {
+                    const year = fy.replace('FY', '');
+                    return <Option key={fy} value={fy}>{year}财年</Option>;
+                  })}
                 </Select>
               </div>
               

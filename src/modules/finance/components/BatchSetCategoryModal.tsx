@@ -17,6 +17,7 @@ import {
 } from 'antd';
 import { getMembers } from '@/modules/member/services/memberService';
 import { getEvents } from '@/modules/event/services/eventService';
+import { generateYearOptions } from '@/utils/dateHelpers';
 import type { Member } from '@/modules/member/types';
 import type { Event } from '@/modules/event/types';
 
@@ -61,18 +62,6 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingData, setLoadingData] = useState(false);
-  
-  // 动态生成年份列表（从 2020 到当前年份 + 2 年）
-  const generateYearOptions = () => {
-    const currentYear = new Date().getFullYear();
-    const startYear = 2020;
-    const endYear = currentYear + 2;
-    const years: string[] = [];
-    for (let year = endYear; year >= startYear; year--) {
-      years.push(String(year));
-    }
-    return years;
-  };
   
   // 加载会员和活动列表
   useEffect(() => {

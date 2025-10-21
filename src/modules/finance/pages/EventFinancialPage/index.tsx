@@ -40,6 +40,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
 import { getAllFinanceEvents, createFinanceEvent, updateFinanceEvent } from '../../services/financeEventService';
 import { getAllActiveMembers, getMembers, getMemberById } from '../../../member/services/memberService';
+import { generateYearOptions } from '@/utils/dateHelpers';
 import type { Transaction, FinanceEvent } from '../../types';
 import type { Member } from '../../../member/types';
 import './styles.css';
@@ -1465,11 +1466,12 @@ const EventFinancialPage: React.FC = () => {
                     value={modalYearFilter}
                     onChange={setModalYearFilter}
                     placeholder="选择年份"
+                    showSearch
                   >
                     <Option value="all">所有年份</Option>
-                    <Option value="2025">2025年</Option>
-                    <Option value="2024">2024年</Option>
-                    <Option value="2023">2023年</Option>
+                    {generateYearOptions().map(year => (
+                      <Option key={year} value={year}>{year}年</Option>
+                    ))}
                   </Select>
                 </div>
 
