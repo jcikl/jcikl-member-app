@@ -131,6 +131,9 @@ const EventFinancialPage: React.FC = () => {
   
   // 🆕 会员信息缓存（用于显示描述栏中的会员信息）
   const [memberInfoCache, setMemberInfoCache] = useState<Record<string, { name: string; email?: string; phone?: string }>>({});
+  
+  // 🆕 未分类检测
+  const [hasUncategorized, setHasUncategorized] = useState(false);
 
   useEffect(() => {
     loadEventFinancials();
@@ -580,6 +583,21 @@ const EventFinancialPage: React.FC = () => {
           return matchesDescription || matchesAmount || matchesCategory || matchesOtherFields || matchesMemberInfo;
         });
       }
+      
+      // 🆕 Step 3: 二次分类筛选（txAccount）
+      if (txAccountFilter !== 'all') {
+        if (txAccountFilter === 'uncategorized') {
+          // 筛选未分类的交易
+          filteredTransactions = filteredTransactions.filter(t => !t.txAccount || t.txAccount.trim() === '');
+        } else {
+          // 筛选指定分类的交易
+          filteredTransactions = filteredTransactions.filter(t => t.txAccount === txAccountFilter);
+        }
+      }
+      
+      // 🆕 Step 4: 检测是否有未分类交易
+      const uncategorizedCount = result.data.filter(t => !t.txAccount || t.txAccount.trim() === '').length;
+      setHasUncategorized(uncategorizedCount > 0);
       
       setTransactions(filteredTransactions);
       setTransactionTotal(filteredTransactions.length);
@@ -1159,6 +1177,23 @@ const EventFinancialPage: React.FC = () => {
               
               {/* 快速筛选按钮 */}
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+                {/* 🆕 未分类快速筛选（仅交易记录标签页显示） */}
+                {activeTab === 'transactions' && (
+                  <Button 
+                    block
+                    size="small"
+                    type="default"
+                    danger={hasUncategorized}
+                    disabled={!hasUncategorized}
+                    onClick={() => {
+                      setTxAccountFilter('uncategorized');
+                    }}
+                    style={{ marginBottom: 8 }}
+                  >
+                    {hasUncategorized ? '🔴 显示未分类交易' : '✅ 无未分类交易'}
+                  </Button>
+                )}
+                
                 <Button 
                   type="link" 
                   size="small" 

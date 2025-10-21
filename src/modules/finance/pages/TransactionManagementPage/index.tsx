@@ -31,7 +31,6 @@ import {
   DeleteOutlined,
   EyeOutlined,
   CheckCircleOutlined,
-  FilterOutlined,
   DownloadOutlined,
   ExportOutlined,
   ScissorOutlined,
@@ -98,6 +97,9 @@ const TransactionManagementPage: React.FC = () => {
   const [cachedTransactions, setCachedTransactions] = useState<Transaction[]>([]);
   const [cacheKey, setCacheKey] = useState<string>('');
   const [isCalculating, setIsCalculating] = useState(false);
+  
+  // 🆕 未分类检测
+  const [hasUncategorized, setHasUncategorized] = useState(false);
   
   // 💰 存储各账户的当前余额（实时计算）
   const [accountBalances, setAccountBalances] = useState<Record<string, number>>({});
@@ -199,6 +201,10 @@ const TransactionManagementPage: React.FC = () => {
 
       setTransactions(result.data);
       setTotal(result.total);
+      
+      // 🆕 检测是否有未分类交易
+      const uncategorizedCount = result.data.filter(t => !t.txAccount || t.txAccount.trim() === '').length;
+      setHasUncategorized(uncategorizedCount > 0);
       
       // 🎯 计算累计余额（仅针对单个账户）
       if (activeTabKey !== 'all' && result.data.length > 0) {
@@ -1153,25 +1159,29 @@ const TransactionManagementPage: React.FC = () => {
             />
 
             <Select
-              style={{ width: 150 }}
-              placeholder="类别"
+              style={{ width: 180 }}
+              placeholder="主要类别"
               value={categoryFilter}
               onChange={setCategoryFilter}
             >
               <Option value="all">所有类别</Option>
-              <Option value="member-fees">会员费</Option>
-              <Option value="event-income">活动收入</Option>
-              <Option value="donations">捐赠</Option>
-              <Option value="sponsorships">赞助</Option>
-              <Option value="utilities">水电费</Option>
-              <Option value="rent">租金</Option>
-              <Option value="supplies">办公用品</Option>
-              <Option value="salaries">工资</Option>
-              <Option value="unallocated">未分配</Option>
-              <Option value="other">其他</Option>
+              <Option value="member-fees">会员费用</Option>
+              <Option value="event-finance">活动财务</Option>
+              <Option value="general-accounts">日常账户</Option>
+              <Option value="uncategorized">🔴 未分类</Option>
             </Select>
+            
+            {/* 🆕 未分类快速筛选按钮 */}
+            <Button 
+              type={hasUncategorized ? "default" : "default"}
+              danger={hasUncategorized}
+              disabled={!hasUncategorized}
+              icon={<TagOutlined />}
+              onClick={() => setCategoryFilter('uncategorized')}
+            >
+              {hasUncategorized ? '🔴 显示未分类' : '✅ 无未分类'}
+            </Button>
 
-            <Button icon={<FilterOutlined />}>高级筛选</Button>
             <Button icon={<DownloadOutlined />}>导出报表</Button>
             <div className="ml-auto">
               <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>

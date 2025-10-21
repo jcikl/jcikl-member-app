@@ -738,7 +738,12 @@ export const getTransactions = async (
       transactions = transactions.filter(t => t.status === status);
     }
     if (category) {
-      transactions = transactions.filter(t => t.category === category);
+      if (category === 'uncategorized') {
+        // 🆕 筛选未分类的交易
+        transactions = transactions.filter(t => !t.txAccount || t.txAccount.trim() === '');
+      } else {
+        transactions = transactions.filter(t => t.category === category);
+      }
     }
     // 🔑 二次分类过滤
     if (params.txAccount) {

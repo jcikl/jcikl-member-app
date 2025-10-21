@@ -102,6 +102,9 @@ const MemberFeeManagementPage: React.FC = () => {
   const [bulkClassifyModalVisible, setBulkClassifyModalVisible] = useState(false);
   // 🆕 会员信息缓存（用于在描述栏显示会员名字）
   const [memberInfoCache, setMemberInfoCache] = useState<Record<string, { name: string; email?: string; phone?: string }>>({});
+  
+  // 🆕 未分类检测
+  const [hasUncategorized, setHasUncategorized] = useState(false);
 
   useEffect(() => {
     initializeData();
@@ -351,7 +354,11 @@ const MemberFeeManagementPage: React.FC = () => {
         return dateB - dateA; // 降序：最新的在前
       });
       
-      // 🆕 Step 4: 设置最终数据
+      // 🆕 Step 4: 检测是否有未分类交易
+      const uncategorizedCount = result.data.filter(t => !t.txAccount || t.txAccount.trim() === '').length;
+      setHasUncategorized(uncategorizedCount > 0);
+      
+      // 🆕 Step 5: 设置最终数据
       setTransactions(filteredTransactions);
       setTransactionTotal(filteredTransactions.length);
     } catch (error: any) {
@@ -881,6 +888,23 @@ const MemberFeeManagementPage: React.FC = () => {
                 
                 {/* 快捷操作 */}
                 <div style={{ marginTop: 16 }}>
+                  {/* 🆕 未分类快速筛选（仅交易记录标签页显示） */}
+                  {activeTab === 'transactions' && (
+                    <Button 
+                      block
+                      size="small"
+                      type="default"
+                      danger={hasUncategorized}
+                      disabled={!hasUncategorized}
+                      onClick={() => {
+                        setTxAccountFilter('uncategorized');
+                      }}
+                      style={{ marginBottom: 8 }}
+                    >
+                      {hasUncategorized ? '🔴 显示未分类交易' : '✅ 无未分类交易'}
+                    </Button>
+                  )}
+                  
                   <Button 
                     block 
                     icon={<ReloadOutlined />}
