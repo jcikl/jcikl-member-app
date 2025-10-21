@@ -856,7 +856,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '日期',
       dataIndex: 'transactionDate',
       key: 'transactionDate',
-      width: 80,
+      width: 95,
       sorter: true,
       render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
     },
@@ -864,7 +864,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '描述',
       dataIndex: 'mainDescription',
       key: 'mainDescription',
-      width: 250,
+      width: 95,
       ellipsis: true,
       render: (text: string, record: Transaction) => {
         const isChild = record.parentTransactionId;
@@ -923,7 +923,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      width: 100,
+      width: 110,
       align: 'right',
       render: (amount: number, record: Transaction) => {
         // Safe guard against undefined values
@@ -941,7 +941,7 @@ const TransactionManagementPage: React.FC = () => {
     {
       title: '累计余额',
       key: 'runningBalance',
-      width: 120,
+      width: 110,
       align: 'right',
       render: (_: any, record: Transaction) => {
         const balance = balanceMap.get(record.id);
@@ -971,7 +971,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '类别',
       dataIndex: 'category',
       key: 'category',
-      width: 120,
+      width: 90,
       render: (cat: string) => {
         const categoryConfig: Record<string, { color: string; text: string }> = {
           'member-fees': { color: 'blue', text: '会员费' },
@@ -1330,7 +1330,7 @@ const TransactionManagementPage: React.FC = () => {
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条记录`,
             }}
-            scroll={{ x: 1350 }}
+            scroll={{ y: 600 }}
           />
         </Card>
 
