@@ -29,10 +29,14 @@ import {
 import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { GLOBAL_COLLECTIONS as GC } from '@/config/globalCollections';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
 import { safeTimestampToISO } from '@/utils/dateHelpers';
 import { handleFirebaseError, retryWithBackoff } from '@/services/errorHandlerService';
+
+// Enable dayjs plugins
+dayjs.extend(customParseFormat);
 import type { 
   Member, 
   MemberFormData, 
@@ -638,7 +642,6 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
     console.log('🎂 [Birthday] Total active members:', members.length);
     console.log('🎂 [Birthday] Members with birthDate:', members.filter(m => m.profile?.birthDate).length);
     
-    const today = dayjs();
     const upcomingBirthdays: Array<{
       id: string;
       name: string;
@@ -648,18 +651,20 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
     }> = [];
     
     members.forEach(member => {
-      if (member.profile?.birthDate) {
-        // Try to parse the date string
-        let birthDate = dayjs(member.profile.birthDate);
+      try {
+        if (!member.profile?.birthDate) return;
         
-        // If invalid, try with format
+        // Try to parse the date string with multiple formats
+        let birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY', true);
+        
+        // If invalid, try ISO format
         if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
+          birthDate = dayjs(member.profile.birthDate);
         }
         
-        // If still invalid, try other format
+        // If still invalid, try YYYY-MM-DD format
         if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD');
+          birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD', true);
         }
         
         if (!birthDate.isValid()) {
@@ -667,28 +672,25 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
           return;
         }
         
-        // Get birth month and day
-        const birthMonth = birthDate.month();
-        const birthDay = birthDate.date();
+        // Extract month and day from birth date
+        const birthMonth = birthDate.month(); // 0-11
+        const birthDay = birthDate.date();    // 1-31
         
-        // Create this year's birthday (use set to avoid mutation)
-        const thisYearBirthday = dayjs()
-          .year(today.year())
-          .month(birthMonth)
-          .date(birthDay)
-          .startOf('day');
+        // Get today's date at start of day
+        const todayStart = dayjs().startOf('day');
+        const currentYear = todayStart.year();
+        
+        // Build this year's birthday using string format (most stable)
+        const thisYearBirthdayStr = `${currentYear}-${String(birthMonth + 1).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
+        const thisYearBirthday = dayjs(thisYearBirthdayStr).startOf('day');
         
         // Calculate days until birthday
-        const todayStart = today.startOf('day');
         let daysUntil = thisYearBirthday.diff(todayStart, 'day');
         
-        // If birthday already passed this year, check next year
+        // If birthday already passed this year, calculate for next year
         if (daysUntil < 0) {
-          const nextYearBirthday = dayjs()
-            .year(today.year() + 1)
-            .month(birthMonth)
-            .date(birthDay)
-            .startOf('day');
+          const nextYearBirthdayStr = `${currentYear + 1}-${String(birthMonth + 1).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
+          const nextYearBirthday = dayjs(nextYearBirthdayStr).startOf('day');
           daysUntil = nextYearBirthday.diff(todayStart, 'day');
         }
         
@@ -702,6 +704,8 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
             avatar: member.profile?.avatar,
           });
         }
+      } catch (err) {
+        console.error('🎂 [Birthday] Error processing member:', member.name, err);
       }
     });
     
@@ -743,18 +747,20 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
     }> = [];
     
     members.forEach(member => {
-      if (member.profile?.birthDate) {
-        // Try to parse the date string
-        let birthDate = dayjs(member.profile.birthDate);
+      try {
+        if (!member.profile?.birthDate) return;
         
-        // If invalid, try with format
+        // Try to parse the date string with multiple formats
+        let birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY', true);
+        
+        // If invalid, try ISO format
         if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY');
+          birthDate = dayjs(member.profile.birthDate);
         }
         
-        // If still invalid, try other format
+        // If still invalid, try YYYY-MM-DD format
         if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD');
+          birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD', true);
         }
         
         if (!birthDate.isValid()) {
@@ -772,6 +778,8 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
             avatar: member.profile?.avatar,
           });
         }
+      } catch (err) {
+        console.error('🎂 [Birthday Month] Error processing member:', member.name, err);
       }
     });
     
