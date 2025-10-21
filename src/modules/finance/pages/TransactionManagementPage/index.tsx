@@ -60,6 +60,7 @@ import BatchSplitModal from '../../components/BatchSplitModal';
 import BatchSetCategoryModal from '../../components/BatchSetCategoryModal';
 import { useNavigate } from 'react-router-dom';
 import { getAllBankAccounts } from '../../services/bankAccountService';
+import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
 import type { Transaction, TransactionFormData, TransactionStatus, BankAccount } from '../../types';
 import './styles.css';
 
@@ -86,6 +87,9 @@ const TransactionManagementPage: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]); // 多选行
   const [batchSplitModalVisible, setBatchSplitModalVisible] = useState(false);
   const [batchCategoryModalVisible, setBatchCategoryModalVisible] = useState(false);
+  
+  // 🆕 交易用途选项（从财务类别管理加载）
+  const [purposeOptions, setPurposeOptions] = useState<{ label: string; value: string }[]>([]);
   
   // 🎯 累计余额相关状态
   const [balanceMap, setBalanceMap] = useState<Map<string, number>>(new Map());
@@ -119,7 +123,18 @@ const TransactionManagementPage: React.FC = () => {
 
   useEffect(() => {
     loadBankAccounts();
+    loadPurposeOptions(); // 🆕 加载交易用途选项
   }, []);
+
+  // 🆕 加载交易用途选项
+  const loadPurposeOptions = async () => {
+    try {
+      const purposes = await getActiveTransactionPurposes();
+      setPurposeOptions(purposes);
+    } catch (error) {
+      console.error('加载交易用途选项失败:', error);
+    }
+  };
 
   useEffect(() => {
     loadTransactions();
@@ -856,7 +871,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '日期',
       dataIndex: 'transactionDate',
       key: 'transactionDate',
-      width: 95,
+      width: 75,
       sorter: true,
       render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
     },
@@ -864,7 +879,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '描述',
       dataIndex: 'mainDescription',
       key: 'mainDescription',
-      width: 95,
+      width: 150,
       ellipsis: true,
       render: (text: string, record: Transaction) => {
         const isChild = record.parentTransactionId;
@@ -923,7 +938,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      width: 110,
+      width: 80,
       align: 'right',
       render: (amount: number, record: Transaction) => {
         // Safe guard against undefined values
@@ -989,39 +1004,26 @@ const TransactionManagementPage: React.FC = () => {
       key: 'txAccount',
       width: 150,
       render: (subCat: string, record: Transaction) => {
-        // 二次分类配置（支持多种类别）
-        const txAccountConfig: Record<string, { color: string; text: string }> = {
-          // 会员费二次分类
-          'official-member': { color: 'blue', text: '官方会员' },
-          'associate-member': { color: 'cyan', text: '准会员' },
-          'honorary-member': { color: 'purple', text: '荣誉会员' },
-          'visiting-member': { color: 'geekblue', text: '访问会员' },
-          
-          // 活动财务二次分类（动态，显示活动名称）
-          // 日常账户二次分类
-          'donations': { color: 'blue', text: '捐赠' },
-          'sponsorships': { color: 'green', text: '赞助' },
-          'investments': { color: 'purple', text: '投资回报' },
-          'grants': { color: 'cyan', text: '拨款' },
-          'merchandise': { color: 'geekblue', text: '商品销售' },
-          'other-income': { color: 'default', text: '其他收入' },
-          'utilities': { color: 'orange', text: '水电费' },
-          'rent': { color: 'red', text: '租金' },
-          'salaries': { color: 'magenta', text: '工资' },
-          'equipment': { color: 'volcano', text: '设备用品' },
-          'insurance': { color: 'gold', text: '保险' },
-          'professional': { color: 'lime', text: '专业服务' },
-          'marketing': { color: 'pink', text: '营销费用' },
-          'travel': { color: 'purple', text: '差旅交通' },
-          'miscellaneous': { color: 'default', text: '杂项' },
-        };
-        
         if (!subCat) {
           return <Tag color="default">未分类</Tag>;
         }
         
+        // 会员费二次分类（保留硬编码，因为这些是固定的会员类别）
+        const memberFeeConfig: Record<string, { color: string; text: string }> = {
+          'official-member': { color: 'blue', text: '官方会员' },
+          'associate-member': { color: 'cyan', text: '准会员' },
+          'honorary-member': { color: 'purple', text: '荣誉会员' },
+          'visiting-member': { color: 'geekblue', text: '访问会员' },
+        };
+        
+        // 如果是会员费，使用固定配置
+        if (record.category === 'member-fees' && memberFeeConfig[subCat]) {
+          const config = memberFeeConfig[subCat];
+          return <Tag color={config.color}>{config.text}</Tag>;
+        }
+        
         // 如果是活动财务，txAccount 可能是活动名称
-        if (record.category === 'event-finance' && !txAccountConfig[subCat]) {
+        if (record.category === 'event-finance') {
           return (
             <Tooltip title={`活动: ${subCat}`}>
               <Tag color="green" style={{ maxWidth: 120 }}>
@@ -1040,8 +1042,15 @@ const TransactionManagementPage: React.FC = () => {
           );
         }
         
-        const config = txAccountConfig[subCat] || { color: 'default', text: subCat };
-        return <Tag color={config.color}>{config.text}</Tag>;
+        // 🆕 如果是日常账户，从purposeOptions中查找label
+        if (record.category === 'general-accounts') {
+          const purpose = purposeOptions.find(p => p.value === subCat);
+          const displayText = purpose ? purpose.label : subCat;
+          return <Tag color="purple">{displayText}</Tag>;
+        }
+        
+        // 默认显示原始值
+        return <Tag color="default">{subCat}</Tag>;
       },
     },
     {

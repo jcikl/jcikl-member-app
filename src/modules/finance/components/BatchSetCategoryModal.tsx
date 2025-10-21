@@ -18,6 +18,7 @@ import {
 import { getMembers } from '@/modules/member/services/memberService';
 import { getEvents } from '@/modules/event/services/eventService';
 import { generateYearOptions } from '@/utils/dateHelpers';
+import { getActiveTransactionPurposes } from '@/modules/system/services/transactionPurposeService';
 import type { Member } from '@/modules/member/types';
 import type { Event } from '@/modules/event/types';
 
@@ -61,12 +62,14 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   // 数据列表
   const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [purposes, setPurposes] = useState<{ label: string; value: string }[]>([]); // 🆕 交易用途
   const [loadingData, setLoadingData] = useState(false);
   
   // 加载会员和活动列表
   useEffect(() => {
     if (visible) {
       loadMembersAndEvents();
+      loadPurposes(); // 🆕 加载交易用途
     }
   }, [visible]);
   
@@ -83,6 +86,16 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       console.error('Failed to load data:', error);
     } finally {
       setLoadingData(false);
+    }
+  };
+  
+  // 🆕 加载交易用途
+  const loadPurposes = async () => {
+    try {
+      const purposeList = await getActiveTransactionPurposes();
+      setPurposes(purposeList);
+    } catch (error) {
+      console.error('加载交易用途失败:', error);
     }
   };
 
@@ -347,12 +360,27 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               }}
               loading={loadingData}
             >
-              {events.map(e => (
-                <Option key={e.id} value={e.id}>
-                  {e.name}
-                </Option>
-              ))}
+              {events
+                .filter(event => {
+                  // 🆕 根据年份筛选活动
+                  if (!selectedYear) return true;
+                  const eventYear = event.eventDate 
+                    ? new Date(event.eventDate).getFullYear().toString()
+                    : '';
+                  return eventYear === selectedYear;
+                })
+                .map(e => (
+                  <Option key={e.id} value={e.id}>
+                    {e.name}
+                    {e.eventDate && ` (${new Date(e.eventDate).getFullYear()})`}
+                  </Option>
+                ))}
             </Select>
+            {selectedYear && (
+              <p style={{ fontSize: '12px', color: '#999', marginTop: 8 }}>
+                📅 仅显示 {selectedYear} 年的活动
+              </p>
+            )}
           </div>
         </>
       )}
@@ -409,14 +437,23 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               onChange={setSelectedTxAccount}
               placeholder="选择二次分类"
               allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const label = option?.children?.toString() || '';
+                return label.toLowerCase().includes(input.toLowerCase());
+              }}
             >
-              <Option value="office-supplies">办公用品</Option>
-              <Option value="utilities">水电网</Option>
-              <Option value="transport">交通</Option>
-              <Option value="donations">捐赠</Option>
-              <Option value="sponsorships">赞助</Option>
-              <Option value="misc">其他</Option>
+              {purposes.map(purpose => (
+                <Option key={purpose.value} value={purpose.value}>
+                  {purpose.label}
+                </Option>
+              ))}
             </Select>
+            {purposes.length === 0 && (
+              <p style={{ fontSize: '12px', color: '#999', marginTop: 8 }}>
+                💡 请先在"财务类别管理"中添加交易用途
+              </p>
+            )}
           </div>
         </>
       )}

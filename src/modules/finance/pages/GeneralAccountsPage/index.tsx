@@ -37,6 +37,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
 import { getMembers, getMemberById } from '../../../member/services/memberService';
 import { generateFiscalYearOptions } from '@/utils/dateHelpers';
+import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
 import type { Transaction } from '../../types';
 import './styles.css';
 
@@ -71,6 +72,9 @@ const GeneralAccountsPage: React.FC = () => {
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [bulkClassifyModalVisible, setBulkClassifyModalVisible] = useState(false);
   
+  // 🆕 交易用途选项（从财务类别管理加载）
+  const [purposeOptions, setPurposeOptions] = useState<{ label: string; value: string }[]>([]);
+  
   // 统计数据
   const [statistics, setStatistics] = useState({
     totalIncome: 0,
@@ -87,7 +91,18 @@ const GeneralAccountsPage: React.FC = () => {
 
   useEffect(() => {
     loadTransactions();
+    loadPurposeOptions(); // 🆕 加载交易用途选项
   }, [transactionPage, transactionPageSize, txAccountFilter, selectedYear, selectedCategory, searchText]);
+
+  // 🆕 加载交易用途选项
+  const loadPurposeOptions = async () => {
+    try {
+      const purposes = await getActiveTransactionPurposes();
+      setPurposeOptions(purposes);
+    } catch (error) {
+      console.error('加载交易用途选项失败:', error);
+    }
+  };
 
   const loadTransactions = async () => {
     if (!user) return;
@@ -440,32 +455,15 @@ const GeneralAccountsPage: React.FC = () => {
       key: 'txAccount',
       width: 150,
       render: (subCat: string) => {
-        const txAccountConfig: Record<string, { color: string; text: string }> = {
-          // 收入类
-          'donations': { color: 'blue', text: '捐赠' },
-          'sponsorships': { color: 'green', text: '赞助' },
-          'investments': { color: 'purple', text: '投资回报' },
-          'grants': { color: 'cyan', text: '拨款' },
-          'merchandise': { color: 'geekblue', text: '商品销售' },
-          'other-income': { color: 'default', text: '其他收入' },
-          // 支出类
-          'utilities': { color: 'orange', text: '水电费' },
-          'rent': { color: 'red', text: '租金' },
-          'salaries': { color: 'magenta', text: '工资' },
-          'equipment': { color: 'volcano', text: '设备用品' },
-          'insurance': { color: 'gold', text: '保险' },
-          'professional': { color: 'lime', text: '专业服务' },
-          'marketing': { color: 'pink', text: '营销费用' },
-          'travel': { color: 'purple', text: '差旅交通' },
-          'miscellaneous': { color: 'default', text: '杂项' },
-        };
-        
         if (!subCat) {
           return <Tag color="default">未分类</Tag>;
         }
         
-        const config = txAccountConfig[subCat] || { color: 'default', text: subCat };
-        return <Tag color={config.color}>{config.text}</Tag>;
+        // 🆕 从purposeOptions中查找对应的label
+        const purpose = purposeOptions.find(p => p.value === subCat);
+        const displayText = purpose ? purpose.label : subCat;
+        
+        return <Tag color="purple">{displayText}</Tag>;
       },
     },
     {
@@ -774,31 +772,27 @@ const GeneralAccountsPage: React.FC = () => {
               <p style={{ fontWeight: 'bold', marginBottom: 8 }}>二次分类：</p>
               <Select
                 style={{ width: '100%' }}
-                placeholder="选择分类"
+                placeholder="选择或输入分类"
                 value={modalTxAccount}
                 onChange={setModalTxAccount}
                 allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  const label = option?.children?.toString() || '';
+                  return label.toLowerCase().includes(input.toLowerCase());
+                }}
               >
-                <optgroup label="收入类">
-                  <Option value="donations">捐赠</Option>
-                  <Option value="sponsorships">赞助</Option>
-                  <Option value="investments">投资回报</Option>
-                  <Option value="grants">拨款</Option>
-                  <Option value="merchandise">商品销售</Option>
-                  <Option value="other-income">其他收入</Option>
-                </optgroup>
-                <optgroup label="支出类">
-                  <Option value="utilities">水电费</Option>
-                  <Option value="rent">租金</Option>
-                  <Option value="salaries">工资</Option>
-                  <Option value="equipment">设备用品</Option>
-                  <Option value="insurance">保险</Option>
-                  <Option value="professional">专业服务</Option>
-                  <Option value="marketing">营销费用</Option>
-                  <Option value="travel">差旅交通</Option>
-                  <Option value="miscellaneous">杂项</Option>
-                </optgroup>
+                {purposeOptions.map(purpose => (
+                  <Option key={purpose.value} value={purpose.value}>
+                    {purpose.label}
+                  </Option>
+                ))}
               </Select>
+              {purposeOptions.length === 0 && (
+                <p style={{ fontSize: '12px', color: '#999', marginTop: 8 }}>
+                  💡 请先在"财务类别管理"中添加交易用途
+                </p>
+              )}
             </div>
 
             {/* 关联会员（可选） */}
@@ -937,53 +931,31 @@ const GeneralAccountsPage: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ fontWeight: 'bold', marginBottom: 8 }}>选择二次分类：</p>
                 
-                {selectedTransaction.transactionType === 'income' ? (
-                  <>
-                    <h4 style={{ marginTop: 12, marginBottom: 8, color: '#3f8600' }}>收入类别</h4>
-                    {[
-                      { key: 'donations', label: '捐赠' },
-                      { key: 'sponsorships', label: '赞助' },
-                      { key: 'investments', label: '投资回报' },
-                      { key: 'grants', label: '拨款' },
-                      { key: 'merchandise', label: '商品销售' },
-                      { key: 'other-income', label: '其他收入' },
-                    ].map(cat => (
-                      <Button 
-                        key={cat.key}
-                        block 
-                        size="large"
-                        type={modalTxAccount === cat.key ? 'primary' : 'default'}
-                        onClick={() => setModalTxAccount(cat.key)}
-                      >
-                        {cat.label}
-                      </Button>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <h4 style={{ marginTop: 12, marginBottom: 8, color: '#cf1322' }}>支出类别</h4>
-                    {[
-                      { key: 'utilities', label: '水电费' },
-                      { key: 'rent', label: '租金' },
-                      { key: 'salaries', label: '工资' },
-                      { key: 'equipment', label: '设备用品' },
-                      { key: 'insurance', label: '保险' },
-                      { key: 'professional', label: '专业服务' },
-                      { key: 'marketing', label: '营销费用' },
-                      { key: 'travel', label: '差旅交通' },
-                      { key: 'miscellaneous', label: '杂项' },
-                    ].map(cat => (
-                      <Button 
-                        key={cat.key}
-                        block 
-                        size="large"
-                        type={modalTxAccount === cat.key ? 'primary' : 'default'}
-                        onClick={() => setModalTxAccount(cat.key)}
-                      >
-                        {cat.label}
-                      </Button>
-                    ))}
-                  </>
+                {/* 🆕 使用Select下拉框，从交易用途列表加载 */}
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="选择分类"
+                  value={modalTxAccount}
+                  onChange={setModalTxAccount}
+                  allowClear
+                  showSearch
+                  size="large"
+                  filterOption={(input, option) => {
+                    const label = option?.children?.toString() || '';
+                    return label.toLowerCase().includes(input.toLowerCase());
+                  }}
+                >
+                  {purposeOptions.map(purpose => (
+                    <Option key={purpose.value} value={purpose.value}>
+                      {purpose.label}
+                    </Option>
+                  ))}
+                </Select>
+                
+                {purposeOptions.length === 0 && (
+                  <p style={{ fontSize: '12px', color: '#999', marginTop: 8 }}>
+                    💡 请先在"财务类别管理"中添加交易用途
+                  </p>
                 )}
                 
                 {/* 🆕 提交按钮 */}
