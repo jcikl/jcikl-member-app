@@ -499,7 +499,8 @@ const EventFinancialPage: React.FC = () => {
         page: transactionPage,
         limit: transactionPageSize,
         category: 'event-finance',
-        txAccount: txAccountFilter !== 'all' ? txAccountFilter : undefined,
+        // 🔑 不要将'uncategorized'传给服务端，在客户端筛选
+        txAccount: (txAccountFilter !== 'all' && txAccountFilter !== 'uncategorized') ? txAccountFilter : undefined,
         sortBy: 'transactionDate',
         sortOrder: 'desc',
         includeVirtual: true, // 🔑 包含子交易（拆分的活动财务）
