@@ -115,7 +115,7 @@ const MemberFeeManagementPage: React.FC = () => {
     if (activeTab === 'transactions') {
       loadTransactions();
     }
-  }, [activeTab, transactionPage, transactionPageSize, txAccountFilter, selectedYear]);
+  }, [activeTab, transactionPage, transactionPageSize, txAccountFilter, selectedYear, searchText]);
 
   const initializeData = async () => {
     try {
@@ -280,32 +280,14 @@ const MemberFeeManagementPage: React.FC = () => {
       };
       filteredTransactions = applyCategory(applyYear(result.data));
       
-      // 🆕 客户端排序：按交易日期降序（最新的在前）
-      filteredTransactions.sort((a, b) => {
-        const dateA = new Date(a.transactionDate).getTime();
-        const dateB = new Date(b.transactionDate).getTime();
-        return dateB - dateA; // 降序：最新的在前
-      });
-      
-      // 🔍 Debug: 加载交易记录（生产环境可注释）
-      // const childTransactions = result.data.filter(t => t.isVirtual === true);
-      // console.log('💰 [MemberFeeManagementPage] 加载交易记录:', {
-      //   总数: result.data.length,
-      //   子交易数: childTransactions.length,
-      // });
-      
-      // 🆕 加载会员信息缓存
-      const finalTransactions = txAccountFilter.startsWith('year-') || (txAccountFilter !== 'all' && !txAccountFilter.startsWith('year-')) 
-        ? filteredTransactions 
-        : result.data;
-      
-      // 提取所有需要加载的会员ID
-      const memberIds = finalTransactions
+      // 🆕 Step 1: 先加载会员信息缓存（用于后续搜索）
+      const memberIds = filteredTransactions
         .map(t => (t as any)?.metadata?.memberId)
         .filter((id): id is string => Boolean(id))
         .filter((id, index, array) => array.indexOf(id) === index); // 去重
       
       // 批量加载会员信息
+      let tempMemberCache: Record<string, { name: string; email?: string; phone?: string }> = {};
       if (memberIds.length > 0) {
         const memberInfoPromises = memberIds.map(async (memberId) => {
           try {
@@ -318,7 +300,7 @@ const MemberFeeManagementPage: React.FC = () => {
         });
         
         const memberResults = await Promise.all(memberInfoPromises);
-        const newMemberCache = memberResults.reduce((cache, { memberId, member }) => {
+        tempMemberCache = memberResults.reduce((cache, { memberId, member }) => {
           if (member) {
             cache[memberId] = {
               name: member.name,
@@ -329,16 +311,49 @@ const MemberFeeManagementPage: React.FC = () => {
           return cache;
         }, {} as Record<string, { name: string; email?: string; phone?: string }>);
         
-        setMemberInfoCache(newMemberCache);
+        setMemberInfoCache(tempMemberCache);
       }
       
-      if (txAccountFilter.startsWith('year-') || (txAccountFilter !== 'all' && !txAccountFilter.startsWith('year-'))) {
-        setTransactions(filteredTransactions);
-        setTransactionTotal(filteredTransactions.length);
-      } else {
-      setTransactions(result.data);
-      setTransactionTotal(result.total);
+      // 🆕 Step 2: 搜索文本筛选（扩展到关联会员信息）
+      if (searchText.trim()) {
+        const searchLower = searchText.toLowerCase().trim();
+        filteredTransactions = filteredTransactions.filter(tx => {
+          // 基础字段搜索
+          const matchesBasicFields = (
+            tx.mainDescription?.toLowerCase().includes(searchLower) ||
+            tx.subDescription?.toLowerCase().includes(searchLower) ||
+            tx.payerPayee?.toLowerCase().includes(searchLower) ||
+            tx.txAccount?.toLowerCase().includes(searchLower) ||
+            tx.transactionNumber?.toLowerCase().includes(searchLower)
+          );
+          
+          // 🆕 关联会员信息搜索
+          const memberId = (tx as any)?.metadata?.memberId;
+          let matchesMemberInfo = false;
+          
+          if (memberId && tempMemberCache[memberId]) {
+            const memberInfo = tempMemberCache[memberId];
+            matchesMemberInfo = !!(
+              memberInfo.name?.toLowerCase().includes(searchLower) ||
+              memberInfo.email?.toLowerCase().includes(searchLower) ||
+              memberInfo.phone?.toLowerCase().includes(searchLower)
+            );
+          }
+          
+          return matchesBasicFields || matchesMemberInfo;
+        });
       }
+      
+      // 🆕 Step 3: 客户端排序：按交易日期降序（最新的在前）
+      filteredTransactions.sort((a, b) => {
+        const dateA = new Date(a.transactionDate).getTime();
+        const dateB = new Date(b.transactionDate).getTime();
+        return dateB - dateA; // 降序：最新的在前
+      });
+      
+      // 🆕 Step 4: 设置最终数据
+      setTransactions(filteredTransactions);
+      setTransactionTotal(filteredTransactions.length);
     } catch (error: any) {
       message.error('加载交易记录失败');
       globalSystemService.log('error', 'Failed to load member fee transactions', 'MemberFeeManagementPage', { error });
@@ -895,7 +910,11 @@ const MemberFeeManagementPage: React.FC = () => {
             {/* 搜索输入框 */}
             <Card style={{ marginBottom: 16 }}>
               <Input
-                placeholder="搜索会员姓名或ID..."
+                placeholder={
+                  activeTab === 'member-fees' 
+                    ? "搜索会员姓名或ID..." 
+                    : "搜索交易描述、付款人、关联会员、交易编号..."
+                }
                 style={{ width: '100%' }}
                 suffix={<SearchOutlined />}
                 allowClear
