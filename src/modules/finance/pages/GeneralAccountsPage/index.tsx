@@ -91,10 +91,10 @@ const GeneralAccountsPage: React.FC = () => {
       setTransactionsLoading(true);
       
       const result = await getTransactions({
-        page: transactionPage,
-        limit: transactionPageSize,
+        page: 1, // 获取所有数据进行客户端筛选
+        limit: 1000, // 增加限制以获取更多数据
         category: 'general-accounts',
-        txAccount: txAccountFilter !== 'all' ? txAccountFilter : undefined,
+        // txAccount: 移除服务端筛选，改为客户端筛选
         sortBy: 'transactionDate',
         sortOrder: 'desc',
         includeVirtual: true, // 🔑 包含子交易（虚拟交易）
@@ -121,6 +121,11 @@ const GeneralAccountsPage: React.FC = () => {
         }
       }
 
+      // 🆕 二次分类筛选（txAccount）
+      if (txAccountFilter !== 'all') {
+        filteredData = filteredData.filter(tx => tx.txAccount === txAccountFilter);
+      }
+
       // 搜索文本筛选
       if (searchText.trim()) {
         const searchLower = searchText.toLowerCase().trim();
@@ -134,10 +139,15 @@ const GeneralAccountsPage: React.FC = () => {
         });
       }
 
-      setTransactions(filteredData);
+      // 🆕 客户端分页
+      const startIndex = (transactionPage - 1) * transactionPageSize;
+      const endIndex = startIndex + transactionPageSize;
+      const paginatedData = filteredData.slice(startIndex, endIndex);
+      
+      setTransactions(paginatedData);
       setTransactionTotal(filteredData.length);
       
-      // 计算统计数据（基于筛选后的数据）
+      // 计算统计数据（基于筛选后的全部数据，不是分页后的）
       const stats = filteredData.reduce((acc, tx) => {
         if (tx.transactionType === 'income') {
           acc.totalIncome += tx.amount || 0;
