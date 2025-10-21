@@ -34,6 +34,51 @@ export interface TransactionPurpose {
 }
 
 /**
+ * 生成下一个交易用途代码
+ * 格式: TXGA-0001, TXGA-0002, ...
+ */
+export const generateNextPurposeCode = async (): Promise<string> => {
+  const prefix = 'TXGA'; // Transaction General Accounts
+  
+  try {
+    const snapshot = await getDocs(
+      collection(db, GLOBAL_COLLECTIONS.TRANSACTION_PURPOSES)
+    );
+    
+    // 提取所有序号
+    const existingNumbers = snapshot.docs
+      .map(docSnap => {
+        const value = docSnap.data().value as string;
+        const match = value.match(/^TXGA-(\d{4})$/); // 匹配 TXGA-0001 的 0001
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(num => num > 0);
+    
+    // 找到最大序号并加1
+    const maxNumber = existingNumbers.length > 0 
+      ? Math.max(...existingNumbers) 
+      : 0;
+    
+    const nextNumber = maxNumber + 1;
+    const sequence = String(nextNumber).padStart(4, '0');
+    const code = `${prefix}-${sequence}`;
+    
+    globalSystemService.log('info', 'Generated purpose code', 'transactionPurposeService', {
+      code,
+      existingCount: snapshot.size,
+    });
+    
+    return code;
+    
+  } catch (error: any) {
+    globalSystemService.log('error', 'Failed to generate purpose code', 'transactionPurposeService', { 
+      error,
+    });
+    throw error;
+  }
+};
+
+/**
  * 获取所有交易用途
  */
 export const getAllTransactionPurposes = async (): Promise<TransactionPurpose[]> => {

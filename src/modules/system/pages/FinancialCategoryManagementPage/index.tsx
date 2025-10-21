@@ -42,6 +42,7 @@ import {
   createTransactionPurpose,
   updateTransactionPurpose,
   deleteTransactionPurpose,
+  generateNextPurposeCode,
   type TransactionPurpose,
 } from '../../services/transactionPurposeService';
 import './styles.css';
@@ -93,49 +94,63 @@ const FinancialCategoryManagementPage: React.FC = () => {
   };
 
   const handleAdd = async (type: 'income' | 'expense' | 'general-accounts') => {
+    if (type === 'general-accounts') {
+      // 使用专门的添加交易用途方法
+      await handleAddPurpose();
+      return;
+    }
+    
+    // 收入/支出类别
     setEditingCategory(null);
     setEditingPurpose(null);
     setActiveTab(type);
     form.resetFields();
     
-    if (type === 'general-accounts') {
-      // 日常账户交易用途
+    try {
+      // 🆕 自动生成下一个类别编号
+      const nextCode = await generateNextCategoryCode(type);
+      
       form.setFieldsValue({ 
+        type, 
         status: 'active',
+        value: nextCode, // 自动填充编号
         sortOrder: 0,
       });
-    } else {
-      // 收入/支出类别
-      try {
-        // 🆕 自动生成下一个类别编号
-        const nextCode = await generateNextCategoryCode(type);
-        
-        form.setFieldsValue({ 
-          type, 
-          status: 'active',
-          value: nextCode, // 自动填充编号
-          sortOrder: 0,
-        });
-        
-        message.success(`已自动生成编号: ${nextCode}`);
-      } catch (error) {
-        message.warning('编号生成失败，请手动输入');
-        form.setFieldsValue({ type, status: 'active', sortOrder: 0 });
-      }
+      
+      message.success(`已自动生成编号: ${nextCode}`);
+    } catch (error) {
+      message.warning('编号生成失败，请手动输入');
+      form.setFieldsValue({ type, status: 'active', sortOrder: 0 });
     }
     
     setModalVisible(true);
   };
 
-  const handleAddPurpose = () => {
+  const handleAddPurpose = async () => {
     setEditingCategory(null);
     setEditingPurpose(null);
     setActiveTab('general-accounts');
     form.resetFields();
-    form.setFieldsValue({ 
-      status: 'active',
-      sortOrder: 0,
-    });
+    
+    try {
+      // 🆕 自动生成下一个用途代码
+      const nextCode = await generateNextPurposeCode();
+      
+      form.setFieldsValue({ 
+        value: nextCode, // 自动填充代码
+        status: 'active',
+        sortOrder: 0,
+      });
+      
+      message.success(`已自动生成代码: ${nextCode}`);
+    } catch (error) {
+      message.warning('代码生成失败，请手动输入');
+      form.setFieldsValue({ 
+        status: 'active',
+        sortOrder: 0,
+      });
+    }
+    
     setModalVisible(true);
   };
 
@@ -486,13 +501,30 @@ const FinancialCategoryManagementPage: React.FC = () => {
                 label="用途代码"
                 rules={[
                   { required: true, message: '请输入用途代码' },
-                  { max: 100, message: '代码不能超过100个字符' },
+                  { pattern: /^TXGA-\d{4}$/, message: '格式错误，应为 TXGA-0001' },
                 ]}
-                extra="此代码将用于交易的二次分类字段（txAccount）"
+                extra={
+                  editingPurpose ? (
+                    <span style={{ color: '#ff4d4f' }}>
+                      ⚠️ 修改代码会影响所有使用此用途的交易
+                    </span>
+                  ) : (
+                    <span style={{ color: '#52c41a' }}>
+                      ✅ 系统已自动生成唯一编号
+                    </span>
+                  )
+                }
               >
                 <Input 
-                  placeholder="例如: 办公用品、差旅费、水电费" 
+                  placeholder="TXGA-0001" 
                   maxLength={100}
+                  disabled={!editingPurpose} // 🔒 新建时禁止修改，编辑时允许
+                  style={{ 
+                    fontFamily: 'monospace',
+                    backgroundColor: editingPurpose ? '#fff' : '#e6f7ff',
+                    color: '#722ed1',
+                    fontWeight: 600,
+                  }}
                 />
               </Form.Item>
 

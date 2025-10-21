@@ -13,7 +13,7 @@
 ```typescript
 interface TransactionPurpose {
   id: string;                     // 文档ID（自动生成）
-  value: string;                  // 用途代码/名称（用于txAccount字段）
+  value: string;                  // 用途代码（格式: TXGA-0001，自动生成）
   label: string;                  // 显示名称
   category: 'general-accounts';   // 类别（固定为日常账户）
   description?: string;           // 描述
@@ -26,13 +26,21 @@ interface TransactionPurpose {
 }
 ```
 
+### 2.1 自动编号规则
+- **格式**: `TXGA-XXXX`
+  - `TXGA` = Transaction General Accounts（日常账户交易）
+  - `XXXX` = 4位数字序号（0001, 0002, 0003...）
+- **示例**: TXGA-0001, TXGA-0002, TXGA-0003
+- **生成逻辑**: 自动查找当前最大序号并加1
+
 ### 3. 核心功能
 
 #### 3.1 添加交易用途
 - 点击"添加交易用途"按钮
+- **系统自动生成用途代码**（如 TXGA-0001）
 - 填写表单：
-  - **用途代码**: 实际存储在`txAccount`字段的值（例如: "办公用品"、"差旅费"）
-  - **显示名称**: 在下拉列表中显示的名称
+  - **用途代码**: 自动生成，格式为 TXGA-0001（新建时不可修改，编辑时可修改）
+  - **显示名称**: 在下拉列表中显示的名称（例如: "办公用品采购"、"差旅费用"）
   - **描述**: 用途说明和使用场景
   - **排序**: 控制显示顺序（数字越小越靠前）
   - **状态**: 启用/禁用
@@ -40,7 +48,8 @@ interface TransactionPurpose {
 #### 3.2 编辑交易用途
 - 点击列表中的编辑按钮
 - 修改用途信息
-- 支持修改`value`字段（不同于活动财务类别）
+- **支持修改用途代码**（但会影响所有使用此用途的交易）
+- ⚠️ **警告**: 修改代码会影响所有使用此用途的交易
 
 #### 3.3 删除交易用途
 - 点击列表中的删除按钮
@@ -82,7 +91,7 @@ interface TransactionPurpose {
 
 ### 示例1: 添加办公用品用途
 ```
-用途代码: 办公用品
+用途代码: TXGA-0001 (自动生成)
 显示名称: 办公用品采购
 描述: 用于日常办公用品的采购支出
 排序: 10
@@ -91,7 +100,7 @@ interface TransactionPurpose {
 
 ### 示例2: 添加差旅费用途
 ```
-用途代码: 差旅费
+用途代码: TXGA-0002 (自动生成)
 显示名称: 差旅费用
 描述: 用于会员出差产生的交通、住宿等费用
 排序: 20
@@ -100,7 +109,7 @@ interface TransactionPurpose {
 
 ### 示例3: 添加水电费用途
 ```
-用途代码: 水电费
+用途代码: TXGA-0003 (自动生成)
 显示名称: 水电费缴纳
 描述: 用于办公场所的水电费支付
 排序: 30
@@ -118,7 +127,7 @@ interface TransactionPurpose {
 ```json
 {
   "id": "auto-generated-id",
-  "value": "办公用品",
+  "value": "TXGA-0001",
   "label": "办公用品采购",
   "category": "general-accounts",
   "description": "用于日常办公用品的采购支出",
@@ -134,6 +143,9 @@ interface TransactionPurpose {
 
 ### 服务层方法
 ```typescript
+// 生成下一个交易用途代码
+generateNextPurposeCode(): Promise<string>
+
 // 获取所有交易用途
 getAllTransactionPurposes(): Promise<TransactionPurpose[]>
 
@@ -161,7 +173,7 @@ getActiveTransactionPurposes(): Promise<Array<{ label: string; value: string }>>
 - 所有操作都会记录操作人ID和时间
 
 ## 验证规则
-- `value`字段: 必填，最大100字符，不能重复
+- `value`字段: 必填，格式必须为 TXGA-XXXX（自动生成），不能重复
 - `label`字段: 必填，最大100字符
 - `description`字段: 可选，最大500字符
 - `sortOrder`字段: 数字类型
@@ -170,8 +182,8 @@ getActiveTransactionPurposes(): Promise<Array<{ label: string; value: string }>>
 ## 最佳实践
 
 ### 1. 命名规范
-- **用途代码**: 使用简洁、语义化的名称（例如: "办公用品"、"差旅费"）
-- **显示名称**: 可以更详细（例如: "办公用品采购"、"差旅费用"）
+- **用途代码**: 系统自动生成（TXGA-0001, TXGA-0002...），无需手动命名
+- **显示名称**: 使用清晰、具体的名称（例如: "办公用品采购"、"差旅费用"、"水电费缴纳"）
 
 ### 2. 排序策略
 - 常用用途设置较小的排序值（如10、20、30）
@@ -199,10 +211,11 @@ getActiveTransactionPurposes(): Promise<Array<{ label: string; value: string }>>
 ## 注意事项
 
 ### ⚠️ 重要提醒
-1. **数据一致性**: 修改`value`字段会影响已使用该用途的所有交易
-2. **删除谨慎**: 删除用途前应确认没有交易正在使用
-3. **命名规范**: 建议团队内部统一用途命名规范
-4. **定期清理**: 定期审查和清理不再使用的用途
+1. **自动编号**: 系统自动生成TXGA-XXXX格式的用途代码，确保唯一性
+2. **代码修改**: 编辑时可修改代码，但会影响所有使用该用途的交易，请谨慎操作
+3. **删除谨慎**: 删除用途前应确认没有交易正在使用
+4. **显示名称**: 建议团队内部统一显示名称的命名规范
+5. **定期清理**: 定期审查和清理不再使用的用途
 
 ## 故障排查
 
