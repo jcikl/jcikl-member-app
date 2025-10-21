@@ -55,7 +55,6 @@ import type { MemberCategoryType } from '@/modules/member/types';
 import { MEMBER_CATEGORY_OPTIONS } from '@/modules/member/types';
 import './styles.css';
 
-const { Search } = Input;
 const { Option } = Select;
 
 const MemberFeeManagementPage: React.FC = () => {
@@ -337,8 +336,8 @@ const MemberFeeManagementPage: React.FC = () => {
         setTransactions(filteredTransactions);
         setTransactionTotal(filteredTransactions.length);
       } else {
-        setTransactions(result.data);
-        setTransactionTotal(result.total);
+      setTransactions(result.data);
+      setTransactionTotal(result.total);
       }
     } catch (error: any) {
       message.error('加载交易记录失败');
@@ -522,35 +521,35 @@ const MemberFeeManagementPage: React.FC = () => {
         }
         
         return (
-          <Space size="small">
-            {record.status !== 'paid' && (
-              <>
-                <Tooltip title="记录付款">
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => handleRecordPayment(record)}
-                  >
-                    付款
-                  </Button>
-                </Tooltip>
-                <Tooltip title="发送提醒">
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => handleSendReminder(record.id)}
-                  >
-                    提醒
-                  </Button>
-                </Tooltip>
-              </>
-            )}
-            {record.status === 'paid' && (
-              <Button type="link" size="small">
-                查看
-              </Button>
-            )}
-          </Space>
+        <Space size="small">
+          {record.status !== 'paid' && (
+            <>
+              <Tooltip title="记录付款">
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => handleRecordPayment(record)}
+                >
+                  付款
+                </Button>
+              </Tooltip>
+              <Tooltip title="发送提醒">
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => handleSendReminder(record.id)}
+                >
+                  提醒
+                </Button>
+              </Tooltip>
+            </>
+          )}
+          {record.status === 'paid' && (
+            <Button type="link" size="small">
+              查看
+            </Button>
+          )}
+        </Space>
         );
       },
     },
@@ -893,41 +892,38 @@ const MemberFeeManagementPage: React.FC = () => {
           
           {/* 🆕 右侧标签页内容 */}
           <Col xs={24} lg={18}>
+            {/* 搜索输入框 */}
+            <Card style={{ marginBottom: 16 }}>
+              <Input
+                placeholder="搜索会员姓名或ID..."
+                style={{ width: '100%' }}
+                suffix={<SearchOutlined />}
+                allowClear
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onPressEnter={(e) => handleSearch((e.target as HTMLInputElement).value)}
+              />
+            </Card>
+
         <Card style={{ marginBottom: 24 }}>
           <Tabs
             activeKey={activeTab}
             onChange={(key) => setActiveTab(key as 'member-fees' | 'transactions')}
+            tabBarExtraContent={
+              <Space>
+                <Button icon={<SendOutlined />} onClick={handleSendBulkReminders}>
+                  批量提醒
+                </Button>
+                <Button icon={<DownloadOutlined />} onClick={handleExportReport}>
+                  导出报告
+                </Button>
+              </Space>
+            }
             items={[
               {
                 key: 'member-fees',
                 label: '会员费用追踪',
                 children: (
-                  <>
-                        {/* 操作栏 */}
-                    <Card className="mb-6">
-                      <Row gutter={[16, 16]} align="middle">
-                            <Col xs={24} md={12}>
-                          <Search
-                            placeholder="搜索会员姓名或ID..."
-                            onSearch={handleSearch}
-                            allowClear
-                            enterButton={<SearchOutlined />}
-                          />
-                        </Col>
-                            <Col xs={24} md={12} style={{ textAlign: 'right' }}>
-                          <Space>
-                            <Button icon={<SendOutlined />} onClick={handleSendBulkReminders}>
-                              批量提醒
-                            </Button>
-                            <Button icon={<DownloadOutlined />} onClick={handleExportReport}>
-                              导出报告
-                            </Button>
-                          </Space>
-                        </Col>
-                      </Row>
-                    </Card>
-
-                    {/* Member Fees Table */}
                     <Card title="会员费用详情">
                       <Table
                         {...tableConfig}
@@ -949,7 +945,6 @@ const MemberFeeManagementPage: React.FC = () => {
                         scroll={undefined}
                       />
                     </Card>
-                  </>
                 ),
               },
               {
@@ -961,7 +956,7 @@ const MemberFeeManagementPage: React.FC = () => {
                     <Card
                       title="会员费交易记录"
                       extra={
-                        <Space>
+                          <Space>
                           <span style={{ color: '#999' }}>已选 {selectedTransactionIds.length} 条</span>
                           <Button
                             type="primary"
@@ -974,8 +969,8 @@ const MemberFeeManagementPage: React.FC = () => {
                             }}
                           >
                             批量分类
-                          </Button>
-                        </Space>
+                            </Button>
+                          </Space>
                       }
                     >
                       <Table
@@ -1246,34 +1241,34 @@ const MemberFeeManagementPage: React.FC = () => {
                 {/* 分类类型选择 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    <Button 
+                <Button 
                       size="middle"
                       type={modalSelectedCategory === 'new-member-fee' ? 'primary' : 'default'}
                       onClick={() => setModalSelectedCategory('new-member-fee')}
-                    >
-                      新会员费
-                    </Button>
-                    <Button 
+                >
+                  新会员费
+                </Button>
+                <Button 
                       size="middle"
                       type={modalSelectedCategory === 'renewal-fee' ? 'primary' : 'default'}
                       onClick={() => setModalSelectedCategory('renewal-fee')}
-                    >
-                      续会费
-                    </Button>
-                    <Button 
+                >
+                  续会费
+                </Button>
+                <Button 
                       size="middle"
                       type={modalSelectedCategory === 'alumni-fee' ? 'primary' : 'default'}
                       onClick={() => setModalSelectedCategory('alumni-fee')}
                     >
                       校友会
-                    </Button>
-                    <Button 
+                </Button>
+                <Button 
                       size="middle"
                       type={modalSelectedCategory === 'visiting-member-fee' ? 'primary' : 'default'}
                       onClick={() => setModalSelectedCategory('visiting-member-fee')}
                     >
                       拜访会员
-                    </Button>
+                </Button>
                   </div>
                 </div>
 
@@ -1287,7 +1282,7 @@ const MemberFeeManagementPage: React.FC = () => {
                     setModalSelectedMemberId('');
                   }}>
                     取消
-                  </Button>
+                </Button>
                   <Button type="primary" onClick={() => {
                     if (!modalSelectedCategory) {
                       message.warning('请选择分类类型');
@@ -1301,7 +1296,7 @@ const MemberFeeManagementPage: React.FC = () => {
                     handleClassifySubmit(fullCategory, modalSelectedMemberId || undefined);
                   }}>
                     确认
-                  </Button>
+                </Button>
                 </div>
               </div>
             </>

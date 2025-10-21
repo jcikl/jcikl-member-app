@@ -467,43 +467,150 @@ const MemberListPage: React.FC = () => {
       icon: <EyeOutlined />,
       content: (
         <div style={{ padding: '24px' }}>
-          <Row gutter={[16, 16]}>
-            <Col span={8}><strong>会员编号:</strong></Col>
-            <Col span={16}>{selectedMember.memberId}</Col>
-            
-            <Col span={8}><strong>姓名:</strong></Col>
-            <Col span={16}>{selectedMember.name}</Col>
-            
-            <Col span={8}><strong>邮箱:</strong></Col>
-            <Col span={16}>{selectedMember.email}</Col>
-            
-            <Col span={8}><strong>电话:</strong></Col>
-            <Col span={16}>{selectedMember.phone}</Col>
-            
-            <Col span={8}><strong>状态:</strong></Col>
-            <Col span={16}>
-              <Tag color={selectedMember.status === 'active' ? 'success' : 'default'}>
-                {MEMBER_STATUS_OPTIONS.find(o => o.value === selectedMember.status)?.label}
-              </Tag>
-            </Col>
-            
-            <Col span={8}><strong>类别:</strong></Col>
-            <Col span={16}>
-              <Tag color="blue">
-                {MEMBER_CATEGORY_OPTIONS.find(o => o.value === selectedMember.category)?.label || '-'}
-              </Tag>
-            </Col>
-            
-            <Col span={8}><strong>级别:</strong></Col>
-            <Col span={16}>
-              <Tag color="gold">
-                {MEMBER_LEVEL_OPTIONS.find(o => o.value === selectedMember.level)?.label}
-              </Tag>
-            </Col>
-            
-            <Col span={8}><strong>入会日期:</strong></Col>
-            <Col span={16}>{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('zh-CN') : '-'}</Col>
-          </Row>
+          {/* 基本信息 */}
+          <div style={{ marginBottom: 32 }}>
+            <h3 style={{ marginBottom: 16, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+              📋 基本信息
+            </h3>
+            <Row gutter={[16, 16]}>
+              <Col span={8}><strong>会员编号:</strong></Col>
+              <Col span={16}>{selectedMember.memberId}</Col>
+              
+              <Col span={8}><strong>姓名:</strong></Col>
+              <Col span={16}>{selectedMember.name}</Col>
+              
+              <Col span={8}><strong>性别:</strong></Col>
+              <Col span={16}>
+                {selectedMember.profile?.gender ? (
+                  <Tag color={selectedMember.profile.gender === 'Male' ? 'blue' : 'pink'}>
+                    {selectedMember.profile.gender === 'Male' ? '男' : '女'}
+                  </Tag>
+                ) : '-'}
+              </Col>
+              
+              <Col span={8}><strong>生日:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.birthDate || '-'}</Col>
+              
+              <Col span={8}><strong>国籍:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.nationality || '-'}</Col>
+              
+              <Col span={8}><strong>身份证号:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.nric || '-'}</Col>
+              
+              <Col span={8}><strong>状态:</strong></Col>
+              <Col span={16}>
+                <Tag color={selectedMember.status === 'active' ? 'success' : 'default'}>
+                  {MEMBER_STATUS_OPTIONS.find(o => o.value === selectedMember.status)?.label}
+                </Tag>
+              </Col>
+              
+              <Col span={8}><strong>类别:</strong></Col>
+              <Col span={16}>
+                <Tag color="blue">
+                  {MEMBER_CATEGORY_OPTIONS.find(o => o.value === selectedMember.category)?.label || '-'}
+                </Tag>
+              </Col>
+              
+              <Col span={8}><strong>级别:</strong></Col>
+              <Col span={16}>
+                <Tag color="gold">
+                  {MEMBER_LEVEL_OPTIONS.find(o => o.value === selectedMember.level)?.label}
+                </Tag>
+              </Col>
+              
+              <Col span={8}><strong>入会日期:</strong></Col>
+              <Col span={16}>{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('zh-CN') : '-'}</Col>
+            </Row>
+          </div>
+
+          {/* 联系信息 */}
+          <div style={{ marginBottom: 32 }}>
+            <h3 style={{ marginBottom: 16, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+              📞 联系信息
+            </h3>
+            <Row gutter={[16, 16]}>
+              <Col span={8}><strong>邮箱:</strong></Col>
+              <Col span={16}>{selectedMember.email}</Col>
+              
+              <Col span={8}><strong>电话:</strong></Col>
+              <Col span={16}>{selectedMember.phone}</Col>
+              
+              <Col span={8}><strong>备用电话:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.alternativePhone || '-'}</Col>
+              
+              <Col span={8}><strong>紧急联系人:</strong></Col>
+              <Col span={16}>
+                {selectedMember.profile?.emergencyContact ? (
+                  <div>
+                    <div><strong>姓名:</strong> {selectedMember.profile.emergencyContact.name}</div>
+                    <div><strong>电话:</strong> {selectedMember.profile.emergencyContact.phone}</div>
+                    <div><strong>关系:</strong> {selectedMember.profile.emergencyContact.relationship}</div>
+                  </div>
+                ) : '-'}
+              </Col>
+            </Row>
+          </div>
+
+          {/* 地址信息 */}
+          <div style={{ marginBottom: 32 }}>
+            <h3 style={{ marginBottom: 16, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+              🏠 地址信息
+            </h3>
+            <Row gutter={[16, 16]}>
+              <Col span={8}><strong>街道地址:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.address?.street || '-'}</Col>
+              
+              <Col span={8}><strong>城市:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.address?.city || '-'}</Col>
+              
+              <Col span={8}><strong>州/省:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.address?.state || '-'}</Col>
+              
+              <Col span={8}><strong>邮编:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.address?.postcode || '-'}</Col>
+              
+              <Col span={8}><strong>国家:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.address?.country || '-'}</Col>
+            </Row>
+          </div>
+
+          {/* 社交媒体 */}
+          <div style={{ marginBottom: 32 }}>
+            <h3 style={{ marginBottom: 16, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+              🌐 社交媒体
+            </h3>
+            <Row gutter={[16, 16]}>
+              <Col span={8}><strong>Facebook:</strong></Col>
+              <Col span={16}>
+                {selectedMember.profile?.socialMedia?.facebook ? (
+                  <a href={selectedMember.profile.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                    {selectedMember.profile.socialMedia.facebook}
+                  </a>
+                ) : '-'}
+              </Col>
+              
+              <Col span={8}><strong>LinkedIn:</strong></Col>
+              <Col span={16}>
+                {selectedMember.profile?.socialMedia?.linkedin ? (
+                  <a href={selectedMember.profile.socialMedia.linkedin} target="_blank" rel="noopener noreferrer">
+                    {selectedMember.profile.socialMedia.linkedin}
+                  </a>
+                ) : '-'}
+              </Col>
+              
+              <Col span={8}><strong>Instagram:</strong></Col>
+              <Col span={16}>
+                {selectedMember.profile?.socialMedia?.instagram ? (
+                  <a href={selectedMember.profile.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                    {selectedMember.profile.socialMedia.instagram}
+                  </a>
+                ) : '-'}
+              </Col>
+              
+              <Col span={8}><strong>微信:</strong></Col>
+              <Col span={16}>{selectedMember.profile?.socialMedia?.wechat || '-'}</Col>
+            </Row>
+          </div>
         </div>
       ),
     },

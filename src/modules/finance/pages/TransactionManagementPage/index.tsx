@@ -400,6 +400,7 @@ const TransactionManagementPage: React.FC = () => {
       amount: record.amount,
       payerPayee: record.payerPayee,
       category: record.category,
+      txAccount: record.txAccount, // 🆕 二次分类
       paymentMethod: record.paymentMethod,
       notes: record.notes,
     });
@@ -449,6 +450,7 @@ const TransactionManagementPage: React.FC = () => {
         amount: values.amount,
         payerPayee: values.payerPayee,
         category: values.category,
+        txAccount: values.txAccount, // 🆕 二次分类
         paymentMethod: values.paymentMethod,
         notes: values.notes,
       };
@@ -1302,6 +1304,14 @@ const TransactionManagementPage: React.FC = () => {
                   </Space>
                 </Option>
               </Select>
+            </Form.Item>
+
+            <Form.Item 
+              label="二次分类" 
+              name="txAccount"
+              tooltip="可选：为交易设置具体的二次分类"
+            >
+              <Input placeholder="例如: 活动名称、会员类别或具体分类" allowClear />
             </Form.Item>
 
             <Form.Item label="付款方式" name="paymentMethod">

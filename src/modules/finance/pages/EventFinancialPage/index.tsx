@@ -28,6 +28,7 @@ import {
   FallOutlined,
   DownloadOutlined,
   PlusOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { globalComponentService } from '@/config/globalComponentSettings';
@@ -63,13 +64,21 @@ const EventFinancialPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<EventFinancialSummary[]>([]);
   const [groupedEvents, setGroupedEvents] = useState<Record<string, EventFinancialSummary[]>>({});
-  const [filter, setFilter] = useState<'all' | 'recent' | 'upcoming'>('recent');
+  const [filter] = useState<'all' | 'recent' | 'upcoming'>('recent');
   const [statistics, setStatistics] = useState({
     totalRevenue: 0,
     totalExpense: 0,
     netIncome: 0,
     outstandingPayments: 0,
   });
+
+  // 🆕 筛选状态管理
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedBoardMember, setSelectedBoardMember] = useState<string>('all');
+  const [selectedEventStatus, setSelectedEventStatus] = useState<string>('all');
+  const [selectedEventType, setSelectedEventType] = useState<string>('all');
+  const [financialStatusFilter, setFinancialStatusFilter] = useState<string>('all');
+  const [searchText, setSearchText] = useState<string>('');
   
   // 交易管理相关状态
   const [activeTab, setActiveTab] = useState<'events' | 'transactions'>('events');
@@ -87,6 +96,7 @@ const EventFinancialPage: React.FC = () => {
   const [modalSelectedMemberId, setModalSelectedMemberId] = useState<string>('');
   const [modalPayerPayee, setModalPayerPayee] = useState<string>(''); // 手动填写的乙方
   const [modalSelectedEvent, setModalSelectedEvent] = useState<string>(''); // 🆕 选择的活动名称
+  const [modalYearFilter, setModalYearFilter] = useState<string>('all'); // 🆕 模态框中的年份筛选
   const [memberSearchOptions, setMemberSearchOptions] = useState<{ value: string; label: string }[]>([]);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   
@@ -126,7 +136,7 @@ const EventFinancialPage: React.FC = () => {
     loadEventFinancials();
     loadFinanceEvents();
     loadActiveMembers(); // 🆕 加载活跃会员列表
-  }, [filter]);
+  }, [filter, selectedYear, selectedBoardMember, selectedEventStatus, selectedEventType, searchText]);
   
   useEffect(() => {
     if (activeTab === 'transactions') {
@@ -189,18 +199,93 @@ const EventFinancialPage: React.FC = () => {
         })
       );
       
-      // Calculate statistics from events
-      const stats = eventFinancials.reduce((acc, event) => ({
+      // 🆕 应用筛选逻辑
+      let filteredEvents = eventFinancials;
+
+      // 年份筛选
+      if (selectedYear !== 'all') {
+        filteredEvents = filteredEvents.filter(event => {
+          const eventYear = event.eventDate ? new Date(event.eventDate).getFullYear() : new Date().getFullYear();
+          const targetYear = parseInt(selectedYear.replace('FY', ''));
+          return eventYear === targetYear;
+        });
+      }
+
+      // 负责理事筛选
+      if (selectedBoardMember !== 'all') {
+        filteredEvents = filteredEvents.filter(event => event.boardMember === selectedBoardMember);
+      }
+
+      // 活动状态筛选
+      if (selectedEventStatus !== 'all') {
+        filteredEvents = filteredEvents.filter(event => event.status === selectedEventStatus);
+      }
+
+      // 活动类型筛选（基于活动名称关键词）
+      if (selectedEventType !== 'all') {
+        filteredEvents = filteredEvents.filter(event => {
+          const eventName = event.eventName.toLowerCase();
+          switch (selectedEventType) {
+            case 'training':
+              return eventName.includes('培训') || eventName.includes('training');
+            case 'networking':
+              return eventName.includes('联谊') || eventName.includes('networking');
+            case 'conference':
+              return eventName.includes('会议') || eventName.includes('conference');
+            case 'social':
+              return eventName.includes('社交') || eventName.includes('social');
+            case 'charity':
+              return eventName.includes('慈善') || eventName.includes('charity');
+            default:
+              return true;
+          }
+        });
+      }
+
+      // 财务状态筛选
+      if (financialStatusFilter !== 'all') {
+        filteredEvents = filteredEvents.filter(event => {
+          switch (financialStatusFilter) {
+            case 'profitable':
+              return event.netIncome > 0;
+            case 'break-even':
+              return event.netIncome === 0;
+            case 'loss':
+              return event.netIncome < 0;
+            case 'pending':
+              return event.totalRevenue === 0 && event.totalExpense === 0;
+            default:
+              return true;
+          }
+        });
+      }
+
+      // 搜索文本筛选
+      if (searchText.trim()) {
+        const searchLower = searchText.toLowerCase().trim();
+        filteredEvents = filteredEvents.filter(event => {
+          return (
+            event.eventName.toLowerCase().includes(searchLower) ||
+            (event.boardMember && event.boardMember.toLowerCase().includes(searchLower)) ||
+            event.eventDate.includes(searchLower)
+          );
+        });
+      }
+
+      setEvents(filteredEvents);
+      
+      // Calculate statistics from filtered events
+      const stats = filteredEvents.reduce((acc, event) => ({
         totalRevenue: acc.totalRevenue + event.totalRevenue,
         totalExpense: acc.totalExpense + event.totalExpense,
         netIncome: acc.netIncome + event.netIncome,
         outstandingPayments: acc.outstandingPayments,
       }), { totalRevenue: 0, totalExpense: 0, netIncome: 0, outstandingPayments: 0 });
       
-      setEvents(eventFinancials);
+      setStatistics(stats);
       
-      // 🆕 按负责理事分组
-      const grouped = eventFinancials.reduce((acc, event) => {
+      // 🆕 按负责理事分组（使用筛选后的事件）
+      const grouped = filteredEvents.reduce((acc, event) => {
         const boardMember = event.boardMember || '未设置';
         if (!acc[boardMember]) {
           acc[boardMember] = [];
@@ -841,47 +926,7 @@ const EventFinancialPage: React.FC = () => {
   return (
     <ErrorBoundary>
       <div className="event-financial-page">
-        {/* Filter Section */}
-        <Card className="mb-6">
-          <Row gutter={[16, 16]} align="middle">
-            <Col flex="auto">
-              <Space size="large">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2">按组织者筛选</label>
-                  <Select style={{ width: 200 }} placeholder="选择组织者" allowClear>
-                    <Option value="all">所有组织者</Option>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2">按日期范围筛选</label>
-                  <Select style={{ width: 200 }} placeholder="选择日期范围" allowClear>
-                    <Option value="all">所有时间</Option>
-                  </Select>
-                </div>
-              </Space>
-            </Col>
-            <Col>
-              <Space>
-                <Button
-                  type={filter === 'recent' ? 'primary' : 'default'}
-                  onClick={() => setFilter('recent')}
-                >
-                  近期活动
-                </Button>
-                <Button
-                  type={filter === 'upcoming' ? 'primary' : 'default'}
-                  onClick={() => setFilter('upcoming')}
-                >
-                  即将举行
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-
-
-        {/* Statistics Cards */}
-        <div className="mb-6">
+        {/* 第一行：统计卡片 */}
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12} lg={6}>
               <Card>
@@ -933,32 +978,183 @@ const EventFinancialPage: React.FC = () => {
               </Card>
             </Col>
           </Row>
+
+        {/* 第二行：左侧筛选 + 右侧搜索和标签页 */}
+        <Row gutter={16}>
+          {/* 左侧筛选卡片 */}
+          <Col xs={24} lg={6}>
+            <Card title="🎯 活动筛选" style={{ position: 'sticky', top: 16 }}>
+              {/* 年份筛选 */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>📅 年份</div>
+                <Select
+                  style={{ width: '100%' }}
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  placeholder="选择年份"
+                >
+                  <Option value="all">所有年份</Option>
+                  <Option value="FY2025">2025财年</Option>
+                  <Option value="FY2024">2024财年</Option>
+                  <Option value="FY2023">2023财年</Option>
+                </Select>
         </div>
 
+              {/* 负责理事筛选 */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>🏢 负责理事</div>
+                <Select
+                  style={{ width: '100%' }}
+                  value={selectedBoardMember}
+                  onChange={setSelectedBoardMember}
+                  placeholder="选择负责理事"
+                >
+                  <Option value="all">所有理事</Option>
+                  <Option value="President">会长</Option>
+                  <Option value="Vice President">副会长</Option>
+                  <Option value="Secretary">秘书长</Option>
+                  <Option value="Treasurer">财政</Option>
+                  <Option value="Director">理事</Option>
+                </Select>
+              </div>
+              
+              {/* 活动状态筛选 */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>📈 活动状态</div>
+                <Select
+                  style={{ width: '100%' }}
+                  value={selectedEventStatus}
+                  onChange={setSelectedEventStatus}
+                  placeholder="选择状态"
+                >
+                  <Option value="all">所有状态</Option>
+                  <Option value="planned">🔄 策划中</Option>
+                  <Option value="active">✅ 进行中</Option>
+                  <Option value="completed">✅ 已完成</Option>
+                  <Option value="cancelled">❌ 已取消</Option>
+                </Select>
+              </div>
+              
+              {/* 活动类型筛选 */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>🎭 活动类型</div>
+                <Select
+                  style={{ width: '100%' }}
+                  value={selectedEventType}
+                  onChange={setSelectedEventType}
+                  placeholder="选择类型"
+                >
+                  <Option value="all">所有类型</Option>
+                  <Option value="training">📚 培训活动</Option>
+                  <Option value="networking">🤝 联谊活动</Option>
+                  <Option value="conference">🏛️ 会议活动</Option>
+                  <Option value="social">🎉 社交活动</Option>
+                  <Option value="charity">❤️ 慈善活动</Option>
+                </Select>
+              </div>
+              
+              {/* 财务状态筛选 */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>📊 财务状态</div>
+                <Select
+                  style={{ width: '100%' }}
+                  value={financialStatusFilter}
+                  onChange={setFinancialStatusFilter}
+                  placeholder="选择财务状态"
+                >
+                  <Option value="all">所有状态</Option>
+                  <Option value="profitable">💰 盈利</Option>
+                  <Option value="break-even">⚖️ 持平</Option>
+                  <Option value="loss">📉 亏损</Option>
+                  <Option value="pending">⏳ 待结算</Option>
+                </Select>
+              </div>
+              
+              {/* 交易账户筛选（仅交易记录标签页显示） */}
+              {activeTab === 'transactions' && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>🏦 交易账户</div>
+                  <Select
+                    style={{ width: '100%' }}
+                    value={txAccountFilter}
+                    onChange={setTxAccountFilter}
+                    placeholder="选择活动"
+                  >
+                    <Option value="all">所有活动</Option>
+                    <Option value="uncategorized">未分类交易</Option>
+                    <Option value="year-2025">2025年交易</Option>
+                    <Option value="year-2024">2024年交易</Option>
+                    {financeEvents.map(event => (
+                      <Option key={event.id} value={event.eventName}>
+                        {event.eventName}
+                      </Option>
+                    ))}
+                  </Select>
+          </div>
+        )}
+              
+              {/* 快速筛选按钮 */}
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+                <Button 
+                  type="link" 
+                  size="small" 
+                  onClick={() => {
+                    setSelectedYear('all');
+                    setSelectedBoardMember('all');
+                    setSelectedEventStatus('all');
+                    setSelectedEventType('all');
+                    setFinancialStatusFilter('all');
+                    setTxAccountFilter('all');
+                    setSearchText('');
+                  }}
+                  style={{ width: '100%' }}
+                >
+                  清除所有筛选
+                </Button>
+              </div>
+            </Card>
+          </Col>
+          
+          {/* 右侧搜索和标签页区域 */}
+          <Col xs={24} lg={18}>
+            {/* 搜索输入框 */}
+            <Card style={{ marginBottom: 16 }}>
+              <Input
+                placeholder="搜索活动名称、负责理事、活动类型..."
+                style={{ width: '100%' }}
+                suffix={<SearchOutlined />}
+                allowClear
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+            </Card>
+
+            {/* 活动财务标签页 */}
+            <Card>
         {/* 标签页切换 */}
-        <Card style={{ marginBottom: 24 }}>
           <Tabs
             activeKey={activeTab}
             onChange={(key) => setActiveTab(key as 'events' | 'transactions')}
+            tabBarExtraContent={
+              activeTab === 'events' && (
+                      <Space>
+                        <Button icon={<DownloadOutlined />}>导出 CSV</Button>
+                  <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />}
+                    onClick={() => setCreateEventModalVisible(true)}
+                  >
+                    创建活动
+                        </Button>
+                      </Space>
+              )
+            }
             items={[
               {
                 key: 'events',
                 label: '活动财务列表',
                 children: (
-                  <Card
-                    extra={
-                      <Space>
-                        <Button icon={<DownloadOutlined />}>导出 CSV</Button>
-                        <Button 
-                          type="primary" 
-                          icon={<PlusOutlined />}
-                          onClick={() => setCreateEventModalVisible(true)}
-                        >
-                          创建活动
-                        </Button>
-                      </Space>
-                    }
-                  >
+                  <Card>
                     {loading ? (
                       <div style={{ textAlign: 'center', padding: '40px' }}>
                         <LoadingSpinner />
@@ -1017,47 +1213,6 @@ const EventFinancialPage: React.FC = () => {
                 key: 'transactions',
                 label: '活动财务交易记录（二次分类）',
                 children: (
-                  <>
-                    {/* 交易筛选器 */}
-                    <Card className="mb-6">
-                      <Row gutter={[16, 16]} align="middle">
-                        <Col xs={24} md={8}>
-                          <Select
-                            style={{ width: '100%' }}
-                            placeholder="按活动筛选"
-                            value={txAccountFilter}
-                            onChange={setTxAccountFilter}
-                          >
-                            <Option value="all">所有活动</Option>
-                            {financeEvents.map(event => (
-                              <Option key={event.id} value={event.eventName}>
-                                {event.eventName}
-                              </Option>
-                            ))}
-                          </Select>
-                        </Col>
-                        <Col xs={24} md={16} style={{ textAlign: 'right' }}>
-                          <Space>
-                            {selectedRowKeys.length > 0 && (
-                              <Button
-                                type="primary"
-                                onClick={() => setBatchClassifyModalVisible(true)}
-                              >
-                                批量分类（已选 {selectedRowKeys.length} 笔）
-                              </Button>
-                            )}
-                            <span style={{ color: '#999', fontSize: '14px' }}>
-                              共 {transactionTotal} 笔活动财务相关交易
-                            </span>
-                            <Button icon={<DownloadOutlined />}>
-                              导出交易报表
-                            </Button>
-                          </Space>
-                        </Col>
-                      </Row>
-                    </Card>
-
-                    {/* 交易表格 */}
                     <Card title="活动财务交易记录">
                       <Table
                         {...tableConfig}
@@ -1086,7 +1241,6 @@ const EventFinancialPage: React.FC = () => {
                         scroll={{ x: 1200 }}
                       />
                     </Card>
-                  </>
                 ),
               },
             ]}
@@ -1103,6 +1257,7 @@ const EventFinancialPage: React.FC = () => {
             setModalSelectedMemberId('');
             setModalPayerPayee('');
             setModalSelectedEvent('');
+            setModalYearFilter('all');
             setMemberSearchOptions([]);
           }}
           footer={null}
@@ -1184,53 +1339,71 @@ const EventFinancialPage: React.FC = () => {
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* 年份筛选 */}
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontWeight: 'bold', marginBottom: 8 }}>筛选年份：</p>
+                  <Select
+                    style={{ width: '100%' }}
+                    value={modalYearFilter}
+                    onChange={setModalYearFilter}
+                    placeholder="选择年份"
+                  >
+                    <Option value="all">所有年份</Option>
+                    <Option value="2025">2025年</Option>
+                    <Option value="2024">2024年</Option>
+                    <Option value="2023">2023年</Option>
+                  </Select>
+                </div>
+
+                {/* 活动选择下拉 */}
                 <div style={{ marginBottom: 12 }}>
                   <p style={{ fontWeight: 'bold', marginBottom: 8 }}>选择活动分类：</p>
+                  <Select
+                    style={{ width: '100%' }}
+                    placeholder="请选择活动"
+                    value={modalSelectedEvent || undefined}
+                    onChange={setModalSelectedEvent}
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={
+                      financeEvents
+                        .filter(event => {
+                          // 根据年份筛选活动
+                          if (modalYearFilter === 'all') return true;
+                          const eventYear = event.eventDate 
+                            ? new Date(event.eventDate).getFullYear().toString()
+                            : '';
+                          return eventYear === modalYearFilter;
+                        })
+                        .map(event => ({
+                          value: event.eventName,
+                          label: event.eventDate 
+                            ? `${event.eventName} (${globalDateService.formatDate(new Date(event.eventDate), 'display')})`
+                            : event.eventName,
+                        }))
+                    }
+                    dropdownRender={(menu) => (
+                      <>
+                        {menu}
+                        <div style={{ borderTop: '1px solid #f0f0f0', padding: 8 }}>
                 <Button 
-                    type="dashed" 
+                            type="dashed" 
                   block 
-                    icon={<PlusOutlined />}
-                    onClick={() => {
-                      setClassifyModalVisible(false);
-                      setCreateEventModalVisible(true);
-                    }}
-                    style={{ marginBottom: 12 }}
-                  >
-                    创建新活动
+                            icon={<PlusOutlined />}
+                            onClick={() => {
+                              setClassifyModalVisible(false);
+                              setCreateEventModalVisible(true);
+                            }}
+                          >
+                            创建新活动
                 </Button>
-                </div>
-                
-                <div style={{ 
-                  maxHeight: '300px', 
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8
-                }}>
-                  {financeEvents.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
-                      暂无活动，请先创建活动
-                    </div>
-                  ) : (
-                    financeEvents.map(event => (
-                <Button 
-                        key={event.id}
-                  block 
-                  size="large"
-                        type={modalSelectedEvent === event.eventName ? 'primary' : 'default'}
-                        onClick={() => setModalSelectedEvent(event.eventName)}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                          <span>{event.eventName}</span>
-                          {event.eventDate && (
-                            <span style={{ fontSize: '12px', opacity: 0.7 }}>
-                              {globalDateService.formatDate(new Date(event.eventDate), 'display')}
-                            </span>
-                          )}
                         </div>
-                </Button>
-                    ))
-                  )}
+                      </>
+                    )}
+                  />
                 </div>
                 
                 {/* 🆕 确认保存按钮 */}
@@ -1814,6 +1987,8 @@ const EventFinancialPage: React.FC = () => {
               </div>
           )}
         </Drawer>
+          </Col>
+        </Row>
       </div>
     </ErrorBoundary>
   );

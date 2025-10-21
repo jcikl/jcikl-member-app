@@ -1079,10 +1079,10 @@ const updateBankAccountLastTransaction = async (
     }
     
     // 只更新最后交易日期
-    await updateDoc(accountRef, {
-      lastTransactionDate: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+      await updateDoc(accountRef, {
+        lastTransactionDate: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
     
   } catch (error: any) {
     console.error('❌ [updateBankAccountLastTransaction] Failed:', error);

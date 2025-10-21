@@ -19,11 +19,13 @@ import {
   Modal,
   Select,
   Input,
+  Tabs,
 } from 'antd';
 import {
   RiseOutlined,
   FallOutlined,
   DownloadOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { globalSystemService } from '@/config/globalSystemSettings';
@@ -41,6 +43,12 @@ const { Option } = Select;
 
 const GeneralAccountsPage: React.FC = () => {
   const { user } = useAuthStore();
+  
+  // 筛选状态管理
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all'); // 收入/支出分类
+  const [searchText, setSearchText] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'list' | 'transactions'>('list');
   
   // 交易管理相关状态
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -70,7 +78,7 @@ const GeneralAccountsPage: React.FC = () => {
 
   useEffect(() => {
     loadTransactions();
-  }, [transactionPage, transactionPageSize, txAccountFilter]);
+  }, [transactionPage, transactionPageSize, txAccountFilter, selectedYear, selectedCategory, searchText]);
 
   const loadTransactions = async () => {
     if (!user) return;
@@ -88,11 +96,45 @@ const GeneralAccountsPage: React.FC = () => {
         includeVirtual: true, // 🔑 包含子交易（虚拟交易）
       });
       
-      setTransactions(result.data);
-      setTransactionTotal(result.total);
+      // 应用客户端筛选
+      let filteredData = result.data;
+
+      // 年份筛选
+      if (selectedYear !== 'all') {
+        filteredData = filteredData.filter(tx => {
+          const txYear = new Date(tx.transactionDate).getFullYear();
+          const targetYear = parseInt(selectedYear.replace('FY', ''));
+          return txYear === targetYear;
+        });
+      }
+
+      // 收入/支出分类筛选
+      if (selectedCategory !== 'all') {
+        if (selectedCategory === 'income') {
+          filteredData = filteredData.filter(tx => tx.transactionType === 'income');
+        } else if (selectedCategory === 'expense') {
+          filteredData = filteredData.filter(tx => tx.transactionType === 'expense');
+        }
+      }
+
+      // 搜索文本筛选
+      if (searchText.trim()) {
+        const searchLower = searchText.toLowerCase().trim();
+        filteredData = filteredData.filter(tx => {
+          return (
+            tx.mainDescription?.toLowerCase().includes(searchLower) ||
+            tx.subDescription?.toLowerCase().includes(searchLower) ||
+            tx.payerPayee?.toLowerCase().includes(searchLower) ||
+            tx.txAccount?.toLowerCase().includes(searchLower)
+          );
+        });
+      }
+
+      setTransactions(filteredData);
+      setTransactionTotal(filteredData.length);
       
-      // 计算统计数据
-      const stats = result.data.reduce((acc, tx) => {
+      // 计算统计数据（基于筛选后的数据）
+      const stats = filteredData.reduce((acc, tx) => {
         if (tx.transactionType === 'income') {
           acc.totalIncome += tx.amount || 0;
         } else {
@@ -398,57 +440,88 @@ const GeneralAccountsPage: React.FC = () => {
   return (
     <ErrorBoundary>
       <div className="general-accounts-page">
-        {/* 统计卡片 */}
-        <div className="mb-6">
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={8}>
-              <Card>
-                <Statistic
-                  title="运营收入"
-                  value={statistics.totalIncome}
-                  precision={0}
-                  prefix="RM"
-                  valueStyle={{ color: '#3f8600' }}
-                  suffix={<RiseOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={8}>
-              <Card>
-                <Statistic
-                  title="运营支出"
-                  value={statistics.totalExpense}
-                  precision={0}
-                  prefix="RM"
-                  valueStyle={{ color: '#cf1322' }}
-                  suffix={<FallOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={8}>
-              <Card>
-                <Statistic
-                  title="运营利润"
-                  value={statistics.netBalance}
-                  precision={0}
-                  prefix="RM"
-                  valueStyle={{ color: statistics.netBalance >= 0 ? '#3f8600' : '#cf1322' }}
-                  suffix={statistics.netBalance >= 0 ? <RiseOutlined /> : <FallOutlined />}
-                />
-              </Card>
-            </Col>
-          </Row>
-        </div>
+        {/* 第一行：统计卡片 */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={8}>
+            <Card>
+              <Statistic
+                title="运营收入"
+                value={statistics.totalIncome}
+                precision={0}
+                prefix="RM"
+                valueStyle={{ color: '#3f8600' }}
+                suffix={<RiseOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card>
+              <Statistic
+                title="运营支出"
+                value={statistics.totalExpense}
+                precision={0}
+                prefix="RM"
+                valueStyle={{ color: '#cf1322' }}
+                suffix={<FallOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card>
+              <Statistic
+                title="运营利润"
+                value={statistics.netBalance}
+                precision={0}
+                prefix="RM"
+                valueStyle={{ color: statistics.netBalance >= 0 ? '#3f8600' : '#cf1322' }}
+                suffix={statistics.netBalance >= 0 ? <RiseOutlined /> : <FallOutlined />}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-        {/* 交易列表 */}
-        <Card style={{ marginBottom: 24 }}>
-          {/* 交易筛选器 */}
-          <Card className="mb-6">
-            <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} md={8}>
+        {/* 第二行：左侧筛选 + 右侧搜索和内容 */}
+        <Row gutter={16}>
+          {/* 左侧筛选卡片 */}
+          <Col xs={24} lg={6}>
+            <Card title="🏦 日常账户筛选" style={{ position: 'sticky', top: 16 }}>
+              {/* 年份筛选 */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>📅 年份</div>
                 <Select
                   style={{ width: '100%' }}
-                  placeholder="二次分类"
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  placeholder="选择年份"
+                >
+                  <Option value="all">所有年份</Option>
+                  <Option value="FY2025">2025财年</Option>
+                  <Option value="FY2024">2024财年</Option>
+                  <Option value="FY2023">2023财年</Option>
+                </Select>
+              </div>
+              
+              {/* 收入/支出分类筛选 */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>💰 交易类型</div>
+                <Select
+                  style={{ width: '100%' }}
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
+                  placeholder="选择类型"
+                >
+                  <Option value="all">所有类型</Option>
+                  <Option value="income">📈 收入</Option>
+                  <Option value="expense">📉 支出</Option>
+                </Select>
+              </div>
+              
+              {/* 二次分类筛选 */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>🏷️ 二次分类</div>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="选择分类"
                   value={txAccountFilter}
                   onChange={setTxAccountFilter}
                 >
@@ -473,43 +546,116 @@ const GeneralAccountsPage: React.FC = () => {
                     <Option value="miscellaneous">杂项</Option>
                   </optgroup>
                 </Select>
-              </Col>
-              <Col xs={24} md={16} style={{ textAlign: 'right' }}>
-                <Space>
-                  <span style={{ color: '#999', fontSize: '14px' }}>
-                    共 {transactionTotal} 笔日常账户相关交易
-                  </span>
-                  <Button icon={<DownloadOutlined />}>
-                    导出交易报表
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Card>
+              </div>
+              
+              {/* 快速筛选按钮 */}
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+                <Button 
+                  type="link" 
+                  size="small" 
+                  onClick={() => {
+                    setSelectedYear('all');
+                    setSelectedCategory('all');
+                    setTxAccountFilter('all');
+                    setSearchText('');
+                  }}
+                  style={{ width: '100%' }}
+                >
+                  清除所有筛选
+                </Button>
+              </div>
+            </Card>
+          </Col>
+          
+          {/* 右侧搜索和内容区域 */}
+          <Col xs={24} lg={18}>
+            {/* 搜索输入框 */}
+            <Card style={{ marginBottom: 16 }}>
+              <Input
+                placeholder="搜索交易描述、付款人/收款人、分类..."
+                style={{ width: '100%' }}
+                suffix={<SearchOutlined />}
+                allowClear
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+            </Card>
 
-          {/* 交易表格 */}
-          <Card title="日常账户交易记录（二次分类）">
-            <Table
-              {...tableConfig}
-              columns={transactionColumns}
-              dataSource={transactions}
-              rowKey="id"
-              loading={transactionsLoading}
-              pagination={{
-                current: transactionPage,
-                pageSize: transactionPageSize,
-                total: transactionTotal,
-                onChange: (page, size) => {
-                  setTransactionPage(page);
-                  setTransactionPageSize(size || 20);
-                },
-                showSizeChanger: true,
-                showTotal: (total) => `共 ${total} 条交易`,
-              }}
-              scroll={{ x: 1200 }}
-            />
-          </Card>
-        </Card>
+            {/* 日常账户标签页 */}
+            <Card>
+              <Tabs
+                activeKey={activeTab}
+                onChange={(key) => setActiveTab(key as 'list' | 'transactions')}
+                tabBarExtraContent={
+                  <Space>
+                    <span style={{ color: '#999', fontSize: '14px' }}>
+                      共 {transactionTotal} 笔交易
+                    </span>
+                    <Button icon={<DownloadOutlined />}>
+                      导出交易报表
+                    </Button>
+                  </Space>
+                }
+                items={[
+                  {
+                    key: 'list',
+                    label: '日常账户列表',
+                    children: (
+                      <Card title="日常账户交易记录">
+                        <Table
+                          {...tableConfig}
+                          columns={transactionColumns}
+                          dataSource={transactions}
+                          rowKey="id"
+                          loading={transactionsLoading}
+                          pagination={{
+                            current: transactionPage,
+                            pageSize: transactionPageSize,
+                            total: transactionTotal,
+                            onChange: (page, size) => {
+                              setTransactionPage(page);
+                              setTransactionPageSize(size || 20);
+                            },
+                            showSizeChanger: true,
+                            showTotal: (total) => `共 ${total} 条交易`,
+                          }}
+                          scroll={{ x: 1200 }}
+                        />
+                      </Card>
+                    ),
+                  },
+                  {
+                    key: 'transactions',
+                    label: '日常账户交易记录（二次分类）',
+                    children: (
+                      <Card title="日常账户交易记录">
+                        <Table
+                          {...tableConfig}
+                          columns={transactionColumns}
+                          dataSource={transactions}
+                          rowKey="id"
+                          loading={transactionsLoading}
+                          pagination={{
+                            current: transactionPage,
+                            pageSize: transactionPageSize,
+                            total: transactionTotal,
+                            onChange: (page, size) => {
+                              setTransactionPage(page);
+                              setTransactionPageSize(size || 20);
+                            },
+                            showSizeChanger: true,
+                            showTotal: (total) => `共 ${total} 条交易`,
+                          }}
+                          scroll={{ x: 1200 }}
+                        />
+                      </Card>
+                    ),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+        </Row>
 
         {/* 分类模态框 */}
         <Modal
