@@ -5,21 +5,34 @@
  * 为多条交易批量设置类别
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Select,
   message,
   Alert,
-  Button,
+  Input,
+  Radio,
+  Divider,
 } from 'antd';
+import { getMembers } from '@/modules/member/services/memberService';
+import { getEvents } from '@/modules/event/services/eventService';
+import type { Member } from '@/modules/member/types';
+import type { Event } from '@/modules/event/types';
 
 const { Option } = Select;
 
 interface BatchSetCategoryModalProps {
   visible: boolean;
   selectedCount: number;
-  onOk: (category: string, txAccount?: string) => Promise<void>;
+  onOk: (data: {
+    category: string;
+    txAccount?: string;
+    year?: string;
+    memberId?: string;
+    payerPayee?: string;
+    eventId?: string;
+  }) => Promise<void>;
   onCancel: () => void;
   onManageSubcategory?: (category: string) => void;
 }
@@ -31,9 +44,46 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   onCancel,
   onManageSubcategory,
 }) => {
+  // Suppress unused variable warning
+  void onManageSubcategory;
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedTxAccount, setSelectedTxAccount] = useState<string>('');
+  
+  // 动态字段状态
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
+  const [payerPayeeMode, setPayerPayeeMode] = useState<'member' | 'manual'>('member');
+  const [manualPayerPayee, setManualPayerPayee] = useState<string>('');
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  
+  // 数据列表
+  const [members, setMembers] = useState<Member[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
+  
+  // 加载会员和活动列表
+  useEffect(() => {
+    if (visible) {
+      loadMembersAndEvents();
+    }
+  }, [visible]);
+  
+  const loadMembersAndEvents = async () => {
+    setLoadingData(true);
+    try {
+      const [membersResult, eventsResult] = await Promise.all([
+        getMembers({ page: 1, limit: 1000, status: 'active' }),
+        getEvents({ page: 1, limit: 1000, status: 'Published' }),
+      ]);
+      setMembers(membersResult.data);
+      setEvents(eventsResult.data);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
   const handleOk = async () => {
     try {
@@ -42,11 +92,44 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
         return;
       }
 
+      // 验证必填字段
+      if (selectedCategory === 'member-fees' && !selectedYear) {
+        message.error('会员费需要选择年份');
+        return;
+      }
+
       setLoading(true);
-      await onOk(selectedCategory, selectedTxAccount || undefined);
+      
+      // 构建提交数据
+      const data: {
+        category: string;
+        txAccount?: string;
+        year?: string;
+        memberId?: string;
+        payerPayee?: string;
+        eventId?: string;
+      } = {
+        category: selectedCategory,
+        txAccount: selectedTxAccount || undefined,
+      };
+      
+      // 根据类别添加对应字段
+      if (selectedCategory === 'member-fees') {
+        data.year = selectedYear;
+        data.memberId = selectedMemberId || undefined;
+      } else if (selectedCategory === 'event-finance') {
+        data.year = selectedYear || undefined;
+        data.eventId = selectedEventId || undefined;
+        data.payerPayee = payerPayeeMode === 'manual' ? manualPayerPayee : undefined;
+        data.memberId = payerPayeeMode === 'member' ? selectedMemberId : undefined;
+      } else if (selectedCategory === 'general-accounts') {
+        data.payerPayee = payerPayeeMode === 'manual' ? manualPayerPayee : undefined;
+        data.memberId = payerPayeeMode === 'member' ? selectedMemberId : undefined;
+      }
+      
+      await onOk(data);
       message.success(`已为 ${selectedCount} 条交易设置类别`);
-      setSelectedCategory('');
-      setSelectedTxAccount('');
+      resetForm();
     } catch (error: any) {
       message.error(error.message || '批量设置类别失败');
     } finally {
@@ -54,9 +137,18 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     }
   };
 
-  const handleCancel = () => {
+  const resetForm = () => {
     setSelectedCategory('');
     setSelectedTxAccount('');
+    setSelectedYear('');
+    setSelectedMemberId('');
+    setPayerPayeeMode('member');
+    setManualPayerPayee('');
+    setSelectedEventId('');
+  };
+
+  const handleCancel = () => {
+    resetForm();
     onCancel();
   };
 
@@ -112,63 +204,218 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
         </strong>
       </div>
 
-      {/* 二次分类，根据主类别显示对应选项 */}
-      {selectedCategory && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>选择二次分类（可选）</div>
-            {onManageSubcategory && (
-              <Button type="link" size="small" onClick={() => onManageSubcategory(selectedCategory)}>
-                管理该分类的二次分类设置
-              </Button>
-            )}
+      {/* 会员费动态字段 */}
+      {selectedCategory === 'member-fees' && (
+        <>
+          <Divider style={{ margin: '16px 0' }} />
+          
+          {/* 年份选择 - 必填 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
+              年份 <span style={{ color: 'red' }}>*</span>
+            </div>
+            <Select
+              style={{ width: '100%' }}
+              value={selectedYear}
+              onChange={setSelectedYear}
+              placeholder="选择年份"
+            >
+              <Option value="2025">2025</Option>
+              <Option value="2024">2024</Option>
+              <Option value="2023">2023</Option>
+            </Select>
           </div>
-          {selectedCategory === 'member-fees' && (
+          
+          {/* 关联会员 - 可选 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>关联会员（可选）</div>
             <Select
               style={{ width: '100%' }}
-              size="large"
+              value={selectedMemberId}
+              onChange={setSelectedMemberId}
+              placeholder="选择会员"
+              allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const label = option?.children?.toString() || '';
+                return label.toLowerCase().includes(input.toLowerCase());
+              }}
+              loading={loadingData}
+            >
+              {members.map(m => (
+                <Option key={m.id} value={m.id}>
+                  {m.name} - {m.email}
+                </Option>
+              ))}
+            </Select>
+          </div>
+          
+          {/* 二次分类 - 可选 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>二次分类（可选）</div>
+            <Select
+              style={{ width: '100%' }}
               value={selectedTxAccount}
               onChange={setSelectedTxAccount}
-              placeholder="请选择会员费交易账户"
+              placeholder="选择会员费类型"
               allowClear
             >
-              <Option value="2025-new-member-fee">2025 新会员费</Option>
-              <Option value="2025-renewal-fee">2025 续会费</Option>
-              <Option value="2025-alumni-fee">2025 校友会</Option>
-              <Option value="2025-visiting-member-fee">2025 拜访会员</Option>
+              <Option value="new-member-fee">新会员费</Option>
+              <Option value="renewal-fee">续会费</Option>
+              <Option value="alumni-fee">校友会</Option>
+              <Option value="visiting-member-fee">拜访会员</Option>
             </Select>
+          </div>
+        </>
+      )}
+
+      {/* 活动财务动态字段 */}
+      {selectedCategory === 'event-finance' && (
+        <>
+          <Divider style={{ margin: '16px 0' }} />
+          
+          {/* 收款人信息 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>收款人信息</div>
+            <Radio.Group value={payerPayeeMode} onChange={(e) => setPayerPayeeMode(e.target.value)}>
+              <Radio value="member">选择会员</Radio>
+              <Radio value="manual">手动填写（非会员）</Radio>
+            </Radio.Group>
+          </div>
+          
+          {payerPayeeMode === 'member' ? (
+            <div style={{ marginBottom: 16 }}>
+              <Select
+                style={{ width: '100%' }}
+                value={selectedMemberId}
+                onChange={setSelectedMemberId}
+                placeholder="选择会员"
+                allowClear
+              showSearch
+              optionFilterProp="children"
+              loading={loadingData}
+              >
+                {members.map(m => (
+                  <Option key={m.id} value={m.id}>
+                    {m.name} - {m.email}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+          ) : (
+            <div style={{ marginBottom: 16 }}>
+              <Input
+                value={manualPayerPayee}
+                onChange={(e) => setManualPayerPayee(e.target.value)}
+                placeholder="输入收款人姓名"
+              />
+            </div>
           )}
-          {selectedCategory === 'event-finance' && (
+          
+          {/* 年份筛选 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>年份（可选）</div>
             <Select
               style={{ width: '100%' }}
-              size="large"
-              value={selectedTxAccount}
-              onChange={setSelectedTxAccount}
-              placeholder="请选择活动财务交易账户"
+              value={selectedYear}
+              onChange={setSelectedYear}
+              placeholder="选择年份"
               allowClear
             >
-              <Option value="ticket-income">门票收入</Option>
-              <Option value="sponsorship">赞助</Option>
-              <Option value="venue-expense">场地支出</Option>
-              <Option value="food-beverage">餐饮支出</Option>
+              <Option value="2025">2025</Option>
+              <Option value="2024">2024</Option>
+              <Option value="2023">2023</Option>
             </Select>
-          )}
-          {selectedCategory === 'general-accounts' && (
+          </div>
+          
+          {/* 选择活动 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>选择活动（可选）</div>
             <Select
               style={{ width: '100%' }}
-              size="large"
+              value={selectedEventId}
+              onChange={setSelectedEventId}
+              placeholder="选择活动"
+              allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const label = option?.children?.toString() || '';
+                return label.toLowerCase().includes(input.toLowerCase());
+              }}
+              loading={loadingData}
+            >
+              {events.map(e => (
+                <Option key={e.id} value={e.id}>
+                  {e.name}
+                </Option>
+              ))}
+            </Select>
+          </div>
+        </>
+      )}
+
+      {/* 日常财务动态字段 */}
+      {selectedCategory === 'general-accounts' && (
+        <>
+          <Divider style={{ margin: '16px 0' }} />
+          
+          {/* 付款人信息 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>付款人信息</div>
+            <Radio.Group value={payerPayeeMode} onChange={(e) => setPayerPayeeMode(e.target.value)}>
+              <Radio value="member">选择会员</Radio>
+              <Radio value="manual">手动填写（非会员）</Radio>
+            </Radio.Group>
+          </div>
+          
+          {payerPayeeMode === 'member' ? (
+            <div style={{ marginBottom: 16 }}>
+              <Select
+                style={{ width: '100%' }}
+                value={selectedMemberId}
+                onChange={setSelectedMemberId}
+                placeholder="选择会员"
+                allowClear
+              showSearch
+              optionFilterProp="children"
+              loading={loadingData}
+              >
+                {members.map(m => (
+                  <Option key={m.id} value={m.id}>
+                    {m.name} - {m.email}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+          ) : (
+            <div style={{ marginBottom: 16 }}>
+              <Input
+                value={manualPayerPayee}
+                onChange={(e) => setManualPayerPayee(e.target.value)}
+                placeholder="输入付款人姓名"
+              />
+            </div>
+          )}
+          
+          {/* 二次分类 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>二次分类（可选）</div>
+            <Select
+              style={{ width: '100%' }}
               value={selectedTxAccount}
               onChange={setSelectedTxAccount}
-              placeholder="请选择日常账户交易账户"
+              placeholder="选择二次分类"
               allowClear
             >
               <Option value="office-supplies">办公用品</Option>
               <Option value="utilities">水电网</Option>
               <Option value="transport">交通</Option>
+              <Option value="donations">捐赠</Option>
+              <Option value="sponsorships">赞助</Option>
               <Option value="misc">其他</Option>
             </Select>
-          )}
-        </div>
+          </div>
+        </>
       )}
     </Modal>
   );

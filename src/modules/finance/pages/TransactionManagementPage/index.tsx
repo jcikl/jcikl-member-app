@@ -659,27 +659,55 @@ const TransactionManagementPage: React.FC = () => {
     setBatchCategoryModalVisible(true);
   };
 
-  const handleBatchSetCategoryOk = async (category: string, txAccount?: string) => {
+  const handleBatchSetCategoryOk = async (data: {
+    category: string;
+    txAccount?: string;
+    year?: string;
+    memberId?: string;
+    payerPayee?: string;
+    eventId?: string;
+  }) => {
     if (!user) return;
 
     try {
       const result = await batchSetCategory(
         selectedRowKeys as string[],
-        category,
+        data.category,
         user.id
       );
 
-      // 如选择了二次分类，则追加一次批量更新二次分类
-      if (txAccount) {
+      // 批量更新额外字段
+      const updates: Partial<Transaction> = {};
+      
+      if (data.txAccount) {
+        updates.txAccount = data.txAccount;
+      }
+      
+      if (data.payerPayee) {
+        updates.payerPayee = data.payerPayee;
+      }
+      
+      // 构建 metadata
+      const metadata: Record<string, any> = {};
+      if (data.year) metadata.year = data.year;
+      if (data.memberId) metadata.memberId = data.memberId;
+      if (data.eventId) metadata.eventId = data.eventId;
+      
+      if (Object.keys(metadata).length > 0) {
+        updates.metadata = metadata;
+      }
+      
+      // 如果有额外字段，批量更新
+      if (Object.keys(updates).length > 0) {
         await Promise.all(
           (selectedRowKeys as string[]).map(id =>
-            updateTransaction(id, { txAccount }, user.id)
+            updateTransaction(id, updates, user.id)
           )
         );
       }
 
       if (result.successCount > 0) {
-        message.success(`成功设置 ${result.successCount} 条交易的类别`);
+        message.success(`成功设置 ${result.successCount} 条交易的类别及相关信息`);
       }
       if (result.failedCount > 0) {
         message.warning(`${result.failedCount} 条交易设置失败`);
