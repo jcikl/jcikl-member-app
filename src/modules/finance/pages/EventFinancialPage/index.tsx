@@ -423,8 +423,8 @@ const EventFinancialPage: React.FC = () => {
           eventDate: editEventDate || undefined,
           description: editEventDescription || undefined,
           boardMember: editEventBoardMember as any,
-          eventChair: editEventChair.trim() || undefined,
-          eventTreasurer: editEventTreasurer.trim() || undefined,
+          eventChair: editEventChair || undefined,
+          eventTreasurer: editEventTreasurer || undefined,
           status: editEventStatus,
         },
         user.id
@@ -466,8 +466,8 @@ const EventFinancialPage: React.FC = () => {
           eventDate: newEventDate || undefined,
           description: newEventDescription || undefined,
           boardMember: newEventBoardMember as any,
-          eventChair: newEventChair.trim() || undefined, // 🆕 活动主席
-          eventTreasurer: newEventTreasurer.trim() || undefined, // 🆕 活动财政
+          eventChair: newEventChair.trim() || undefined,
+          eventTreasurer: newEventTreasurer.trim() || undefined,
           status: 'planned',
         },
         user.id
