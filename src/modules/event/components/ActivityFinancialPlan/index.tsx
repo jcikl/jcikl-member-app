@@ -926,7 +926,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 
       {/* 批量粘贴模态框 */}
       <Modal
-        title="批量粘贴导入"
+        title="批量导入财务计划"
         open={bulkPasteVisible}
         onOk={handleBulkPasteSubmit}
         onCancel={() => {
@@ -940,201 +940,214 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         okButtonProps={{ disabled: bulkPasteData.length === 0 }}
       >
         <div style={{ marginBottom: 16 }}>
-          <p><strong>使用说明：</strong></p>
-          <ul style={{ paddingLeft: 20, margin: '8px 0', fontSize: '13px' }}>
-            <li>从Excel复制数据后，点击下方"粘贴区域"输入框并按 Ctrl+V 粘贴</li>
-            <li>数据格式：<code>描述 [Tab] 备注 [Tab] 金额 [Tab] 预计日期</code></li>
-            <li>粘贴后可在表格中直接编辑修改</li>
-            <li>导入前请检查并修正数据</li>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ margin: 0, marginBottom: 4, fontWeight: 600 }}>使用说明：</p>
+              <ul style={{ paddingLeft: 20, margin: '4px 0', fontSize: '13px', color: '#666' }}>
+                <li>从Excel复制数据后，选中表格任意单元格按 Ctrl+V 粘贴（自动解析）</li>
+                <li>Excel格式：<code>描述 [Tab] 备注 [Tab] 金额 [Tab] 日期</code></li>
+                <li>也可手动点击"添加行"按钮逐行输入</li>
           </ul>
         </div>
-
-        {bulkPasteData.length === 0 ? (
-          // 粘贴输入区
-          <div>
-            <Input
-              placeholder="点击此处，然后按 Ctrl+V 粘贴 Excel 数据..."
-              onPaste={handleTextPaste}
-          value={bulkPasteText}
-          onChange={(e) => setBulkPasteText(e.target.value)}
-              style={{
-                height: 100,
-                fontFamily: 'monospace',
-                fontSize: 13,
-                border: '2px dashed #d9d9d9',
-                background: '#fafafa',
-              }}
-        />
-        <div style={{ marginTop: 12, fontSize: '12px', color: '#8c8c8c' }}>
-              💡 示例数据（复制Excel时自动带Tab分隔符）：<br />
-              正式会员报名 [Tab] 预计30人 [Tab] 3000 [Tab] 2025-02-15
-        </div>
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <Button type="dashed" onClick={handleAddBulkRow} icon={<PlusOutlined />}>
-                或手动添加空行
+            <Space>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={handleAddBulkRow}
+              >
+                添加行
               </Button>
-            </div>
-          </div>
-        ) : (
-          // 数据预览表格
-          <div>
-            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#666' }}>
-                共 <strong>{bulkPasteData.length}</strong> 条记录
-              </span>
-              <Space>
+              {bulkPasteData.length > 0 && (
                 <Button 
-                  size="small" 
+                  danger
                   onClick={() => {
                     setBulkPasteData([]);
-                    setBulkPasteText('');
+                    message.info('已清空所有数据');
                   }}
                 >
-                  重新粘贴
+                  清空全部
                 </Button>
-                <Button 
-                  type="dashed" 
-                  size="small" 
-                  icon={<PlusOutlined />}
-                  onClick={handleAddBulkRow}
-                >
-                  添加行
-                </Button>
-              </Space>
-            </div>
-            
-            <Table
-              dataSource={bulkPasteData}
-              pagination={false}
-              scroll={{ y: 400 }}
-              size="small"
-              columns={[
-                {
-                  title: '类型',
-                  dataIndex: 'type',
-                  key: 'type',
-                  width: 100,
-                  render: (type, record) => (
-                    <Select
-                      value={type}
-                      onChange={(value) => handleBulkDataChange(record.key, 'type', value)}
-                      size="small"
-                      style={{ width: '100%' }}
-                    >
-                      <Option value="income">收入</Option>
-                      <Option value="expense">支出</Option>
-                    </Select>
-                  ),
-                },
-                {
-                  title: '类别',
-                  dataIndex: 'category',
-                  key: 'category',
-                  width: 150,
-                  render: (category, record) => (
-                    <Select
-                      value={category}
-                      onChange={(value) => handleBulkDataChange(record.key, 'category', value)}
-                      size="small"
-                      style={{ width: '100%' }}
-                    >
-                      {record.type === 'income' 
-                        ? incomeCategories.map(cat => (
-                            <Option key={cat.value} value={cat.value}>{cat.label}</Option>
-                          ))
-                        : expenseCategories.map(cat => (
-                            <Option key={cat.value} value={cat.value}>{cat.label}</Option>
-                          ))
-                      }
-                    </Select>
-                  ),
-                },
-                {
-                  title: '描述 *',
-                  dataIndex: 'description',
-                  key: 'description',
-                  width: 200,
-                  render: (desc, record) => (
-                    <Input
-                      value={desc}
-                      onChange={(e) => handleBulkDataChange(record.key, 'description', e.target.value)}
-                      placeholder="必填"
-                      size="small"
-                      status={!desc ? 'error' : ''}
-                    />
-                  ),
-                },
-                {
-                  title: '备注',
-                  dataIndex: 'remark',
-                  key: 'remark',
-                  width: 150,
-                  render: (remark, record) => (
-                    <Input
-                      value={remark}
-                      onChange={(e) => handleBulkDataChange(record.key, 'remark', e.target.value)}
-                      placeholder="可选"
-                      size="small"
-                    />
-                  ),
-                },
-                {
-                  title: '金额 *',
-                  dataIndex: 'amount',
-                  key: 'amount',
-                  width: 120,
-                  render: (amount, record) => (
-                    <InputNumber
-                      value={amount}
-                      onChange={(value) => handleBulkDataChange(record.key, 'amount', value || 0)}
-                      placeholder="必填"
-                      size="small"
-                      style={{ width: '100%' }}
-                      min={0}
-                      precision={2}
-                      status={amount <= 0 ? 'error' : ''}
-                    />
-                  ),
-                },
-                {
-                  title: '预计日期',
-                  dataIndex: 'expectedDate',
-                  key: 'expectedDate',
-                  width: 140,
-                  render: (date, record) => (
-                    <DatePicker
-                      value={date ? dayjs(date) : null}
-                      onChange={(value) => handleBulkDataChange(
-                        record.key, 
-                        'expectedDate', 
-                        value ? value.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
-                      )}
-                      size="small"
-                      style={{ width: '100%' }}
-                      format="YYYY-MM-DD"
-                    />
-                  ),
-                },
-                {
-                  title: '操作',
-                  key: 'action',
-                  width: 60,
-                  fixed: 'right',
-                  render: (_, record) => (
-                    <Button
-                      type="link"
-                      danger
-                      size="small"
-                      onClick={() => handleDeleteBulkRow(record.key)}
-                    >
-                      删除
-                    </Button>
-                  ),
-                },
-              ]}
-            />
+              )}
+            </Space>
           </div>
-        )}
+        </div>
+
+        {/* 隐藏的粘贴区域 */}
+        <div style={{ position: 'absolute', left: -9999, top: -9999 }}>
+          <Input
+            id="bulk-paste-input"
+            onPaste={handleTextPaste}
+          value={bulkPasteText}
+          onChange={(e) => setBulkPasteText(e.target.value)}
+          />
+        </div>
+
+        {/* 可编辑表格 */}
+        <div 
+          onPaste={handleTextPaste}
+          style={{ position: 'relative' }}
+        >
+          {bulkPasteData.length === 0 ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '60px 20px',
+              background: '#fafafa',
+              border: '2px dashed #d9d9d9',
+              borderRadius: 8,
+            }}>
+              <p style={{ fontSize: 16, color: '#999', marginBottom: 12 }}>
+                📋 暂无数据
+              </p>
+              <p style={{ fontSize: 13, color: '#bbb', marginBottom: 20 }}>
+                点击上方"添加行"按钮，或从Excel粘贴数据到此区域
+              </p>
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddBulkRow}>
+                添加第一行
+              </Button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
+                共 <strong style={{ color: '#1890ff' }}>{bulkPasteData.length}</strong> 条记录
+                <span style={{ marginLeft: 16, color: '#999' }}>
+                  💡 提示：在表格内按 Ctrl+V 可粘贴Excel数据
+                </span>
+              </div>
+              
+              <Table
+                dataSource={bulkPasteData}
+                pagination={false}
+                scroll={{ y: 400 }}
+                size="small"
+                bordered
+                columns={[
+                  {
+                    title: '类型',
+                    dataIndex: 'type',
+                    key: 'type',
+                    width: 100,
+                    render: (type, record) => (
+                      <Select
+                        value={type}
+                        onChange={(value) => handleBulkDataChange(record.key, 'type', value)}
+                        size="small"
+                        style={{ width: '100%' }}
+                      >
+                        <Option value="income">收入</Option>
+                        <Option value="expense">支出</Option>
+                      </Select>
+                    ),
+                  },
+                  {
+                    title: '类别',
+                    dataIndex: 'category',
+                    key: 'category',
+                    width: 150,
+                    render: (category, record) => (
+                      <Select
+                        value={category}
+                        onChange={(value) => handleBulkDataChange(record.key, 'category', value)}
+                        size="small"
+                        style={{ width: '100%' }}
+                      >
+                        {record.type === 'income' 
+                          ? incomeCategories.map(cat => (
+                              <Option key={cat.value} value={cat.value}>{cat.label}</Option>
+                            ))
+                          : expenseCategories.map(cat => (
+                              <Option key={cat.value} value={cat.value}>{cat.label}</Option>
+                            ))
+                        }
+                      </Select>
+                    ),
+                  },
+                  {
+                    title: '描述 *',
+                    dataIndex: 'description',
+                    key: 'description',
+                    width: 200,
+                    render: (desc, record) => (
+                      <Input
+                        value={desc}
+                        onChange={(e) => handleBulkDataChange(record.key, 'description', e.target.value)}
+                        placeholder="必填"
+                        size="small"
+                        status={!desc ? 'error' : ''}
+                      />
+                    ),
+                  },
+                  {
+                    title: '备注',
+                    dataIndex: 'remark',
+                    key: 'remark',
+                    width: 150,
+                    render: (remark, record) => (
+                      <Input
+                        value={remark}
+                        onChange={(e) => handleBulkDataChange(record.key, 'remark', e.target.value)}
+                        placeholder="可选"
+                        size="small"
+                      />
+                    ),
+                  },
+                  {
+                    title: '金额 *',
+                    dataIndex: 'amount',
+                    key: 'amount',
+                    width: 120,
+                    render: (amount, record) => (
+                      <InputNumber
+                        value={amount}
+                        onChange={(value) => handleBulkDataChange(record.key, 'amount', value || 0)}
+                        placeholder="必填"
+                        size="small"
+                        style={{ width: '100%' }}
+                        min={0}
+                        precision={2}
+                        status={amount <= 0 ? 'error' : ''}
+                      />
+                    ),
+                  },
+                  {
+                    title: '预计日期',
+                    dataIndex: 'expectedDate',
+                    key: 'expectedDate',
+                    width: 140,
+                    render: (date, record) => (
+                      <DatePicker
+                        value={date ? dayjs(date) : null}
+                        onChange={(value) => handleBulkDataChange(
+                          record.key, 
+                          'expectedDate', 
+                          value ? value.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
+                        )}
+                        size="small"
+                        style={{ width: '100%' }}
+                        format="YYYY-MM-DD"
+                      />
+                    ),
+                  },
+                  {
+                    title: '操作',
+                    key: 'action',
+                    width: 60,
+                    fixed: 'right',
+                    render: (_, record) => (
+                      <Button
+                        type="link"
+                        danger
+                        size="small"
+                        onClick={() => handleDeleteBulkRow(record.key)}
+                      >
+                        删除
+                      </Button>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          )}
+        </div>
       </Modal>
     </Card>
   );
