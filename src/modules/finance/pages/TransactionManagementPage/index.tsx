@@ -1109,15 +1109,15 @@ const TransactionManagementPage: React.FC = () => {
                 />
               </Tooltip>
             )}
-            {!isChild && !isParent && !isVirtual && (
-              <Tooltip title="拆分交易">
+            {!isChild && !isVirtual && (
+              <Tooltip title={isParent ? "重新拆分" : "拆分交易"}>
                 <Button
                   type="link"
                   size="small"
                   onClick={() => handleSplit(record)}
                   style={{ color: '#fa8c16' }}
                 >
-                  拆分
+                  {isParent ? '重新拆分' : '拆分'}
                 </Button>
               </Tooltip>
             )}

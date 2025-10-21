@@ -18,11 +18,15 @@ import {
   Select,
   Tag,
   Alert,
+  Spin,
 } from 'antd';
 import {
   PlusOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/services/firebase';
+import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
 import type { Transaction } from '../types';
 
 const { Option } = Select;
@@ -49,6 +53,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [loadingExistingSplits, setLoadingExistingSplits] = useState(false);
   const [splits, setSplits] = useState<SplitItem[]>([
     {
       amount: 0,
@@ -57,18 +62,59 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
     },
   ]);
 
+  // 🆕 加载现有拆分数据
   useEffect(() => {
-    if (visible && transaction) {
-      // 重置表单
-      setSplits([
-        {
-          amount: 0,
-          category: undefined,
-          notes: undefined,
-        },
-      ]);
-      form.resetFields();
-    }
+    const loadExistingSplits = async () => {
+      if (visible && transaction && transaction.isSplit) {
+        setLoadingExistingSplits(true);
+        try {
+          // 查询现有子交易
+          const q = query(
+            collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
+            where('parentTransactionId', '==', transaction.id)
+          );
+          const snapshot = await getDocs(q);
+          
+          if (snapshot.size > 0) {
+            // 将子交易转换为拆分项（排除未分配金额的子交易）
+            const existingSplits: SplitItem[] = [];
+            snapshot.docs.forEach(doc => {
+              const childData = doc.data() as Transaction;
+              // 排除未分配金额的虚拟交易
+              if (!childData.notes?.includes('未分配金额')) {
+                existingSplits.push({
+                  amount: childData.amount,
+                  category: childData.category,
+                  notes: childData.notes || childData.mainDescription,
+                });
+              }
+            });
+            
+            if (existingSplits.length > 0) {
+              setSplits(existingSplits);
+              message.info(`已加载现有的 ${existingSplits.length} 笔拆分记录`);
+            } else {
+              // 如果没有有效拆分，使用默认
+              setSplits([{ amount: 0, category: undefined, notes: undefined }]);
+            }
+          } else {
+            setSplits([{ amount: 0, category: undefined, notes: undefined }]);
+          }
+        } catch (error) {
+          console.error('加载现有拆分失败:', error);
+          message.error('加载现有拆分数据失败');
+          setSplits([{ amount: 0, category: undefined, notes: undefined }]);
+        } finally {
+          setLoadingExistingSplits(false);
+        }
+      } else if (visible && transaction) {
+        // 新拆分，重置表单
+        setSplits([{ amount: 0, category: undefined, notes: undefined }]);
+        form.resetFields();
+      }
+    };
+    
+    loadExistingSplits();
   }, [visible, transaction, form]);
 
   if (!transaction) return null;
@@ -154,7 +200,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
     <Modal
       title={
         <Space>
-          <span>拆分交易</span>
+          <span>{transaction.isSplit ? '重新拆分交易' : '拆分交易'}</span>
           <Tag color="blue">RM {parentAmount.toFixed(2)}</Tag>
         </Space>
       }
@@ -163,20 +209,29 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       onCancel={handleCancel}
       width={800}
       confirmLoading={loading}
-      okText="确认拆分"
+      okText={transaction.isSplit ? "确认重新拆分" : "确认拆分"}
       cancelText="取消"
-      okButtonProps={{ disabled: !isValid }}
+      okButtonProps={{ disabled: !isValid || loadingExistingSplits }}
     >
-      {/* 🆕 已拆分提示 */}
-      {transaction.isSplit && (
-        <Alert
-          message="此交易已拆分过"
-          description="再次拆分将删除现有的所有子交易，并创建新的拆分记录。"
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
+      {/* 🆕 加载状态 */}
+      {loadingExistingSplits && (
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <Spin tip="加载现有拆分数据..." />
+        </div>
       )}
+      
+      {!loadingExistingSplits && (
+        <>
+          {/* 🆕 已拆分提示 */}
+          {transaction.isSplit && (
+            <Alert
+              message="此交易已拆分过"
+              description="已自动加载现有拆分数据。修改后将删除现有的所有子交易，并创建新的拆分记录。"
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          )}
       
       {/* 原交易信息 & 拆分统计（左右布局） */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
@@ -339,6 +394,8 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
           添加拆分项
         </Button>
       </Form>
+        </>
+      )}
     </Modal>
   );
 };
