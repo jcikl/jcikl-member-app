@@ -103,6 +103,20 @@ const TransactionManagementPage: React.FC = () => {
   
   // 💰 存储各账户的当前余额（实时计算）
   const [accountBalances, setAccountBalances] = useState<Record<string, number>>({});
+  
+  // 🆕 批量粘贴导入
+  const [bulkImportVisible, setBulkImportVisible] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState('');
+  const [bulkImportData, setBulkImportData] = useState<Array<{
+    key: string;
+    transactionType: 'income' | 'expense';
+    category: string;
+    description: string;
+    payerPayee: string;
+    amount: number;
+    transactionDate: string;
+    bankAccountId: string;
+  }>>([]);
 
   useEffect(() => {
     loadBankAccounts();
@@ -729,6 +743,136 @@ const TransactionManagementPage: React.FC = () => {
     }
   };
 
+  // 🆕 批量导入功能
+  const handleOpenBulkImport = () => {
+    setBulkImportVisible(true);
+    // 自动添加第一行
+    const defaultBankAccount = bankAccounts[0]?.id || '';
+    setBulkImportData([{
+      key: `bulk-${Date.now()}`,
+      transactionType: 'income',
+      category: 'member-fees',
+      description: '',
+      payerPayee: '',
+      amount: 0,
+      transactionDate: dayjs().format('YYYY-MM-DD'),
+      bankAccountId: defaultBankAccount,
+    }]);
+  };
+
+  const parseBulkImportText = (text: string) => {
+    const lines = text.trim().split('\n').filter(line => line.trim());
+    const defaultBankAccount = bankAccounts[0]?.id || '';
+    
+    const items = lines.map((line, index) => {
+      const parts = line.split('\t').map(p => p.trim());
+      
+      return {
+        key: `bulk-${Date.now()}-${index}`,
+        transactionType: 'income' as const,
+        category: 'member-fees',
+        description: parts[0] || '',
+        payerPayee: parts[1] || '',
+        amount: parseFloat(parts[2]) || 0,
+        transactionDate: parts[3] || dayjs().format('YYYY-MM-DD'),
+        bankAccountId: defaultBankAccount,
+      };
+    });
+    
+    setBulkImportData(items);
+    setBulkImportText('');
+  };
+
+  const handleTextPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    parseBulkImportText(pastedText);
+  };
+
+  const handleAddBulkRow = () => {
+    const defaultBankAccount = bankAccounts[0]?.id || '';
+    setBulkImportData([
+      ...bulkImportData,
+      {
+        key: `bulk-${Date.now()}`,
+        transactionType: 'income',
+        category: 'member-fees',
+        description: '',
+        payerPayee: '',
+        amount: 0,
+        transactionDate: dayjs().format('YYYY-MM-DD'),
+        bankAccountId: defaultBankAccount,
+      }
+    ]);
+  };
+
+  const handleDeleteBulkRow = (key: string) => {
+    setBulkImportData(bulkImportData.filter(item => item.key !== key));
+  };
+
+  const handleBulkDataChange = (key: string, field: string, value: any) => {
+    setBulkImportData(bulkImportData.map(item => 
+      item.key === key ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleBulkImportSubmit = async () => {
+    if (!user) return;
+    
+    try {
+      if (bulkImportData.length === 0) {
+        message.warning('没有数据可导入');
+        return;
+      }
+      
+      // 验证数据
+      const invalidRows = bulkImportData.filter(item => 
+        !item.description || item.amount <= 0 || !item.bankAccountId
+      );
+      
+      if (invalidRows.length > 0) {
+        message.error(`有 ${invalidRows.length} 行数据不完整（描述、金额、银行账户必填，且金额需大于0）`);
+        return;
+      }
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const item of bulkImportData) {
+        try {
+          await createTransaction({
+            transactionType: item.transactionType,
+            category: item.category,
+            mainDescription: item.description,
+            payerPayee: item.payerPayee,
+            amount: item.amount,
+            transactionDate: item.transactionDate,
+            bankAccountId: item.bankAccountId,
+          }, user.id);
+          successCount++;
+        } catch (error) {
+          console.error('Failed to import row:', item, error);
+          failCount++;
+        }
+      }
+      
+      if (successCount > 0) {
+        message.success(`成功导入 ${successCount} 条交易记录`);
+      }
+      if (failCount > 0) {
+        message.warning(`${failCount} 条记录导入失败`);
+      }
+      
+      setBulkImportVisible(false);
+      setBulkImportData([]);
+      clearBalanceCache();
+      await loadTransactions();
+    } catch (error: any) {
+      message.error('批量导入失败');
+      console.error(error);
+    }
+  };
+
   const columns: ColumnsType<Transaction> = [
     {
       title: '日期',
@@ -1184,9 +1328,14 @@ const TransactionManagementPage: React.FC = () => {
 
             <Button icon={<DownloadOutlined />}>导出报表</Button>
             <div className="ml-auto">
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                新交易
-              </Button>
+              <Space>
+                <Button icon={<PlusOutlined />} onClick={handleOpenBulkImport}>
+                  批量导入
+                </Button>
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                  新交易
+                </Button>
+              </Space>
             </div>
           </div>
         </Card>
@@ -1367,6 +1516,167 @@ const TransactionManagementPage: React.FC = () => {
               <Input.TextArea rows={3} placeholder="可选的额外备注" />
             </Form.Item>
           </Form>
+        </Modal>
+
+        {/* Bulk Import Modal */}
+        <Modal
+          title="批量导入交易记录"
+          open={bulkImportVisible}
+          onOk={handleBulkImportSubmit}
+          onCancel={() => {
+            setBulkImportVisible(false);
+            setBulkImportData([]);
+          }}
+          width={1200}
+          okText="确认导入"
+          cancelText="取消"
+        >
+          <div style={{ marginBottom: 16 }}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div style={{ color: '#666', fontSize: '12px' }}>
+                💡 提示：可直接粘贴Excel表格数据（格式：描述 ｜ 付款人/收款人 ｜ 金额 ｜ 日期），或手动添加行
+              </div>
+              <Input.TextArea
+                placeholder="在此粘贴表格数据..."
+                value={bulkImportText}
+                onChange={(e) => setBulkImportText(e.target.value)}
+                onPaste={handleTextPaste}
+                rows={3}
+                style={{ display: bulkImportData.length === 0 ? 'block' : 'none' }}
+              />
+              <Button type="dashed" onClick={handleAddBulkRow} block icon={<PlusOutlined />}>
+                添加一行
+              </Button>
+            </Space>
+          </div>
+
+          <Table
+            dataSource={bulkImportData}
+            pagination={false}
+            size="small"
+            rowKey="key"
+            scroll={{ y: 400 }}
+            columns={[
+              {
+                title: <span style={{ color: 'red' }}>描述 *</span>,
+                dataIndex: 'description',
+                width: 200,
+                render: (text, record) => (
+                  <Input
+                    value={text}
+                    onChange={(e) => handleBulkDataChange(record.key, 'description', e.target.value)}
+                    placeholder="请输入描述"
+                    status={!text ? 'error' : ''}
+                  />
+                ),
+              },
+              {
+                title: '付款人/收款人',
+                dataIndex: 'payerPayee',
+                width: 150,
+                render: (text, record) => (
+                  <Input
+                    value={text}
+                    onChange={(e) => handleBulkDataChange(record.key, 'payerPayee', e.target.value)}
+                    placeholder="选填"
+                  />
+                ),
+              },
+              {
+                title: <span style={{ color: 'red' }}>金额 *</span>,
+                dataIndex: 'amount',
+                width: 120,
+                render: (text, record) => (
+                  <InputNumber
+                    value={text}
+                    onChange={(value) => handleBulkDataChange(record.key, 'amount', value || 0)}
+                    placeholder="0.00"
+                    min={0}
+                    precision={2}
+                    style={{ width: '100%' }}
+                    status={text <= 0 ? 'error' : ''}
+                  />
+                ),
+              },
+              {
+                title: '日期',
+                dataIndex: 'transactionDate',
+                width: 140,
+                render: (text, record) => (
+                  <DatePicker
+                    value={text ? dayjs(text) : null}
+                    onChange={(date) => handleBulkDataChange(record.key, 'transactionDate', date ? date.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'))}
+                    format="YYYY-MM-DD"
+                    style={{ width: '100%' }}
+                  />
+                ),
+              },
+              {
+                title: '类型',
+                dataIndex: 'transactionType',
+                width: 100,
+                render: (text, record) => (
+                  <Select
+                    value={text}
+                    onChange={(value) => handleBulkDataChange(record.key, 'transactionType', value)}
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="income">收入</Option>
+                    <Option value="expense">支出</Option>
+                  </Select>
+                ),
+              },
+              {
+                title: '主类别',
+                dataIndex: 'category',
+                width: 130,
+                render: (text, record) => (
+                  <Select
+                    value={text}
+                    onChange={(value) => handleBulkDataChange(record.key, 'category', value)}
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="member-fees">会员费用</Option>
+                    <Option value="event-finance">活动财务</Option>
+                    <Option value="general-accounts">日常账户</Option>
+                  </Select>
+                ),
+              },
+              {
+                title: <span style={{ color: 'red' }}>银行账户 *</span>,
+                dataIndex: 'bankAccountId',
+                width: 150,
+                render: (text, record) => (
+                  <Select
+                    value={text}
+                    onChange={(value) => handleBulkDataChange(record.key, 'bankAccountId', value)}
+                    style={{ width: '100%' }}
+                    placeholder="选择账户"
+                    status={!text ? 'error' : ''}
+                  >
+                    {bankAccounts.map(account => (
+                      <Option key={account.id} value={account.id}>
+                        {account.accountName}
+                      </Option>
+                    ))}
+                  </Select>
+                ),
+              },
+              {
+                title: '操作',
+                width: 60,
+                render: (_, record) => (
+                  <Button
+                    type="link"
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleDeleteBulkRow(record.key)}
+                  />
+                ),
+              },
+            ]}
+          />
         </Modal>
 
         {/* Split Transaction Modal */}
