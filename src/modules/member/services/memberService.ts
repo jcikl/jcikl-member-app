@@ -654,44 +654,72 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
       try {
         if (!member.profile?.birthDate) return;
         
-        // Try to parse the date string with multiple formats
-        let birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY', true);
+        const birthDateStr = member.profile.birthDate;
+        let birthDate: dayjs.Dayjs | null = null;
         
-        // If invalid, try ISO format
-        if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate);
+        // Try multiple date formats without strict mode first
+        const formats = ['DD-MMM-YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY'];
+        
+        for (const format of formats) {
+          try {
+            const parsed = dayjs(birthDateStr, format);
+            if (parsed.isValid()) {
+              birthDate = parsed;
+              break;
+            }
+          } catch (e) {
+            // Continue to next format
+          }
         }
         
-        // If still invalid, try YYYY-MM-DD format
-        if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD', true);
+        // If all formats fail, try default parsing
+        if (!birthDate || !birthDate.isValid()) {
+          try {
+            birthDate = dayjs(birthDateStr);
+          } catch (e) {
+            // Ignore parsing error
+          }
         }
         
-        if (!birthDate.isValid()) {
-          console.warn('🎂 [Birthday] Invalid date format:', member.name, member.profile.birthDate);
+        // Skip if still invalid
+        if (!birthDate || !birthDate.isValid()) {
+          console.warn('🎂 [Birthday] Invalid date format:', member.name, birthDateStr);
           return;
         }
         
-        // Extract month and day from birth date
+        // Safely extract month and day
         const birthMonth = birthDate.month(); // 0-11
         const birthDay = birthDate.date();    // 1-31
         
-        // Get today's date at start of day
-        const todayStart = dayjs().startOf('day');
-        const currentYear = todayStart.year();
+        // Validate extracted values
+        if (birthMonth < 0 || birthMonth > 11 || birthDay < 1 || birthDay > 31) {
+          console.warn('🎂 [Birthday] Invalid date values:', member.name, { birthMonth, birthDay });
+          return;
+        }
         
-        // Build this year's birthday using string format (most stable)
-        const thisYearBirthdayStr = `${currentYear}-${String(birthMonth + 1).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
-        const thisYearBirthday = dayjs(thisYearBirthdayStr).startOf('day');
+        // Get today's date at start of day
+        const today = dayjs();
+        const currentYear = today.year();
+        
+        // Build this year's birthday (safe string construction)
+        const monthStr = String(birthMonth + 1).padStart(2, '0');
+        const dayStr = String(birthDay).padStart(2, '0');
+        const thisYearBirthdayStr = `${currentYear}-${monthStr}-${dayStr}`;
+        const thisYearBirthday = dayjs(thisYearBirthdayStr);
+        
+        if (!thisYearBirthday.isValid()) {
+          console.warn('🎂 [Birthday] Failed to create birthday date:', member.name, thisYearBirthdayStr);
+          return;
+        }
         
         // Calculate days until birthday
-        let daysUntil = thisYearBirthday.diff(todayStart, 'day');
+        let daysUntil = thisYearBirthday.diff(today, 'day');
         
         // If birthday already passed this year, calculate for next year
         if (daysUntil < 0) {
-          const nextYearBirthdayStr = `${currentYear + 1}-${String(birthMonth + 1).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
-          const nextYearBirthday = dayjs(nextYearBirthdayStr).startOf('day');
-          daysUntil = nextYearBirthday.diff(todayStart, 'day');
+          const nextYearBirthdayStr = `${currentYear + 1}-${monthStr}-${dayStr}`;
+          const nextYearBirthday = dayjs(nextYearBirthdayStr);
+          daysUntil = nextYearBirthday.diff(today, 'day');
         }
         
         // Only include birthdays within the next X days
@@ -699,7 +727,7 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
           upcomingBirthdays.push({
             id: member.id,
             name: member.name,
-            birthDate: member.profile.birthDate,
+            birthDate: birthDateStr,
             daysUntilBirthday: daysUntil,
             avatar: member.profile?.avatar,
           });
@@ -750,31 +778,49 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
       try {
         if (!member.profile?.birthDate) return;
         
-        // Try to parse the date string with multiple formats
-        let birthDate = dayjs(member.profile.birthDate, 'DD-MMM-YYYY', true);
+        const birthDateStr = member.profile.birthDate;
+        let birthDate: dayjs.Dayjs | null = null;
         
-        // If invalid, try ISO format
-        if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate);
+        // Try multiple date formats without strict mode
+        const formats = ['DD-MMM-YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY'];
+        
+        for (const format of formats) {
+          try {
+            const parsed = dayjs(birthDateStr, format);
+            if (parsed.isValid()) {
+              birthDate = parsed;
+              break;
+            }
+          } catch (e) {
+            // Continue to next format
+          }
         }
         
-        // If still invalid, try YYYY-MM-DD format
-        if (!birthDate.isValid()) {
-          birthDate = dayjs(member.profile.birthDate, 'YYYY-MM-DD', true);
+        // If all formats fail, try default parsing
+        if (!birthDate || !birthDate.isValid()) {
+          try {
+            birthDate = dayjs(birthDateStr);
+          } catch (e) {
+            // Ignore parsing error
+          }
         }
         
-        if (!birthDate.isValid()) {
-          console.warn('🎂 [Birthday Month] Invalid date format:', member.name, member.profile.birthDate);
+        // Skip if still invalid
+        if (!birthDate || !birthDate.isValid()) {
+          console.warn('🎂 [Birthday Month] Invalid date format:', member.name, birthDateStr);
           return;
         }
         
         // Check if birthday month matches
-        if (birthDate.month() === month) {
+        const birthMonth = birthDate.month(); // 0-11
+        const birthDay = birthDate.date();    // 1-31
+        
+        if (birthMonth === month && birthDay >= 1 && birthDay <= 31) {
           birthdayList.push({
             id: member.id,
             name: member.name,
-            birthDate: member.profile.birthDate,
-            day: birthDate.date(),
+            birthDate: birthDateStr,
+            day: birthDay,
             avatar: member.profile?.avatar,
           });
         }
