@@ -142,7 +142,7 @@ const EventFinancialPage: React.FC = () => {
     if (activeTab === 'transactions') {
       loadTransactions();
     }
-  }, [activeTab, transactionPage, transactionPageSize, txAccountFilter]);
+  }, [activeTab, transactionPage, transactionPageSize, txAccountFilter, searchText]);
 
   const loadEventFinancials = async () => {
     if (!user) return;
@@ -260,15 +260,32 @@ const EventFinancialPage: React.FC = () => {
         });
       }
 
-      // 搜索文本筛选
+      // 搜索文本筛选（扩展到金额和状态）
       if (searchText.trim()) {
         const searchLower = searchText.toLowerCase().trim();
         filteredEvents = filteredEvents.filter(event => {
-          return (
+          // 基础字段搜索
+          const matchesBasicFields = (
             event.eventName.toLowerCase().includes(searchLower) ||
             (event.boardMember && event.boardMember.toLowerCase().includes(searchLower)) ||
             event.eventDate.includes(searchLower)
           );
+          
+          // 🆕 金额搜索（转换为字符串进行匹配）
+          const matchesAmount = (
+            event.totalRevenue.toString().includes(searchLower) ||
+            event.totalExpense.toString().includes(searchLower) ||
+            event.netIncome.toString().includes(searchLower)
+          );
+          
+          // 🆕 状态搜索
+          const statusText = event.status === 'planned' ? '策划中' :
+                            event.status === 'active' ? '进行中' :
+                            event.status === 'completed' ? '已完成' :
+                            event.status === 'cancelled' ? '已取消' : '';
+          const matchesStatus = statusText.toLowerCase().includes(searchLower);
+          
+          return matchesBasicFields || matchesAmount || matchesStatus;
         });
       }
 
@@ -485,10 +502,7 @@ const EventFinancialPage: React.FC = () => {
         includeVirtual: true, // 🔑 包含子交易（拆分的活动财务）
       });
       
-      setTransactions(result.data);
-      setTransactionTotal(result.total);
-      
-      // 🆕 提取所有唯一的 memberId 并获取会员信息
+      // 🆕 Step 1: 先加载会员信息缓存（用于搜索）
       const uniqueMemberIds = Array.from(
         new Set(
           result.data
@@ -497,6 +511,7 @@ const EventFinancialPage: React.FC = () => {
         )
       );
       
+      let tempMemberCache: Record<string, { name: string; email?: string; phone?: string }> = {};
       if (uniqueMemberIds.length > 0) {
         const memberCache: Record<string, { name: string; email?: string; phone?: string }> = {};
         
@@ -517,8 +532,57 @@ const EventFinancialPage: React.FC = () => {
           }
         }
         
+        tempMemberCache = memberCache;
         setMemberInfoCache(memberCache);
       }
+      
+      // 🆕 Step 2: 搜索文本筛选（扩展到描述、金额、活动分类、关联会员）
+      let filteredTransactions = result.data;
+      if (searchText.trim()) {
+        const searchLower = searchText.toLowerCase().trim();
+        filteredTransactions = filteredTransactions.filter(tx => {
+          // 基础字段搜索：描述
+          const matchesDescription = (
+            tx.mainDescription?.toLowerCase().includes(searchLower) ||
+            tx.subDescription?.toLowerCase().includes(searchLower)
+          );
+          
+          // 🆕 金额搜索
+          const matchesAmount = (
+            tx.amount?.toString().includes(searchLower)
+          );
+          
+          // 🆕 活动分类搜索（txAccount/subCategory）
+          const matchesCategory = (
+            tx.txAccount?.toLowerCase().includes(searchLower) ||
+            (tx as any).subCategory?.toLowerCase().includes(searchLower)
+          );
+          
+          // 🆕 其他基础字段
+          const matchesOtherFields = (
+            tx.payerPayee?.toLowerCase().includes(searchLower) ||
+            tx.transactionNumber?.toLowerCase().includes(searchLower)
+          );
+          
+          // 🆕 关联会员信息搜索
+          const memberId = (tx as any)?.metadata?.memberId;
+          let matchesMemberInfo = false;
+          
+          if (memberId && tempMemberCache[memberId]) {
+            const memberInfo = tempMemberCache[memberId];
+            matchesMemberInfo = !!(
+              memberInfo.name?.toLowerCase().includes(searchLower) ||
+              memberInfo.email?.toLowerCase().includes(searchLower) ||
+              memberInfo.phone?.toLowerCase().includes(searchLower)
+            );
+          }
+          
+          return matchesDescription || matchesAmount || matchesCategory || matchesOtherFields || matchesMemberInfo;
+        });
+      }
+      
+      setTransactions(filteredTransactions);
+      setTransactionTotal(filteredTransactions.length);
     } catch (error: any) {
       message.error('加载交易记录失败');
       globalSystemService.log('error', 'Failed to load event finance transactions', 'EventFinancialPage', { error });
@@ -1120,7 +1184,11 @@ const EventFinancialPage: React.FC = () => {
             {/* 搜索输入框 */}
             <Card style={{ marginBottom: 16 }}>
               <Input
-                placeholder="搜索活动名称、负责理事、活动类型..."
+                placeholder={
+                  activeTab === 'events'
+                    ? "搜索活动名称、负责理事、金额、状态..."
+                    : "搜索交易描述、金额、活动分类、关联会员..."
+                }
                 style={{ width: '100%' }}
                 suffix={<SearchOutlined />}
                 allowClear
