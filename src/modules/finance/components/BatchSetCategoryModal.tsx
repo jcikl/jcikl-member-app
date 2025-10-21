@@ -62,6 +62,18 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   
+  // 动态生成年份列表（从 2020 到当前年份 + 2 年）
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const startYear = 2020;
+    const endYear = currentYear + 2;
+    const years: string[] = [];
+    for (let year = endYear; year >= startYear; year--) {
+      years.push(String(year));
+    }
+    return years;
+  };
+  
   // 加载会员和活动列表
   useEffect(() => {
     if (visible) {
@@ -219,10 +231,11 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               value={selectedYear}
               onChange={setSelectedYear}
               placeholder="选择年份"
+              showSearch
             >
-              <Option value="2025">2025</Option>
-              <Option value="2024">2024</Option>
-              <Option value="2023">2023</Option>
+              {generateYearOptions().map(year => (
+                <Option key={year} value={year}>{year}</Option>
+              ))}
             </Select>
           </div>
           
@@ -321,10 +334,11 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               onChange={setSelectedYear}
               placeholder="选择年份"
               allowClear
+              showSearch
             >
-              <Option value="2025">2025</Option>
-              <Option value="2024">2024</Option>
-              <Option value="2023">2023</Option>
+              {generateYearOptions().map(year => (
+                <Option key={year} value={year}>{year}</Option>
+              ))}
             </Select>
           </div>
           
