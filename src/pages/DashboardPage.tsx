@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, List, Avatar, Tag, Progress, Select } from 'antd';
-import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined } from '@ant-design/icons';
+import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge } from 'antd';
+import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined, TeamOutlined, FilterOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 // Components
@@ -12,8 +12,12 @@ import {
   getUpcomingBirthdays, 
   getBirthdaysByMonth,
   getIndustryDistribution, 
-  getInterestDistribution 
+  getInterestDistribution,
+  getMembers
 } from '@/modules/member/services/memberService';
+
+// Types
+import type { Member } from '@/modules/member/types';
 
 const { Option } = Select;
 
@@ -55,6 +59,14 @@ const DashboardPage: React.FC = () => {
   }>>([]);
 
   const [listsLoading, setListsLoading] = useState(true);
+  
+  // 🆕 会员列表相关状态
+  const [members, setMembers] = useState<Member[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
+  const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   // 月份选项
   const monthOptions = [
@@ -140,6 +152,100 @@ const DashboardPage: React.FC = () => {
 
     loadBirthdays();
   }, [birthdayViewMode, selectedMonth]);
+
+  // 🆕 加载会员列表
+  useEffect(() => {
+    const loadMembers = async () => {
+      setMembersLoading(true);
+      try {
+        const result = await getMembers({
+          page: 1,
+          limit: 100, // 加载前100个会员
+          status: 'active', // 只显示活跃会员
+        });
+        setMembers(result.data);
+        setFilteredMembers(result.data);
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      } finally {
+        setMembersLoading(false);
+      }
+    };
+
+    loadMembers();
+  }, []);
+
+  // 🆕 根据筛选条件过滤会员
+  useEffect(() => {
+    let filtered = [...members];
+
+    // 按行业筛选
+    if (selectedIndustry) {
+      filtered = filtered.filter(m => m.profile?.career?.industry === selectedIndustry);
+    }
+
+    // 按兴趣筛选
+    if (selectedInterest) {
+      filtered = filtered.filter(m => 
+        m.profile?.interests?.includes(selectedInterest)
+      );
+    }
+
+    // 按会员ID筛选（反向筛选）
+    if (selectedMemberId) {
+      filtered = filtered.filter(m => m.id === selectedMemberId);
+    }
+
+    setFilteredMembers(filtered);
+  }, [selectedIndustry, selectedInterest, selectedMemberId, members]);
+
+  // 🆕 处理行业点击
+  const handleIndustryClick = (industry: string) => {
+    if (selectedIndustry === industry) {
+      setSelectedIndustry(null); // 取消筛选
+    } else {
+      setSelectedIndustry(industry);
+      setSelectedInterest(null); // 清除兴趣筛选
+      setSelectedMemberId(null); // 清除会员筛选
+    }
+  };
+
+  // 🆕 处理兴趣点击
+  const handleInterestClick = (interest: string) => {
+    if (selectedInterest === interest) {
+      setSelectedInterest(null); // 取消筛选
+    } else {
+      setSelectedInterest(interest);
+      setSelectedIndustry(null); // 清除行业筛选
+      setSelectedMemberId(null); // 清除会员筛选
+    }
+  };
+
+  // 🆕 处理会员点击（反向筛选）
+  const handleMemberClick = (member: Member) => {
+    if (selectedMemberId === member.id) {
+      setSelectedMemberId(null);
+      setSelectedIndustry(null);
+      setSelectedInterest(null);
+    } else {
+      setSelectedMemberId(member.id);
+      // 反向筛选：如果会员有行业，高亮对应行业
+      if (member.profile?.career?.industry) {
+        setSelectedIndustry(member.profile.career.industry);
+      }
+      // 反向筛选：如果会员有兴趣，高亮第一个兴趣
+      if (member.profile?.interests && member.profile.interests.length > 0) {
+        setSelectedInterest(member.profile.interests[0]);
+      }
+    }
+  };
+
+  // 🆕 清除所有筛选
+  const handleClearFilters = () => {
+    setSelectedIndustry(null);
+    setSelectedInterest(null);
+    setSelectedMemberId(null);
+  };
 
   return (
     <PermissionGuard permissions="DASHBOARD_VIEW">
@@ -293,19 +399,45 @@ const DashboardPage: React.FC = () => {
               </span>
             } 
             className="content-card"
-            extra={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>}
+            extra={
+              <Badge 
+                count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
+                offset={[-5, 5]}
+              >
+                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>
+              </Badge>
+            }
           >
             <List
               loading={listsLoading}
               dataSource={industryDistribution}
               locale={{ emptyText: '暂无行业数据' }}
               renderItem={item => (
-                <List.Item style={{ padding: '8px 0', display: 'block' }}>
+                <List.Item 
+                  style={{ 
+                    padding: '8px 0', 
+                    display: 'block',
+                    cursor: 'pointer',
+                    backgroundColor: selectedIndustry === item.industry ? '#e6f7ff' : 'transparent',
+                    borderRadius: 4,
+                    paddingLeft: selectedIndustry === item.industry ? 8 : 0,
+                    paddingRight: selectedIndustry === item.industry ? 8 : 0,
+                    transition: 'all 0.3s',
+                  }}
+                  onClick={() => handleIndustryClick(item.industry)}
+                >
                   <div style={{ marginBottom: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#262626' }}>
-                        {item.industry}
-                      </span>
+                      <Tooltip title="点击筛选会员">
+                        <span style={{ 
+                          fontSize: '13px', 
+                          color: selectedIndustry === item.industry ? '#1890ff' : '#262626',
+                          fontWeight: selectedIndustry === item.industry ? 600 : 400,
+                        }}>
+                          {selectedIndustry === item.industry && '👉 '}
+                          {item.industry}
+                        </span>
+                      </Tooltip>
                       <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
                         {item.count} 人
                       </span>
@@ -314,7 +446,7 @@ const DashboardPage: React.FC = () => {
                   <Progress 
                     percent={item.percentage} 
                     size="small" 
-                    strokeColor="#1890ff"
+                    strokeColor={selectedIndustry === item.industry ? '#1890ff' : '#91d5ff'}
                     showInfo={false}
                   />
                 </List.Item>
@@ -333,19 +465,45 @@ const DashboardPage: React.FC = () => {
               </span>
             } 
             className="content-card"
-            extra={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>}
+            extra={
+              <Badge 
+                count={selectedInterest ? <FilterOutlined style={{ color: '#52c41a' }} /> : 0}
+                offset={[-5, 5]}
+              >
+                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>
+              </Badge>
+            }
           >
             <List
               loading={listsLoading}
               dataSource={interestDistribution}
               locale={{ emptyText: '暂无兴趣数据' }}
               renderItem={item => (
-                <List.Item style={{ padding: '8px 0', display: 'block' }}>
+                <List.Item 
+                  style={{ 
+                    padding: '8px 0', 
+                    display: 'block',
+                    cursor: 'pointer',
+                    backgroundColor: selectedInterest === item.industry ? '#f6ffed' : 'transparent',
+                    borderRadius: 4,
+                    paddingLeft: selectedInterest === item.industry ? 8 : 0,
+                    paddingRight: selectedInterest === item.industry ? 8 : 0,
+                    transition: 'all 0.3s',
+                  }}
+                  onClick={() => handleInterestClick(item.industry)}
+                >
                   <div style={{ marginBottom: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#262626' }}>
-                        {item.industry}
-                      </span>
+                      <Tooltip title="点击筛选会员">
+                        <span style={{ 
+                          fontSize: '13px', 
+                          color: selectedInterest === item.industry ? '#52c41a' : '#262626',
+                          fontWeight: selectedInterest === item.industry ? 600 : 400,
+                        }}>
+                          {selectedInterest === item.industry && '👉 '}
+                          {item.industry}
+                        </span>
+                      </Tooltip>
                       <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
                         {item.count} 人
                       </span>
@@ -354,12 +512,147 @@ const DashboardPage: React.FC = () => {
                   <Progress 
                     percent={item.percentage} 
                     size="small" 
-                    strokeColor="#52c41a"
+                    strokeColor={selectedInterest === item.industry ? '#52c41a' : '#95de64'}
                     showInfo={false}
                   />
                 </List.Item>
               )}
             />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 🆕 会员列表卡片 */}
+      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+        <Col xs={24}>
+          <Card 
+            title={
+              <span>
+                <TeamOutlined style={{ marginRight: 8, color: '#722ed1' }} />
+                会员列表
+                {(selectedIndustry || selectedInterest || selectedMemberId) && (
+                  <Tag color="blue" style={{ marginLeft: 12 }}>
+                    已筛选 {filteredMembers.length} / {members.length}
+                  </Tag>
+                )}
+              </span>
+            } 
+            className="content-card"
+            extra={
+              (selectedIndustry || selectedInterest || selectedMemberId) ? (
+                <Button 
+                  type="link" 
+                  size="small" 
+                  icon={<CloseCircleOutlined />}
+                  onClick={handleClearFilters}
+                >
+                  清除筛选
+                </Button>
+              ) : null
+            }
+          >
+            {/* 筛选条件显示 */}
+            {(selectedIndustry || selectedInterest) && (
+              <div style={{ 
+                marginBottom: 16, 
+                padding: '12px 16px', 
+                backgroundColor: '#f0f5ff', 
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <FilterOutlined style={{ color: '#1890ff' }} />
+                <span style={{ fontSize: '13px', color: '#595959' }}>当前筛选：</span>
+                {selectedIndustry && (
+                  <Tag color="blue" closable onClose={() => setSelectedIndustry(null)}>
+                    行业：{selectedIndustry}
+                  </Tag>
+                )}
+                {selectedInterest && (
+                  <Tag color="green" closable onClose={() => setSelectedInterest(null)}>
+                    兴趣：{selectedInterest}
+                  </Tag>
+                )}
+              </div>
+            )}
+
+            <List
+              loading={membersLoading}
+              dataSource={filteredMembers.slice(0, 20)} // 只显示前20个
+              locale={{ emptyText: '暂无会员数据' }}
+              grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4, xl: 5, xxl: 6 }}
+              renderItem={member => (
+                <List.Item>
+                  <Card
+                    size="small"
+                    hoverable
+                    style={{
+                      backgroundColor: selectedMemberId === member.id ? '#fff7e6' : '#fafafa',
+                      border: selectedMemberId === member.id ? '2px solid #faad14' : '1px solid #d9d9d9',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s',
+                    }}
+                    onClick={() => handleMemberClick(member)}
+                    bodyStyle={{ padding: '12px' }}
+                  >
+                    <div style={{ textAlign: 'center' }}>
+                      <Avatar 
+                        src={member.profile?.avatar} 
+                        icon={<UserOutlined />}
+                        size={48}
+                        style={{ marginBottom: 8 }}
+                      />
+                      <div style={{ 
+                        fontSize: '13px', 
+                        fontWeight: 600, 
+                        color: '#262626',
+                        marginBottom: 4,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {member.name}
+                      </div>
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#8c8c8c',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {member.profile?.career?.industry || '未设置行业'}
+                      </div>
+                      {member.category && (
+                        <Tag 
+                          color={
+                            member.category === 'Official Member' ? 'blue' :
+                            member.category === 'Associate Member' ? 'green' :
+                            member.category === 'Alumni' ? 'orange' : 'default'
+                          }
+                          style={{ marginTop: 8, fontSize: '10px' }}
+                        >
+                          {member.category}
+                        </Tag>
+                      )}
+                    </div>
+                  </Card>
+                </List.Item>
+              )}
+            />
+            {filteredMembers.length > 20 && (
+              <div style={{ 
+                marginTop: 16, 
+                padding: '8px 12px', 
+                backgroundColor: '#f0f5ff', 
+                borderRadius: 4,
+                fontSize: '12px',
+                color: '#595959',
+                textAlign: 'center',
+              }}>
+                💡 共找到 {filteredMembers.length} 位会员，显示前 20 位
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
