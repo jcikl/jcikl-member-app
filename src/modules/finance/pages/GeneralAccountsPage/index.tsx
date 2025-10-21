@@ -55,7 +55,7 @@ const GeneralAccountsPage: React.FC = () => {
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [transactionTotal, setTransactionTotal] = useState(0);
   const [transactionPage, setTransactionPage] = useState(1);
-  const [transactionPageSize, setTransactionPageSize] = useState(20);
+  const [transactionPageSize, setTransactionPageSize] = useState(100); // 🆕 增加默认显示数量以匹配实际数据
   const [txAccountFilter, setTxAccountFilter] = useState<string>('all');
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
