@@ -29,7 +29,6 @@ import {
   SearchOutlined,
   EditOutlined,
   DeleteOutlined,
-  EyeOutlined,
   CheckCircleOutlined,
   DownloadOutlined,
   ExportOutlined,
@@ -565,28 +564,7 @@ const TransactionManagementPage: React.FC = () => {
     }
   };
 
-  const handleUnsplit = (id: string) => {
-    if (!user) return;
-
-    Modal.confirm({
-      title: '确认撤销拆分',
-      content: '撤销后将删除所有子交易，恢复原交易状态。此操作无法撤销。',
-      okText: '确认撤销',
-      cancelText: '取消',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        try {
-          await unsplitTransaction(id, user.id);
-          message.success('已撤销拆分');
-          clearBalanceCache(); // 清空余额缓存
-          await loadTransactions();
-          await updateAccountTransactionCounts();
-        } catch (error: any) {
-          message.error(error.message || '撤销失败');
-        }
-      },
-    });
-  };
+  // 🗑️ 已移除handleUnsplit函数，撤销拆分功能已迁移到SplitTransactionModal内部
 
   // 批量删除
   const handleBatchDelete = async (ids: string[]) => {
@@ -1096,9 +1074,6 @@ const TransactionManagementPage: React.FC = () => {
         
         return (
           <Space size="small">
-            <Tooltip title="查看">
-              <Button type="link" size="small" icon={<EyeOutlined />} />
-            </Tooltip>
             {record.status === 'pending' && !isChild && (
               <Tooltip title="批准">
                 <Button
@@ -1110,7 +1085,7 @@ const TransactionManagementPage: React.FC = () => {
               </Tooltip>
             )}
             {!isChild && !isVirtual && (
-              <Tooltip title={isParent ? "重新拆分" : "拆分交易"}>
+              <Tooltip title={isParent ? "重新拆分 / 撤销拆分" : "拆分交易"}>
                 <Button
                   type="link"
                   size="small"
@@ -1118,18 +1093,6 @@ const TransactionManagementPage: React.FC = () => {
                   style={{ color: '#fa8c16' }}
                 >
                   {isParent ? '重新拆分' : '拆分'}
-                </Button>
-              </Tooltip>
-            )}
-            {isParent && (
-              <Tooltip title="撤销拆分">
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => handleUnsplit(record.id)}
-                  style={{ color: '#ff4d4f' }}
-                >
-                  撤销
                 </Button>
               </Tooltip>
             )}
@@ -1687,6 +1650,14 @@ const TransactionManagementPage: React.FC = () => {
           onCancel={() => {
             setSplitModalVisible(false);
             setSplittingTransaction(null);
+          }}
+          onUnsplit={async (transactionId: string) => {
+            await unsplitTransaction(transactionId, user!.id);
+            setSplitModalVisible(false);
+            setSplittingTransaction(null);
+            clearBalanceCache();
+            await loadTransactions();
+            await updateAccountTransactionCounts();
           }}
         />
 

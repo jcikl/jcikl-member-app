@@ -43,6 +43,7 @@ interface SplitTransactionModalProps {
   transaction: Transaction | null;
   onOk: (splits: SplitItem[]) => Promise<void>;
   onCancel: () => void;
+  onUnsplit?: (transactionId: string) => Promise<void>; // 🆕 撤销拆分回调
 }
 
 const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
@@ -50,6 +51,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
   transaction,
   onOk,
   onCancel,
+  onUnsplit,
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -196,6 +198,31 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
     onCancel();
   };
 
+  // 🆕 处理撤销拆分
+  const handleUnsplit = async () => {
+    if (!transaction || !onUnsplit) return;
+    
+    Modal.confirm({
+      title: '确认撤销拆分',
+      content: '撤销后将删除所有子交易，恢复为单笔交易。此操作无法撤销，确定继续吗？',
+      okText: '确认撤销',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          setLoading(true);
+          await onUnsplit(transaction.id);
+          message.success('已撤销拆分');
+          handleCancel(); // 关闭弹窗
+        } catch (error: any) {
+          message.error(error.message || '撤销失败');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
   return (
     <Modal
       title={
@@ -212,6 +239,37 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       okText={transaction.isSplit ? "确认重新拆分" : "确认拆分"}
       cancelText="取消"
       okButtonProps={{ disabled: !isValid || loadingExistingSplits }}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* 左侧：撤销拆分按钮（仅在已拆分时显示） */}
+          <div>
+            {transaction.isSplit && onUnsplit && (
+              <Button 
+                danger 
+                onClick={handleUnsplit}
+                disabled={loading || loadingExistingSplits}
+                style={{ marginRight: 'auto' }}
+              >
+                撤销拆分
+              </Button>
+            )}
+          </div>
+          {/* 右侧：标准操作按钮 */}
+          <Space>
+            <Button onClick={handleCancel} disabled={loading}>
+              取消
+            </Button>
+            <Button 
+              type="primary" 
+              onClick={handleOk}
+              loading={loading}
+              disabled={!isValid || loadingExistingSplits}
+            >
+              {transaction.isSplit ? "确认重新拆分" : "确认拆分"}
+            </Button>
+          </Space>
+        </div>
+      }
     >
       {/* 🆕 加载状态 */}
       {loadingExistingSplits && (
@@ -221,19 +279,19 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       )}
       
       {!loadingExistingSplits && (
-        <>
-          {/* 🆕 已拆分提示 */}
-          {transaction.isSplit && (
-            <Alert
-              message="此交易已拆分过"
-              description="已自动加载现有拆分数据。修改后将删除现有的所有子交易，并创建新的拆分记录。"
-              type="warning"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-          )}
-      
-      {/* 原交易信息 & 拆分统计（左右布局） */}
+          <>
+            {/* 🆕 已拆分提示 */}
+            {transaction.isSplit && (
+              <Alert
+                message="此交易已拆分过"
+                description="已自动加载现有拆分数据。修改后将删除现有的所有子交易，并创建新的拆分记录。"
+                type="warning"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+            )}
+        
+        {/* 原交易信息 & 拆分统计（左右布局） */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
         {/* 左侧：原交易信息 */}
         <div style={{ flex: 1 }}>
