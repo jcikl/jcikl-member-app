@@ -111,10 +111,24 @@ export const findMatchesForTransaction = async (
       if (shouldInclude) {
         const confidence = totalScore >= 80 ? 'high' : totalScore >= 60 ? 'medium' : 'low';
 
+        // 转换 eventDate 为 ISO 字符串（处理 Firestore Timestamp）
+        let eventDateStr = event.startDate;
+        if (event.startDate && typeof event.startDate === 'object') {
+          // 方法1: 有 toDate() 方法
+          if ('toDate' in event.startDate && typeof (event.startDate as any).toDate === 'function') {
+            eventDateStr = (event.startDate as any).toDate().toISOString();
+          }
+          // 方法2: 原始 {seconds, nanoseconds} 格式
+          else if ('seconds' in event.startDate && 'nanoseconds' in event.startDate) {
+            const milliseconds = (event.startDate as any).seconds * 1000 + (event.startDate as any).nanoseconds / 1000000;
+            eventDateStr = new Date(milliseconds).toISOString();
+          }
+        }
+
         allMatches.push({
           eventId: event.id,
           eventName: event.name,
-          eventDate: event.startDate,
+          eventDate: eventDateStr,
           totalScore,
           nameScore: nameScore.score,
           priceScore: priceScore.score,
