@@ -2,13 +2,14 @@
  * Auto Match Service
  * 交易记录自动分类匹配服务
  * 
- * 匹配逻辑：
- * 1. 活动名称匹配 (60分)
- * 2. 票价匹配 (30分)
- * 3. 日期匹配 (10分)
- * 总分 >= 80: 高置信度
- * 总分 60-79: 中置信度
- * 总分 < 60: 低置信度（不展示）
+ * 匹配逻辑（权重调整为实际业务场景）：
+ * 1. 日期匹配 (40分) - 最重要，交易通常发生在活动当天或前后
+ * 2. 票价匹配 (40分) - 次重要，金额是最可靠的匹配依据
+ * 3. 活动名称匹配 (20分) - 参考项，银行描述不一定包含活动名称
+ * 
+ * 总分 >= 80: 高置信度（可自动应用）
+ * 总分 60-79: 中置信度（需人工确认）
+ * 总分 < 60: 低置信度（显示分析结果，建议手动分类）
  */
 
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
@@ -97,9 +98,9 @@ export const findMatchesForTransaction = async (
       // 🔍 调试前3个匹配结果
       if (debugCount < 3 || totalScore >= 60) {
         console.log(`📊 [Match #${debugCount + 1}] ${event.name}:`, {
-          nameScore: `${nameScore.score}/60 (${nameScore.reason})`,
-          priceScore: `${priceScore.score}/30 (${priceScore.type})`,
-          dateScore: `${dateScore.score}/10 (${dateScore.reason})`,
+          dateScore: `${dateScore.score}/40 (${dateScore.reason})`,
+          priceScore: `${priceScore.score}/40 (${priceScore.type})`,
+          nameScore: `${nameScore.score}/20 (${nameScore.reason})`,
           totalScore: `${totalScore}/100`,
           threshold: totalScore >= 60 ? '✅ PASS' : '❌ FAIL',
         });
@@ -310,7 +311,7 @@ const getAllActiveEvents = async (): Promise<Event[]> => {
 };
 
 /**
- * 计算名称匹配得分
+ * 计算名称匹配得分（满分20分，作为辅助参考）
  */
 const calculateNameScore = (
   transaction: Transaction,
@@ -326,12 +327,12 @@ const calculateNameScore = (
 
   const eventName = event.name.toLowerCase().trim();
 
-  // 1. 完全匹配 (60分)
+  // 1. 完全匹配 (20分)
   if (description.includes(eventName) || eventName.includes(description)) {
-    return { score: 60, reason: '完全匹配' };
+    return { score: 20, reason: '完全匹配' };
   }
 
-  // 2. 缩写匹配 (55分)
+  // 2. 缩写匹配 (18分)
   const acronym = event.name
     .split(' ')
     .map((word) => word[0])
@@ -339,27 +340,27 @@ const calculateNameScore = (
     .toLowerCase();
 
   if (acronym.length >= 2 && description.includes(acronym)) {
-    return { score: 55, reason: `缩写匹配 "${acronym.toUpperCase()}"` };
+    return { score: 18, reason: `缩写匹配 "${acronym.toUpperCase()}"` };
   }
 
-  // 3. 模糊匹配 - 移除空格和特殊字符 (45分)
+  // 3. 模糊匹配 - 移除空格和特殊字符 (15分)
   const cleanDesc = description.replace(/[-\s*]/g, '');
   const cleanName = eventName.replace(/[-\s*]/g, '');
 
   if (cleanDesc.includes(cleanName) || cleanName.includes(cleanDesc)) {
-    return { score: 45, reason: '模糊匹配（忽略空格）' };
+    return { score: 15, reason: '模糊匹配（忽略空格）' };
   }
 
-  // 4. 关键词匹配 (20-40分)
+  // 4. 关键词匹配 (5-12分)
   const keywords = eventName.split(' ').filter((w) => w.length > 3);
   const matchedKeywords = keywords.filter((keyword) =>
     description.includes(keyword.toLowerCase())
   );
 
   if (matchedKeywords.length > 0) {
-    const score = Math.floor((matchedKeywords.length / keywords.length) * 40);
+    const score = Math.floor((matchedKeywords.length / keywords.length) * 12);
     return {
-      score,
+      score: Math.max(5, score), // 至少5分
       reason: `关键词匹配 ${matchedKeywords.length}/${keywords.length}`,
     };
   }
@@ -368,7 +369,7 @@ const calculateNameScore = (
 };
 
 /**
- * 计算票价匹配得分
+ * 计算票价匹配得分（满分40分，金额是最可靠的匹配依据）
  */
 const calculatePriceScore = (
   amount: number,
@@ -382,32 +383,32 @@ const calculatePriceScore = (
     committee: pricing.committeePrice,
   };
 
-  // 1. 精确匹配 (30分)
+  // 1. 精确匹配 (40分)
   for (const [type, price] of Object.entries(prices)) {
     if (amount === price) {
-      return { score: 30, type: `${type}价`, matchedPrice: price };
+      return { score: 40, type: `${type}价`, matchedPrice: price };
     }
   }
 
-  // 2. 倍数匹配 - 多张票 (25分)
+  // 2. 倍数匹配 - 多张票 (33分)
   for (const [type, price] of Object.entries(prices)) {
     if (price === 0) continue; // 跳过免费票
 
     for (let i = 2; i <= 5; i++) {
       if (amount === price * i) {
-        return { score: 25, type: `${type}价 x${i}`, matchedPrice: price };
+        return { score: 33, type: `${type}价 x${i}`, matchedPrice: price };
       }
     }
   }
 
-  // 3. 范围匹配 (15分)
+  // 3. 范围匹配 (20分)
   const validPrices = Object.values(prices).filter((p) => p > 0);
   if (validPrices.length > 0) {
     const minPrice = Math.min(...validPrices);
     const maxPrice = Math.max(...validPrices);
 
     if (amount >= minPrice && amount <= maxPrice) {
-      return { score: 15, type: '范围内', matchedPrice: undefined };
+      return { score: 20, type: '范围内', matchedPrice: undefined };
     }
   }
 
@@ -486,16 +487,25 @@ const calculateDateScore = (
 
   console.log('📊 [calculateDateScore] Days difference:', daysDiff);
 
+  // 日期匹配得分（满分40分，最重要的匹配依据）
   if (daysDiff === 0) {
-    return { score: 10, reason: '活动当天', daysDifference: daysDiff };
+    return { score: 40, reason: '活动当天', daysDifference: daysDiff };
+  }
+
+  if (daysDiff <= 3) {
+    return { score: 35, reason: `活动前后${daysDiff}天`, daysDifference: daysDiff };
   }
 
   if (daysDiff <= 7) {
-    return { score: 8, reason: `活动前后${daysDiff}天`, daysDifference: daysDiff };
+    return { score: 30, reason: `活动前后${daysDiff}天`, daysDifference: daysDiff };
+  }
+
+  if (daysDiff <= 14) {
+    return { score: 25, reason: `活动前后${daysDiff}天`, daysDifference: daysDiff };
   }
 
   if (daysDiff <= 30) {
-    return { score: 5, reason: `活动前后${daysDiff}天`, daysDifference: daysDiff };
+    return { score: 20, reason: `活动前后${daysDiff}天`, daysDifference: daysDiff };
   }
 
   return { score: 0, reason: `相差${daysDiff}天，超出范围`, daysDifference: daysDiff };

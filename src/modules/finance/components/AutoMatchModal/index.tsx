@@ -376,27 +376,30 @@ export const AutoMatchModal: React.FC<Props> = ({
                         <div className="section-title">📊 匹配详情</div>
                         <Space direction="vertical" style={{ width: '100%' }} size="small">
                           <div>
-                            <Tag color="blue">名称匹配</Tag>
+                            <Tag color="orange">日期匹配</Tag>
+                            <Tag color="volcano" style={{ marginLeft: 4 }}>最重要</Tag>
                             <Progress
-                              percent={Math.floor((item.bestMatch!.nameScore / 60) * 100)}
+                              percent={Math.floor((item.bestMatch!.dateScore / 40) * 100)}
                               size="small"
-                              format={() => `${item.bestMatch!.nameScore}/60`}
+                              format={() => `${item.bestMatch!.dateScore}/40`}
                             />
                           </div>
                           <div>
                             <Tag color="green">票价匹配</Tag>
+                            <Tag color="gold" style={{ marginLeft: 4 }}>次重要</Tag>
                             <Progress
-                              percent={Math.floor((item.bestMatch!.priceScore / 30) * 100)}
+                              percent={Math.floor((item.bestMatch!.priceScore / 40) * 100)}
                               size="small"
-                              format={() => `${item.bestMatch!.priceScore}/30`}
+                              format={() => `${item.bestMatch!.priceScore}/40`}
                             />
                           </div>
                           <div>
-                            <Tag color="orange">日期匹配</Tag>
+                            <Tag color="blue">名称匹配</Tag>
+                            <Tag color="default" style={{ marginLeft: 4 }}>参考</Tag>
                             <Progress
-                              percent={Math.floor((item.bestMatch!.dateScore / 10) * 100)}
+                              percent={Math.floor((item.bestMatch!.nameScore / 20) * 100)}
                               size="small"
-                              format={() => `${item.bestMatch!.dateScore}/10`}
+                              format={() => `${item.bestMatch!.nameScore}/20`}
                             />
                           </div>
                           {item.bestMatch.explanation && (
@@ -453,30 +456,33 @@ export const AutoMatchModal: React.FC<Props> = ({
                         <div className="section-title">📊 分数详情</div>
                         <Space direction="vertical" style={{ width: '100%' }} size="small">
                           <div>
-                            <Tag color="blue">名称匹配</Tag>
+                            <Tag color="orange">日期匹配</Tag>
+                            <Tag color="volcano" style={{ marginLeft: 4 }}>最重要</Tag>
                             <Progress
-                              percent={Math.floor((item.topAttempt.nameScore / 60) * 100)}
+                              percent={Math.floor((item.topAttempt.dateScore / 40) * 100)}
                               size="small"
-                              format={() => `${item.topAttempt!.nameScore}/60`}
-                              status={item.topAttempt.nameScore > 0 ? 'normal' : 'exception'}
+                              format={() => `${item.topAttempt!.dateScore}/40`}
+                              status={item.topAttempt.dateScore > 0 ? 'normal' : 'exception'}
                             />
                           </div>
                           <div>
                             <Tag color="green">票价匹配</Tag>
+                            <Tag color="gold" style={{ marginLeft: 4 }}>次重要</Tag>
                             <Progress
-                              percent={Math.floor((item.topAttempt.priceScore / 30) * 100)}
+                              percent={Math.floor((item.topAttempt.priceScore / 40) * 100)}
                               size="small"
-                              format={() => `${item.topAttempt!.priceScore}/30`}
+                              format={() => `${item.topAttempt!.priceScore}/40`}
                               status={item.topAttempt.priceScore > 0 ? 'normal' : 'exception'}
                             />
                           </div>
                           <div>
-                            <Tag color="orange">日期匹配</Tag>
+                            <Tag color="blue">名称匹配</Tag>
+                            <Tag color="default" style={{ marginLeft: 4 }}>参考</Tag>
                             <Progress
-                              percent={Math.floor((item.topAttempt.dateScore / 10) * 100)}
+                              percent={Math.floor((item.topAttempt.nameScore / 20) * 100)}
                               size="small"
-                              format={() => `${item.topAttempt!.dateScore}/10`}
-                              status={item.topAttempt.dateScore > 0 ? 'normal' : 'exception'}
+                              format={() => `${item.topAttempt!.nameScore}/20`}
+                              status={item.topAttempt.nameScore > 0 ? 'normal' : 'exception'}
                             />
                           </div>
                           <div>
