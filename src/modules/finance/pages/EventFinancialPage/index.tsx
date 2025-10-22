@@ -283,7 +283,12 @@ const EventFinancialPage: React.FC = () => {
                 allMembers: projectInfo.committeeMembers.map(m => ({
                   name: m.name,
                   position: m.position
-                }))
+                })),
+                // 详细的职位匹配调试
+                chairSearchTerms: ['活动主席', 'Chair'],
+                treasurerSearchTerms: ['活动财政', 'Treasurer'],
+                chairMatch: projectInfo.committeeMembers.find(m => m.position === '活动主席' || m.position === 'Chair'),
+                treasurerMatch: projectInfo.committeeMembers.find(m => m.position === '活动财政' || m.position === 'Treasurer')
               });
             } else {
               console.log(`⚠️ [EventFinancialPage] No committee members found for "${event.eventName}"`);
