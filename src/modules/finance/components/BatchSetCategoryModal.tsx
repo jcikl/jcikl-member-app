@@ -96,7 +96,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     try {
       const [membersResult, eventsResult] = await Promise.all([
         getMembers({ page: 1, limit: 1000, status: 'active' }),
-        getEvents({ page: 1, limit: 1000, status: 'Published' }),
+        getEvents({ page: 1, limit: 1000 }), // 🆕 移除status限制，加载所有状态的活动
       ]);
       setMembers(membersResult.data);
       setEvents(eventsResult.data);
