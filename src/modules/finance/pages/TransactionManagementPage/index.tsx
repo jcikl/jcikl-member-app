@@ -711,6 +711,7 @@ const TransactionManagementPage: React.FC = () => {
     category: string;
     txAccount?: string;
     year?: string;
+    eventId?: string; // 🆕 统一的活动ID
     individualData?: Array<{
       transactionId: string;
       payerPayee?: string;
@@ -757,15 +758,16 @@ const TransactionManagementPage: React.FC = () => {
                 // 可选：也可以存储会员名称到payerPayee
               }
             } else if (data.category === 'event-finance') {
-              // 活动财务：收款人信息和关联活动
+              // 活动财务：收款人信息和统一关联活动
               if (individualItem.payeeMode === 'manual' && individualItem.payeeName) {
                 updates.payerPayee = individualItem.payeeName;
               } else if (individualItem.payeeMode === 'member' && individualItem.payeeId) {
                 metadata.payeeId = individualItem.payeeId;
               }
               
-              if (individualItem.eventId) {
-                metadata.eventId = individualItem.eventId;
+              // 🆕 使用统一的活动ID而不是独立设置
+              if (data.eventId) {
+                metadata.eventId = data.eventId;
               }
             } else if (data.category === 'member-fees') {
               // 会员费：关联会员

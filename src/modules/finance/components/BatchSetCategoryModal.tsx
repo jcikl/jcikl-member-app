@@ -71,6 +71,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   
   // 动态字段状态
   const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedEventId, setSelectedEventId] = useState<string>(''); // 🆕 统一的活动选择
   
   // 🆕 每条交易的独立数据
   const [individualData, setIndividualData] = useState<Record<string, TransactionIndividualData>>({});
@@ -153,6 +154,11 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
         message.error('会员费需要选择年份');
         return;
       }
+      
+      if (selectedCategory === 'event-finance' && !selectedEventId) {
+        message.error('活动财务需要选择关联活动');
+        return;
+      }
 
       setLoading(true);
       
@@ -161,6 +167,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
         category: string;
         txAccount?: string;
         year?: string;
+        eventId?: string; // 🆕 统一的活动ID
         individualData?: TransactionIndividualData[];
       } = {
         category: selectedCategory,
@@ -171,6 +178,8 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       // 根据类别添加对应字段
       if (selectedCategory === 'member-fees') {
         data.year = selectedYear;
+      } else if (selectedCategory === 'event-finance') {
+        data.eventId = selectedEventId; // 🆕 统一设置活动ID
       }
       
       await onOk(data);
@@ -187,6 +196,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     setSelectedCategory('');
     setSelectedTxAccount('');
     setSelectedYear('');
+    setSelectedEventId(''); // 🆕 重置统一活动选择
     setIndividualData({});
   };
 
@@ -375,62 +385,6 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
                 onChange={(e) => updateIndividualData(record.id, 'payeeName', e.target.value)}
                 placeholder="输入收款人姓名"
               />
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: '关联活动',
-      key: 'eventId',
-      width: 250,
-      render: (_: any, record: Transaction) => {
-        const data = individualData[record.id];
-        
-        // 🆕 过滤活动列表
-        const filteredEvents = events.filter(event => {
-          // 如果没有选择年份，显示所有活动
-          if (!selectedYear) return true;
-          
-          // 如果活动没有日期，也显示（避免隐藏）
-          if (!event.startDate) return true;
-          
-          // 根据年份筛选
-          const eventYear = new Date(event.startDate).getFullYear().toString();
-          return eventYear === selectedYear;
-        });
-        
-        return (
-          <div>
-            <Select
-              style={{ width: '100%' }}
-              size="small"
-              value={data?.eventId}
-              onChange={(value) => updateIndividualData(record.id, 'eventId', value)}
-              placeholder={filteredEvents.length === 0 ? '无可用活动' : '选择活动'}
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const label = option?.children?.toString() || '';
-                return label.toLowerCase().includes(input.toLowerCase());
-              }}
-              notFoundContent={
-                loadingData ? '加载中...' : 
-                filteredEvents.length === 0 && selectedYear ? `${selectedYear}年无活动` : 
-                '无活动数据'
-              }
-            >
-              {filteredEvents.map(e => (
-                <Option key={e.id} value={e.id}>
-                  {e.name}
-                  {e.startDate && ` (${new Date(e.startDate).getFullYear()})`}
-                </Option>
-              ))}
-            </Select>
-            {filteredEvents.length === 0 && selectedYear && events.length > 0 && (
-              <div style={{ fontSize: 11, color: '#ff4d4f', marginTop: 4 }}>
-                {selectedYear}年无活动，共有{events.length}个活动
-              </div>
             )}
           </div>
         );
@@ -658,7 +612,36 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
             )}
           </div>
 
-          <Divider>为每条交易设置收款人和关联活动</Divider>
+          {/* 🆕 统一的活动选择 */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>关联活动（统一设置）</div>
+            <Select
+              style={{ width: '100%' }}
+              value={selectedEventId}
+              onChange={setSelectedEventId}
+              placeholder="选择关联活动"
+              allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const label = option?.children?.toString() || '';
+                return label.toLowerCase().includes(input.toLowerCase());
+              }}
+            >
+              {events.map(event => (
+                <Option key={event.id} value={event.id}>
+                  {event.name}
+                  {event.startDate && ` (${new Date(event.startDate).getFullYear()})`}
+                </Option>
+              ))}
+            </Select>
+            {events.length === 0 && (
+              <p style={{ fontSize: '12px', color: '#999', marginTop: 8 }}>
+                💡 请先在"活动管理"页面创建活动
+              </p>
+            )}
+          </div>
+
+          <Divider>为每条交易设置收款人信息</Divider>
           
           <Table
             columns={eventFinanceColumns}
