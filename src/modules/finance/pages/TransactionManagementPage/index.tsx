@@ -178,35 +178,13 @@ const TransactionManagementPage: React.FC = () => {
 
   const loadBankAccounts = async () => {
     try {
-      console.log('🏦 [loadBankAccounts] Loading bank accounts...');
-      console.log('📁 [loadBankAccounts] Collection constant:', {
-        name: 'GLOBAL_COLLECTIONS.BANK_ACCOUNTS',
-        value: 'bankAccounts',
-      });
-      
       const accounts = await getAllBankAccounts('active');
-      
-      console.log('✅ [loadBankAccounts] Loaded accounts:', {
-        count: accounts.length,
-        accounts: accounts.map(a => ({
-          id: a.id,
-          accountName: a.accountName,
-          status: a.status,
-          isDefault: a.isDefault,
-        })),
-      });
-      
       setBankAccounts(accounts);
       
       // 加载完账户后，更新交易数量
       updateAccountTransactionCounts();
     } catch (error: any) {
-      console.error('❌ [loadBankAccounts] Failed to load bank accounts:', error);
-      console.error('❌ [loadBankAccounts] Error details:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack,
-      });
+      message.error('加载银行账户失败');
     }
   };
   
@@ -235,9 +213,8 @@ const TransactionManagementPage: React.FC = () => {
       }
       
       setAccountTransactionCounts(counts);
-      console.log('📊 [updateAccountTransactionCounts] Updated counts:', counts);
     } catch (error: any) {
-      console.error('❌ [updateAccountTransactionCounts] Failed:', error);
+      // Silent fail for count updates
     }
   };
 
@@ -246,8 +223,6 @@ const TransactionManagementPage: React.FC = () => {
     if (!user) return;
 
     try {
-      console.log('🌳 [loadAllTransactionsForTreeView] Loading all transactions for tree view...');
-      
       const result = await getTransactions({
         page: 1,
         limit: 10000, // 🆕 加载大量数据用于树形视图
@@ -259,19 +234,8 @@ const TransactionManagementPage: React.FC = () => {
         includeVirtual: false, // 🆕 树形视图不显示虚拟交易
       });
 
-      console.log('🌳 [loadAllTransactionsForTreeView] Loaded transactions:', {
-        count: result.data.length,
-        total: result.total,
-        categories: result.data.reduce((acc, t) => {
-          const cat = t.category || 'uncategorized';
-          acc[cat] = (acc[cat] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>)
-      });
-
       return result.data;
     } catch (error: any) {
-      console.error('❌ [loadAllTransactionsForTreeView] Failed:', error);
       return [];
     }
   };

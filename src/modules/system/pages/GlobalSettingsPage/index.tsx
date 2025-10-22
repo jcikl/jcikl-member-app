@@ -35,17 +35,8 @@ const GlobalSettingsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 检查登录用户信息
-    console.log('🔍 登录用户信息检查:');
-    console.log('👤 用户对象:', user);
-    console.log('🆔 用户ID:', user?.id);
-    console.log('📧 用户邮箱:', user?.email);
-    console.log('👑 用户角色:', user?.role);
-    console.log('📊 用户状态:', user?.status);
-    
     // 如果用户已经加载且有admin角色，直接设置权限
     if (user?.role === 'admin') {
-      console.log('✅ 直接从用户数据确认管理员权限');
       setHasPermission(true);
       setLoading(false);
       setError(null);

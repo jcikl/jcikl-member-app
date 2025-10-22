@@ -349,11 +349,8 @@ const FinancialRecordsPage: React.FC = () => {
           }
           return record;
         });
-
-        console.log('[FinancialRecords] Merged txAccount from transactions:', 
-          Object.keys(txAccountByMember).length, 'members');
       } catch (error) {
-        console.warn('[FinancialRecords] Failed to merge txAccount from transactions:', error);
+        // Silent fail for txAccount merge
       }
 
       setRecords(data);

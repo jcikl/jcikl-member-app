@@ -307,13 +307,10 @@ export const getMemberFees = async (
     // 1. 获取所有会员
     const membersQuery = query(collection(db, GLOBAL_COLLECTIONS.MEMBERS));
     const membersSnapshot = await getDocs(membersQuery);
-    console.log('[MemberFees][Debug] load params:', { status, memberCategory, search, page, pageLimit, sortBy, sortOrder });
-    console.log('[MemberFees][Debug] members count:', membersSnapshot.size);
     
     // 2. 获取所有会员费记录
     const feesQuery = query(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
     const feesSnapshot = await getDocs(feesQuery);
-    console.log('[MemberFees][Debug] raw financialRecords count:', feesSnapshot.size);
 
     // 创建会员费记录映射 (memberId -> MemberFee)
     const feesByMemberId = new Map<string, MemberFee>();
@@ -440,7 +437,6 @@ export const getMemberFees = async (
             };
           }
           if (debugMatchCount < 5) {
-            console.log('[MemberFees][Debug] txn hit member-fees:', { id: d.id, memberId: mId, txDate, amount: data.amount, type: data.transactionType, txAccount: data.txAccount });
             debugMatchCount++;
           }
         });
@@ -455,10 +451,8 @@ export const getMemberFees = async (
         }
         return f;
       });
-      console.log('[MemberFees][Debug] latestPaidByMember keys:', Object.keys(latestPaidByMember).slice(0, 10));
     } catch (e) {
       // 非关键路径，忽略错误
-      console.warn('[MemberFees][Debug] txn aggregation failed:', e);
     }
 
     // 6. 排序
@@ -478,7 +472,6 @@ export const getMemberFees = async (
     
     // 7. 分页
     const total = fees.length;
-    console.log('[MemberFees][Debug] final fees (first 5):', fees.slice(0, 5).map(f => ({ memberId: f.memberId, memberName: f.memberName, paymentDate: f.paymentDate, status: f.status })));
     const startIndex = (page - 1) * pageLimit;
     const endIndex = startIndex + pageLimit;
     const paginatedData = fees.slice(startIndex, endIndex);

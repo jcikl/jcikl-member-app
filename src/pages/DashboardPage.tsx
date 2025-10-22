@@ -132,15 +132,11 @@ const DashboardPage: React.FC = () => {
     const loadBirthdays = async () => {
       setListsLoading(true);
       try {
-        console.log('📊 [Dashboard] Loading birthdays, mode:', birthdayViewMode, 'month:', selectedMonth);
-        
         if (birthdayViewMode === 'upcoming') {
           const birthdays = await getUpcomingBirthdays(30);
-          console.log('📊 [Dashboard] Loaded upcoming birthdays:', birthdays.length);
           setUpcomingBirthdays(birthdays);
         } else {
           const birthdays = await getBirthdaysByMonth(selectedMonth);
-          console.log('📊 [Dashboard] Loaded month birthdays:', birthdays.length);
           setUpcomingBirthdays(birthdays);
         }
       } catch (error) {

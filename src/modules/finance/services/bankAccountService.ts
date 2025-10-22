@@ -220,12 +220,6 @@ export const getAllBankAccounts = async (
   status?: BankAccountStatus
 ): Promise<BankAccount[]> => {
   try {
-    console.log('🔍 [getAllBankAccounts] Collection name check:', {
-      constantName: 'GLOBAL_COLLECTIONS.BANK_ACCOUNTS',
-      actualValue: GLOBAL_COLLECTIONS.BANK_ACCOUNTS,
-      statusFilter: status,
-    });
-    
     const constraints: QueryConstraint[] = [];
     
     if (status) {
@@ -235,21 +229,12 @@ export const getAllBankAccounts = async (
     constraints.push(orderBy('isDefault', 'desc'));
     constraints.push(orderBy('accountName', 'asc'));
     
-    const collectionPath = GLOBAL_COLLECTIONS.BANK_ACCOUNTS;
-    console.log('📁 [getAllBankAccounts] Using collection path:', collectionPath);
-    
     const q = query(
-      collection(db, collectionPath),
+      collection(db, GLOBAL_COLLECTIONS.BANK_ACCOUNTS),
       ...constraints
     );
     
-    console.log('🔎 [getAllBankAccounts] Executing query...');
     const snapshot = await getDocs(q);
-    console.log('📊 [getAllBankAccounts] Query result:', {
-      collectionPath,
-      documentsFound: snapshot.size,
-      documentIds: snapshot.docs.map(doc => doc.id),
-    });
     
     return snapshot.docs.map(doc => ({
       id: doc.id,
