@@ -207,10 +207,19 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     },
     {
       title: '描述',
-      dataIndex: 'description',
       key: 'description',
       width: 150,
       ellipsis: true,
+      render: (_: any, record: Transaction) => {
+        const main = record.mainDescription || '';
+        const sub = record.subDescription || '';
+        return (
+          <div>
+            <div>{main}</div>
+            {sub && <div style={{ fontSize: '12px', color: '#999' }}>{sub}</div>}
+          </div>
+        );
+      },
     },
     {
       title: '金额',
@@ -288,10 +297,19 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     },
     {
       title: '描述',
-      dataIndex: 'description',
       key: 'description',
       width: 150,
       ellipsis: true,
+      render: (_: any, record: Transaction) => {
+        const main = record.mainDescription || '';
+        const sub = record.subDescription || '';
+        return (
+          <div>
+            <div>{main}</div>
+            {sub && <div style={{ fontSize: '12px', color: '#999' }}>{sub}</div>}
+          </div>
+        );
+      },
     },
     {
       title: '金额',
@@ -425,10 +443,19 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     },
     {
       title: '描述',
-      dataIndex: 'description',
       key: 'description',
       width: 150,
       ellipsis: true,
+      render: (_: any, record: Transaction) => {
+        const main = record.mainDescription || '';
+        const sub = record.subDescription || '';
+        return (
+          <div>
+            <div>{main}</div>
+            {sub && <div style={{ fontSize: '12px', color: '#999' }}>{sub}</div>}
+          </div>
+        );
+      },
     },
     {
       title: '金额',
