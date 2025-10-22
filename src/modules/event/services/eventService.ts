@@ -442,7 +442,30 @@ export const updateEvent = async (
     if (formData.coOrganizers !== undefined) updateData.coOrganizers = formData.coOrganizers || [];
     if (formData.posterImage !== undefined) updateData.posterImage = formData.posterImage ?? null;
     if ((formData as any).agendaItems !== undefined) updateData.agendaItems = (formData as any).agendaItems || [];
-    if ((formData as any).committeeMembers !== undefined) updateData.committeeMembers = (formData as any).committeeMembers || [];
+    if ((formData as any).committeeMembers !== undefined) {
+      const committeeMembers = (formData as any).committeeMembers || [];
+      updateData.committeeMembers = committeeMembers;
+      
+      // 调试日志：打印委员会成员信息
+      console.log('👥 [updateEvent] Updating committee members:', {
+        eventId,
+        totalMembers: committeeMembers.length,
+        members: committeeMembers.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          position: m.position,
+          contact: m.contact,
+          email: m.email
+        })),
+        positions: committeeMembers.map((m: any) => m.position),
+        chairMembers: committeeMembers.filter((m: any) => 
+          m.position === '活动主席' || m.position === 'Chair'
+        ),
+        treasurerMembers: committeeMembers.filter((m: any) => 
+          m.position === '活动财政' || m.position === 'Treasurer'
+        )
+      });
+    }
     if ((formData as any).speakers !== undefined) updateData.speakers = (formData as any).speakers || [];
     
     // Date fields
