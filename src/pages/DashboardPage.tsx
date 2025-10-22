@@ -17,7 +17,7 @@ import {
 } from '@/modules/member/services/memberService';
 
 // Types
-import type { Member } from '@/modules/member/types';
+import type { Member, IndustryType } from '@/modules/member/types';
 
 const { Option } = Select;
 
@@ -64,8 +64,8 @@ const DashboardPage: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
-  const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
+  const [selectedIndustry, setSelectedIndustry] = useState<IndustryType | null>(null);
+  const [selectedInterest, setSelectedInterest] = useState<IndustryType | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   // 月份选项
@@ -181,13 +181,13 @@ const DashboardPage: React.FC = () => {
 
     // 按行业筛选
     if (selectedIndustry) {
-      filtered = filtered.filter(m => m.profile?.career?.industry === selectedIndustry);
+      filtered = filtered.filter(m => m.profile?.ownIndustry?.includes(selectedIndustry));
     }
 
     // 按兴趣筛选
     if (selectedInterest) {
       filtered = filtered.filter(m => 
-        m.profile?.interests?.includes(selectedInterest)
+        m.profile?.interestedIndustries?.includes(selectedInterest)
       );
     }
 
@@ -204,7 +204,7 @@ const DashboardPage: React.FC = () => {
     if (selectedIndustry === industry) {
       setSelectedIndustry(null); // 取消筛选
     } else {
-      setSelectedIndustry(industry);
+      setSelectedIndustry(industry as IndustryType);
       setSelectedInterest(null); // 清除兴趣筛选
       setSelectedMemberId(null); // 清除会员筛选
     }
@@ -215,7 +215,7 @@ const DashboardPage: React.FC = () => {
     if (selectedInterest === interest) {
       setSelectedInterest(null); // 取消筛选
     } else {
-      setSelectedInterest(interest);
+      setSelectedInterest(interest as IndustryType);
       setSelectedIndustry(null); // 清除行业筛选
       setSelectedMemberId(null); // 清除会员筛选
     }
@@ -230,12 +230,12 @@ const DashboardPage: React.FC = () => {
     } else {
       setSelectedMemberId(member.id);
       // 反向筛选：如果会员有行业，高亮对应行业
-      if (member.profile?.career?.industry) {
-        setSelectedIndustry(member.profile.career.industry);
+      if (member.profile?.ownIndustry && member.profile.ownIndustry.length > 0) {
+        setSelectedIndustry(member.profile.ownIndustry[0]);
       }
       // 反向筛选：如果会员有兴趣，高亮第一个兴趣
-      if (member.profile?.interests && member.profile.interests.length > 0) {
-        setSelectedInterest(member.profile.interests[0]);
+      if (member.profile?.interestedIndustries && member.profile.interestedIndustries.length > 0) {
+        setSelectedInterest(member.profile.interestedIndustries[0]);
       }
     }
   };
@@ -621,7 +621,7 @@ const DashboardPage: React.FC = () => {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                       }}>
-                        {member.profile?.career?.industry || '未设置行业'}
+                        {member.profile?.ownIndustry?.[0] || '未设置行业'}
                       </div>
                       {member.category && (
                         <Tag 

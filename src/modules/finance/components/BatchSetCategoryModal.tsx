@@ -15,7 +15,6 @@ import {
   Radio,
   Divider,
   Table,
-  Tag,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { getMembers } from '@/modules/member/services/memberService';
@@ -24,7 +23,7 @@ import { generateYearOptions } from '@/utils/dateHelpers';
 import { getActiveTransactionPurposes } from '@/modules/system/services/transactionPurposeService';
 import type { Member } from '@/modules/member/types';
 import type { Event } from '@/modules/event/types';
-import type { Transaction } from '@/types';
+import type { Transaction } from '@/modules/finance/types';
 
 const { Option } = Select;
 
@@ -109,8 +108,8 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
         活动列表: eventsResult.data.map(e => ({
           id: e.id,
           name: e.name,
-          date: e.eventDate,
-          year: e.eventDate ? new Date(e.eventDate).getFullYear() : '无日期'
+          date: e.startDate,
+          year: e.startDate ? new Date(e.startDate).getFullYear() : '无日期'
         }))
       });
     } catch (error) {
@@ -196,17 +195,6 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     onCancel();
   };
 
-  // 🆕 获取会员名称
-  const getMemberName = (memberId: string) => {
-    const member = members.find(m => m.id === memberId);
-    return member ? `${member.name} - ${member.email}` : '';
-  };
-
-  // 🆕 获取活动名称
-  const getEventName = (eventId: string) => {
-    const event = events.find(e => e.id === eventId);
-    return event ? event.name : '';
-  };
 
   // 🆕 定义表格列（日常财务）
   const generalAccountsColumns: ColumnsType<Transaction> = [
@@ -381,10 +369,10 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
           if (!selectedYear) return true;
           
           // 如果活动没有日期，也显示（避免隐藏）
-          if (!event.eventDate) return true;
+          if (!event.startDate) return true;
           
           // 根据年份筛选
-          const eventYear = new Date(event.eventDate).getFullYear().toString();
+          const eventYear = new Date(event.startDate).getFullYear().toString();
           return eventYear === selectedYear;
         });
         
@@ -411,7 +399,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               {filteredEvents.map(e => (
                 <Option key={e.id} value={e.id}>
                   {e.name}
-                  {e.eventDate && ` (${new Date(e.eventDate).getFullYear()})`}
+                  {e.startDate && ` (${new Date(e.startDate).getFullYear()})`}
                 </Option>
               ))}
             </Select>

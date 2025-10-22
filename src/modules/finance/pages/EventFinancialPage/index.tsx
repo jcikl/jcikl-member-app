@@ -85,9 +85,6 @@ const EventFinancialPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'events' | 'transactions'>('events');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
-  const [transactionTotal, setTransactionTotal] = useState(0);
-  const [transactionPage, setTransactionPage] = useState(1);
-  const [transactionPageSize, setTransactionPageSize] = useState(100); // 🆕 增加默认显示数量以匹配实际数据
   const [txAccountFilter, setTxAccountFilter] = useState<string>('all');
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -610,7 +607,6 @@ const EventFinancialPage: React.FC = () => {
       setHasUncategorized(uncategorizedCount > 0);
       
       setTransactions(filteredTransactions);
-      setTransactionTotal(filteredTransactions.length);
     } catch (error: any) {
       message.error('加载交易记录失败');
       globalSystemService.log('error', 'Failed to load event finance transactions', 'EventFinancialPage', { error });
