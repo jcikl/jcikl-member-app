@@ -39,7 +39,7 @@ export interface MatchResult {
   matchedMember?: {
     memberId: string;
     memberName: string;
-    matchType: 'name' | 'phone' | 'email' | 'memberId' | 'nric'; // 匹配方式
+    matchType: 'name' | 'phone' | 'email' | 'memberId'; // 匹配方式
     matchedValue: string; // 匹配到的值
   };
 }
@@ -382,6 +382,7 @@ const getAllActiveMembers = async (): Promise<Member[]> => {
 
 /**
  * 从交易描述中匹配会员
+ * 根据实际 Firestore 字段优化
  */
 const matchMemberFromDescription = (
   transaction: Transaction,
@@ -396,14 +397,15 @@ const matchMemberFromDescription = (
   console.log(`👤 [matchMember] Checking transaction: ${transaction.mainDescription}`);
 
   for (const member of members) {
-    // 1. 匹配手机号码（完整匹配）
-    if (member.phone && description.includes(member.phone)) {
-      console.log(`✅ [matchMember] Matched by phone: ${member.name} (${member.phone})`);
+    // 1. 匹配 NRIC/护照号（最可靠，12位数字）
+    const nric = member.profile?.nric || (member.profile as any)?.nricOrPassport;
+    if (nric && nric.length >= 10 && description.includes(nric.toLowerCase())) {
+      console.log(`✅ [matchMember] Matched by NRIC: ${member.name} (${nric})`);
       return {
         memberId: member.id,
         memberName: member.name,
-        matchType: 'phone',
-        matchedValue: member.phone,
+        matchType: 'memberId',
+        matchedValue: nric,
       };
     }
 
@@ -418,19 +420,33 @@ const matchMemberFromDescription = (
       };
     }
 
-    // 3. 匹配身份证号（NRIC）（完整匹配）
-    if (member.profile?.nric && description.includes(member.profile.nric.toLowerCase())) {
-      console.log(`✅ [matchMember] Matched by NRIC: ${member.name} (${member.profile.nric})`);
-      return {
-        memberId: member.id,
-        memberName: member.name,
-        matchType: 'nric',
-        matchedValue: member.profile.nric,
-      };
+    // 3. 匹配手机号码（灵活匹配，去除前导0和+60）
+    if (member.phone) {
+      // 处理多种手机号格式
+      const phoneVariants = [
+        member.phone,                           // 原始格式: "103149144"
+        member.phone.replace(/^0+/, ''),       // 去除前导0: "103149144"
+        `0${member.phone}`,                    // 添加0: "0103149144"
+        `60${member.phone}`,                   // 添加国家代码: "60103149144"
+        `+60${member.phone}`,                  // 添加+60: "+60103149144"
+        member.phone.replace(/^0/, '60'),      // 替换0为60
+      ];
+
+      for (const phoneVariant of phoneVariants) {
+        if (description.includes(phoneVariant.toLowerCase())) {
+          console.log(`✅ [matchMember] Matched by phone: ${member.name} (${member.phone} → ${phoneVariant})`);
+          return {
+            memberId: member.id,
+            memberName: member.name,
+            matchType: 'phone',
+            matchedValue: member.phone,
+          };
+        }
+      }
     }
 
-    // 4. 匹配会员ID（完整匹配）
-    if (member.memberId && description.includes(member.memberId.toLowerCase())) {
+    // 4. 匹配会员ID（如果存在且不为空）
+    if (member.memberId && member.memberId !== 'null' && description.includes(member.memberId.toLowerCase())) {
       console.log(`✅ [matchMember] Matched by memberId: ${member.name} (${member.memberId})`);
       return {
         memberId: member.id,
@@ -450,6 +466,20 @@ const matchMemberFromDescription = (
           memberName: member.name,
           matchType: 'name',
           matchedValue: member.name,
+        };
+      }
+    }
+
+    // 6. 匹配身份证全名（如果与 name 不同）
+    const fullNameNric = (member.profile as any)?.fullNameNric;
+    if (fullNameNric && fullNameNric !== member.name && fullNameNric.length >= 3) {
+      if (description.includes(fullNameNric.toLowerCase())) {
+        console.log(`✅ [matchMember] Matched by fullNameNric: ${member.name} (${fullNameNric})`);
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          matchType: 'name',
+          matchedValue: fullNameNric,
         };
       }
     }
