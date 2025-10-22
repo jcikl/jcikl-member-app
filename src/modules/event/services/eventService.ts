@@ -50,26 +50,6 @@ const getEventRegistrationsRef = () => collection(db, GLOBAL_COLLECTIONS.EVENT_R
  * 转换 Firestore 文档为活动对象
  */
 const convertToEvent = (docId: string, data: DocumentData): Event => {
-  // 🔍 调试：检查原始数据
-  console.log('🔍 [convertToEvent] Raw Firestore data for dates:', {
-    eventId: docId,
-    eventName: data.name,
-    startDate: data.startDate,
-    startDateType: typeof data.startDate,
-    endDate: data.endDate,
-    endDateType: typeof data.endDate,
-    registrationStartDate: data.registrationStartDate,
-    registrationDeadline: data.registrationDeadline,
-  });
-  
-  const convertedStartDate = safeTimestampToISO(data.startDate);
-  const convertedEndDate = safeTimestampToISO(data.endDate);
-  
-  console.log('🔄 [convertToEvent] After conversion:', {
-    startDate: convertedStartDate,
-    endDate: convertedEndDate,
-  });
-  
   return {
     id: docId,
     name: data.name || '',
@@ -81,8 +61,8 @@ const convertToEvent = (docId: string, data: DocumentData): Event => {
     level: data.level || 'Local',
     
     // Date & Time
-    startDate: convertedStartDate || new Date().toISOString(), // 必填字段，如果没有则使用当前时间
-    endDate: convertedEndDate || new Date().toISOString(), // 必填字段，如果没有则使用当前时间
+    startDate: safeTimestampToISO(data.startDate) || new Date().toISOString(), // 必填字段，如果没有则使用当前时间
+    endDate: safeTimestampToISO(data.endDate) || new Date().toISOString(), // 必填字段，如果没有则使用当前时间
     registrationStartDate: data.registrationStartDate ? safeTimestampToISO(data.registrationStartDate) : undefined,
     registrationDeadline: data.registrationDeadline ? safeTimestampToISO(data.registrationDeadline) : undefined,
     
@@ -146,8 +126,8 @@ const convertToEvent = (docId: string, data: DocumentData): Event => {
     speakers: data.speakers || [],
     
     // Timestamps
-    createdAt: safeTimestampToISO(data.createdAt),
-    updatedAt: safeTimestampToISO(data.updatedAt),
+    createdAt: safeTimestampToISO(data.createdAt) || new Date().toISOString(),
+    updatedAt: safeTimestampToISO(data.updatedAt) || new Date().toISOString(),
     createdBy: data.createdBy ?? null,
     updatedBy: data.updatedBy ?? null,
   };
@@ -467,24 +447,17 @@ export const updateEvent = async (
     
     // Date fields
     if (formData.startDate !== undefined) {
-      console.log('📅 [updateEvent] startDate received:', formData.startDate);
-      const dateObj = new Date(formData.startDate);
-      console.log('📅 [updateEvent] Date object created:', dateObj.toISOString());
-      updateData.startDate = Timestamp.fromDate(dateObj);
-      console.log('📅 [updateEvent] Timestamp created:', updateData.startDate);
+      updateData.startDate = Timestamp.fromDate(new Date(formData.startDate));
     }
     if (formData.endDate !== undefined) {
-      console.log('📅 [updateEvent] endDate received:', formData.endDate);
       updateData.endDate = Timestamp.fromDate(new Date(formData.endDate));
     }
     if (formData.registrationStartDate !== undefined) {
-      console.log('📅 [updateEvent] registrationStartDate received:', formData.registrationStartDate);
       updateData.registrationStartDate = formData.registrationStartDate 
         ? Timestamp.fromDate(new Date(formData.registrationStartDate)) 
         : null;
     }
     if (formData.registrationDeadline !== undefined) {
-      console.log('📅 [updateEvent] registrationDeadline received:', formData.registrationDeadline);
       updateData.registrationDeadline = formData.registrationDeadline 
         ? Timestamp.fromDate(new Date(formData.registrationDeadline)) 
         : null;

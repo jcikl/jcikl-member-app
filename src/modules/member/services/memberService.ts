@@ -77,13 +77,13 @@ const convertToMember = (docId: string, data: DocumentData): Member => {
     profile: data.profile || {},
     
     // Dates
-    joinDate: safeTimestampToISO(data.joinDate),
+    joinDate: safeTimestampToISO(data.joinDate) || new Date().toISOString(),
     renewalDate: data.renewalDate ? safeTimestampToISO(data.renewalDate) : undefined,
     expiryDate: data.expiryDate ? safeTimestampToISO(data.expiryDate) : undefined,
     
     // Timestamps
-    createdAt: safeTimestampToISO(data.createdAt),
-    updatedAt: safeTimestampToISO(data.updatedAt),
+    createdAt: safeTimestampToISO(data.createdAt) || new Date().toISOString(),
+    updatedAt: safeTimestampToISO(data.updatedAt) || new Date().toISOString(),
     createdBy: data.createdBy ?? null,
     updatedBy: data.updatedBy ?? null,
   };

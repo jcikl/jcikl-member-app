@@ -268,8 +268,8 @@ export const getMemberFeeById = async (
     return {
       id: docSnap.id,
       ...data,
-      createdAt: safeTimestampToISO(data.createdAt),
-      updatedAt: safeTimestampToISO(data.updatedAt),
+      createdAt: safeTimestampToISO(data.createdAt) || new Date().toISOString(),
+      updatedAt: safeTimestampToISO(data.updatedAt) || new Date().toISOString(),
       paymentDate: data.paymentDate ? safeTimestampToISO(data.paymentDate) : undefined,
       lastReminderDate: data.lastReminderDate ? safeTimestampToISO(data.lastReminderDate) : undefined,
     } as MemberFee;
@@ -340,8 +340,8 @@ export const getMemberFees = async (
           notes: data.notes,
           remindersSent: data.remindersSent || 0,
           lastReminderDate: data.lastReminderDate ? safeTimestampToISO(data.lastReminderDate) : undefined,
-          createdAt: safeTimestampToISO(data.createdAt),
-          updatedAt: safeTimestampToISO(data.updatedAt),
+          createdAt: safeTimestampToISO(data.createdAt) || new Date().toISOString(),
+          updatedAt: safeTimestampToISO(data.updatedAt) || new Date().toISOString(),
         };
         
         // 保留所有记录（不再按财年筛选）
@@ -378,8 +378,8 @@ export const getMemberFees = async (
           dueDate: '',
           status: 'unpaid' as MemberFeeStatus,
           remindersSent: 0,
-          createdAt: safeTimestampToISO(memberData.createdAt),
-          updatedAt: safeTimestampToISO(memberData.updatedAt),
+          createdAt: safeTimestampToISO(memberData.createdAt) || new Date().toISOString(),
+          updatedAt: safeTimestampToISO(memberData.updatedAt) || new Date().toISOString(),
           // 标记为占位记录
           isPlaceholder: true,
         };
@@ -431,6 +431,7 @@ export const getMemberFees = async (
           const mId = data?.metadata?.memberId as string | undefined;
           if (!mId) return;
           const txDate = safeTimestampToISO(data.transactionDate);
+          if (!txDate) return; // 跳过无效日期
           const prev = latestPaidByMember[mId];
           if (!prev || txDate > prev.date) {
             latestPaidByMember[mId] = { 
@@ -527,8 +528,8 @@ export const getMemberFeesByMemberId = async (
     const list = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
-      createdAt: safeTimestampToISO(doc.data().createdAt),
-      updatedAt: safeTimestampToISO(doc.data().updatedAt),
+      createdAt: safeTimestampToISO(doc.data().createdAt) || new Date().toISOString(),
+      updatedAt: safeTimestampToISO(doc.data().updatedAt) || new Date().toISOString(),
       paymentDate: doc.data().paymentDate ? safeTimestampToISO(doc.data().paymentDate) : undefined,
       lastReminderDate: doc.data().lastReminderDate ? safeTimestampToISO(doc.data().lastReminderDate) : undefined,
     } as MemberFee));
@@ -893,7 +894,7 @@ export const reconcileMemberFeeFromTransactions = async (
         paidAmount += Number(data.amount) || 0;
       }
       const txDate = safeTimestampToISO(data.transactionDate);
-      if (!latestPayment || txDate > latestPayment) latestPayment = txDate;
+      if (txDate && (!latestPayment || txDate > latestPayment)) latestPayment = txDate;
     });
 
     const ref = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS, feeDoc.id);

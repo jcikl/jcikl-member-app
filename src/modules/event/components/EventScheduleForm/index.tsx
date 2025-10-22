@@ -27,10 +27,6 @@ const EventScheduleForm: React.FC<Props> = ({ initialValues, onSubmit, loading }
   };
 
   const handleFinish = async (values: any) => {
-    console.log('🔍 [EventScheduleForm] Form values received:', values);
-    console.log('📅 [EventScheduleForm] startDate dayjs object:', values.startDate);
-    console.log('📅 [EventScheduleForm] startDate formatted:', values.startDate?.format('YYYY-MM-DDTHH:mm:ss'));
-    
     const payload: Partial<Event> = {
       // 使用 format() 保持本地时间，避免时区转换问题
       startDate: values.startDate?.format('YYYY-MM-DDTHH:mm:ss'),
@@ -43,8 +39,6 @@ const EventScheduleForm: React.FC<Props> = ({ initialValues, onSubmit, loading }
       address: values.address,
       venue: values.venue,
     } as any;
-    
-    console.log('📤 [EventScheduleForm] Payload to submit:', payload);
     await onSubmit(payload);
   };
 

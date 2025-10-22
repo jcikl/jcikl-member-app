@@ -55,8 +55,8 @@ const convertToCategory = (docId: string, data: any): MemberCategory => {
     color: data.color ?? null,
     icon: data.icon ?? null,
     
-    createdAt: safeTimestampToISO(data.createdAt),
-    updatedAt: safeTimestampToISO(data.updatedAt),
+    createdAt: safeTimestampToISO(data.createdAt) || new Date().toISOString(),
+    updatedAt: safeTimestampToISO(data.updatedAt) || new Date().toISOString(),
   };
 };
 
