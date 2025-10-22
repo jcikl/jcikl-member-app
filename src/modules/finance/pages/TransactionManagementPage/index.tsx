@@ -733,6 +733,17 @@ const TransactionManagementPage: React.FC = () => {
         user.id
       );
 
+      // 🔍 Debug: 检查接收到的数据
+      console.log('🔍 [TransactionManagementPage] 接收到的批量设置数据:', {
+        category: data.category,
+        txAccount: data.txAccount,
+        year: data.year,
+        eventId: data.eventId,
+        individualDataCount: data.individualData?.length || 0,
+        individualData: data.individualData,
+        selectedRowKeys: selectedRowKeys,
+      });
+
       // 🆕 为每条交易应用独立设置
       if (data.individualData && data.individualData.length > 0) {
         await Promise.all(
@@ -779,6 +790,14 @@ const TransactionManagementPage: React.FC = () => {
             if (Object.keys(metadata).length > 0) {
               updates.metadata = metadata;
             }
+
+            // 🔍 Debug: 检查更新数据
+            console.log('🔍 [TransactionManagementPage] 更新交易数据:', {
+              transactionId: individualItem.transactionId,
+              updates,
+              metadata,
+              hasUpdates: Object.keys(updates).length > 0,
+            });
 
             // 更新单条交易
             if (Object.keys(updates).length > 0) {

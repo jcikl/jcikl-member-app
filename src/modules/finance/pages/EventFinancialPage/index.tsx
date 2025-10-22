@@ -1358,7 +1358,7 @@ const EventFinancialPage: React.FC = () => {
                     <Card 
                       title="活动财务交易记录"
                       extra={
-                        <Space>
+                          <Space>
                           <span style={{ color: '#999' }}>已选 {selectedRowKeys.length} 条</span>
                           <Button
                             type="primary"
@@ -1366,8 +1366,8 @@ const EventFinancialPage: React.FC = () => {
                             onClick={() => setBatchClassifyModalVisible(true)}
                           >
                             批量分类
-                          </Button>
-                        </Space>
+                            </Button>
+                          </Space>
                       }
                     >
                       <Table

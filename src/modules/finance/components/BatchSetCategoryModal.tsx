@@ -163,6 +163,15 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       setLoading(true);
       
       // 构建提交数据
+      // 🔍 确保所有选中的交易都有对应的数据
+      const allIndividualData = selectedTransactions.map(transaction => {
+        const existingData = individualData[transaction.id] || {};
+        return {
+          transactionId: transaction.id,
+          ...existingData,
+        };
+      });
+
       const data: {
         category: string;
         txAccount?: string;
@@ -172,7 +181,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       } = {
         category: selectedCategory,
         txAccount: selectedTxAccount || undefined,
-        individualData: Object.values(individualData),
+        individualData: allIndividualData,
       };
       
       // 根据类别添加对应字段
@@ -181,6 +190,17 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       } else if (selectedCategory === 'event-finance') {
         data.eventId = selectedEventId; // 🆕 统一设置活动ID
       }
+      
+      // 🔍 Debug: 检查提交的数据
+      console.log('🔍 [BatchSetCategoryModal] 提交数据:', {
+        category: data.category,
+        txAccount: data.txAccount,
+        year: data.year,
+        eventId: data.eventId,
+        individualDataCount: data.individualData?.length || 0,
+        individualData: data.individualData,
+        selectedTransactions: selectedTransactions.map(t => ({ id: t.id, mainDescription: t.mainDescription })),
+      });
       
       await onOk(data);
       message.success(`已为 ${selectedCount} 条交易设置类别`);
