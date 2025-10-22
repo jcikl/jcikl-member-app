@@ -267,8 +267,19 @@ const EventFinancialPage: React.FC = () => {
             
             // 从committeeMembers读取活动主席和财政
             if (projectInfo.committeeMembers && projectInfo.committeeMembers.length > 0) {
-              const chair = projectInfo.committeeMembers.find(m => m.position === '活动主席' || m.position === 'Chair');
-              const treasurer = projectInfo.committeeMembers.find(m => m.position === '活动财政' || m.position === 'Treasurer');
+              // 支持多种职位名称变体
+              const chair = projectInfo.committeeMembers.find(m => 
+                m.position === '活动主席' || 
+                m.position === 'Chair' || 
+                m.position === '筹委主席' ||
+                m.position === '项目主席'
+              );
+              const treasurer = projectInfo.committeeMembers.find(m => 
+                m.position === '活动财政' || 
+                m.position === 'Treasurer' ||
+                m.position === '筹委财政' ||
+                m.position === '项目财政'
+              );
               
               eventChair = chair ? chair.name : '';
               eventTreasurer = treasurer ? treasurer.name : '';
@@ -285,17 +296,17 @@ const EventFinancialPage: React.FC = () => {
                   position: m.position
                 })),
                 // 详细的职位匹配调试
-                chairSearchTerms: ['活动主席', 'Chair'],
-                treasurerSearchTerms: ['活动财政', 'Treasurer'],
-                chairMatch: projectInfo.committeeMembers.find(m => m.position === '活动主席' || m.position === 'Chair'),
-                treasurerMatch: projectInfo.committeeMembers.find(m => m.position === '活动财政' || m.position === 'Treasurer'),
+                chairSearchTerms: ['活动主席', 'Chair', '筹委主席', '项目主席'],
+                treasurerSearchTerms: ['活动财政', 'Treasurer', '筹委财政', '项目财政'],
+                chairMatch: chair,
+                treasurerMatch: treasurer,
                 // 增强调试信息
                 detailedMembers: projectInfo.committeeMembers.map(m => ({
                   name: m.name,
                   position: m.position,
                   positionLower: m.position?.toLowerCase(),
-                  chairMatch: ['活动主席', 'Chair'].some(term => m.position?.toLowerCase().includes(term.toLowerCase())),
-                  treasurerMatch: ['活动财政', 'Treasurer'].some(term => m.position?.toLowerCase().includes(term.toLowerCase()))
+                  chairMatch: ['活动主席', 'Chair', '筹委主席', '项目主席'].some(term => m.position === term),
+                  treasurerMatch: ['活动财政', 'Treasurer', '筹委财政', '项目财政'].some(term => m.position === term)
                 }))
               });
             } else {
