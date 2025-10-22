@@ -32,25 +32,6 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  // 调试日志：打印初始值
-  useEffect(() => {
-    console.log('🎯 [EventCommitteeForm] Component mounted with initialValues:', {
-      eventId: initialValues.id,
-      eventName: initialValues.name,
-      committeeMembers: initialValues.committeeMembers,
-      committeeMembersCount: initialValues.committeeMembers?.length || 0,
-      detailedMembers: initialValues.committeeMembers?.map(m => ({
-        id: m.id,
-        name: m.name,
-        position: m.position,
-        contact: m.contact,
-        email: m.email,
-        canEditEvent: m.canEditEvent,
-        canApproveTickets: m.canApproveTickets
-      })) || []
-    });
-  }, [initialValues]);
-
   // 加载会员列表
   useEffect(() => {
     loadMembers();
@@ -112,27 +93,6 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
   };
 
   const handleFinish = async () => {
-    console.log('💾 [EventCommitteeForm] Saving committee members:', {
-      totalMembers: committeeMembers.length,
-      members: committeeMembers.map(m => ({
-        id: m.id,
-        name: m.name,
-        position: m.position,
-        contact: m.contact,
-        email: m.email,
-        canEditEvent: m.canEditEvent,
-        canApproveTickets: m.canApproveTickets
-      })),
-      // 详细分析职位
-      positions: committeeMembers.map(m => m.position),
-      positionsLowerCase: committeeMembers.map(m => m.position?.toLowerCase()),
-      chairMembers: committeeMembers.filter(m => 
-        m.position === '活动主席' || m.position === 'Chair' || m.position?.toLowerCase().includes('chair')
-      ),
-      treasurerMembers: committeeMembers.filter(m => 
-        m.position === '活动财政' || m.position === 'Treasurer' || m.position?.toLowerCase().includes('treasurer')
-      )
-    });
     await onSubmit({ committeeMembers } as any);
   };
 
