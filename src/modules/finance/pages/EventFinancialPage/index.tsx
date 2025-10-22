@@ -288,7 +288,15 @@ const EventFinancialPage: React.FC = () => {
                 chairSearchTerms: ['活动主席', 'Chair'],
                 treasurerSearchTerms: ['活动财政', 'Treasurer'],
                 chairMatch: projectInfo.committeeMembers.find(m => m.position === '活动主席' || m.position === 'Chair'),
-                treasurerMatch: projectInfo.committeeMembers.find(m => m.position === '活动财政' || m.position === 'Treasurer')
+                treasurerMatch: projectInfo.committeeMembers.find(m => m.position === '活动财政' || m.position === 'Treasurer'),
+                // 增强调试信息
+                detailedMembers: projectInfo.committeeMembers.map(m => ({
+                  name: m.name,
+                  position: m.position,
+                  positionLower: m.position?.toLowerCase(),
+                  chairMatch: ['活动主席', 'Chair'].some(term => m.position?.toLowerCase().includes(term.toLowerCase())),
+                  treasurerMatch: ['活动财政', 'Treasurer'].some(term => m.position?.toLowerCase().includes(term.toLowerCase()))
+                }))
               });
             } else {
               console.log(`⚠️ [EventFinancialPage] No committee members found for "${event.eventName}"`);
