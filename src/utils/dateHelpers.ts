@@ -13,9 +13,43 @@ import { globalDateService } from '@/config/globalDateSettings';
  * @returns ISO string
  */
 export const safeTimestampToISO = (timestamp: any): string | undefined => {
-  // Handle Firestore Timestamp
+  // 🔍 调试：查看 timestamp 的详细信息
+  if (timestamp && typeof timestamp === 'object') {
+    console.log('🔍 [safeTimestampToISO] Timestamp object details:', {
+      timestamp,
+      hasToDate: 'toDate' in timestamp,
+      toDateType: typeof timestamp.toDate,
+      hasSeconds: 'seconds' in timestamp,
+      hasNanoseconds: 'nanoseconds' in timestamp,
+      seconds: timestamp.seconds,
+      nanoseconds: timestamp.nanoseconds,
+      constructor: timestamp.constructor?.name,
+    });
+  }
+  
+  // Handle Firestore Timestamp - 检查 toDate 方法
   if (timestamp?.toDate && typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
+    try {
+      const date = timestamp.toDate();
+      const iso = date.toISOString();
+      console.log('✅ [safeTimestampToISO] Successfully converted via toDate():', iso);
+      return iso;
+    } catch (error) {
+      console.error('❌ [safeTimestampToISO] Error calling toDate():', error);
+    }
+  }
+  
+  // Handle Firestore Timestamp - 直接通过 seconds 构造
+  if (timestamp && typeof timestamp === 'object' && 
+      'seconds' in timestamp && 'nanoseconds' in timestamp) {
+    try {
+      const date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+      const iso = date.toISOString();
+      console.log('✅ [safeTimestampToISO] Successfully converted via seconds:', iso);
+      return iso;
+    } catch (error) {
+      console.error('❌ [safeTimestampToISO] Error converting via seconds:', error);
+    }
   }
 
   // Handle Date object
@@ -33,7 +67,7 @@ export const safeTimestampToISO = (timestamp: any): string | undefined => {
     return new Date(timestamp).toISOString();
   }
 
-  // ❌ 不要返回当前时间！返回 undefined 让调用者决定如何处理
+  console.warn('⚠️ [safeTimestampToISO] Could not convert timestamp:', timestamp);
   // Fallback: return undefined (don't default to current time)
   return undefined;
 };
