@@ -1,0 +1,47 @@
+/* Auto Match Modal Styles */
+
+.auto-match-modal .section-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.auto-match-modal .match-item-card {
+  transition: all 0.3s ease;
+}
+
+.auto-match-modal .match-item-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.auto-match-modal .match-item-card.high-confidence {
+  border-left: 4px solid #52c41a;
+}
+
+.auto-match-modal .match-item-card.medium-confidence {
+  border-left: 4px solid #faad14;
+}
+
+.auto-match-modal .match-item-card.no-match {
+  border-left: 4px solid #d9d9d9;
+}
+
+.auto-match-modal .ant-descriptions-item-label {
+  font-weight: 500;
+  background-color: #fafafa;
+}
+
+.auto-match-modal .ant-progress-line {
+  margin-bottom: 0;
+}
+
+.auto-match-modal .ant-statistic-title {
+  font-size: 13px;
+}
+
+.auto-match-modal .ant-statistic-content {
+  font-size: 20px;
+}
+

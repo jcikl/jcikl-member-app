@@ -42,6 +42,7 @@ import {
   TagOutlined,
   TableOutlined,
   ApartmentOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -67,6 +68,9 @@ import SplitTransactionModal from '../../components/SplitTransactionModal';
 import BatchSplitModal from '../../components/BatchSplitModal';
 import BatchSetCategoryModal from '../../components/BatchSetCategoryModal';
 import EditTransactionModal from '../../components/EditTransactionModal';
+import AutoMatchModal from '../../components/AutoMatchModal';
+import { autoMatchUncategorizedTransactions } from '../../services/autoMatchService';
+import type { AutoMatchPreviewItem, MatchResult } from '../../services/autoMatchService';
 import { useNavigate } from 'react-router-dom';
 import { getAllBankAccounts } from '../../services/bankAccountService';
 import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
@@ -142,6 +146,11 @@ const TransactionManagementPage: React.FC = () => {
     transactionDate: string;
     bankAccountId: string;
   }>>([]);
+  
+  // 🤖 自动分类
+  const [autoMatchModalVisible, setAutoMatchModalVisible] = useState(false);
+  const [autoMatchPreviewItems, setAutoMatchPreviewItems] = useState<AutoMatchPreviewItem[]>([]);
+  const [autoMatchLoading, setAutoMatchLoading] = useState(false);
 
   useEffect(() => {
     loadBankAccounts();
@@ -841,6 +850,86 @@ const TransactionManagementPage: React.FC = () => {
       transactionDate: dayjs().format('YYYY-MM-DD'),
       bankAccountId: defaultBankAccount,
     }]);
+  };
+  
+  // 🤖 自动分类功能
+  const handleOpenAutoMatch = async () => {
+    try {
+      setAutoMatchLoading(true);
+      message.loading('正在分析交易记录...', 0);
+      
+      // 执行自动匹配
+      const previewItems = await autoMatchUncategorizedTransactions();
+      
+      message.destroy();
+      
+      if (previewItems.length === 0) {
+        message.info('没有找到未分类的交易记录');
+        return;
+      }
+      
+      setAutoMatchPreviewItems(previewItems);
+      setAutoMatchModalVisible(true);
+    } catch (error: any) {
+      message.destroy();
+      message.error('自动分类失败: ' + (error.message || '未知错误'));
+      console.error('Auto match error:', error);
+    } finally {
+      setAutoMatchLoading(false);
+    }
+  };
+  
+  const handleAutoMatchConfirm = async (
+    selectedItems: Array<{ transactionId: string; matchResult: MatchResult }>
+  ) => {
+    if (!user) return;
+    
+    try {
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const item of selectedItems) {
+        try {
+          // 更新交易记录
+          await updateTransaction(
+            item.transactionId,
+            {
+              category: 'event-finance',
+              txAccount: item.matchResult.eventId,
+              metadata: {
+                relatedEventId: item.matchResult.eventId,
+                relatedEventName: item.matchResult.eventName,
+                autoMatchedCategory: 'event-finance',
+                autoMatchScore: item.matchResult.totalScore,
+                autoMatchConfidence: item.matchResult.confidence,
+                needsReview: item.matchResult.confidence === 'medium',
+              },
+            } as any,
+            user.id
+          );
+          successCount++;
+        } catch (error) {
+          console.error('Failed to update transaction:', item.transactionId, error);
+          failCount++;
+        }
+      }
+      
+      if (successCount > 0) {
+        message.success(`成功分类 ${successCount} 条交易记录`);
+      }
+      if (failCount > 0) {
+        message.warning(`${failCount} 条记录分类失败`);
+      }
+      
+      // 关闭Modal并刷新数据
+      setAutoMatchModalVisible(false);
+      setAutoMatchPreviewItems([]);
+      clearBalanceCache();
+      await loadTransactions();
+    } catch (error: any) {
+      message.error('应用分类失败');
+      console.error(error);
+    }
   };
 
   const parseBulkImportText = (text: string) => {
@@ -1704,51 +1793,51 @@ const TransactionManagementPage: React.FC = () => {
                 ),
                 children: (
                   <>
-                    {/* 银行账户标签页 */}
+        {/* 银行账户标签页 */}
                     <Card style={{ marginBottom: 24 }} bordered={false}>
-                      <Tabs
-                        activeKey={activeTabKey}
-                        onChange={setActiveTabKey}
-                        type="card"
-                        size="large"
-                        items={tabItems}
-                        tabBarStyle={{ marginBottom: 0 }}
-                        tabBarExtraContent={
-                          <Space>
-                            <span style={{ fontSize: '12px', color: '#999' }}>
-                              当前显示: {total} 条交易
-                            </span>
-                          </Space>
-                        }
-                      />
-                    </Card>
+          <Tabs
+            activeKey={activeTabKey}
+            onChange={setActiveTabKey}
+            type="card"
+            size="large"
+            items={tabItems}
+            tabBarStyle={{ marginBottom: 0 }}
+            tabBarExtraContent={
+              <Space>
+                <span style={{ fontSize: '12px', color: '#999' }}>
+                  当前显示: {total} 条交易
+                </span>
+              </Space>
+            }
+          />
+        </Card>
 
-                    {/* Filters */}
+        {/* Filters */}
                     <Card className="mb-6" bordered={false}>
-                      <div className="flex flex-wrap gap-4 items-center">
-                        <Search
-                          placeholder="模糊搜索：描述、金额、付款人、备注..."
-                          onSearch={setSearchText}
-                          value={searchText}
-                          onChange={(e) => setSearchText(e.target.value)}
-                          style={{ width: 400 }}
-                          allowClear
-                          enterButton={<SearchOutlined />}
-                        />
+          <div className="flex flex-wrap gap-4 items-center">
+            <Search
+              placeholder="模糊搜索：描述、金额、付款人、备注..."
+              onSearch={setSearchText}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 400 }}
+              allowClear
+              enterButton={<SearchOutlined />}
+            />
 
-                        <Select
+            <Select
                           style={{ width: 180 }}
                           placeholder="主要类别"
-                          value={categoryFilter}
-                          onChange={setCategoryFilter}
-                        >
-                          <Option value="all">所有类别</Option>
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+            >
+              <Option value="all">所有类别</Option>
                           <Option value="member-fees">会员费用</Option>
                           <Option value="event-finance">活动财务</Option>
                           <Option value="general-accounts">日常账户</Option>
                           <Option value="uncategorized">🔴 未分类</Option>
-                        </Select>
-                        
+            </Select>
+
                         {/* 🆕 未分类快速筛选按钮 */}
                         <Button 
                           type={hasUncategorized ? "default" : "default"}
@@ -1760,66 +1849,74 @@ const TransactionManagementPage: React.FC = () => {
                           {hasUncategorized ? '🔴 显示未分类' : '✅ 无未分类'}
                         </Button>
 
-                        <Button icon={<DownloadOutlined />}>导出报表</Button>
-                        <div className="ml-auto">
-                          <Space>
-                            <Button icon={<PlusOutlined />} onClick={handleOpenBulkImport}>
-                              批量导入
-                            </Button>
-                            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                              新交易
-                            </Button>
-                          </Space>
-                        </div>
-                      </div>
-                    </Card>
+            <Button icon={<DownloadOutlined />}>导出报表</Button>
+            <div className="ml-auto">
+              <Space>
+                <Button 
+                  icon={<RobotOutlined />} 
+                  onClick={handleOpenAutoMatch}
+                  loading={autoMatchLoading}
+                  disabled={!hasUncategorized}
+                >
+                  自动分类
+                </Button>
+                <Button icon={<PlusOutlined />} onClick={handleOpenBulkImport}>
+                  批量导入
+                </Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                新交易
+              </Button>
+              </Space>
+            </div>
+          </div>
+        </Card>
 
-                    {/* Transactions Table */}
+        {/* Transactions Table */}
                     <Card bordered={false}>
-                      <Table
-                        {...tableConfig}
-                        columns={columns}
+          <Table
+            {...tableConfig}
+            columns={columns}
                         dataSource={filteredTransactions.length > 0 ? filteredTransactions : transactions}
-                        rowKey="id"
-                        loading={loading}
-                        rowSelection={{
-                          selectedRowKeys,
-                          onChange: setSelectedRowKeys,
-                          getCheckboxProps: (record: Transaction) => ({
-                            disabled: record.isVirtual === true, // 子交易不能单独选择
-                          }),
-                        }}
-                        pagination={{
-                          current: currentPage,
-                          pageSize,
+            rowKey="id"
+            loading={loading}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: setSelectedRowKeys,
+              getCheckboxProps: (record: Transaction) => ({
+                disabled: record.isVirtual === true, // 子交易不能单独选择
+              }),
+            }}
+            pagination={{
+              current: currentPage,
+              pageSize,
                           total: filteredTransactions.length > 0 ? filteredTransactions.length : total,
-                          onChange: (page, size) => {
-                            setCurrentPage(page);
-                            setPageSize(size || 20);
-                            setSelectedRowKeys([]); // 切换页面时清空选择
-                          },
-                          showSizeChanger: true,
-                          showTotal: (total) => `共 ${total} 条记录`,
-                        }}
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size || 20);
+                setSelectedRowKeys([]); // 切换页面时清空选择
+              },
+              showSizeChanger: true,
+              showTotal: (total) => `共 ${total} 条记录`,
+            }}
                         scroll={{ y: 600 }}
-                      />
-                    </Card>
+          />
+        </Card>
 
-                    {/* 批量操作栏 */}
-                    <BulkOperationBar
-                      visible={selectedRowKeys.length > 0}
-                      selectedCount={selectedRowKeys.length}
-                      totalCount={transactions.filter(t => t.isVirtual !== true).length}
-                      actions={bulkActions}
-                      onSelectAll={() => {
-                        // 只选择非虚拟交易（排除子交易）
-                        const selectableIds = transactions
-                          .filter(t => t.isVirtual !== true)
-                          .map(t => t.id);
-                        setSelectedRowKeys(selectableIds);
-                      }}
-                      onDeselectAll={() => setSelectedRowKeys([])}
-                    />
+        {/* 批量操作栏 */}
+        <BulkOperationBar
+          visible={selectedRowKeys.length > 0}
+          selectedCount={selectedRowKeys.length}
+          totalCount={transactions.filter(t => t.isVirtual !== true).length}
+          actions={bulkActions}
+          onSelectAll={() => {
+            // 只选择非虚拟交易（排除子交易）
+            const selectableIds = transactions
+              .filter(t => t.isVirtual !== true)
+              .map(t => t.id);
+            setSelectedRowKeys(selectableIds);
+          }}
+          onDeselectAll={() => setSelectedRowKeys([])}
+        />
                   </>
                 ),
               },
@@ -1866,10 +1963,10 @@ const TransactionManagementPage: React.FC = () => {
                                 return (
                                   <Option key={year} value={year.toString()}>
                                     {treeDateRangeType === 'fiscal' ? `FY${year}` : `${year}年`}
-                                  </Option>
+                  </Option>
                                 );
                               })}
-                            </Select>
+              </Select>
                             
                             <Text type="secondary" style={{ fontSize: 12 }}>
                               {treeDateRangeType === 'fiscal' 
@@ -2032,12 +2129,12 @@ const TransactionManagementPage: React.FC = () => {
                 dataIndex: 'amount',
                 width: 120,
                 render: (text, record) => (
-                  <InputNumber
+              <InputNumber
                     value={text}
                     onChange={(value) => handleBulkDataChange(record.key, 'amount', value || 0)}
                     placeholder="0.00"
                     min={0}
-                    precision={2}
+                precision={2}
                     style={{ width: '100%' }}
                     status={text <= 0 ? 'error' : ''}
                   />
@@ -2068,7 +2165,7 @@ const TransactionManagementPage: React.FC = () => {
                   >
                     <Option value="income">收入</Option>
                     <Option value="expense">支出</Option>
-                  </Select>
+              </Select>
                 ),
               },
               {
@@ -2084,7 +2181,7 @@ const TransactionManagementPage: React.FC = () => {
                     <Option value="member-fees">会员费用</Option>
                     <Option value="event-finance">活动财务</Option>
                     <Option value="general-accounts">日常账户</Option>
-                  </Select>
+              </Select>
                 ),
               },
               {
@@ -2166,6 +2263,17 @@ const TransactionManagementPage: React.FC = () => {
             } else if (category === 'general-accounts') {
               navigate('/finance/general-accounts');
             }
+          }}
+        />
+        
+        {/* Auto Match Modal */}
+        <AutoMatchModal
+          visible={autoMatchModalVisible}
+          previewItems={autoMatchPreviewItems}
+          onConfirm={handleAutoMatchConfirm}
+          onCancel={() => {
+            setAutoMatchModalVisible(false);
+            setAutoMatchPreviewItems([]);
           }}
         />
       </div>
