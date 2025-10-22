@@ -157,6 +157,16 @@ const EventFinancialPage: React.FC = () => {
 
       // 🆕 从 financeEvents 加载实际活动数据并转换为财务汇总格式
       const financeEventsList = await getAllFinanceEvents();
+      console.log('📊 [EventFinancialPage] Finance Events List:', {
+        count: financeEventsList.length,
+        events: financeEventsList.map(e => ({
+          id: e.id,
+          eventName: e.eventName,
+          eventDate: e.eventDate,
+          boardMember: e.boardMember,
+          status: e.status
+        }))
+      });
       
       // 🆕 从 projects collection 加载活动详细信息
       const projectsResult = await getEvents({
@@ -164,7 +174,25 @@ const EventFinancialPage: React.FC = () => {
         limit: 1000,
         status: 'Published', // 只获取已发布的活动
       });
+      console.log('🎯 [EventFinancialPage] Projects Result:', {
+        count: projectsResult.data.length,
+        projects: projectsResult.data.map(p => ({
+          id: p.id,
+          name: p.name,
+          startDate: p.startDate,
+          status: p.status,
+          committeeMembers: p.committeeMembers?.map(m => ({
+            name: m.name,
+            position: m.position
+          })) || []
+        }))
+      });
+      
       const projectsMap = new Map<string, Event>(projectsResult.data.map(p => [p.name, p]));
+      console.log('🗺️ [EventFinancialPage] Projects Map:', {
+        mapSize: projectsMap.size,
+        mapKeys: Array.from(projectsMap.keys())
+      });
       
       // 🔑 获取所有活动财务交易记录
       const allEventTransactions = await getTransactions({
@@ -178,11 +206,28 @@ const EventFinancialPage: React.FC = () => {
       
       // 🆕 转换为 EventFinancialSummary 格式并统计实际财务数据
       const eventFinancials: EventFinancialSummary[] = await Promise.all(
-        financeEventsList.map(async (event) => {
+        financeEventsList.map(async (event, index) => {
+          console.log(`🔄 [EventFinancialPage] Processing Finance Event #${index + 1}:`, {
+            financeEventId: event.id,
+            financeEventName: event.eventName,
+            financeEventDate: event.eventDate,
+            financeBoardMember: event.boardMember
+          });
+          
           // 🔑 筛选该活动的交易记录
           const eventTransactions = allEventTransactions.data.filter(
             t => t.txAccount === event.eventName
           );
+          console.log(`💰 [EventFinancialPage] Transactions for "${event.eventName}":`, {
+            transactionCount: eventTransactions.length,
+            transactions: eventTransactions.map(t => ({
+              id: t.id,
+              txAccount: t.txAccount,
+              transactionType: t.transactionType,
+              amount: t.amount,
+              description: t.mainDescription
+            }))
+          });
           
           // 🔑 计算该活动的财务统计
           const totalRevenue = eventTransactions
@@ -197,6 +242,21 @@ const EventFinancialPage: React.FC = () => {
           
           // 🆕 从projects collection读取活动信息
           const projectInfo = projectsMap.get(event.eventName);
+          console.log(`🔍 [EventFinancialPage] Project Info Lookup for "${event.eventName}":`, {
+            found: !!projectInfo,
+            projectInfo: projectInfo ? {
+              id: projectInfo.id,
+              name: projectInfo.name,
+              startDate: projectInfo.startDate,
+              status: projectInfo.status,
+              committeeMembersCount: projectInfo.committeeMembers?.length || 0,
+              committeeMembers: projectInfo.committeeMembers?.map(m => ({
+                name: m.name,
+                position: m.position
+              })) || []
+            } : null
+          });
+          
           let eventChair = '';
           let eventTreasurer = '';
           let eventDate = event.eventDate || new Date().toISOString();
@@ -212,10 +272,23 @@ const EventFinancialPage: React.FC = () => {
               
               eventChair = chair ? chair.name : '';
               eventTreasurer = treasurer ? treasurer.name : '';
+              
+              console.log(`👥 [EventFinancialPage] Committee Members Analysis for "${event.eventName}":`, {
+                totalMembers: projectInfo.committeeMembers.length,
+                chairFound: !!chair,
+                chairName: eventChair,
+                treasurerFound: !!treasurer,
+                treasurerName: eventTreasurer,
+                allPositions: projectInfo.committeeMembers.map(m => m.position)
+              });
+            } else {
+              console.log(`⚠️ [EventFinancialPage] No committee members found for "${event.eventName}"`);
             }
+          } else {
+            console.log(`❌ [EventFinancialPage] No project info found for "${event.eventName}"`);
           }
           
-          return {
+          const result = {
             eventId: event.id,
             eventName: event.eventName,
             eventDate, // ✅ 从projects读取
@@ -231,8 +304,37 @@ const EventFinancialPage: React.FC = () => {
                     event.status === 'active' ? 'active' : 
                     event.status === 'completed' ? 'completed' : 'planned',
           };
+          
+          console.log(`✅ [EventFinancialPage] Final Result for "${event.eventName}":`, {
+            eventId: result.eventId,
+            eventName: result.eventName,
+            eventDate: result.eventDate,
+            boardMember: result.boardMember,
+            eventChair: result.eventChair,
+            eventTreasurer: result.eventTreasurer,
+            totalRevenue: result.totalRevenue,
+            totalExpense: result.totalExpense,
+            netIncome: result.netIncome,
+            status: result.status
+          });
+          
+          return result;
         })
       );
+      
+      console.log('📋 [EventFinancialPage] Final Event Financials Summary:', {
+        totalEvents: eventFinancials.length,
+        events: eventFinancials.map(e => ({
+          eventName: e.eventName,
+          eventDate: e.eventDate,
+          eventChair: e.eventChair,
+          eventTreasurer: e.eventTreasurer,
+          boardMember: e.boardMember,
+          totalRevenue: e.totalRevenue,
+          totalExpense: e.totalExpense,
+          netIncome: e.netIncome
+        }))
+      });
       
       // 🆕 应用筛选逻辑
       let filteredEvents = eventFinancials;

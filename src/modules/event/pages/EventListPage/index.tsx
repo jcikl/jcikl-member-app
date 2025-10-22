@@ -79,10 +79,31 @@ const EventListPage: React.FC = () => {
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
+      console.log('🎯 [EventListPage] Fetching events with params:', {
+        page: pagination.current,
+        pageSize: pagination.pageSize,
+        searchParams
+      });
+      
       const result = await getEvents({
         page: pagination.current,
         limit: pagination.pageSize,
         ...searchParams,
+      });
+      
+      console.log('📊 [EventListPage] Events loaded:', {
+        count: result.data.length,
+        total: result.total,
+        events: result.data.map(e => ({
+          id: e.id,
+          name: e.name,
+          startDate: e.startDate,
+          status: e.status,
+          committeeMembers: e.committeeMembers?.map(m => ({
+            name: m.name,
+            position: m.position
+          })) || []
+        }))
       });
       
       setEvents(result.data);
@@ -92,7 +113,7 @@ const EventListPage: React.FC = () => {
       }));
     } catch (error) {
       message.error('获取活动列表失败');
-      console.error(error);
+      console.error('❌ [EventListPage] Failed to fetch events:', error);
     } finally {
       setLoading(false);
     }
