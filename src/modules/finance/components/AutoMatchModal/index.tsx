@@ -101,6 +101,29 @@ export const AutoMatchModal: React.FC<Props> = ({
     setSelectedIds(highConfidenceIds);
   };
 
+  // 全选当前筛选结果
+  const handleSelectAllFiltered = () => {
+    const filteredIds = filteredItems
+      .filter((item) => item.bestMatch) // 只选择有匹配的
+      .map((item) => item.transaction.id);
+
+    setSelectedIds(filteredIds);
+  };
+
+  // 全选所有有匹配的项目
+  const handleSelectAllMatched = () => {
+    const matchedIds = previewItems
+      .filter((item) => item.bestMatch) // 只选择有匹配的
+      .map((item) => item.transaction.id);
+
+    setSelectedIds(matchedIds);
+  };
+
+  // 清空选择
+  const handleClearSelection = () => {
+    setSelectedIds([]);
+  };
+
   // 切换选中状态
   const toggleSelection = (id: string) => {
     if (selectedIds.includes(id)) {
@@ -187,11 +210,40 @@ export const AutoMatchModal: React.FC<Props> = ({
       onCancel={onCancel}
       width={1400}
       footer={
-        <Space>
+        <Space wrap>
           <Button onClick={onCancel}>取消</Button>
-          <Button onClick={handleSelectAllHigh} disabled={statistics.highConfidence === 0}>
+          
+          {/* 全选选项 */}
+          <Button 
+            onClick={handleSelectAllHigh} 
+            disabled={statistics.highConfidence === 0}
+            type={statistics.highConfidence > 0 ? "default" : "dashed"}
+          >
             全选高置信度 ({statistics.highConfidence}条)
           </Button>
+          
+          <Button 
+            onClick={handleSelectAllMatched} 
+            disabled={statistics.hasMatch === 0}
+            type={statistics.hasMatch > 0 ? "default" : "dashed"}
+          >
+            全选有匹配 ({statistics.hasMatch}条)
+          </Button>
+          
+          <Button 
+            onClick={handleSelectAllFiltered} 
+            disabled={filteredItems.filter(item => item.bestMatch).length === 0}
+            type="default"
+          >
+            全选当前筛选 ({filteredItems.filter(item => item.bestMatch).length}条)
+          </Button>
+          
+          {selectedIds.length > 0 && (
+            <Button onClick={handleClearSelection} type="dashed">
+              清空选择
+            </Button>
+          )}
+          
           <Button
             type="primary"
             onClick={handleApply}
@@ -259,10 +311,26 @@ export const AutoMatchModal: React.FC<Props> = ({
       </Card>
 
       {/* 提示信息 */}
-      {statistics.highConfidence > 0 && (
+      {statistics.hasMatch > 0 && (
         <Alert
-          message={`建议：点击"全选高置信度"可以一键选中 ${statistics.highConfidence} 条高置信度匹配，快速完成分类`}
-          type="success"
+          message={
+            <div>
+              <div style={{ marginBottom: 8 }}>
+                <strong>💡 快速分类建议：</strong>
+              </div>
+              <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
+                {statistics.highConfidence > 0 && (
+                  <div>• <strong>全选高置信度</strong>：一键选中 {statistics.highConfidence} 条高置信度匹配（推荐）</div>
+                )}
+                {statistics.mediumConfidence > 0 && (
+                  <div>• <strong>全选有匹配</strong>：选中所有 {statistics.hasMatch} 条有匹配的记录</div>
+                )}
+                <div>• <strong>全选当前筛选</strong>：选中当前筛选结果中的所有匹配项</div>
+                <div>• 也可以单独勾选需要分类的交易记录</div>
+              </div>
+            </div>
+          }
+          type="info"
           showIcon
           closable
           style={{ marginBottom: 16 }}
