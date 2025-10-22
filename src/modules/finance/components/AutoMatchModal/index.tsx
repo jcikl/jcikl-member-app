@@ -381,13 +381,16 @@ export const AutoMatchModal: React.FC<Props> = ({
                               )}
                             </Descriptions.Item>
                           )}
-                          <Descriptions.Item label="将更新为">
-                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                              {/* 主分类 - 可编辑 */}
-                              <div style={{ width: '100%' }}>
-                                <Tag color="purple" icon={<EditOutlined />}>主分类:</Tag>
+                          <Descriptions.Item label="将更新为" span={2}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {/* 主分类 - 左右并排 */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ minWidth: '80px', fontWeight: 500 }}>
+                                  <EditOutlined style={{ marginRight: 4, color: '#9254de' }} />
+                                  主分类:
+                                </span>
                                 <Select
-                                  style={{ width: 'calc(100% - 90px)', marginLeft: 8 }}
+                                  style={{ flex: 1 }}
                                   value={customEdits[item.transaction.id]?.category || 'event-finance'}
                                   onChange={(value) => updateCustomEdit(item.transaction.id, 'category', value)}
                                 >
@@ -396,12 +399,16 @@ export const AutoMatchModal: React.FC<Props> = ({
                                   <Select.Option value="general-accounts">日常账户</Select.Option>
                                 </Select>
                               </div>
+                              
                               {/* 二次分类 - 仅当主分类为活动财务时显示 */}
                               {(customEdits[item.transaction.id]?.category || 'event-finance') === 'event-finance' && (
-                                <div style={{ width: '100%' }}>
-                                  <Tag color="cyan" icon={<EditOutlined />}>活动名称:</Tag>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ minWidth: '80px', fontWeight: 500 }}>
+                                    <EditOutlined style={{ marginRight: 4, color: '#13c2c2' }} />
+                                    活动名称:
+                                  </span>
                                   <Select
-                                    style={{ width: 'calc(100% - 90px)', marginLeft: 8 }}
+                                    style={{ flex: 1 }}
                                     value={customEdits[item.transaction.id]?.eventName || item.bestMatch.eventName}
                                     onChange={(value) => updateCustomEdit(item.transaction.id, 'eventName', value)}
                                     showSearch
@@ -416,14 +423,16 @@ export const AutoMatchModal: React.FC<Props> = ({
                                   </Select>
                                 </div>
                               )}
-                              {/* 关联会员 - 下拉选择或手动输入 */}
-                              <div style={{ width: '100%' }}>
-                                <Tag color="magenta" icon={<EditOutlined />}>
+                              
+                              {/* 关联会员 - 左右并排 */}
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                <span style={{ minWidth: '80px', fontWeight: 500, paddingTop: '4px' }}>
+                                  <EditOutlined style={{ marginRight: 4, color: '#eb2f96' }} />
                                   {item.transaction.transactionType === 'income' ? '付款人:' : '收款人:'}
-                                </Tag>
-                                <div style={{ display: 'inline-block', width: 'calc(100% - 90px)', marginLeft: 8 }}>
+                                </span>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                   <Select
-                                    style={{ width: '100%', marginBottom: 8 }}
+                                    style={{ width: '100%' }}
                                     value={customEdits[item.transaction.id]?.memberId || (item.bestMatch.matchedMember?.memberId)}
                                     onChange={(value) => {
                                       updateCustomEdit(item.transaction.id, 'memberId', value);
@@ -455,18 +464,18 @@ export const AutoMatchModal: React.FC<Props> = ({
                                     disabled={!!customEdits[item.transaction.id]?.memberId && !customEdits[item.transaction.id]?.payerPayee}
                                     suffix={
                                       item.bestMatch.matchedMember && (
-                                        <Tag color="default" style={{ border: 'none', marginRight: -8 }}>
-                                          {item.bestMatch.matchedMember.matchType === 'phone' && '通过手机号'}
-                                          {item.bestMatch.matchedMember.matchType === 'email' && '通过邮箱'}
-                                          {item.bestMatch.matchedMember.matchType === 'name' && '通过姓名'}
-                                          {item.bestMatch.matchedMember.matchType === 'memberId' && '通过ID'}
+                                        <Tag color="default" style={{ border: 'none', marginRight: -8, fontSize: '11px' }}>
+                                          {item.bestMatch.matchedMember.matchType === 'phone' && '📱手机号'}
+                                          {item.bestMatch.matchedMember.matchType === 'email' && '📧邮箱'}
+                                          {item.bestMatch.matchedMember.matchType === 'name' && '👤姓名'}
+                                          {item.bestMatch.matchedMember.matchType === 'memberId' && '🆔ID'}
                                         </Tag>
                                       )
                                     }
                                   />
                                 </div>
                               </div>
-                            </Space>
+                            </div>
                           </Descriptions.Item>
                         </Descriptions>
 

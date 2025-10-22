@@ -154,7 +154,6 @@ const TransactionManagementPage: React.FC = () => {
   const [autoMatchPreviewItems, setAutoMatchPreviewItems] = useState<AutoMatchPreviewItem[]>([]);
   const [autoMatchLoading, setAutoMatchLoading] = useState(false);
   const [allEventsForAutoMatch, setAllEventsForAutoMatch] = useState<Array<{ id: string; eventName: string; eventDate: string }>>([]);
-  const [allMembersForAutoMatch, setAllMembersForAutoMatch] = useState<Array<{ id: string; name: string; email?: string; phone?: string }>>([]);
 
   useEffect(() => {
     loadBankAccounts();
@@ -834,16 +833,6 @@ const TransactionManagementPage: React.FC = () => {
         eventDate: e.startDate,
       }));
       setAllEventsForAutoMatch(eventsList);
-      
-      // 🆕 加载所有会员用于下拉选择
-      const membersResult = await getMembers({ page: 1, limit: 1000 });
-      const membersList = membersResult.data.map(m => ({
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        phone: m.phone,
-      }));
-      setAllMembersForAutoMatch(membersList);
       
       // 执行自动匹配
       const previewItems = await autoMatchUncategorizedTransactions();
