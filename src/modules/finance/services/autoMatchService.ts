@@ -27,6 +27,7 @@ export interface MatchResult {
   nameScore: number;
   priceScore: number;
   dateScore: number;
+  daysDifference: number; // 交易日期与活动日期的实际天数差异
   confidence: 'high' | 'medium' | 'low';
   matchedPriceType?: string; // 'member' | 'regular' | 'alumni' | 'earlyBird' | 'member x2' etc.
   matchedPrice?: number;
@@ -133,6 +134,7 @@ export const findMatchesForTransaction = async (
           nameScore: nameScore.score,
           priceScore: priceScore.score,
           dateScore: dateScore.score,
+          daysDifference: dateScore.daysDifference,
           confidence,
           matchedPriceType: priceScore.type,
           matchedPrice: priceScore.matchedPrice,
@@ -142,11 +144,25 @@ export const findMatchesForTransaction = async (
       }
     }
 
-    // 按总分排序（降序）
-    const sortedMatches = allMatches.sort((a, b) => b.totalScore - a.totalScore);
+    // 排序逻辑：
+    // 1. 如果是 includeAllScores，且最高分 < 60，优先按日期接近度排序
+    // 2. 否则按总分排序
+    const sortedMatches = allMatches.sort((a, b) => {
+      // 如果包含所有分数，且分数都很低（< 60），优先显示日期最接近的
+      if (includeAllScores && a.totalScore < 60 && b.totalScore < 60) {
+        // 按实际天数差异排序（天数越少越好）
+        if (a.daysDifference !== b.daysDifference) {
+          return a.daysDifference - b.daysDifference;
+        }
+        // 如果天数相同，再按总分排序
+        return b.totalScore - a.totalScore;
+      }
+      // 默认按总分排序
+      return b.totalScore - a.totalScore;
+    });
     
     if (includeAllScores) {
-      console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} total matches (top score: ${sortedMatches[0]?.totalScore ?? 0})`);
+      console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} total matches (top score: ${sortedMatches[0]?.totalScore ?? 0}, top date score: ${sortedMatches[0]?.dateScore ?? 0})`);
     } else {
       console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} matches (score ≥ 60)`);
     }
@@ -404,7 +420,7 @@ const calculatePriceScore = (
 const calculateDateScore = (
   transactionDate: string,
   eventDate: string
-): { score: number; reason: string } => {
+): { score: number; reason: string; daysDifference: number } => {
   console.log('📅 [calculateDateScore] Input:', {
     transactionDate,
     eventDate,
@@ -461,7 +477,7 @@ const calculateDateScore = (
       txDateValid,
       evtDateValid,
     });
-    return { score: 0, reason: '日期无效' };
+    return { score: 0, reason: '日期无效', daysDifference: 99999 };
   }
 
   const daysDiff = Math.abs(
@@ -471,18 +487,18 @@ const calculateDateScore = (
   console.log('📊 [calculateDateScore] Days difference:', daysDiff);
 
   if (daysDiff === 0) {
-    return { score: 10, reason: '活动当天' };
+    return { score: 10, reason: '活动当天', daysDifference: daysDiff };
   }
 
   if (daysDiff <= 7) {
-    return { score: 8, reason: `活动前后${daysDiff}天` };
+    return { score: 8, reason: `活动前后${daysDiff}天`, daysDifference: daysDiff };
   }
 
   if (daysDiff <= 30) {
-    return { score: 5, reason: `活动前后${daysDiff}天` };
+    return { score: 5, reason: `活动前后${daysDiff}天`, daysDifference: daysDiff };
   }
 
-  return { score: 0, reason: `相差${daysDiff}天，超出范围` };
+  return { score: 0, reason: `相差${daysDiff}天，超出范围`, daysDifference: daysDiff };
 };
 
 /**

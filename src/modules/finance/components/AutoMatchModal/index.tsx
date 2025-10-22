@@ -335,6 +335,11 @@ export const AutoMatchModal: React.FC<Props> = ({
                           </Descriptions.Item>
                           <Descriptions.Item label="活动日期">
                             {dayjs(item.bestMatch.eventDate).format('YYYY-MM-DD')}
+                            {item.bestMatch.daysDifference !== undefined && (
+                              <Tag color={item.bestMatch.daysDifference === 0 ? 'green' : item.bestMatch.daysDifference <= 7 ? 'blue' : 'orange'} style={{ marginLeft: 8 }}>
+                                相差 {item.bestMatch.daysDifference} 天
+                              </Tag>
+                            )}
                           </Descriptions.Item>
                           {item.bestMatch.matchedPriceType && (
                             <Descriptions.Item label="匹配票价">
@@ -408,7 +413,11 @@ export const AutoMatchModal: React.FC<Props> = ({
                       <>
                         <div className="section-title">⚠️ 最佳尝试匹配（需手动确认）</div>
                         <Alert
-                          message={`未达到自动分类阈值（60分），但找到以下最接近的活动（得分：${item.topAttempt.totalScore}/100）`}
+                          message={
+                            item.topAttempt.daysDifference <= 30
+                              ? `未达到自动分类阈值（60分），但找到时间最接近的活动（相差${item.topAttempt.daysDifference}天，得分：${item.topAttempt.totalScore}/100）`
+                              : `未达到自动分类阈值（60分），但找到以下活动（得分：${item.topAttempt.totalScore}/100）`
+                          }
                           type="warning"
                           showIcon
                           style={{ marginBottom: 12 }}
@@ -421,6 +430,11 @@ export const AutoMatchModal: React.FC<Props> = ({
                           </Descriptions.Item>
                           <Descriptions.Item label="活动日期">
                             {dayjs(item.topAttempt.eventDate).format('YYYY-MM-DD')}
+                            {item.topAttempt.daysDifference <= 30 && (
+                              <Tag color={item.topAttempt.daysDifference === 0 ? 'green' : item.topAttempt.daysDifference <= 7 ? 'blue' : 'orange'} style={{ marginLeft: 8 }}>
+                                相差 {item.topAttempt.daysDifference} 天
+                              </Tag>
+                            )}
                           </Descriptions.Item>
                           {item.topAttempt.matchedPriceType && (
                             <Descriptions.Item label="票价匹配">
