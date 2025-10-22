@@ -23,7 +23,13 @@ import {
   Tooltip,
   Tabs,
   Badge,
+  Tree,
+  Alert,
+  Typography,
+  Row,
+  Col,
 } from 'antd';
+import type { DataNode } from 'antd/es/tree';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -34,6 +40,8 @@ import {
   ExportOutlined,
   ScissorOutlined,
   TagOutlined,
+  TableOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -66,6 +74,7 @@ import './styles.css';
 
 const { Search } = Input;
 const { Option } = Select;
+const { Text } = Typography;
 
 const TransactionManagementPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -79,6 +88,18 @@ const TransactionManagementPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [activeTabKey, setActiveTabKey] = useState<string>('all'); // 当前选中的标签页（银行账户ID）
+  const [viewMode, setViewMode] = useState<'table' | 'tree'>('table'); // 🆕 视图模式：表格或树形
+  const [treeData, setTreeData] = useState<DataNode[]>([]); // 🆕 树形数据
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]); // 🆕 展开的树节点
+  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]); // 🆕 树形视图筛选后的数据
+  const [treeDateRangeType, setTreeDateRangeType] = useState<'fiscal' | 'calendar' | 'all'>('all'); // 🆕 树形视图日期范围类型
+  const [treeSelectedYear, setTreeSelectedYear] = useState<string>(new Date().getFullYear().toString()); // 🆕 树形视图选择的年份
+  const [treeLoading, setTreeLoading] = useState(false); // 🆕 树形视图加载状态
+  const [treeStatistics, setTreeStatistics] = useState<{
+    totalIncome: number;
+    totalExpense: number;
+    surplus: number;
+  }>({ totalIncome: 0, totalExpense: 0, surplus: 0 }); // 🆕 树形视图统计数据
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [accountTransactionCounts, setAccountTransactionCounts] = useState<Record<string, number>>({});
@@ -207,6 +228,41 @@ const TransactionManagementPage: React.FC = () => {
       console.log('📊 [updateAccountTransactionCounts] Updated counts:', counts);
     } catch (error: any) {
       console.error('❌ [updateAccountTransactionCounts] Failed:', error);
+    }
+  };
+
+  // 🆕 为树形视图加载所有交易数据
+  const loadAllTransactionsForTreeView = async () => {
+    if (!user) return;
+
+    try {
+      console.log('🌳 [loadAllTransactionsForTreeView] Loading all transactions for tree view...');
+      
+      const result = await getTransactions({
+        page: 1,
+        limit: 10000, // 🆕 加载大量数据用于树形视图
+        search: undefined, // 不应用搜索过滤
+        bankAccountId: undefined, // 不应用银行账户过滤
+        category: undefined, // 不应用类别过滤
+        sortBy: 'transactionDate',
+        sortOrder: 'desc',
+        includeVirtual: false, // 🆕 树形视图不显示虚拟交易
+      });
+
+      console.log('🌳 [loadAllTransactionsForTreeView] Loaded transactions:', {
+        count: result.data.length,
+        total: result.total,
+        categories: result.data.reduce((acc, t) => {
+          const cat = t.category || 'uncategorized';
+          acc[cat] = (acc[cat] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      });
+
+      return result.data;
+    } catch (error: any) {
+      console.error('❌ [loadAllTransactionsForTreeView] Failed:', error);
+      return [];
     }
   };
 
@@ -676,9 +732,17 @@ const TransactionManagementPage: React.FC = () => {
     category: string;
     txAccount?: string;
     year?: string;
-    memberId?: string;
-    payerPayee?: string;
-    eventId?: string;
+    individualData?: Array<{
+      transactionId: string;
+      payerPayee?: string;
+      payerMode?: 'member' | 'manual';
+      payerId?: string;
+      payeeMode?: 'member' | 'manual';
+      payeeId?: string;
+      payeeName?: string;
+      eventId?: string;
+      memberId?: string;
+    }>;
   }) => {
     if (!user) return;
 
@@ -689,33 +753,57 @@ const TransactionManagementPage: React.FC = () => {
         user.id
       );
 
-      // 批量更新额外字段
-      const updates: Partial<Transaction> = {};
-      
-      if (data.txAccount) {
-        updates.txAccount = data.txAccount;
-      }
-      
-      if (data.payerPayee) {
-        updates.payerPayee = data.payerPayee;
-      }
-      
-      // 构建 metadata
-      const metadata: Record<string, any> = {};
-      if (data.year) metadata.year = data.year;
-      if (data.memberId) metadata.memberId = data.memberId;
-      if (data.eventId) metadata.eventId = data.eventId;
-      
-      if (Object.keys(metadata).length > 0) {
-        updates.metadata = metadata;
-      }
-      
-      // 如果有额外字段，批量更新
-      if (Object.keys(updates).length > 0) {
+      // 🆕 为每条交易应用独立设置
+      if (data.individualData && data.individualData.length > 0) {
         await Promise.all(
-          (selectedRowKeys as string[]).map(id =>
-            updateTransaction(id, updates, user.id)
-          )
+          data.individualData.map(async (individualItem) => {
+            const updates: Partial<Transaction> = {};
+            const metadata: Record<string, any> = {};
+
+            // 全局的txAccount和year
+            if (data.txAccount) {
+              updates.txAccount = data.txAccount;
+            }
+            if (data.year) {
+              metadata.year = data.year;
+            }
+
+            // 根据类别设置不同的字段
+            if (data.category === 'general-accounts') {
+              // 日常财务：付款人信息
+              if (individualItem.payerMode === 'manual' && individualItem.payerPayee) {
+                updates.payerPayee = individualItem.payerPayee;
+              } else if (individualItem.payerMode === 'member' && individualItem.payerId) {
+                metadata.payerId = individualItem.payerId;
+                // 可选：也可以存储会员名称到payerPayee
+              }
+            } else if (data.category === 'event-finance') {
+              // 活动财务：收款人信息和关联活动
+              if (individualItem.payeeMode === 'manual' && individualItem.payeeName) {
+                updates.payerPayee = individualItem.payeeName;
+              } else if (individualItem.payeeMode === 'member' && individualItem.payeeId) {
+                metadata.payeeId = individualItem.payeeId;
+              }
+              
+              if (individualItem.eventId) {
+                metadata.eventId = individualItem.eventId;
+              }
+            } else if (data.category === 'member-fees') {
+              // 会员费：关联会员
+              if (individualItem.memberId) {
+                metadata.memberId = individualItem.memberId;
+              }
+            }
+
+            if (Object.keys(metadata).length > 0) {
+              updates.metadata = metadata;
+            }
+
+            // 更新单条交易
+            if (Object.keys(updates).length > 0) {
+              await updateTransaction(individualItem.transactionId, updates, user.id);
+            }
+          })
         );
       }
 
@@ -865,6 +953,358 @@ const TransactionManagementPage: React.FC = () => {
       console.error(error);
     }
   };
+
+  // 🆕 构建树形视图数据
+  const buildTreeData = async () => {
+    console.log('🌳 [buildTreeData] Starting tree data build...');
+    setTreeLoading(true);
+    
+    try {
+      // 🆕 为树形视图加载所有交易数据
+      const allTransactions = await loadAllTransactionsForTreeView();
+      
+      if (!allTransactions || allTransactions.length === 0) {
+        console.log('🔍 [TreeView Debug] No transactions found');
+        setTreeData([]);
+        setExpandedKeys([]);
+        return;
+      }
+      
+      // 过滤掉虚拟子交易（只显示真实交易）
+      let realTransactions = allTransactions.filter(t => !t.isVirtual);
+      
+      // 🆕 调试信息：显示过滤前的交易数据
+      console.log('🔍 [TreeView Debug] 总交易数:', allTransactions.length);
+      console.log('🔍 [TreeView Debug] 过滤后交易数:', realTransactions.length);
+      console.log('🔍 [TreeView Debug] 交易类别分布:', 
+        realTransactions.reduce((acc, t) => {
+          const cat = t.category || 'uncategorized';
+          acc[cat] = (acc[cat] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      );
+    
+    // 🆕 根据日期范围类型过滤交易
+    if (treeDateRangeType !== 'all') {
+      const year = parseInt(treeSelectedYear);
+      
+      realTransactions = realTransactions.filter(transaction => {
+        if (!transaction.transactionDate) return false;
+        
+        const txDate = new Date(transaction.transactionDate);
+        const txYear = txDate.getFullYear();
+        const txMonth = txDate.getMonth() + 1; // 1-12
+        
+        if (treeDateRangeType === 'fiscal') {
+          // 财年：10月1日 至 次年9月30日
+          // 例如：FY2024 = 2024-10-01 至 2025-09-30
+          if (txMonth >= 10) {
+            // 10-12月属于当前财年
+            return txYear === year;
+          } else {
+            // 1-9月属于上一财年
+            return txYear === year + 1;
+          }
+        } else if (treeDateRangeType === 'calendar') {
+          // 自然年：1月1日 至 12月31日
+          return txYear === year;
+        }
+        
+        return true;
+      });
+      
+      // 🆕 调试信息：显示日期过滤后的数据
+      console.log('🔍 [TreeView Debug] 日期过滤后交易数:', realTransactions.length);
+      console.log('🔍 [TreeView Debug] 日期过滤后类别分布:', 
+        realTransactions.reduce((acc, t) => {
+          const cat = t.category || 'uncategorized';
+          acc[cat] = (acc[cat] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      );
+    }
+    
+    // 🆕 根据审计报告要求，活动财务的支出合并到收入中
+    // 构建收入和支出的树形结构
+    const incomeNode: DataNode = {
+      title: <span style={{ fontSize: 16, fontWeight: 600, color: '#52c41a' }}>收入 Incomes (含活动净收入)</span>,
+      key: 'income-root',
+      children: [],
+    };
+
+    const expenseNode: DataNode = {
+      title: <span style={{ fontSize: 16, fontWeight: 600, color: '#ff4d4f' }}>支出 Expenses (不含活动支出)</span>,
+      key: 'expense-root',
+      children: [],
+    };
+
+    // 🆕 计算统计数据
+    let totalIncome = 0;
+    let totalExpense = 0;
+    
+    // 分组数据结构
+    const incomeGroups: Record<string, Record<string, Transaction[]>> = {};
+    const expenseGroups: Record<string, Record<string, Transaction[]>> = {};
+
+    // 遍历交易记录并分组
+    realTransactions.forEach(transaction => {
+      const category = transaction.category || 'uncategorized';
+      const txAccount = transaction.txAccount || 'uncategorized';
+      const isIncome = transaction.transactionType === 'income';
+      const amount = transaction.amount || 0;
+      
+      // 🆕 跳过已拆分的父交易（只计算子交易）
+      const isSplitParent = transaction.isSplit === true;
+
+      if (isIncome) {
+        // 收入：所有收入交易
+        if (!isSplitParent) {
+          totalIncome += amount; // 🆕 累计收入（排除已拆分的父交易）
+        }
+        
+        if (!incomeGroups[category]) incomeGroups[category] = {};
+        if (!incomeGroups[category][txAccount]) incomeGroups[category][txAccount] = [];
+        incomeGroups[category][txAccount].push(transaction);
+      } else {
+        // 支出：只有非活动财务的支出交易
+        if (category === 'event-finance') {
+          // 活动财务支出：合并到对应的活动收入中（净收入计算）
+          if (!isSplitParent) {
+            totalIncome -= amount; // 🆕 活动支出减少总收入（净收入，排除已拆分的父交易）
+          }
+          
+          if (!incomeGroups[category]) incomeGroups[category] = {};
+          if (!incomeGroups[category][txAccount]) incomeGroups[category][txAccount] = [];
+          incomeGroups[category][txAccount].push(transaction);
+        } else {
+          // 其他类别支出：正常归类到支出
+          if (!isSplitParent) {
+            totalExpense += amount; // 🆕 累计支出（排除已拆分的父交易）
+          }
+          
+          if (!expenseGroups[category]) expenseGroups[category] = {};
+          if (!expenseGroups[category][txAccount]) expenseGroups[category][txAccount] = [];
+          expenseGroups[category][txAccount].push(transaction);
+        }
+      }
+    });
+
+    // 🆕 调试信息：显示分组后的数据
+    const splitParentCount = realTransactions.filter(t => t.isSplit === true).length;
+    console.log('🔍 [TreeView Debug] 收入分组:', Object.keys(incomeGroups));
+    console.log('🔍 [TreeView Debug] 支出分组:', Object.keys(expenseGroups));
+    console.log('🔍 [TreeView Debug] 已拆分父交易数:', splitParentCount, '(已排除在统计之外)');
+    console.log('🔍 [TreeView Debug] 收入分组详情:', incomeGroups);
+    console.log('🔍 [TreeView Debug] 支出分组详情:', expenseGroups);
+
+    // 类别名称映射
+    const categoryNameMap: Record<string, string> = {
+      'member-fees': '会员费用',
+      'event-finance': '活动财务',
+      'general-accounts': '日常账户',
+      'uncategorized': '未分类',
+    };
+
+    // 构建收入树
+    Object.entries(incomeGroups).forEach(([category, subGroups]) => {
+      if (Object.keys(subGroups).length === 0) return;
+
+      // 🆕 对于活动财务，计算净收入（收入 - 支出）
+      let categoryTotal = 0;
+      let categoryCount = 0;
+
+      if (category === 'event-finance') {
+        // 活动财务：分别计算收入和支出，然后计算净收入
+        Object.values(subGroups).flat().forEach(transaction => {
+          categoryCount++;
+          // 🆕 跳过已拆分的父交易
+          if (transaction.isSplit === true) return;
+          
+          if (transaction.transactionType === 'income') {
+            categoryTotal += transaction.amount || 0;  // 收入为正数
+          } else {
+            categoryTotal -= transaction.amount || 0;  // 支出为负数（减少净收入）
+          }
+        });
+      } else {
+        // 其他类别：正常计算总收入
+        const allTransactions = Object.values(subGroups).flat();
+        // 🆕 排除已拆分的父交易
+        categoryTotal = allTransactions
+          .filter(t => t.isSplit !== true)
+          .reduce((sum, t) => sum + (t.amount || 0), 0);
+        categoryCount = allTransactions.length;
+      }
+
+      const categoryNode: DataNode = {
+        title: (
+          <span>
+            {categoryNameMap[category] || category}
+            <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+              ({categoryCount}) RM {categoryTotal.toFixed(2)}
+            </Text>
+            {category === 'event-finance' && categoryTotal < 0 && (
+              <Text type="danger" style={{ marginLeft: 8, fontSize: 12 }}>
+                (净亏损)
+              </Text>
+            )}
+          </span>
+        ),
+        key: `income-${category}`,
+        children: [],
+      };
+
+      Object.entries(subGroups).forEach(([txAccount, items]) => {
+        // 🆕 对于活动财务，分别显示收入和支出
+        if (category === 'event-finance') {
+          const incomeItems = items.filter(t => t.transactionType === 'income');
+          const expenseItems = items.filter(t => t.transactionType === 'expense');
+          
+          // 🆕 排除已拆分的父交易
+          const incomeTotal = incomeItems
+            .filter(t => t.isSplit !== true)
+            .reduce((sum, t) => sum + (t.amount || 0), 0);
+          const expenseTotal = expenseItems
+            .filter(t => t.isSplit !== true)
+            .reduce((sum, t) => sum + (t.amount || 0), 0);
+          const netTotal = incomeTotal - expenseTotal;
+
+          categoryNode.children!.push({
+            title: (
+              <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
+                {txAccount === 'uncategorized' ? '未分类' : txAccount}
+                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                  ({items.length}) 净收入: RM {netTotal.toFixed(2)}
+                </Text>
+                <Text type="secondary" style={{ marginLeft: 8, fontSize: 10 }}>
+                  (收入: RM {incomeTotal.toFixed(2)} - 支出: RM {expenseTotal.toFixed(2)})
+                </Text>
+              </span>
+            ),
+            key: `income-${category}-${txAccount}`,
+            isLeaf: true,
+          });
+        } else {
+          // 其他类别：正常显示
+          // 🆕 排除已拆分的父交易
+          const subTotal = items
+            .filter(t => t.isSplit !== true)
+            .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+          categoryNode.children!.push({
+            title: (
+              <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
+                {txAccount === 'uncategorized' ? '未分类' : txAccount}
+                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                  ({items.length}) RM {subTotal.toFixed(2)}
+                </Text>
+              </span>
+            ),
+            key: `income-${category}-${txAccount}`,
+            isLeaf: true,
+          });
+        }
+      });
+
+      incomeNode.children!.push(categoryNode);
+    });
+
+    // 构建支出树
+    Object.entries(expenseGroups).forEach(([category, subGroups]) => {
+      if (Object.keys(subGroups).length === 0) return;
+
+      const allTransactions = Object.values(subGroups).flat();
+      // 🆕 排除已拆分的父交易
+      const categoryTotal = allTransactions
+        .filter(t => t.isSplit !== true)
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+      const categoryCount = allTransactions.length;
+
+      const categoryNode: DataNode = {
+        title: (
+          <span>
+            {categoryNameMap[category] || category}
+            <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+              ({categoryCount}) RM {categoryTotal.toFixed(2)}
+            </Text>
+          </span>
+        ),
+        key: `expense-${category}`,
+        children: [],
+      };
+
+      Object.entries(subGroups).forEach(([txAccount, items]) => {
+        // 🆕 排除已拆分的父交易
+        const subTotal = items
+          .filter(t => t.isSplit !== true)
+          .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+        categoryNode.children!.push({
+          title: (
+            <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
+              {txAccount === 'uncategorized' ? '未分类' : txAccount}
+              <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                ({items.length}) RM {subTotal.toFixed(2)}
+              </Text>
+            </span>
+          ),
+          key: `expense-${category}-${txAccount}`,
+          isLeaf: true,
+        });
+      });
+
+      expenseNode.children!.push(categoryNode);
+    });
+
+    // 收集所有节点的 key 用于默认展开
+    const allKeys: React.Key[] = ['income-root', 'expense-root'];
+    
+    incomeNode.children?.forEach(categoryNode => {
+      allKeys.push(categoryNode.key!);
+    });
+    
+    expenseNode.children?.forEach(categoryNode => {
+      allKeys.push(categoryNode.key!);
+    });
+
+      setTreeData([incomeNode, expenseNode]);
+      setExpandedKeys(allKeys);
+      
+      // 🆕 计算并保存统计数据
+      const surplus = totalIncome - totalExpense;
+      setTreeStatistics({
+        totalIncome,
+        totalExpense,
+        surplus,
+      });
+      
+      console.log('📊 [TreeView Statistics]', {
+        totalIncome: `RM ${totalIncome.toFixed(2)}`,
+        totalExpense: `RM ${totalExpense.toFixed(2)}`,
+        surplus: `RM ${surplus.toFixed(2)}`,
+        status: surplus >= 0 ? 'Surplus ✅' : 'Deficit ❌',
+      });
+    } catch (error) {
+      console.error('❌ [buildTreeData] Failed to build tree data:', error);
+      message.error('构建树形视图数据失败');
+    } finally {
+      setTreeLoading(false);
+    }
+  };
+
+  // 🆕 处理树节点点击事件
+  const handleTreeNodeClick = (items: Transaction[]) => {
+    // 切换到表格视图并筛选这些交易
+    setViewMode('table');
+    setFilteredTransactions(items);
+  };
+
+  // 🆕 当日期范围变化时，重新构建树形数据
+  useEffect(() => {
+    if (viewMode === 'tree') {
+      buildTreeData();
+    }
+  }, [treeDateRangeType, treeSelectedYear, viewMode]);
 
   const columns: ColumnsType<Transaction> = [
     {
@@ -1242,122 +1682,269 @@ const TransactionManagementPage: React.FC = () => {
           ]}
         />
 
-        {/* 银行账户标签页 */}
-        <Card style={{ marginBottom: 24 }}>
-          <Tabs
-            activeKey={activeTabKey}
-            onChange={setActiveTabKey}
-            type="card"
-            size="large"
-            items={tabItems}
-            tabBarStyle={{ marginBottom: 0 }}
-            tabBarExtraContent={
-              <Space>
-                <span style={{ fontSize: '12px', color: '#999' }}>
-                  当前显示: {total} 条交易
-                </span>
-              </Space>
-            }
-          />
-        </Card>
-
-        {/* Filters */}
-        <Card className="mb-6">
-          <div className="flex flex-wrap gap-4 items-center">
-            <Search
-              placeholder="模糊搜索：描述、金额、付款人、备注..."
-              onSearch={setSearchText}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 400 }}
-              allowClear
-              enterButton={<SearchOutlined />}
-            />
-
-            <Select
-              style={{ width: 180 }}
-              placeholder="主要类别"
-              value={categoryFilter}
-              onChange={setCategoryFilter}
-            >
-              <Option value="all">所有类别</Option>
-              <Option value="member-fees">会员费用</Option>
-              <Option value="event-finance">活动财务</Option>
-              <Option value="general-accounts">日常账户</Option>
-              <Option value="uncategorized">🔴 未分类</Option>
-            </Select>
-            
-            {/* 🆕 未分类快速筛选按钮 */}
-            <Button 
-              type={hasUncategorized ? "default" : "default"}
-              danger={hasUncategorized}
-              disabled={!hasUncategorized}
-              icon={<TagOutlined />}
-              onClick={() => setCategoryFilter('uncategorized')}
-            >
-              {hasUncategorized ? '🔴 显示未分类' : '✅ 无未分类'}
-            </Button>
-
-            <Button icon={<DownloadOutlined />}>导出报表</Button>
-            <div className="ml-auto">
-              <Space>
-                <Button icon={<PlusOutlined />} onClick={handleOpenBulkImport}>
-                  批量导入
-                </Button>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                  新交易
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Card>
-
-        {/* Transactions Table */}
+        {/* 表格/树形视图切换 */}
         <Card>
-          <Table
-            {...tableConfig}
-            columns={columns}
-            dataSource={transactions}
-            rowKey="id"
-            loading={loading}
-            rowSelection={{
-              selectedRowKeys,
-              onChange: setSelectedRowKeys,
-              getCheckboxProps: (record: Transaction) => ({
-                disabled: record.isVirtual === true, // 子交易不能单独选择
-              }),
+          <Tabs
+            activeKey={viewMode}
+            onChange={(key) => {
+              setViewMode(key as 'table' | 'tree');
+              if (key === 'table') {
+                setFilteredTransactions([]); // 清空筛选
+              }
             }}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total,
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size || 20);
-                setSelectedRowKeys([]); // 切换页面时清空选择
+            items={[
+              {
+                key: 'table',
+                label: (
+                  <span>
+                    <TableOutlined /> 表格视图
+                  </span>
+                ),
+                children: (
+                  <>
+                    {/* 银行账户标签页 */}
+                    <Card style={{ marginBottom: 24 }} bordered={false}>
+                      <Tabs
+                        activeKey={activeTabKey}
+                        onChange={setActiveTabKey}
+                        type="card"
+                        size="large"
+                        items={tabItems}
+                        tabBarStyle={{ marginBottom: 0 }}
+                        tabBarExtraContent={
+                          <Space>
+                            <span style={{ fontSize: '12px', color: '#999' }}>
+                              当前显示: {total} 条交易
+                            </span>
+                          </Space>
+                        }
+                      />
+                    </Card>
+
+                    {/* Filters */}
+                    <Card className="mb-6" bordered={false}>
+                      <div className="flex flex-wrap gap-4 items-center">
+                        <Search
+                          placeholder="模糊搜索：描述、金额、付款人、备注..."
+                          onSearch={setSearchText}
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                          style={{ width: 400 }}
+                          allowClear
+                          enterButton={<SearchOutlined />}
+                        />
+
+                        <Select
+                          style={{ width: 180 }}
+                          placeholder="主要类别"
+                          value={categoryFilter}
+                          onChange={setCategoryFilter}
+                        >
+                          <Option value="all">所有类别</Option>
+                          <Option value="member-fees">会员费用</Option>
+                          <Option value="event-finance">活动财务</Option>
+                          <Option value="general-accounts">日常账户</Option>
+                          <Option value="uncategorized">🔴 未分类</Option>
+                        </Select>
+                        
+                        {/* 🆕 未分类快速筛选按钮 */}
+                        <Button 
+                          type={hasUncategorized ? "default" : "default"}
+                          danger={hasUncategorized}
+                          disabled={!hasUncategorized}
+                          icon={<TagOutlined />}
+                          onClick={() => setCategoryFilter('uncategorized')}
+                        >
+                          {hasUncategorized ? '🔴 显示未分类' : '✅ 无未分类'}
+                        </Button>
+
+                        <Button icon={<DownloadOutlined />}>导出报表</Button>
+                        <div className="ml-auto">
+                          <Space>
+                            <Button icon={<PlusOutlined />} onClick={handleOpenBulkImport}>
+                              批量导入
+                            </Button>
+                            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                              新交易
+                            </Button>
+                          </Space>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Transactions Table */}
+                    <Card bordered={false}>
+                      <Table
+                        {...tableConfig}
+                        columns={columns}
+                        dataSource={filteredTransactions.length > 0 ? filteredTransactions : transactions}
+                        rowKey="id"
+                        loading={loading}
+                        rowSelection={{
+                          selectedRowKeys,
+                          onChange: setSelectedRowKeys,
+                          getCheckboxProps: (record: Transaction) => ({
+                            disabled: record.isVirtual === true, // 子交易不能单独选择
+                          }),
+                        }}
+                        pagination={{
+                          current: currentPage,
+                          pageSize,
+                          total: filteredTransactions.length > 0 ? filteredTransactions.length : total,
+                          onChange: (page, size) => {
+                            setCurrentPage(page);
+                            setPageSize(size || 20);
+                            setSelectedRowKeys([]); // 切换页面时清空选择
+                          },
+                          showSizeChanger: true,
+                          showTotal: (total) => `共 ${total} 条记录`,
+                        }}
+                        scroll={{ y: 600 }}
+                      />
+                    </Card>
+
+                    {/* 批量操作栏 */}
+                    <BulkOperationBar
+                      visible={selectedRowKeys.length > 0}
+                      selectedCount={selectedRowKeys.length}
+                      totalCount={transactions.filter(t => t.isVirtual !== true).length}
+                      actions={bulkActions}
+                      onSelectAll={() => {
+                        // 只选择非虚拟交易（排除子交易）
+                        const selectableIds = transactions
+                          .filter(t => t.isVirtual !== true)
+                          .map(t => t.id);
+                        setSelectedRowKeys(selectableIds);
+                      }}
+                      onDeselectAll={() => setSelectedRowKeys([])}
+                    />
+                  </>
+                ),
               },
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条记录`,
-            }}
-            scroll={{ y: 600 }}
+              {
+                key: 'tree',
+                label: (
+                  <span>
+                    <ApartmentOutlined /> 树形视图
+                  </span>
+                ),
+                children: (
+                  <div style={{ padding: '24px 0' }}>
+                    <Alert
+                      message="树形视图说明"
+                      description="交易按收入/支出 → 类别 → 二次分类层级组织。根据审计报告要求，活动财务的支出已合并到收入中显示净收入。点击叶子节点可切换到表格视图查看详细记录。"
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: 24 }}
+                    />
+                    
+                    {/* 🆕 日期范围选择器 */}
+                    <Card style={{ marginBottom: 24 }} bordered={false}>
+                      <Space size="middle" wrap>
+                        <span style={{ fontWeight: 500 }}>日期范围:</span>
+                        <Radio.Group 
+                          value={treeDateRangeType} 
+                          onChange={(e) => setTreeDateRangeType(e.target.value)}
+                          buttonStyle="solid"
+                        >
+                          <Radio.Button value="all">全部</Radio.Button>
+                          <Radio.Button value="fiscal">财年 (10月-9月)</Radio.Button>
+                          <Radio.Button value="calendar">自然年 (1月-12月)</Radio.Button>
+                        </Radio.Group>
+                        
+                        {treeDateRangeType !== 'all' && (
+                          <>
+                            <Select
+                              style={{ width: 120 }}
+                              value={treeSelectedYear}
+                              onChange={setTreeSelectedYear}
+                            >
+                              {Array.from({ length: 10 }, (_, i) => {
+                                const year = new Date().getFullYear() - i;
+                                return (
+                                  <Option key={year} value={year.toString()}>
+                                    {treeDateRangeType === 'fiscal' ? `FY${year}` : `${year}年`}
+                                  </Option>
+                                );
+                              })}
+                            </Select>
+                            
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              {treeDateRangeType === 'fiscal' 
+                                ? `${treeSelectedYear}-10-01 至 ${parseInt(treeSelectedYear) + 1}-09-30`
+                                : `${treeSelectedYear}-01-01 至 ${treeSelectedYear}-12-31`
+                              }
+                            </Text>
+                          </>
+                        )}
+                      </Space>
+                    </Card>
+                    
+                    {/* 🆕 统计数据卡片 */}
+                    {!treeLoading && treeData.length > 0 && (
+                      <Card style={{ marginBottom: 24 }} bordered={false}>
+                        <Row gutter={24}>
+                          <Col span={8}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>
+                                Total Incomes
+                              </div>
+                              <div style={{ fontSize: 28, fontWeight: 600, color: '#52c41a' }}>
+                                RM {treeStatistics.totalIncome.toFixed(2)}
+                              </div>
+                            </div>
+                          </Col>
+                          <Col span={8}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>
+                                Total Expenses
+                              </div>
+                              <div style={{ fontSize: 28, fontWeight: 600, color: '#ff4d4f' }}>
+                                RM {treeStatistics.totalExpense.toFixed(2)}
+                              </div>
+                            </div>
+                          </Col>
+                          <Col span={8}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>
+                                {treeStatistics.surplus >= 0 ? 'Surplus' : 'Deficit'}
+                              </div>
+                              <div style={{ 
+                                fontSize: 28, 
+                                fontWeight: 600, 
+                                color: treeStatistics.surplus >= 0 ? '#1890ff' : '#ff4d4f' 
+                              }}>
+                                {treeStatistics.surplus >= 0 ? '' : '('}
+                                RM {Math.abs(treeStatistics.surplus).toFixed(2)}
+                                {treeStatistics.surplus >= 0 ? '' : ')'}
+                              </div>
+                            </div>
+                          </Col>
+                        </Row>
+                      </Card>
+                    )}
+                    
+                    {treeLoading ? (
+                      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                        <LoadingSpinner />
+                        <div style={{ marginTop: 16, color: '#666' }}>正在加载所有交易数据...</div>
+                      </div>
+                    ) : (
+                      <Tree
+                        showLine
+                        showIcon={false}
+                        expandedKeys={expandedKeys}
+                        onExpand={setExpandedKeys}
+                        treeData={treeData}
+                        style={{ fontSize: 14 }}
+                      />
+                    )}
+                  </div>
+                ),
+              },
+            ]}
           />
         </Card>
-
-        {/* 批量操作栏 */}
-        <BulkOperationBar
-          visible={selectedRowKeys.length > 0}
-          selectedCount={selectedRowKeys.length}
-          totalCount={transactions.filter(t => t.isVirtual !== true).length}
-          actions={bulkActions}
-          onSelectAll={() => {
-            // 只选择非虚拟交易（排除子交易）
-            const selectableIds = transactions
-              .filter(t => t.isVirtual !== true)
-              .map(t => t.id);
-            setSelectedRowKeys(selectableIds);
-          }}
-          onDeselectAll={() => setSelectedRowKeys([])}
-        />
 
         {/* Create/Edit Transaction Modal */}
         <Modal
@@ -1681,7 +2268,7 @@ const TransactionManagementPage: React.FC = () => {
         {/* Batch Set Category Modal */}
         <BatchSetCategoryModal
           visible={batchCategoryModalVisible}
-          selectedCount={selectedRowKeys.length}
+          selectedTransactions={transactions.filter(t => selectedRowKeys.includes(t.id))}
           onOk={handleBatchSetCategoryOk}
           onCancel={() => setBatchCategoryModalVisible(false)}
           onManageSubcategory={(category) => {

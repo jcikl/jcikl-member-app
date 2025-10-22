@@ -2,7 +2,7 @@
  * Batch Set Category Modal
  * 批量设置类别弹窗
  * 
- * 为多条交易批量设置类别
+ * 为多条交易批量设置类别，支持独立设置每条交易的相关信息
  */
 
 import React, { useState, useEffect } from 'react';
@@ -14,26 +14,44 @@ import {
   Input,
   Radio,
   Divider,
+  Table,
+  Tag,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { getMembers } from '@/modules/member/services/memberService';
 import { getEvents } from '@/modules/event/services/eventService';
 import { generateYearOptions } from '@/utils/dateHelpers';
 import { getActiveTransactionPurposes } from '@/modules/system/services/transactionPurposeService';
 import type { Member } from '@/modules/member/types';
 import type { Event } from '@/modules/event/types';
+import type { Transaction } from '@/types';
 
 const { Option } = Select;
 
+// 🆕 每条交易的独立设置数据
+interface TransactionIndividualData {
+  transactionId: string;
+  // 日常财务
+  payerPayee?: string;
+  payerMode?: 'member' | 'manual';
+  payerId?: string;
+  // 活动财务
+  payeeMode?: 'member' | 'manual';
+  payeeId?: string;
+  payeeName?: string;
+  eventId?: string;
+  // 会员费
+  memberId?: string;
+}
+
 interface BatchSetCategoryModalProps {
   visible: boolean;
-  selectedCount: number;
+  selectedTransactions: Transaction[]; // 🆕 选中的交易列表
   onOk: (data: {
     category: string;
     txAccount?: string;
     year?: string;
-    memberId?: string;
-    payerPayee?: string;
-    eventId?: string;
+    individualData?: TransactionIndividualData[]; // 🆕 每条交易的独立数据
   }) => Promise<void>;
   onCancel: () => void;
   onManageSubcategory?: (category: string) => void;
@@ -41,7 +59,7 @@ interface BatchSetCategoryModalProps {
 
 const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   visible,
-  selectedCount,
+  selectedTransactions,
   onOk,
   onCancel,
   onManageSubcategory,
@@ -54,16 +72,17 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   
   // 动态字段状态
   const [selectedYear, setSelectedYear] = useState<string>('');
-  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
-  const [payerPayeeMode, setPayerPayeeMode] = useState<'member' | 'manual'>('member');
-  const [manualPayerPayee, setManualPayerPayee] = useState<string>('');
-  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  
+  // 🆕 每条交易的独立数据
+  const [individualData, setIndividualData] = useState<Record<string, TransactionIndividualData>>({});
   
   // 数据列表
   const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [purposes, setPurposes] = useState<{ label: string; value: string }[]>([]); // 🆕 交易用途
   const [loadingData, setLoadingData] = useState(false);
+  
+  const selectedCount = selectedTransactions.length;
   
   // 加载会员和活动列表
   useEffect(() => {
@@ -82,8 +101,20 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       ]);
       setMembers(membersResult.data);
       setEvents(eventsResult.data);
+      
+      // 🆕 调试信息
+      console.log('📋 [BatchSetCategoryModal] 加载数据:', {
+        会员数量: membersResult.data.length,
+        活动数量: eventsResult.data.length,
+        活动列表: eventsResult.data.map(e => ({
+          id: e.id,
+          name: e.name,
+          date: e.eventDate,
+          year: e.eventDate ? new Date(e.eventDate).getFullYear() : '无日期'
+        }))
+      });
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('❌ [BatchSetCategoryModal] 加载数据失败:', error);
     } finally {
       setLoadingData(false);
     }
@@ -97,6 +128,18 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     } catch (error) {
       console.error('加载交易用途失败:', error);
     }
+  };
+
+  // 🆕 更新单条交易的数据
+  const updateIndividualData = (transactionId: string, field: string, value: any) => {
+    setIndividualData(prev => ({
+      ...prev,
+      [transactionId]: {
+        ...prev[transactionId],
+        transactionId,
+        [field]: value,
+      },
+    }));
   };
 
   const handleOk = async () => {
@@ -119,26 +162,16 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
         category: string;
         txAccount?: string;
         year?: string;
-        memberId?: string;
-        payerPayee?: string;
-        eventId?: string;
+        individualData?: TransactionIndividualData[];
       } = {
         category: selectedCategory,
         txAccount: selectedTxAccount || undefined,
+        individualData: Object.values(individualData),
       };
       
       // 根据类别添加对应字段
       if (selectedCategory === 'member-fees') {
         data.year = selectedYear;
-        data.memberId = selectedMemberId || undefined;
-      } else if (selectedCategory === 'event-finance') {
-        data.year = selectedYear || undefined;
-        data.eventId = selectedEventId || undefined;
-        data.payerPayee = payerPayeeMode === 'manual' ? manualPayerPayee : undefined;
-        data.memberId = payerPayeeMode === 'member' ? selectedMemberId : undefined;
-      } else if (selectedCategory === 'general-accounts') {
-        data.payerPayee = payerPayeeMode === 'manual' ? manualPayerPayee : undefined;
-        data.memberId = payerPayeeMode === 'member' ? selectedMemberId : undefined;
       }
       
       await onOk(data);
@@ -155,10 +188,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     setSelectedCategory('');
     setSelectedTxAccount('');
     setSelectedYear('');
-    setSelectedMemberId('');
-    setPayerPayeeMode('member');
-    setManualPayerPayee('');
-    setSelectedEventId('');
+    setIndividualData({});
   };
 
   const handleCancel = () => {
@@ -166,13 +196,302 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     onCancel();
   };
 
+  // 🆕 获取会员名称
+  const getMemberName = (memberId: string) => {
+    const member = members.find(m => m.id === memberId);
+    return member ? `${member.name} - ${member.email}` : '';
+  };
+
+  // 🆕 获取活动名称
+  const getEventName = (eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    return event ? event.name : '';
+  };
+
+  // 🆕 定义表格列（日常财务）
+  const generalAccountsColumns: ColumnsType<Transaction> = [
+    {
+      title: '日期',
+      dataIndex: 'transactionDate',
+      key: 'transactionDate',
+      width: 100,
+      render: (date: string) => date ? new Date(date).toLocaleDateString('zh-CN') : '-',
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      key: 'description',
+      width: 150,
+      ellipsis: true,
+    },
+    {
+      title: '金额',
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 100,
+      render: (amount: number, record: Transaction) => (
+        <span style={{ color: record.transactionType === 'income' ? '#52c41a' : '#ff4d4f' }}>
+          RM {amount?.toFixed(2) || '0.00'}
+        </span>
+      ),
+    },
+    {
+      title: '付款人信息',
+      key: 'payerPayee',
+      width: 300,
+      render: (_: any, record: Transaction) => {
+        const data = individualData[record.id];
+        const payerMode = data?.payerMode || 'member';
+        
+        return (
+          <div>
+            <Radio.Group 
+              value={payerMode} 
+              onChange={(e) => updateIndividualData(record.id, 'payerMode', e.target.value)}
+              size="small"
+              style={{ marginBottom: 8 }}
+            >
+              <Radio value="member">会员</Radio>
+              <Radio value="manual">手动填写</Radio>
+            </Radio.Group>
+            
+            {payerMode === 'member' ? (
+              <Select
+                style={{ width: '100%' }}
+                size="small"
+                value={data?.payerId}
+                onChange={(value) => updateIndividualData(record.id, 'payerId', value)}
+                placeholder="选择付款人"
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  const label = option?.children?.toString() || '';
+                  return label.toLowerCase().includes(input.toLowerCase());
+                }}
+              >
+                {members.map(m => (
+                  <Option key={m.id} value={m.id}>
+                    {m.name} - {m.email}
+                  </Option>
+                ))}
+              </Select>
+            ) : (
+              <Input
+                size="small"
+                value={data?.payerPayee}
+                onChange={(e) => updateIndividualData(record.id, 'payerPayee', e.target.value)}
+                placeholder="输入付款人姓名"
+              />
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  // 🆕 定义表格列（活动财务）
+  const eventFinanceColumns: ColumnsType<Transaction> = [
+    {
+      title: '日期',
+      dataIndex: 'transactionDate',
+      key: 'transactionDate',
+      width: 100,
+      render: (date: string) => date ? new Date(date).toLocaleDateString('zh-CN') : '-',
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      key: 'description',
+      width: 150,
+      ellipsis: true,
+    },
+    {
+      title: '金额',
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 100,
+      render: (amount: number, record: Transaction) => (
+        <span style={{ color: record.transactionType === 'income' ? '#52c41a' : '#ff4d4f' }}>
+          RM {amount?.toFixed(2) || '0.00'}
+        </span>
+      ),
+    },
+    {
+      title: '收款人信息',
+      key: 'payeeInfo',
+      width: 200,
+      render: (_: any, record: Transaction) => {
+        const data = individualData[record.id];
+        const payeeMode = data?.payeeMode || 'member';
+        
+        return (
+          <div>
+            <Radio.Group 
+              value={payeeMode} 
+              onChange={(e) => updateIndividualData(record.id, 'payeeMode', e.target.value)}
+              size="small"
+              style={{ marginBottom: 8 }}
+            >
+              <Radio value="member">会员</Radio>
+              <Radio value="manual">手动填写</Radio>
+            </Radio.Group>
+            
+            {payeeMode === 'member' ? (
+              <Select
+                style={{ width: '100%' }}
+                size="small"
+                value={data?.payeeId}
+                onChange={(value) => updateIndividualData(record.id, 'payeeId', value)}
+                placeholder="选择收款人"
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  const label = option?.children?.toString() || '';
+                  return label.toLowerCase().includes(input.toLowerCase());
+                }}
+              >
+                {members.map(m => (
+                  <Option key={m.id} value={m.id}>
+                    {m.name} - {m.email}
+                  </Option>
+                ))}
+              </Select>
+            ) : (
+              <Input
+                size="small"
+                value={data?.payeeName}
+                onChange={(e) => updateIndividualData(record.id, 'payeeName', e.target.value)}
+                placeholder="输入收款人姓名"
+              />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: '关联活动',
+      key: 'eventId',
+      width: 250,
+      render: (_: any, record: Transaction) => {
+        const data = individualData[record.id];
+        
+        // 🆕 过滤活动列表
+        const filteredEvents = events.filter(event => {
+          // 如果没有选择年份，显示所有活动
+          if (!selectedYear) return true;
+          
+          // 如果活动没有日期，也显示（避免隐藏）
+          if (!event.eventDate) return true;
+          
+          // 根据年份筛选
+          const eventYear = new Date(event.eventDate).getFullYear().toString();
+          return eventYear === selectedYear;
+        });
+        
+        return (
+          <div>
+            <Select
+              style={{ width: '100%' }}
+              size="small"
+              value={data?.eventId}
+              onChange={(value) => updateIndividualData(record.id, 'eventId', value)}
+              placeholder={filteredEvents.length === 0 ? '无可用活动' : '选择活动'}
+              allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const label = option?.children?.toString() || '';
+                return label.toLowerCase().includes(input.toLowerCase());
+              }}
+              notFoundContent={
+                loadingData ? '加载中...' : 
+                filteredEvents.length === 0 && selectedYear ? `${selectedYear}年无活动` : 
+                '无活动数据'
+              }
+            >
+              {filteredEvents.map(e => (
+                <Option key={e.id} value={e.id}>
+                  {e.name}
+                  {e.eventDate && ` (${new Date(e.eventDate).getFullYear()})`}
+                </Option>
+              ))}
+            </Select>
+            {filteredEvents.length === 0 && selectedYear && events.length > 0 && (
+              <div style={{ fontSize: 11, color: '#ff4d4f', marginTop: 4 }}>
+                {selectedYear}年无活动，共有{events.length}个活动
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  // 🆕 定义表格列（会员费）
+  const memberFeesColumns: ColumnsType<Transaction> = [
+    {
+      title: '日期',
+      dataIndex: 'transactionDate',
+      key: 'transactionDate',
+      width: 100,
+      render: (date: string) => date ? new Date(date).toLocaleDateString('zh-CN') : '-',
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      key: 'description',
+      width: 150,
+      ellipsis: true,
+    },
+    {
+      title: '金额',
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 100,
+      render: (amount: number, record: Transaction) => (
+        <span style={{ color: record.transactionType === 'income' ? '#52c41a' : '#ff4d4f' }}>
+          RM {amount?.toFixed(2) || '0.00'}
+        </span>
+      ),
+    },
+    {
+      title: '关联会员',
+      key: 'memberId',
+      width: 300,
+      render: (_: any, record: Transaction) => {
+        const data = individualData[record.id];
+        
+        return (
+          <Select
+            style={{ width: '100%' }}
+            size="small"
+            value={data?.memberId}
+            onChange={(value) => updateIndividualData(record.id, 'memberId', value)}
+            placeholder="选择会员"
+            allowClear
+            showSearch
+            filterOption={(input, option) => {
+              const label = option?.children?.toString() || '';
+              return label.toLowerCase().includes(input.toLowerCase());
+            }}
+          >
+            {members.map(m => (
+              <Option key={m.id} value={m.id}>
+                {m.name} - {m.email}
+              </Option>
+            ))}
+          </Select>
+        );
+      },
+    },
+  ];
+
   return (
     <Modal
       title={`批量设置类别 - 已选择 ${selectedCount} 条交易`}
       open={visible}
       onOk={handleOk}
       onCancel={handleCancel}
-      width={500}
+      width={selectedCategory ? 900 : 500}
       confirmLoading={loading}
       okText="确认设置"
       cancelText="取消"
@@ -180,7 +499,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     >
       <Alert
         message="注意"
-        description="此操作将覆盖所有选中交易的类别。虚拟交易（子交易）将被自动跳过。"
+        description="此操作将覆盖所有选中交易的类别。虚拟交易（子交易）将被自动跳过。您可以为每条交易独立设置相关信息。"
         type="warning"
         showIcon
         style={{ marginBottom: 16 }}
@@ -241,30 +560,6 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
             </Select>
           </div>
           
-          {/* 关联会员 - 可选 */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>关联会员（可选）</div>
-            <Select
-              style={{ width: '100%' }}
-              value={selectedMemberId}
-              onChange={setSelectedMemberId}
-              placeholder="选择会员"
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const label = option?.children?.toString() || '';
-                return label.toLowerCase().includes(input.toLowerCase());
-              }}
-              loading={loadingData}
-            >
-              {members.map(m => (
-                <Option key={m.id} value={m.id}>
-                  {m.name} - {m.email}
-                </Option>
-              ))}
-            </Select>
-          </div>
-          
           {/* 二次分类 - 可选 */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>二次分类（可选）</div>
@@ -281,6 +576,17 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               <Option value="visiting-member-fee">拜访会员</Option>
             </Select>
           </div>
+
+          <Divider>为每条交易设置关联会员</Divider>
+          
+          <Table
+            columns={memberFeesColumns}
+            dataSource={selectedTransactions}
+            rowKey="id"
+            pagination={false}
+            scroll={{ y: 400 }}
+            size="small"
+          />
         </>
       )}
 
@@ -289,52 +595,21 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
         <>
           <Divider style={{ margin: '16px 0' }} />
           
-          {/* 收款人信息 */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>收款人信息</div>
-            <Radio.Group value={payerPayeeMode} onChange={(e) => setPayerPayeeMode(e.target.value)}>
-              <Radio value="member">选择会员</Radio>
-              <Radio value="manual">手动填写（非会员）</Radio>
-            </Radio.Group>
-          </div>
-          
-          {payerPayeeMode === 'member' ? (
-            <div style={{ marginBottom: 16 }}>
-              <Select
-                style={{ width: '100%' }}
-                value={selectedMemberId}
-                onChange={setSelectedMemberId}
-                placeholder="选择会员"
-                allowClear
-              showSearch
-              optionFilterProp="children"
-              loading={loadingData}
-              >
-                {members.map(m => (
-                  <Option key={m.id} value={m.id}>
-                    {m.name} - {m.email}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-          ) : (
-            <div style={{ marginBottom: 16 }}>
-              <Input
-                value={manualPayerPayee}
-                onChange={(e) => setManualPayerPayee(e.target.value)}
-                placeholder="输入收款人姓名"
-              />
-            </div>
-          )}
-          
           {/* 年份筛选 */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>年份（可选）</div>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
+              年份（可选，用于筛选活动）
+              {events.length > 0 && (
+                <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>
+                  共有 {events.length} 个活动
+                </span>
+              )}
+            </div>
             <Select
               style={{ width: '100%' }}
               value={selectedYear}
               onChange={setSelectedYear}
-              placeholder="选择年份"
+              placeholder="选择年份（不选择则显示所有活动）"
               allowClear
               showSearch
             >
@@ -342,46 +617,33 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
                 <Option key={year} value={year}>{year}</Option>
               ))}
             </Select>
-          </div>
-          
-          {/* 选择活动 */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>选择活动（可选）</div>
-            <Select
-              style={{ width: '100%' }}
-              value={selectedEventId}
-              onChange={setSelectedEventId}
-              placeholder="选择活动"
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const label = option?.children?.toString() || '';
-                return label.toLowerCase().includes(input.toLowerCase());
-              }}
-              loading={loadingData}
-            >
-              {events
-                .filter(event => {
-                  // 🆕 根据年份筛选活动
-                  if (!selectedYear) return true;
-                  const eventYear = event.eventDate 
-                    ? new Date(event.eventDate).getFullYear().toString()
-                    : '';
-                  return eventYear === selectedYear;
-                })
-                .map(e => (
-                  <Option key={e.id} value={e.id}>
-                    {e.name}
-                    {e.eventDate && ` (${new Date(e.eventDate).getFullYear()})`}
-                  </Option>
-                ))}
-            </Select>
             {selectedYear && (
-              <p style={{ fontSize: '12px', color: '#999', marginTop: 8 }}>
-                📅 仅显示 {selectedYear} 年的活动
+              <p style={{ fontSize: '12px', color: '#1890ff', marginTop: 8 }}>
+                📅 下方活动列表将只显示 {selectedYear} 年的活动
+              </p>
+            )}
+            {!selectedYear && events.length > 0 && (
+              <p style={{ fontSize: '12px', color: '#52c41a', marginTop: 8 }}>
+                ✅ 显示所有年份的活动（共 {events.length} 个）
+              </p>
+            )}
+            {events.length === 0 && !loadingData && (
+              <p style={{ fontSize: '12px', color: '#ff4d4f', marginTop: 8 }}>
+                ⚠️ 未找到任何活动，请先在活动管理页面创建活动
               </p>
             )}
           </div>
+
+          <Divider>为每条交易设置收款人和关联活动</Divider>
+          
+          <Table
+            columns={eventFinanceColumns}
+            dataSource={selectedTransactions}
+            rowKey="id"
+            pagination={false}
+            scroll={{ y: 400 }}
+            size="small"
+          />
         </>
       )}
 
@@ -389,44 +651,6 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       {selectedCategory === 'general-accounts' && (
         <>
           <Divider style={{ margin: '16px 0' }} />
-          
-          {/* 付款人信息 */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>付款人信息</div>
-            <Radio.Group value={payerPayeeMode} onChange={(e) => setPayerPayeeMode(e.target.value)}>
-              <Radio value="member">选择会员</Radio>
-              <Radio value="manual">手动填写（非会员）</Radio>
-            </Radio.Group>
-          </div>
-          
-          {payerPayeeMode === 'member' ? (
-            <div style={{ marginBottom: 16 }}>
-              <Select
-                style={{ width: '100%' }}
-                value={selectedMemberId}
-                onChange={setSelectedMemberId}
-                placeholder="选择会员"
-                allowClear
-              showSearch
-              optionFilterProp="children"
-              loading={loadingData}
-              >
-                {members.map(m => (
-                  <Option key={m.id} value={m.id}>
-                    {m.name} - {m.email}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-          ) : (
-            <div style={{ marginBottom: 16 }}>
-              <Input
-                value={manualPayerPayee}
-                onChange={(e) => setManualPayerPayee(e.target.value)}
-                placeholder="输入付款人姓名"
-              />
-            </div>
-          )}
           
           {/* 二次分类 */}
           <div style={{ marginBottom: 16 }}>
@@ -455,6 +679,17 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               </p>
             )}
           </div>
+
+          <Divider>为每条交易设置付款人信息</Divider>
+          
+          <Table
+            columns={generalAccountsColumns}
+            dataSource={selectedTransactions}
+            rowKey="id"
+            pagination={false}
+            scroll={{ y: 400 }}
+            size="small"
+          />
         </>
       )}
     </Modal>
@@ -463,4 +698,3 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
 
 export { BatchSetCategoryModal };
 export default BatchSetCategoryModal;
-

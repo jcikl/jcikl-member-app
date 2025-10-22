@@ -146,7 +146,7 @@ const EventFinancialPage: React.FC = () => {
     if (activeTab === 'transactions') {
       loadTransactions();
     }
-  }, [activeTab, transactionPage, transactionPageSize, txAccountFilter, searchText]);
+  }, [activeTab, txAccountFilter, searchText]); // 🆕 移除transactionPage和transactionPageSize，使用客户端分页
 
   const loadEventFinancials = async () => {
     if (!user) return;
@@ -496,15 +496,23 @@ const EventFinancialPage: React.FC = () => {
     try {
       setTransactionsLoading(true);
       
+      // 🆕 加载所有活动财务交易记录（不分页）
       const result = await getTransactions({
-        page: transactionPage,
-        limit: transactionPageSize,
+        page: 1,
+        limit: 10000, // 🆕 加载大量数据以确保获取所有记录
         category: 'event-finance',
         // 🔑 不要将'uncategorized'传给服务端，在客户端筛选
         txAccount: (txAccountFilter !== 'all' && txAccountFilter !== 'uncategorized') ? txAccountFilter : undefined,
         sortBy: 'transactionDate',
         sortOrder: 'desc',
         includeVirtual: true, // 🔑 包含子交易（拆分的活动财务）
+      });
+      
+      console.log('📊 [EventFinancialPage] 加载交易记录:', {
+        总数: result.total,
+        本次加载: result.data.length,
+        txAccountFilter,
+        searchText,
       });
       
       // 🆕 Step 1: 先加载会员信息缓存（用于搜索）
@@ -1347,15 +1355,10 @@ const EventFinancialPage: React.FC = () => {
                           }),
                         }}
                         pagination={{
-                          current: transactionPage,
-                          pageSize: transactionPageSize,
-                          total: transactionTotal,
-                          onChange: (page, size) => {
-                            setTransactionPage(page);
-                            setTransactionPageSize(size || 20);
-                          },
+                          pageSize: 20, // 🆕 客户端分页，默认每页20条
                           showSizeChanger: true,
                           showTotal: (total) => `共 ${total} 条交易`,
+                          pageSizeOptions: ['10', '20', '50', '100'],
                         }}
                         scroll={{ x: 1200 }}
                       />
