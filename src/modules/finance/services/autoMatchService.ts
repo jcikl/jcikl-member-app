@@ -51,12 +51,24 @@ export const findMatchesForTransaction = async (
   events?: Event[]
 ): Promise<MatchResult[]> => {
   try {
+    console.log('🔍 [findMatchesForTransaction] Starting match for transaction:', {
+      id: transaction.id,
+      mainDescription: transaction.mainDescription,
+      subDescription: transaction.subDescription,
+      amount: transaction.amount,
+      transactionDate: transaction.transactionDate,
+      transactionType: transaction.transactionType,
+    });
+    
     // 如果没有提供活动列表，从数据库获取
     if (!events) {
       events = await getAllActiveEvents();
     }
+    
+    console.log(`🎯 [findMatchesForTransaction] Checking against ${events.length} events`);
 
     const matches: MatchResult[] = [];
+    let debugCount = 0;
 
     for (const event of events) {
       // 计算各项得分
@@ -65,6 +77,18 @@ export const findMatchesForTransaction = async (
       const dateScore = calculateDateScore(transaction.transactionDate, event.startDate);
 
       const totalScore = nameScore.score + priceScore.score + dateScore.score;
+      
+      // 🔍 调试前3个匹配结果
+      if (debugCount < 3 || totalScore >= 60) {
+        console.log(`📊 [Match #${debugCount + 1}] ${event.name}:`, {
+          nameScore: `${nameScore.score}/60 (${nameScore.reason})`,
+          priceScore: `${priceScore.score}/30 (${priceScore.type})`,
+          dateScore: `${dateScore.score}/10 (${dateScore.reason})`,
+          totalScore: `${totalScore}/100`,
+          threshold: totalScore >= 60 ? '✅ PASS' : '❌ FAIL',
+        });
+        debugCount++;
+      }
 
       // 只保留得分 >= 60 的匹配
       if (totalScore >= 60) {
@@ -87,6 +111,8 @@ export const findMatchesForTransaction = async (
       }
     }
 
+    console.log(`✅ [findMatchesForTransaction] Found ${matches.length} matches (score ≥ 60)`);
+    
     // 按总分排序（降序）
     return matches.sort((a, b) => b.totalScore - a.totalScore);
   } catch (error) {
@@ -239,9 +265,9 @@ const calculateNameScore = (
     return { score: 55, reason: `缩写匹配 "${acronym.toUpperCase()}"` };
   }
 
-  // 3. 模糊匹配 - 移除空格和特殊字符 (40-50分)
-  const cleanDesc = description.replace(/[-\s]/g, '');
-  const cleanName = eventName.replace(/[-\s]/g, '');
+  // 3. 模糊匹配 - 移除空格和特殊字符 (45分)
+  const cleanDesc = description.replace(/[-\s*]/g, '');
+  const cleanName = eventName.replace(/[-\s*]/g, '');
 
   if (cleanDesc.includes(cleanName) || cleanName.includes(cleanDesc)) {
     return { score: 45, reason: '模糊匹配（忽略空格）' };
