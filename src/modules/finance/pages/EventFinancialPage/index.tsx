@@ -554,10 +554,19 @@ const EventFinancialPage: React.FC = () => {
     setEditEventDate(event.eventDate || '');
     setEditEventDescription(event.description || '');
     setEditEventBoardMember(event.boardMember);
-    setEditEventChair(event.eventChair || '');
-    setEditEventTreasurer(event.eventTreasurer || '');
+    // 🆕 从 selectedEventDetail 中获取活动主席和活动财政（这些是从 projects collection 读取的）
+    setEditEventChair(selectedEventDetail.eventChair || '');
+    setEditEventTreasurer(selectedEventDetail.eventTreasurer || '');
     setEditEventStatus(event.status);
     setEditingEvent(true);
+    
+    console.log('📝 [EventFinancialPage] Starting edit event:', {
+      eventName: event.eventName,
+      chairFromFinanceEvent: event.eventChair,
+      chairFromEventDetail: selectedEventDetail.eventChair,
+      treasurerFromFinanceEvent: event.eventTreasurer,
+      treasurerFromEventDetail: selectedEventDetail.eventTreasurer,
+    });
   };
   
   // 🆕 保存活动编辑
