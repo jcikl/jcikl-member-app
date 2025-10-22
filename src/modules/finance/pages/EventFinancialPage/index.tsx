@@ -551,7 +551,9 @@ const EventFinancialPage: React.FC = () => {
     if (!event) return;
     
     setEditEventName(event.eventName);
-    setEditEventDate(event.eventDate || '');
+    // 🆕 从 selectedEventDetail 中获取活动日期（这是从 projects collection 的 startDate 读取的）
+    const dateToUse = selectedEventDetail.eventDate || event.eventDate || '';
+    setEditEventDate(dateToUse ? new Date(dateToUse).toISOString().split('T')[0] : '');
     setEditEventDescription(event.description || '');
     setEditEventBoardMember(event.boardMember);
     // 🆕 从 selectedEventDetail 中获取活动主席和活动财政（这些是从 projects collection 读取的）
@@ -562,6 +564,9 @@ const EventFinancialPage: React.FC = () => {
     
     console.log('📝 [EventFinancialPage] Starting edit event:', {
       eventName: event.eventName,
+      dateFromFinanceEvent: event.eventDate,
+      dateFromEventDetail: selectedEventDetail.eventDate,
+      dateUsed: dateToUse,
       chairFromFinanceEvent: event.eventChair,
       chairFromEventDetail: selectedEventDetail.eventChair,
       treasurerFromFinanceEvent: event.eventTreasurer,
