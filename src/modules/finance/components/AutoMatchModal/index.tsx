@@ -46,17 +46,20 @@ import './styles.css';
 interface Props {
   visible: boolean;
   previewItems: AutoMatchPreviewItem[];
-  onConfirm: (selectedItems: Array<{ transactionId: string; matchResult: MatchResult; customData?: { eventName?: string; payerPayee?: string } }>) => Promise<void>;
+  onConfirm: (selectedItems: Array<{ transactionId: string; matchResult: MatchResult; customData?: { category?: string; eventName?: string; memberId?: string; payerPayee?: string } }>) => Promise<void>;
   onCancel: () => void;
   allEvents?: Array<{ id: string; eventName: string; eventDate: string }>; // 🆕 所有活动列表用于下拉选择
+  allMembers?: Array<{ id: string; name: string; email?: string; phone?: string }>; // 🆕 所有会员列表用于下拉选择
 }
 
 type FilterType = 'all' | 'high' | 'medium' | 'noMatch';
 
 // 🆕 自定义编辑数据
 interface CustomEditData {
-  eventName?: string;
-  payerPayee?: string;
+  category?: string; // 主分类
+  eventName?: string; // 活动名称（二次分类）
+  memberId?: string; // 会员ID
+  payerPayee?: string; // 付款人/收款人（可以是会员名或非会员）
 }
 
 export const AutoMatchModal: React.FC<Props> = ({
@@ -65,6 +68,7 @@ export const AutoMatchModal: React.FC<Props> = ({
   onConfirm,
   onCancel,
   allEvents = [],
+  allMembers = [],
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -379,46 +383,89 @@ export const AutoMatchModal: React.FC<Props> = ({
                           )}
                           <Descriptions.Item label="将更新为">
                             <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                              <div>
-                                <Tag color="purple">主分类:</Tag>
-                                <span>活动财务 (event-finance)</span>
-                              </div>
+                              {/* 主分类 - 可编辑 */}
                               <div style={{ width: '100%' }}>
-                                <Tag color="cyan" icon={<EditOutlined />}>二次分类:</Tag>
+                                <Tag color="purple" icon={<EditOutlined />}>主分类:</Tag>
                                 <Select
                                   style={{ width: 'calc(100% - 90px)', marginLeft: 8 }}
-                                  value={customEdits[item.transaction.id]?.eventName || item.bestMatch.eventName}
-                                  onChange={(value) => updateCustomEdit(item.transaction.id, 'eventName', value)}
-                                  showSearch
-                                  placeholder="选择活动"
-                                  optionFilterProp="children"
+                                  value={customEdits[item.transaction.id]?.category || 'event-finance'}
+                                  onChange={(value) => updateCustomEdit(item.transaction.id, 'category', value)}
                                 >
-                                  {allEvents.map(event => (
-                                    <Select.Option key={event.id} value={event.eventName}>
-                                      {event.eventName} ({dayjs(event.eventDate).format('YYYY-MM-DD')})
-                                    </Select.Option>
-                                  ))}
+                                  <Select.Option value="event-finance">活动财务</Select.Option>
+                                  <Select.Option value="member-fees">会员费用</Select.Option>
+                                  <Select.Option value="general-accounts">日常账户</Select.Option>
                                 </Select>
                               </div>
-                              {item.bestMatch.matchedMember && (
+                              {/* 二次分类 - 仅当主分类为活动财务时显示 */}
+                              {(customEdits[item.transaction.id]?.category || 'event-finance') === 'event-finance' && (
                                 <div style={{ width: '100%' }}>
-                                  <Tag color="magenta" icon={<EditOutlined />}>关联会员:</Tag>
-                                  <Input
+                                  <Tag color="cyan" icon={<EditOutlined />}>活动名称:</Tag>
+                                  <Select
                                     style={{ width: 'calc(100% - 90px)', marginLeft: 8 }}
-                                    value={customEdits[item.transaction.id]?.payerPayee || item.bestMatch.matchedMember.memberName}
+                                    value={customEdits[item.transaction.id]?.eventName || item.bestMatch.eventName}
+                                    onChange={(value) => updateCustomEdit(item.transaction.id, 'eventName', value)}
+                                    showSearch
+                                    placeholder="选择活动"
+                                    optionFilterProp="children"
+                                  >
+                                    {allEvents.map(event => (
+                                      <Select.Option key={event.id} value={event.eventName}>
+                                        {event.eventName} ({dayjs(event.eventDate).format('YYYY-MM-DD')})
+                                      </Select.Option>
+                                    ))}
+                                  </Select>
+                                </div>
+                              )}
+                              {/* 关联会员 - 下拉选择或手动输入 */}
+                              <div style={{ width: '100%' }}>
+                                <Tag color="magenta" icon={<EditOutlined />}>
+                                  {item.transaction.transactionType === 'income' ? '付款人:' : '收款人:'}
+                                </Tag>
+                                <div style={{ display: 'inline-block', width: 'calc(100% - 90px)', marginLeft: 8 }}>
+                                  <Select
+                                    style={{ width: '100%', marginBottom: 8 }}
+                                    value={customEdits[item.transaction.id]?.memberId || (item.bestMatch.matchedMember?.memberId)}
+                                    onChange={(value) => {
+                                      updateCustomEdit(item.transaction.id, 'memberId', value);
+                                      // 自动填充会员名称
+                                      const selectedMember = allMembers.find(m => m.id === value);
+                                      if (selectedMember) {
+                                        updateCustomEdit(item.transaction.id, 'payerPayee', selectedMember.name);
+                                      }
+                                    }}
+                                    showSearch
+                                    allowClear
+                                    placeholder="选择会员（可选）"
+                                    optionFilterProp="children"
+                                    filterOption={(input, option) =>
+                                      (option?.children?.toString() || '').toLowerCase().includes(input.toLowerCase())
+                                    }
+                                  >
+                                    {allMembers.map(member => (
+                                      <Select.Option key={member.id} value={member.id}>
+                                        {member.name} {member.email && `(${member.email})`}
+                                      </Select.Option>
+                                    ))}
+                                  </Select>
+                                  <Input
+                                    style={{ width: '100%' }}
+                                    value={customEdits[item.transaction.id]?.payerPayee || item.bestMatch.matchedMember?.memberName || ''}
                                     onChange={(e) => updateCustomEdit(item.transaction.id, 'payerPayee', e.target.value)}
-                                    placeholder="付款人/收款人"
+                                    placeholder="或手动输入非会员姓名/公司"
+                                    disabled={!!customEdits[item.transaction.id]?.memberId && !customEdits[item.transaction.id]?.payerPayee}
                                     suffix={
-                                      <Tag color="default" style={{ border: 'none', marginRight: -8 }}>
-                                        {item.bestMatch.matchedMember.matchType === 'phone' && '通过手机号'}
-                                        {item.bestMatch.matchedMember.matchType === 'email' && '通过邮箱'}
-                                        {item.bestMatch.matchedMember.matchType === 'name' && '通过姓名'}
-                                        {item.bestMatch.matchedMember.matchType === 'memberId' && '通过ID'}
-                                      </Tag>
+                                      item.bestMatch.matchedMember && (
+                                        <Tag color="default" style={{ border: 'none', marginRight: -8 }}>
+                                          {item.bestMatch.matchedMember.matchType === 'phone' && '通过手机号'}
+                                          {item.bestMatch.matchedMember.matchType === 'email' && '通过邮箱'}
+                                          {item.bestMatch.matchedMember.matchType === 'name' && '通过姓名'}
+                                          {item.bestMatch.matchedMember.matchType === 'memberId' && '通过ID'}
+                                        </Tag>
+                                      )
                                     }
                                   />
                                 </div>
-                              )}
+                              </div>
                             </Space>
                           </Descriptions.Item>
                         </Descriptions>

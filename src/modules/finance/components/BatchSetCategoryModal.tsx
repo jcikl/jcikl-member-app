@@ -211,8 +211,11 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       width: 150,
       ellipsis: true,
       render: (_: any, record: Transaction) => {
-        const main = record.mainDescription || '';
-        const sub = record.subDescription || '';
+        // 处理可能的字段名变体
+        const recordAny = record as any;
+        const main = record.mainDescription || recordAny.description || recordAny.mainDesc || recordAny.desc || '';
+        const sub = record.subDescription || recordAny.subDesc || '';
+        
         return (
           <div>
             <div>{main}</div>
@@ -301,8 +304,11 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       width: 150,
       ellipsis: true,
       render: (_: any, record: Transaction) => {
-        const main = record.mainDescription || '';
-        const sub = record.subDescription || '';
+        // 处理可能的字段名变体
+        const recordAny = record as any;
+        const main = record.mainDescription || recordAny.description || recordAny.mainDesc || recordAny.desc || '';
+        const sub = record.subDescription || recordAny.subDesc || '';
+        
         return (
           <div>
             <div>{main}</div>
@@ -447,8 +453,11 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       width: 150,
       ellipsis: true,
       render: (_: any, record: Transaction) => {
-        const main = record.mainDescription || '';
-        const sub = record.subDescription || '';
+        // 处理可能的字段名变体
+        const recordAny = record as any;
+        const main = record.mainDescription || recordAny.description || recordAny.mainDesc || recordAny.desc || '';
+        const sub = record.subDescription || recordAny.subDesc || '';
+        
         return (
           <div>
             <div>{main}</div>
