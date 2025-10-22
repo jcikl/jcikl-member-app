@@ -50,6 +50,26 @@ const getEventRegistrationsRef = () => collection(db, GLOBAL_COLLECTIONS.EVENT_R
  * 转换 Firestore 文档为活动对象
  */
 const convertToEvent = (docId: string, data: DocumentData): Event => {
+  // 🔍 调试：检查原始数据
+  console.log('🔍 [convertToEvent] Raw Firestore data for dates:', {
+    eventId: docId,
+    eventName: data.name,
+    startDate: data.startDate,
+    startDateType: typeof data.startDate,
+    endDate: data.endDate,
+    endDateType: typeof data.endDate,
+    registrationStartDate: data.registrationStartDate,
+    registrationDeadline: data.registrationDeadline,
+  });
+  
+  const convertedStartDate = safeTimestampToISO(data.startDate);
+  const convertedEndDate = safeTimestampToISO(data.endDate);
+  
+  console.log('🔄 [convertToEvent] After conversion:', {
+    startDate: convertedStartDate,
+    endDate: convertedEndDate,
+  });
+  
   return {
     id: docId,
     name: data.name || '',
@@ -61,8 +81,8 @@ const convertToEvent = (docId: string, data: DocumentData): Event => {
     level: data.level || 'Local',
     
     // Date & Time
-    startDate: safeTimestampToISO(data.startDate),
-    endDate: safeTimestampToISO(data.endDate),
+    startDate: convertedStartDate || new Date().toISOString(), // 必填字段，如果没有则使用当前时间
+    endDate: convertedEndDate || new Date().toISOString(), // 必填字段，如果没有则使用当前时间
     registrationStartDate: data.registrationStartDate ? safeTimestampToISO(data.registrationStartDate) : undefined,
     registrationDeadline: data.registrationDeadline ? safeTimestampToISO(data.registrationDeadline) : undefined,
     

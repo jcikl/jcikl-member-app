@@ -12,7 +12,7 @@ import { globalDateService } from '@/config/globalDateSettings';
  * @param timestamp - Firestore Timestamp or Date or string
  * @returns ISO string
  */
-export const safeTimestampToISO = (timestamp: any): string => {
+export const safeTimestampToISO = (timestamp: any): string | undefined => {
   // Handle Firestore Timestamp
   if (timestamp?.toDate && typeof timestamp.toDate === 'function') {
     return timestamp.toDate().toISOString();
@@ -33,8 +33,9 @@ export const safeTimestampToISO = (timestamp: any): string => {
     return new Date(timestamp).toISOString();
   }
 
-  // Fallback: return current time
-  return new Date().toISOString();
+  // ❌ 不要返回当前时间！返回 undefined 让调用者决定如何处理
+  // Fallback: return undefined (don't default to current time)
+  return undefined;
 };
 
 /**
