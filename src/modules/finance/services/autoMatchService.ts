@@ -39,7 +39,7 @@ export interface MatchResult {
   matchedMember?: {
     memberId: string;
     memberName: string;
-    matchType: 'name' | 'phone' | 'email' | 'memberId'; // 匹配方式
+    matchType: 'name' | 'phone' | 'email' | 'memberId' | 'nric'; // 匹配方式
     matchedValue: string; // 匹配到的值
   };
 }
@@ -274,8 +274,8 @@ const getUncategorizedTransactions = async (): Promise<Transaction[]> => {
       // 排除已拆分的主交易和虚拟交易
       if (!data.isSplit && !data.isVirtual) {
         transactions.push({
-          id: doc.id,
           ...data,
+          id: doc.id,
         } as Transaction);
       }
     });
@@ -418,7 +418,18 @@ const matchMemberFromDescription = (
       };
     }
 
-    // 3. 匹配会员ID（完整匹配）
+    // 3. 匹配身份证号（NRIC）（完整匹配）
+    if (member.profile?.nric && description.includes(member.profile.nric.toLowerCase())) {
+      console.log(`✅ [matchMember] Matched by NRIC: ${member.name} (${member.profile.nric})`);
+      return {
+        memberId: member.id,
+        memberName: member.name,
+        matchType: 'nric',
+        matchedValue: member.profile.nric,
+      };
+    }
+
+    // 4. 匹配会员ID（完整匹配）
     if (member.memberId && description.includes(member.memberId.toLowerCase())) {
       console.log(`✅ [matchMember] Matched by memberId: ${member.name} (${member.memberId})`);
       return {
@@ -429,7 +440,7 @@ const matchMemberFromDescription = (
       };
     }
 
-    // 4. 匹配姓名（完整匹配，至少3个字符）
+    // 5. 匹配姓名（完整匹配，至少3个字符）
     if (member.name && member.name.length >= 3) {
       const memberNameLower = member.name.toLowerCase();
       if (description.includes(memberNameLower)) {
