@@ -26,7 +26,11 @@ import {
   Row,
   Col,
   Radio,
+  Select,
+  Input,
+  AutoComplete,
 } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -43,21 +47,31 @@ import './styles.css';
 interface Props {
   visible: boolean;
   previewItems: AutoMatchPreviewItem[];
-  onConfirm: (selectedItems: Array<{ transactionId: string; matchResult: MatchResult }>) => Promise<void>;
+  onConfirm: (selectedItems: Array<{ transactionId: string; matchResult: MatchResult; customData?: { eventName?: string; payerPayee?: string } }>) => Promise<void>;
   onCancel: () => void;
+  allEvents?: Array<{ id: string; eventName: string; eventDate: string }>; // 🆕 所有活动列表用于下拉选择
 }
 
 type FilterType = 'all' | 'high' | 'medium' | 'noMatch';
+
+// 🆕 自定义编辑数据
+interface CustomEditData {
+  eventName?: string;
+  payerPayee?: string;
+}
 
 export const AutoMatchModal: React.FC<Props> = ({
   visible,
   previewItems,
   onConfirm,
   onCancel,
+  allEvents = [],
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [loading, setLoading] = useState(false);
+  // 🆕 存储每个交易的自定义编辑数据
+  const [customEdits, setCustomEdits] = useState<Record<string, CustomEditData>>({});
 
   // 计算统计数据
   const statistics = useMemo(() => {
@@ -93,6 +107,17 @@ export const AutoMatchModal: React.FC<Props> = ({
     }
   };
 
+  // 🆕 更新自定义编辑数据
+  const updateCustomEdit = (transactionId: string, field: keyof CustomEditData, value: string) => {
+    setCustomEdits(prev => ({
+      ...prev,
+      [transactionId]: {
+        ...prev[transactionId],
+        [field]: value,
+      }
+    }));
+  };
+
   // 确认应用
   const handleApply = async () => {
     try {
@@ -103,6 +128,8 @@ export const AutoMatchModal: React.FC<Props> = ({
         .map((item) => ({
           transactionId: item.transaction.id,
           matchResult: item.bestMatch!,
+          // 🆕 包含用户自定义编辑的数据
+          customData: customEdits[item.transaction.id],
         }));
 
       await onConfirm(selectedItems);
@@ -352,31 +379,45 @@ export const AutoMatchModal: React.FC<Props> = ({
                             </Descriptions.Item>
                           )}
                           <Descriptions.Item label="将更新为">
-                            <Space direction="vertical" size="small">
+                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
                               <div>
                                 <Tag color="purple">主分类:</Tag>
                                 <span>活动财务 (event-finance)</span>
                               </div>
-                              <div>
-                                <Tag color="cyan">二次分类:</Tag>
-                                <span>{item.bestMatch.eventName}</span>
-                              </div>
-                              <div>
-                                <Tag color="geekblue">关联活动ID:</Tag>
-                                <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                                  {item.bestMatch.eventId}
-                                </span>
+                              <div style={{ width: '100%' }}>
+                                <Tag color="cyan" icon={<EditOutlined />}>二次分类:</Tag>
+                                <Select
+                                  style={{ width: 'calc(100% - 90px)', marginLeft: 8 }}
+                                  value={customEdits[item.transaction.id]?.eventName || item.bestMatch.eventName}
+                                  onChange={(value) => updateCustomEdit(item.transaction.id, 'eventName', value)}
+                                  showSearch
+                                  placeholder="选择活动"
+                                  optionFilterProp="children"
+                                >
+                                  {allEvents.map(event => (
+                                    <Select.Option key={event.id} value={event.eventName}>
+                                      {event.eventName} ({dayjs(event.eventDate).format('YYYY-MM-DD')})
+                                    </Select.Option>
+                                  ))}
+                                </Select>
                               </div>
                               {item.bestMatch.matchedMember && (
-                                <div>
-                                  <Tag color="magenta" icon={<CheckCircleOutlined />}>关联会员:</Tag>
-                                  <span>{item.bestMatch.matchedMember.memberName}</span>
-                                  <Tag color="default" style={{ marginLeft: 8 }}>
-                                    {item.bestMatch.matchedMember.matchType === 'phone' && '通过手机号匹配'}
-                                    {item.bestMatch.matchedMember.matchType === 'email' && '通过邮箱匹配'}
-                                    {item.bestMatch.matchedMember.matchType === 'name' && '通过姓名匹配'}
-                                    {item.bestMatch.matchedMember.matchType === 'memberId' && '通过会员ID匹配'}
-                                  </Tag>
+                                <div style={{ width: '100%' }}>
+                                  <Tag color="magenta" icon={<EditOutlined />}>关联会员:</Tag>
+                                  <Input
+                                    style={{ width: 'calc(100% - 90px)', marginLeft: 8 }}
+                                    value={customEdits[item.transaction.id]?.payerPayee || item.bestMatch.matchedMember.memberName}
+                                    onChange={(e) => updateCustomEdit(item.transaction.id, 'payerPayee', e.target.value)}
+                                    placeholder="付款人/收款人"
+                                    suffix={
+                                      <Tag color="default" style={{ border: 'none', marginRight: -8 }}>
+                                        {item.bestMatch.matchedMember.matchType === 'phone' && '通过手机号'}
+                                        {item.bestMatch.matchedMember.matchType === 'email' && '通过邮箱'}
+                                        {item.bestMatch.matchedMember.matchType === 'name' && '通过姓名'}
+                                        {item.bestMatch.matchedMember.matchType === 'memberId' && '通过ID'}
+                                      </Tag>
+                                    }
+                                  />
                                 </div>
                               )}
                             </Space>

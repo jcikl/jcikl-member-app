@@ -74,6 +74,7 @@ import type { AutoMatchPreviewItem, MatchResult } from '../../services/autoMatch
 import { useNavigate } from 'react-router-dom';
 import { getAllBankAccounts } from '../../services/bankAccountService';
 import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
+import { getEvents } from '../../../event/services/eventService'; // 🆕 导入活动服务
 import type { Transaction, TransactionFormData, TransactionStatus, BankAccount } from '../../types';
 import './styles.css';
 
@@ -151,6 +152,7 @@ const TransactionManagementPage: React.FC = () => {
   const [autoMatchModalVisible, setAutoMatchModalVisible] = useState(false);
   const [autoMatchPreviewItems, setAutoMatchPreviewItems] = useState<AutoMatchPreviewItem[]>([]);
   const [autoMatchLoading, setAutoMatchLoading] = useState(false);
+  const [allEventsForAutoMatch, setAllEventsForAutoMatch] = useState<Array<{ id: string; eventName: string; eventDate: string }>>([]);
 
   useEffect(() => {
     loadBankAccounts();
@@ -822,6 +824,15 @@ const TransactionManagementPage: React.FC = () => {
       setAutoMatchLoading(true);
       message.loading('正在分析交易记录...', 0);
       
+      // 🆕 加载所有活动用于下拉选择
+      const eventsResult = await getEvents({ page: 1, limit: 1000 });
+      const eventsList = eventsResult.data.map(e => ({
+        id: e.id,
+        eventName: e.name,
+        eventDate: e.startDate,
+      }));
+      setAllEventsForAutoMatch(eventsList);
+      
       // 执行自动匹配
       const previewItems = await autoMatchUncategorizedTransactions();
       
@@ -844,7 +855,7 @@ const TransactionManagementPage: React.FC = () => {
   };
   
   const handleAutoMatchConfirm = async (
-    selectedItems: Array<{ transactionId: string; matchResult: MatchResult }>
+    selectedItems: Array<{ transactionId: string; matchResult: MatchResult; customData?: { eventName?: string; payerPayee?: string } }>
   ) => {
     if (!user) return;
     
@@ -854,26 +865,38 @@ const TransactionManagementPage: React.FC = () => {
       
       for (const item of selectedItems) {
         try {
+          // 🆕 使用用户自定义的活动名称（如果有修改）
+          const finalEventName = item.customData?.eventName || item.matchResult.eventName;
+          // 🆕 查找对应的活动ID（如果活动名称被修改了）
+          const matchedEvent = autoMatchPreviewItems.find(p => p.bestMatch?.eventName === finalEventName)?.bestMatch;
+          const finalEventId = matchedEvent?.eventId || item.matchResult.eventId;
+          
           // 构建更新对象
           const updates: any = {
             category: 'event-finance',
-            txAccount: item.matchResult.eventId,
+            txAccount: finalEventName, // 🆕 使用活动名称作为二次分类
             metadata: {
-              relatedEventId: item.matchResult.eventId,
-              relatedEventName: item.matchResult.eventName,
+              relatedEventId: finalEventId,
+              relatedEventName: finalEventName,
               autoMatchedCategory: 'event-finance',
               autoMatchScore: item.matchResult.totalScore,
               autoMatchConfidence: item.matchResult.confidence,
               needsReview: item.matchResult.confidence === 'medium',
+              userModified: !!(item.customData?.eventName || item.customData?.payerPayee), // 🆕 标记用户是否修改
             },
           };
           
-          // 如果匹配到会员，也更新会员信息
-          if (item.matchResult.matchedMember) {
-            updates.payerId = item.matchResult.matchedMember.memberId;
-            updates.payerPayee = item.matchResult.matchedMember.memberName;
-            updates.metadata.autoMatchedMember = item.matchResult.matchedMember.memberName;
-            updates.metadata.autoMatchedMemberType = item.matchResult.matchedMember.matchType;
+          // 🆕 使用用户自定义的付款人/收款人（如果有修改）
+          const finalPayerPayee = item.customData?.payerPayee || item.matchResult.matchedMember?.memberName;
+          
+          // 如果有付款人/收款人信息，更新
+          if (finalPayerPayee) {
+            updates.payerPayee = finalPayerPayee;
+            if (item.matchResult.matchedMember) {
+              updates.payerId = item.matchResult.matchedMember.memberId;
+              updates.metadata.autoMatchedMember = item.matchResult.matchedMember.memberName;
+              updates.metadata.autoMatchedMemberType = item.matchResult.matchedMember.matchType;
+            }
           }
           
           // 更新交易记录
@@ -2245,6 +2268,7 @@ const TransactionManagementPage: React.FC = () => {
         <AutoMatchModal
           visible={autoMatchModalVisible}
           previewItems={autoMatchPreviewItems}
+          allEvents={allEventsForAutoMatch}
           onConfirm={handleAutoMatchConfirm}
           onCancel={() => {
             setAutoMatchModalVisible(false);
