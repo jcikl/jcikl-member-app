@@ -28,10 +28,11 @@ const EventScheduleForm: React.FC<Props> = ({ initialValues, onSubmit, loading }
 
   const handleFinish = async (values: any) => {
     const payload: Partial<Event> = {
-      startDate: values.startDate?.toISOString(),
-      endDate: values.endDate?.toISOString(),
-      registrationStartDate: values.registrationStartDate?.toISOString(),
-      registrationDeadline: values.registrationDeadline?.toISOString(),
+      // 使用 format() 保持本地时间，避免时区转换问题
+      startDate: values.startDate?.format('YYYY-MM-DDTHH:mm:ss'),
+      endDate: values.endDate?.format('YYYY-MM-DDTHH:mm:ss'),
+      registrationStartDate: values.registrationStartDate?.format('YYYY-MM-DDTHH:mm:ss'),
+      registrationDeadline: values.registrationDeadline?.format('YYYY-MM-DDTHH:mm:ss'),
       isOnline: values.isOnline || false,
       onlineLink: values.onlineLink,
       location: values.location,

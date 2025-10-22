@@ -106,7 +106,8 @@ const EventPricingForm: React.FC<Props> = ({ initialValues, onSubmit, loading })
         alumniPrice: values.alumniPrice ?? 0,
         earlyBirdPrice: values.earlyBirdPrice ?? 0,
         committeePrice: values.committeePrice ?? 0,
-        earlyBirdDeadline: values.earlyBirdDeadline?.toISOString(),
+        // 使用 format() 保持本地时间，避免时区转换问题
+        earlyBirdDeadline: values.earlyBirdDeadline?.format('YYYY-MM-DDTHH:mm:ss'),
         currency: initialValues.pricing?.currency || 'RM',
       },
       financialAccount: values.financialAccount, // 存储 FinanceEvent ID
