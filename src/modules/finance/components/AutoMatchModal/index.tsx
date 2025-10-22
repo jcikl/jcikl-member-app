@@ -374,7 +374,6 @@ export const AutoMatchModal: React.FC<Props> = ({
                                   <Tag color="default" style={{ marginLeft: 8 }}>
                                     {item.bestMatch.matchedMember.matchType === 'phone' && '通过手机号匹配'}
                                     {item.bestMatch.matchedMember.matchType === 'email' && '通过邮箱匹配'}
-                                    {item.bestMatch.matchedMember.matchType === 'nric' && '通过身份证号匹配'}
                                     {item.bestMatch.matchedMember.matchType === 'name' && '通过姓名匹配'}
                                     {item.bestMatch.matchedMember.matchType === 'memberId' && '通过会员ID匹配'}
                                   </Tag>
@@ -471,7 +470,6 @@ export const AutoMatchModal: React.FC<Props> = ({
                                 <Tag color="default">
                                   {item.topAttempt.matchedMember.matchType === 'phone' && '通过手机号匹配'}
                                   {item.topAttempt.matchedMember.matchType === 'email' && '通过邮箱匹配'}
-                                  {item.topAttempt.matchedMember.matchType === 'nric' && '通过身份证号匹配'}
                                   {item.topAttempt.matchedMember.matchType === 'name' && '通过姓名匹配'}
                                   {item.topAttempt.matchedMember.matchType === 'memberId' && '通过会员ID匹配'}
                                 </Tag>

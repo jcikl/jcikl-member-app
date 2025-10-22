@@ -58,10 +58,14 @@ export type Gender = 'Male' | 'Female';
 export interface MemberProfile {
   // Basic Info
   avatar?: string;
-  birthDate?: string;           // Format: dd-mmm-yyyy
+  profilePhotoUrl?: string;     // 🆕 个人照片URL
+  birthDate?: string | any;     // Format: dd-mmm-yyyy or Dayjs object
+  fullNameNric?: string;        // 🆕 身份证全名
   gender?: Gender;
   nationality?: string;
+  race?: string;                // 🆕 种族
   nric?: string;                // National ID
+  nricOrPassport?: string;      // 🆕 身份证或护照号码
   
   // Contact Info
   alternativePhone?: string;
@@ -72,7 +76,7 @@ export interface MemberProfile {
   };
   
   // Address
-  address?: {
+  address?: string | {            // 🔄 支持字符串或对象格式
     street?: string;
     city?: string;
     state?: string;
@@ -87,9 +91,11 @@ export interface MemberProfile {
     instagram?: string;
     wechat?: string;
   };
+  linkedin?: string;              // 🆕 LinkedIn链接（简化访问）
   
   // Career & Business
   company?: string;
+  companyWebsite?: string;        // 🆕 公司网站
   departmentAndPosition?: string;
   industryDetail?: string;
   companyIntro?: string;
@@ -97,19 +103,45 @@ export interface MemberProfile {
   interestedIndustries?: IndustryType[];
   businessCategories?: BusinessCategory[];
   acceptInternationalBusiness?: 'Yes' | 'No' | 'Willing to explore';
+  categories?: string[];          // 🆕 类别列表
   
   // JCI Specific
   jciPosition?: string;
   senatorId?: string;
   senatorScore?: number;
+  senatorVerified?: boolean;    // 🆕 参议员验证状态
   introducerId?: string;        // Who introduced this member
   introducerName?: string;
+  jciEventInterests?: string;   // 🆕 JCI活动兴趣
+  jciBenefitsExpectation?: string; // 🆕 JCI利益期望
+  
+  // Position Management
+  isActingPosition?: boolean;   // 🆕 是否代理职位
+  actingForPosition?: string | null; // 🆕 代理的职位
+  isCurrentTerm?: boolean;      // 🆕 是否当前任期
+  positionStartDate?: string | null; // 🆕 职位开始日期
+  positionEndDate?: string | null;   // 🆕 职位结束日期
+  termStartDate?: string | null;     // 🆕 任期开始日期
+  termEndDate?: string | null;       // 🆕 任期结束日期
+  vpDivision?: string | null;        // 🆕 VP部门
   
   // Career Development
   fiveYearsVision?: string;
   activeMemberHow?: string;
   
+  // Membership & Joining
+  joinedDate?: string;          // 🆕 加入日期
+  endorsementDate?: string | null; // 🆕 背书日期
+  
+  // Payment Info
+  paymentDate?: string | null;         // 🆕 付款日期
+  paymentSlipUrl?: string | null;      // 🆕 付款凭证URL
+  paymentVerifiedDate?: string | null; // 🆕 付款验证日期
+  
   // Permissions & Roles
+  hasSpecialPermissions?: boolean;     // 🆕 是否有特殊权限
+  specialPermissions?: string[];       // 🆕 特殊权限列表
+  permissionNotes?: string;            // 🆕 权限备注
   effectivePermissions?: string[];
   roleBindings?: Array<{
     roleId: string;
@@ -117,6 +149,18 @@ export interface MemberProfile {
     assignedAt: string;
     assignedBy: string;
   }>;
+  
+  // Physical Items
+  shirtSize?: string | null;           // 🆕 衬衫尺寸
+  jacketSize?: string | null;          // 🆕 夹克尺寸
+  nameToBeEmbroidered?: string | null; // 🆕 刺绣名称
+  tshirtReceivingStatus?: string | null; // 🆕 T恤接收状态
+  
+  // Communication
+  whatsappGroup?: string | null;       // 🆕 WhatsApp群组
+  
+  // Miscellaneous
+  cutting?: any;                       // 🆕 待确认用途
   
   // Activity & Tasks
   taskCompletions?: Array<{
@@ -140,13 +184,19 @@ export interface Member extends BaseEntity {
   email: string;
   name: string;
   phone: string;
-  memberId: string;              // Unique member ID
+  memberId: string | null;       // Unique member ID (可为null，新用户)
   
   // Status & Level
   status: MemberStatus;
   level: MemberLevel;
   accountType?: string;
   category?: MemberCategoryType;
+  membershipCategory?: string;   // 🆕 会员类别（补充字段）
+  
+  // Category Management
+  categoryAssignedBy?: string;   // 🆕 类别分配者
+  categoryAssignedDate?: string; // 🆕 类别分配日期
+  categoryReason?: string;       // 🆕 类别分配原因
   
   // Organization Hierarchy (5 levels)
   worldRegion?: string;

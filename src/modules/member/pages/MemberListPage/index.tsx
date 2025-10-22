@@ -557,20 +557,29 @@ const MemberListPage: React.FC = () => {
               🏠 地址信息
             </h3>
             <Row gutter={[16, 16]}>
-              <Col span={8}><strong>街道地址:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.address?.street || '-'}</Col>
-              
-              <Col span={8}><strong>城市:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.address?.city || '-'}</Col>
-              
-              <Col span={8}><strong>州/省:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.address?.state || '-'}</Col>
-              
-              <Col span={8}><strong>邮编:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.address?.postcode || '-'}</Col>
-              
-              <Col span={8}><strong>国家:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.address?.country || '-'}</Col>
+              {typeof selectedMember.profile?.address === 'string' ? (
+                <>
+                  <Col span={8}><strong>完整地址:</strong></Col>
+                  <Col span={16}>{selectedMember.profile.address}</Col>
+                </>
+              ) : (
+                <>
+                  <Col span={8}><strong>街道地址:</strong></Col>
+                  <Col span={16}>{selectedMember.profile?.address?.street || '-'}</Col>
+                  
+                  <Col span={8}><strong>城市:</strong></Col>
+                  <Col span={16}>{selectedMember.profile?.address?.city || '-'}</Col>
+                  
+                  <Col span={8}><strong>州/省:</strong></Col>
+                  <Col span={16}>{selectedMember.profile?.address?.state || '-'}</Col>
+                  
+                  <Col span={8}><strong>邮编:</strong></Col>
+                  <Col span={16}>{selectedMember.profile?.address?.postcode || '-'}</Col>
+                  
+                  <Col span={8}><strong>国家:</strong></Col>
+                  <Col span={16}>{selectedMember.profile?.address?.country || '-'}</Col>
+                </>
+              )}
             </Row>
           </div>
 
