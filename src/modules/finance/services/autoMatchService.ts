@@ -382,33 +382,49 @@ const calculateDateScore = (
   let evtDateStr = eventDate;
 
   // 如果是 Firestore Timestamp 对象，转换为字符串
-  if (transactionDate && typeof transactionDate === 'object' && 'toDate' in transactionDate) {
+  // 方法1: 有 toDate() 方法的 Timestamp 对象
+  if (transactionDate && typeof transactionDate === 'object' && 'toDate' in transactionDate && typeof (transactionDate as any).toDate === 'function') {
     txDateStr = (transactionDate as any).toDate().toISOString();
-    console.log('🔄 Converted transaction timestamp to string:', txDateStr);
+    console.log('🔄 [Method 1] Converted transaction timestamp to string:', txDateStr);
+  }
+  // 方法2: 有 seconds 和 nanoseconds 字段的原始 Firestore Timestamp
+  else if (transactionDate && typeof transactionDate === 'object' && 'seconds' in transactionDate && 'nanoseconds' in transactionDate) {
+    const milliseconds = (transactionDate as any).seconds * 1000 + (transactionDate as any).nanoseconds / 1000000;
+    txDateStr = new Date(milliseconds).toISOString();
+    console.log('🔄 [Method 2] Converted transaction timestamp to string:', txDateStr);
   }
 
-  if (eventDate && typeof eventDate === 'object' && 'toDate' in eventDate) {
+  if (eventDate && typeof eventDate === 'object' && 'toDate' in eventDate && typeof (eventDate as any).toDate === 'function') {
     evtDateStr = (eventDate as any).toDate().toISOString();
-    console.log('🔄 Converted event timestamp to string:', evtDateStr);
+    console.log('🔄 [Method 1] Converted event timestamp to string:', evtDateStr);
+  }
+  // 方法2: 有 seconds 和 nanoseconds 字段的原始 Firestore Timestamp
+  else if (eventDate && typeof eventDate === 'object' && 'seconds' in eventDate && 'nanoseconds' in eventDate) {
+    const milliseconds = (eventDate as any).seconds * 1000 + (eventDate as any).nanoseconds / 1000000;
+    evtDateStr = new Date(milliseconds).toISOString();
+    console.log('🔄 [Method 2] Converted event timestamp to string:', evtDateStr);
   }
 
   const txDate = new Date(txDateStr);
   const evtDate = new Date(evtDateStr);
 
+  // 验证日期是否有效
+  const txDateValid = !isNaN(txDate.getTime());
+  const evtDateValid = !isNaN(evtDate.getTime());
+
   console.log('📅 [calculateDateScore] Parsed dates:', {
-    txDate: txDate.toISOString(),
-    evtDate: evtDate.toISOString(),
-    txDateValid: !isNaN(txDate.getTime()),
-    evtDateValid: !isNaN(evtDate.getTime()),
+    txDate: txDateValid ? txDate.toISOString() : 'INVALID',
+    evtDate: evtDateValid ? evtDate.toISOString() : 'INVALID',
+    txDateValid,
+    evtDateValid,
   });
 
-  // 验证日期是否有效
-  if (isNaN(txDate.getTime()) || isNaN(evtDate.getTime())) {
+  if (!txDateValid || !evtDateValid) {
     console.error('❌ [calculateDateScore] Invalid date(s):', {
       transactionDate: txDateStr,
       eventDate: evtDateStr,
-      txDateValid: !isNaN(txDate.getTime()),
-      evtDateValid: !isNaN(evtDate.getTime()),
+      txDateValid,
+      evtDateValid,
     });
     return { score: 0, reason: '日期无效' };
   }
