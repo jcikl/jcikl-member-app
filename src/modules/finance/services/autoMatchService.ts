@@ -71,6 +71,17 @@ export const findMatchesForTransaction = async (
     let debugCount = 0;
 
     for (const event of events) {
+      // 🔍 调试前3个活动的字段
+      if (debugCount < 3) {
+        console.log(`🎯 [findMatchesForTransaction] Event #${debugCount + 1} fields:`, {
+          id: event.id,
+          name: event.name,
+          startDate: event.startDate,
+          startDateType: typeof event.startDate,
+          pricing: event.pricing,
+        });
+      }
+      
       // 计算各项得分
       const nameScore = calculateNameScore(transaction, event);
       const priceScore = calculatePriceScore(transaction.amount, event.pricing);
@@ -219,12 +230,27 @@ const getAllActiveEvents = async (): Promise<Event[]> => {
     const events: Event[] = [];
 
     snapshot.forEach((doc) => {
+      const data = doc.data();
+      
+      // 🔍 调试前3个活动的数据结构
+      if (events.length < 3) {
+        console.log(`🎯 [getAllActiveEvents] Event #${events.length + 1}:`, {
+          id: doc.id,
+          name: data.name,
+          startDate: data.startDate,
+          startDateType: typeof data.startDate,
+          hasToDate: data.startDate && typeof data.startDate === 'object' && 'toDate' in data.startDate,
+          rawData: data.startDate,
+        });
+      }
+      
       events.push({
         id: doc.id,
-        ...doc.data(),
+        ...data,
       } as Event);
     });
 
+    console.log(`✅ [getAllActiveEvents] Loaded ${events.length} active events`);
     return events;
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -344,12 +370,54 @@ const calculateDateScore = (
   transactionDate: string,
   eventDate: string
 ): { score: number; reason: string } => {
-  const txDate = new Date(transactionDate);
-  const evtDate = new Date(eventDate);
+  console.log('📅 [calculateDateScore] Input:', {
+    transactionDate,
+    eventDate,
+    txDateType: typeof transactionDate,
+    evtDateType: typeof eventDate,
+  });
+
+  // 处理可能的 Firestore Timestamp 对象
+  let txDateStr = transactionDate;
+  let evtDateStr = eventDate;
+
+  // 如果是 Firestore Timestamp 对象，转换为字符串
+  if (transactionDate && typeof transactionDate === 'object' && 'toDate' in transactionDate) {
+    txDateStr = (transactionDate as any).toDate().toISOString();
+    console.log('🔄 Converted transaction timestamp to string:', txDateStr);
+  }
+
+  if (eventDate && typeof eventDate === 'object' && 'toDate' in eventDate) {
+    evtDateStr = (eventDate as any).toDate().toISOString();
+    console.log('🔄 Converted event timestamp to string:', evtDateStr);
+  }
+
+  const txDate = new Date(txDateStr);
+  const evtDate = new Date(evtDateStr);
+
+  console.log('📅 [calculateDateScore] Parsed dates:', {
+    txDate: txDate.toISOString(),
+    evtDate: evtDate.toISOString(),
+    txDateValid: !isNaN(txDate.getTime()),
+    evtDateValid: !isNaN(evtDate.getTime()),
+  });
+
+  // 验证日期是否有效
+  if (isNaN(txDate.getTime()) || isNaN(evtDate.getTime())) {
+    console.error('❌ [calculateDateScore] Invalid date(s):', {
+      transactionDate: txDateStr,
+      eventDate: evtDateStr,
+      txDateValid: !isNaN(txDate.getTime()),
+      evtDateValid: !isNaN(evtDate.getTime()),
+    });
+    return { score: 0, reason: '日期无效' };
+  }
 
   const daysDiff = Math.abs(
     Math.floor((evtDate.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24))
   );
+
+  console.log('📊 [calculateDateScore] Days difference:', daysDiff);
 
   if (daysDiff === 0) {
     return { score: 10, reason: '活动当天' };
