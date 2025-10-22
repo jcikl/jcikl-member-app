@@ -155,11 +155,21 @@ export const findMatchesForTransaction = async (
 
     // 排序逻辑：
     // 1. 如果是 includeAllScores，且最高分 < 60，优先按日期接近度排序
-    // 2. 否则按总分排序
+    // 2. 但排除日期相差过远的匹配（> 90天）
+    // 3. 否则按总分排序
     const sortedMatches = allMatches.sort((a, b) => {
-      // 如果包含所有分数，且分数都很低（< 60），优先显示日期最接近的
+      // 如果包含所有分数，且分数都很低（< 60）
       if (includeAllScores && a.totalScore < 60 && b.totalScore < 60) {
-        // 按实际天数差异排序（天数越少越好）
+        // 排除日期相差过远的匹配（> 90天）
+        const aDateReasonable = a.daysDifference <= 90;
+        const bDateReasonable = b.daysDifference <= 90;
+        
+        // 优先显示日期合理的匹配
+        if (aDateReasonable !== bDateReasonable) {
+          return aDateReasonable ? -1 : 1; // 日期合理的排在前面
+        }
+        
+        // 如果都合理或都不合理，按实际天数差异排序（天数越少越好）
         if (a.daysDifference !== b.daysDifference) {
           return a.daysDifference - b.daysDifference;
         }
@@ -170,8 +180,13 @@ export const findMatchesForTransaction = async (
       return b.totalScore - a.totalScore;
     });
     
+    // 如果包含所有分数，过滤掉日期不合理的匹配（> 90天）
     if (includeAllScores) {
-      console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} total matches (top score: ${sortedMatches[0]?.totalScore ?? 0}, top date score: ${sortedMatches[0]?.dateScore ?? 0})`);
+      const reasonableMatches = sortedMatches.filter(match => match.daysDifference <= 90);
+      console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} total matches, ${reasonableMatches.length} with reasonable dates (top score: ${sortedMatches[0]?.totalScore ?? 0}, top date score: ${sortedMatches[0]?.dateScore ?? 0})`);
+      
+      // 如果有日期合理的匹配，返回这些匹配；否则返回空数组（表示无合理匹配）
+      return reasonableMatches.length > 0 ? reasonableMatches : [];
     } else {
       console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} matches (score ≥ 60)`);
     }
