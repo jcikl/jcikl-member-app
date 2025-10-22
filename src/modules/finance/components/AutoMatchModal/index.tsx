@@ -404,11 +404,97 @@ export const AutoMatchModal: React.FC<Props> = ({
                           )}
                         </Space>
                       </>
+                    ) : item.topAttempt ? (
+                      <>
+                        <div className="section-title">⚠️ 最佳尝试匹配（需手动确认）</div>
+                        <Alert
+                          message={`未达到自动分类阈值（60分），但找到以下最接近的活动（得分：${item.topAttempt.totalScore}/100）`}
+                          type="warning"
+                          showIcon
+                          style={{ marginBottom: 12 }}
+                        />
+                        <Descriptions column={1} size="small" bordered>
+                          <Descriptions.Item label="最接近活动">
+                            <strong style={{ color: '#fa8c16', fontSize: '14px' }}>
+                              {item.topAttempt.eventName}
+                            </strong>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="活动日期">
+                            {dayjs(item.topAttempt.eventDate).format('YYYY-MM-DD')}
+                          </Descriptions.Item>
+                          {item.topAttempt.matchedPriceType && (
+                            <Descriptions.Item label="票价匹配">
+                              {getPriceTypeTag(item.topAttempt.matchedPriceType)}
+                              {item.topAttempt.matchedPrice && (
+                                <span style={{ marginLeft: 8 }}>
+                                  RM {item.topAttempt.matchedPrice.toFixed(2)}
+                                </span>
+                              )}
+                            </Descriptions.Item>
+                          )}
+                        </Descriptions>
+
+                        <Divider style={{ margin: '12px 0' }} />
+
+                        <div className="section-title">📊 分数详情</div>
+                        <Space direction="vertical" style={{ width: '100%' }} size="small">
+                          <div>
+                            <Tag color="blue">名称匹配</Tag>
+                            <Progress
+                              percent={Math.floor((item.topAttempt.nameScore / 60) * 100)}
+                              size="small"
+                              format={() => `${item.topAttempt!.nameScore}/60`}
+                              status={item.topAttempt.nameScore > 0 ? 'normal' : 'exception'}
+                            />
+                          </div>
+                          <div>
+                            <Tag color="green">票价匹配</Tag>
+                            <Progress
+                              percent={Math.floor((item.topAttempt.priceScore / 30) * 100)}
+                              size="small"
+                              format={() => `${item.topAttempt!.priceScore}/30`}
+                              status={item.topAttempt.priceScore > 0 ? 'normal' : 'exception'}
+                            />
+                          </div>
+                          <div>
+                            <Tag color="orange">日期匹配</Tag>
+                            <Progress
+                              percent={Math.floor((item.topAttempt.dateScore / 10) * 100)}
+                              size="small"
+                              format={() => `${item.topAttempt!.dateScore}/10`}
+                              status={item.topAttempt.dateScore > 0 ? 'normal' : 'exception'}
+                            />
+                          </div>
+                          <div>
+                            <Tag color="red">总分</Tag>
+                            <Progress
+                              percent={item.topAttempt.totalScore}
+                              size="small"
+                              format={() => `${item.topAttempt!.totalScore}/100`}
+                              status="exception"
+                            />
+                          </div>
+                          {item.topAttempt.explanation && (
+                            <Alert
+                              message={`匹配说明：${item.topAttempt.explanation}`}
+                              type="info"
+                              showIcon
+                              style={{ fontSize: '12px' }}
+                            />
+                          )}
+                          <Alert
+                            message="💡 提示：如果确认此交易确实属于该活动，请前往交易列表手动分类"
+                            type="info"
+                            showIcon
+                            style={{ fontSize: '12px', marginTop: 8 }}
+                          />
+                        </Space>
+                      </>
                     ) : (
                       <>
                         <div className="section-title">❌ 无法自动匹配</div>
                         <Empty
-                          description="未找到匹配分数≥60的活动，需要手动分类"
+                          description="未找到任何可能的活动匹配，需要手动分类"
                           image={Empty.PRESENTED_IMAGE_SIMPLE}
                         />
                       </>

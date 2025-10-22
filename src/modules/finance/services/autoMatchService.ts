@@ -36,8 +36,9 @@ export interface MatchResult {
 
 export interface AutoMatchPreviewItem {
   transaction: Transaction;
-  matches: MatchResult[];
-  bestMatch: MatchResult | null;
+  matches: MatchResult[]; // 分数 >= 60 的匹配
+  bestMatch: MatchResult | null; // 最佳自动匹配（分数 >= 60）
+  topAttempt: MatchResult | null; // 最高分的尝试（可能 < 60，用于显示分析结果）
   canAutoApply: boolean; // 是否可自动应用（高置信度）
 }
 
@@ -45,10 +46,12 @@ export interface AutoMatchPreviewItem {
 
 /**
  * 为单个交易寻找匹配的活动
+ * @param includeAllScores - 是否返回所有分数的匹配（包括<60分），用于显示分析结果
  */
 export const findMatchesForTransaction = async (
   transaction: Transaction,
-  events?: Event[]
+  events?: Event[],
+  includeAllScores: boolean = false
 ): Promise<MatchResult[]> => {
   try {
     console.log('🔍 [findMatchesForTransaction] Starting match for transaction:', {
@@ -58,6 +61,7 @@ export const findMatchesForTransaction = async (
       amount: transaction.amount,
       transactionDate: transaction.transactionDate,
       transactionType: transaction.transactionType,
+      includeAllScores,
     });
     
     // 如果没有提供活动列表，从数据库获取
@@ -67,7 +71,7 @@ export const findMatchesForTransaction = async (
     
     console.log(`🎯 [findMatchesForTransaction] Checking against ${events.length} events`);
 
-    const matches: MatchResult[] = [];
+    const allMatches: MatchResult[] = [];
     let debugCount = 0;
 
     for (const event of events) {
@@ -101,11 +105,13 @@ export const findMatchesForTransaction = async (
         debugCount++;
       }
 
-      // 只保留得分 >= 60 的匹配
-      if (totalScore >= 60) {
+      // 根据 includeAllScores 决定是否保留所有匹配
+      const shouldInclude = includeAllScores || totalScore >= 60;
+      
+      if (shouldInclude) {
         const confidence = totalScore >= 80 ? 'high' : totalScore >= 60 ? 'medium' : 'low';
 
-        matches.push({
+        allMatches.push({
           eventId: event.id,
           eventName: event.name,
           eventDate: event.startDate,
@@ -122,10 +128,16 @@ export const findMatchesForTransaction = async (
       }
     }
 
-    console.log(`✅ [findMatchesForTransaction] Found ${matches.length} matches (score ≥ 60)`);
-    
     // 按总分排序（降序）
-    return matches.sort((a, b) => b.totalScore - a.totalScore);
+    const sortedMatches = allMatches.sort((a, b) => b.totalScore - a.totalScore);
+    
+    if (includeAllScores) {
+      console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} total matches (top score: ${sortedMatches[0]?.totalScore ?? 0})`);
+    } else {
+      console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} matches (score ≥ 60)`);
+    }
+    
+    return sortedMatches;
   } catch (error) {
     console.error('Error finding matches for transaction:', error);
     return [];
@@ -149,13 +161,22 @@ export const autoMatchUncategorizedTransactions = async (): Promise<AutoMatchPre
     const previewItems: AutoMatchPreviewItem[] = [];
 
     for (const transaction of uncategorizedTransactions) {
-      const matches = await findMatchesForTransaction(transaction, events);
+      // 先尝试找分数 >= 60 的匹配
+      const matches = await findMatchesForTransaction(transaction, events, false);
       const bestMatch = matches.length > 0 ? matches[0] : null;
+
+      // 如果没有找到自动匹配，获取所有分数的匹配来显示分析结果
+      let topAttempt: MatchResult | null = null;
+      if (!bestMatch) {
+        const allMatches = await findMatchesForTransaction(transaction, events, true);
+        topAttempt = allMatches.length > 0 ? allMatches[0] : null;
+      }
 
       previewItems.push({
         transaction,
         matches,
         bestMatch,
+        topAttempt,
         canAutoApply: bestMatch ? bestMatch.confidence === 'high' : false,
       });
     }
