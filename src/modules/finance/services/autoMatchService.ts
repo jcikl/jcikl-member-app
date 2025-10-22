@@ -17,6 +17,7 @@ import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
 import type { Transaction } from '../types';
 import type { Event, EventPricing } from '@/modules/event/types';
+import type { Member } from '@/modules/member/types';
 
 // ========== 类型定义 ==========
 
@@ -34,6 +35,13 @@ export interface MatchResult {
   matchedPrice?: number;
   explanation: string;
   pricing: EventPricing;
+  // 会员匹配信息
+  matchedMember?: {
+    memberId: string;
+    memberName: string;
+    matchType: 'name' | 'phone' | 'email' | 'memberId'; // 匹配方式
+    matchedValue: string; // 匹配到的值
+  };
 }
 
 export interface AutoMatchPreviewItem {
@@ -188,7 +196,11 @@ export const autoMatchUncategorizedTransactions = async (): Promise<AutoMatchPre
     const events = await getAllActiveEvents();
     console.log(`🎯 Found ${events.length} active events`);
 
-    // 3. 为每个交易寻找匹配
+    // 3. 获取所有活跃会员（一次性查询，避免重复）
+    const members = await getAllActiveMembers();
+    console.log(`👥 Found ${members.length} active members`);
+
+    // 4. 为每个交易寻找匹配
     const previewItems: AutoMatchPreviewItem[] = [];
 
     for (const transaction of uncategorizedTransactions) {
@@ -201,6 +213,23 @@ export const autoMatchUncategorizedTransactions = async (): Promise<AutoMatchPre
       if (!bestMatch) {
         const allMatches = await findMatchesForTransaction(transaction, events, true);
         topAttempt = allMatches.length > 0 ? allMatches[0] : null;
+      }
+
+      // 尝试从交易描述中匹配会员
+      const matchedMember = matchMemberFromDescription(transaction, members);
+      
+      // 将匹配的会员信息添加到结果中
+      if (matchedMember) {
+        if (bestMatch) {
+          bestMatch.matchedMember = matchedMember;
+        }
+        if (topAttempt) {
+          topAttempt.matchedMember = matchedMember;
+        }
+        // 也更新 matches 数组中的所有匹配结果
+        matches.forEach(match => {
+          match.matchedMember = matchedMember;
+        });
       }
 
       previewItems.push({
@@ -321,6 +350,101 @@ const getAllActiveEvents = async (): Promise<Event[]> => {
     console.error('Error fetching events:', error);
     return [];
   }
+};
+
+/**
+ * 获取所有活跃会员
+ */
+const getAllActiveMembers = async (): Promise<Member[]> => {
+  try {
+    const q = query(
+      collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+      where('status', '==', 'active')
+    );
+
+    const snapshot = await getDocs(q);
+    const members: Member[] = [];
+
+    snapshot.forEach((doc) => {
+      members.push({
+        id: doc.id,
+        ...doc.data(),
+      } as Member);
+    });
+
+    console.log(`👥 [getAllActiveMembers] Loaded ${members.length} active members`);
+    return members;
+  } catch (error) {
+    console.error('Error fetching members:', error);
+    return [];
+  }
+};
+
+/**
+ * 从交易描述中匹配会员
+ */
+const matchMemberFromDescription = (
+  transaction: Transaction,
+  members: Member[]
+): MatchResult['matchedMember'] | undefined => {
+  const description = (
+    (transaction.mainDescription || '') +
+    ' ' +
+    (transaction.subDescription || '')
+  ).toLowerCase();
+
+  console.log(`👤 [matchMember] Checking transaction: ${transaction.mainDescription}`);
+
+  for (const member of members) {
+    // 1. 匹配手机号码（完整匹配）
+    if (member.phone && description.includes(member.phone)) {
+      console.log(`✅ [matchMember] Matched by phone: ${member.name} (${member.phone})`);
+      return {
+        memberId: member.id,
+        memberName: member.name,
+        matchType: 'phone',
+        matchedValue: member.phone,
+      };
+    }
+
+    // 2. 匹配邮箱（完整匹配）
+    if (member.email && description.includes(member.email.toLowerCase())) {
+      console.log(`✅ [matchMember] Matched by email: ${member.name} (${member.email})`);
+      return {
+        memberId: member.id,
+        memberName: member.name,
+        matchType: 'email',
+        matchedValue: member.email,
+      };
+    }
+
+    // 3. 匹配会员ID（完整匹配）
+    if (member.memberId && description.includes(member.memberId.toLowerCase())) {
+      console.log(`✅ [matchMember] Matched by memberId: ${member.name} (${member.memberId})`);
+      return {
+        memberId: member.id,
+        memberName: member.name,
+        matchType: 'memberId',
+        matchedValue: member.memberId,
+      };
+    }
+
+    // 4. 匹配姓名（完整匹配，至少3个字符）
+    if (member.name && member.name.length >= 3) {
+      const memberNameLower = member.name.toLowerCase();
+      if (description.includes(memberNameLower)) {
+        console.log(`✅ [matchMember] Matched by name: ${member.name}`);
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          matchType: 'name',
+          matchedValue: member.name,
+        };
+      }
+    }
+  }
+
+  return undefined;
 };
 
 /**

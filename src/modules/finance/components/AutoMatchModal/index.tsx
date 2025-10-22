@@ -367,6 +367,18 @@ export const AutoMatchModal: React.FC<Props> = ({
                                   {item.bestMatch.eventId}
                                 </span>
                               </div>
+                              {item.bestMatch.matchedMember && (
+                                <div>
+                                  <Tag color="magenta" icon={<CheckCircleOutlined />}>关联会员:</Tag>
+                                  <span>{item.bestMatch.matchedMember.memberName}</span>
+                                  <Tag color="default" style={{ marginLeft: 8 }}>
+                                    {item.bestMatch.matchedMember.matchType === 'phone' && '通过手机号匹配'}
+                                    {item.bestMatch.matchedMember.matchType === 'email' && '通过邮箱匹配'}
+                                    {item.bestMatch.matchedMember.matchType === 'name' && '通过姓名匹配'}
+                                    {item.bestMatch.matchedMember.matchType === 'memberId' && '通过会员ID匹配'}
+                                  </Tag>
+                                </div>
+                              )}
                             </Space>
                           </Descriptions.Item>
                         </Descriptions>
@@ -447,6 +459,21 @@ export const AutoMatchModal: React.FC<Props> = ({
                                   RM {item.topAttempt.matchedPrice.toFixed(2)}
                                 </span>
                               )}
+                            </Descriptions.Item>
+                          )}
+                          {item.topAttempt.matchedMember && (
+                            <Descriptions.Item label="识别到会员">
+                              <Space>
+                                <Tag color="magenta" icon={<CheckCircleOutlined />}>
+                                  {item.topAttempt.matchedMember.memberName}
+                                </Tag>
+                                <Tag color="default">
+                                  {item.topAttempt.matchedMember.matchType === 'phone' && '通过手机号匹配'}
+                                  {item.topAttempt.matchedMember.matchType === 'email' && '通过邮箱匹配'}
+                                  {item.topAttempt.matchedMember.matchType === 'name' && '通过姓名匹配'}
+                                  {item.topAttempt.matchedMember.matchType === 'memberId' && '通过会员ID匹配'}
+                                </Tag>
+                              </Space>
                             </Descriptions.Item>
                           )}
                         </Descriptions>

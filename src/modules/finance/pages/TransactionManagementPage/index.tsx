@@ -890,21 +890,32 @@ const TransactionManagementPage: React.FC = () => {
       
       for (const item of selectedItems) {
         try {
+          // 构建更新对象
+          const updates: any = {
+            category: 'event-finance',
+            txAccount: item.matchResult.eventId,
+            metadata: {
+              relatedEventId: item.matchResult.eventId,
+              relatedEventName: item.matchResult.eventName,
+              autoMatchedCategory: 'event-finance',
+              autoMatchScore: item.matchResult.totalScore,
+              autoMatchConfidence: item.matchResult.confidence,
+              needsReview: item.matchResult.confidence === 'medium',
+            },
+          };
+          
+          // 如果匹配到会员，也更新会员信息
+          if (item.matchResult.matchedMember) {
+            updates.payerId = item.matchResult.matchedMember.memberId;
+            updates.payerPayee = item.matchResult.matchedMember.memberName;
+            updates.metadata.autoMatchedMember = item.matchResult.matchedMember.memberName;
+            updates.metadata.autoMatchedMemberType = item.matchResult.matchedMember.matchType;
+          }
+          
           // 更新交易记录
           await updateTransaction(
             item.transactionId,
-            {
-              category: 'event-finance',
-              txAccount: item.matchResult.eventId,
-              metadata: {
-                relatedEventId: item.matchResult.eventId,
-                relatedEventName: item.matchResult.eventName,
-                autoMatchedCategory: 'event-finance',
-                autoMatchScore: item.matchResult.totalScore,
-                autoMatchConfidence: item.matchResult.confidence,
-                needsReview: item.matchResult.confidence === 'medium',
-              },
-            } as any,
+            updates,
             user.id
           );
           successCount++;
