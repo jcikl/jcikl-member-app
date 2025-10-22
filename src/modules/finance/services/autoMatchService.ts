@@ -209,11 +209,11 @@ export const autoMatchUncategorizedTransactions = async (): Promise<AutoMatchPre
 
     // 2. 获取所有活动（一次性查询，避免重复）
     const events = await getAllActiveEvents();
-    console.log(`🎯 Found ${events.length} active events`);
+    console.log(`🎯 Found ${events.length} events (all statuses)`);
 
-    // 3. 获取所有活跃会员（一次性查询，避免重复）
+    // 3. 获取所有会员（一次性查询，避免重复）
     const members = await getAllActiveMembers();
-    console.log(`👥 Found ${members.length} active members`);
+    console.log(`👥 Found ${members.length} members (all statuses)`);
 
     // 4. 为每个交易寻找匹配
     const previewItems: AutoMatchPreviewItem[] = [];
@@ -325,13 +325,12 @@ const getUncategorizedTransactions = async (): Promise<Transaction[]> => {
 };
 
 /**
- * 获取所有活动状态的活动
+ * 获取所有活动（取消状态限制）
  */
 const getAllActiveEvents = async (): Promise<Event[]> => {
   try {
     const q = query(
       collection(db, GLOBAL_COLLECTIONS.EVENTS),
-      where('status', '==', 'Published'),
       orderBy('startDate', 'desc')
     );
 
@@ -346,6 +345,7 @@ const getAllActiveEvents = async (): Promise<Event[]> => {
         console.log(`🎯 [getAllActiveEvents] Event #${events.length + 1}:`, {
           id: doc.id,
           name: data.name,
+          status: data.status,
           startDate: data.startDate,
           startDateType: typeof data.startDate,
           hasToDate: data.startDate && typeof data.startDate === 'object' && 'toDate' in data.startDate,
@@ -359,7 +359,7 @@ const getAllActiveEvents = async (): Promise<Event[]> => {
       } as Event);
     });
 
-    console.log(`✅ [getAllActiveEvents] Loaded ${events.length} active events`);
+    console.log(`✅ [getAllActiveEvents] Loaded ${events.length} events (all statuses)`);
     return events;
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -368,26 +368,40 @@ const getAllActiveEvents = async (): Promise<Event[]> => {
 };
 
 /**
- * 获取所有活跃会员
+ * 获取所有会员（取消状态限制）
  */
 const getAllActiveMembers = async (): Promise<Member[]> => {
   try {
     const q = query(
       collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-      where('status', '==', 'active')
+      orderBy('createdAt', 'desc')
     );
 
     const snapshot = await getDocs(q);
     const members: Member[] = [];
 
     snapshot.forEach((doc) => {
+      const data = doc.data();
+      
+      // 🔍 调试前3个会员的数据结构
+      if (members.length < 3) {
+        console.log(`👤 [getAllActiveMembers] Member #${members.length + 1}:`, {
+          id: doc.id,
+          name: data.name,
+          status: data.status,
+          email: data.email,
+          phone: data.phone,
+          memberId: data.memberId,
+        });
+      }
+      
       members.push({
         id: doc.id,
         ...doc.data(),
       } as Member);
     });
 
-    console.log(`👥 [getAllActiveMembers] Loaded ${members.length} active members`);
+    console.log(`👥 [getAllActiveMembers] Loaded ${members.length} members (all statuses)`);
     return members;
   } catch (error) {
     console.error('Error fetching members:', error);
