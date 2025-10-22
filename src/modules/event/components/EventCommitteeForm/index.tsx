@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Space, Card, Table, Switch, Popconfirm } from 'antd';
+import { Form, Input, Button, Space, Card, Table, Switch, Popconfirm, Select } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { Event, CommitteeMember } from '../../types';
+
+const { Option } = Select;
+
+// 默认职位选项
+const DEFAULT_POSITIONS = [
+  '筹委主席',
+  '筹委秘书',
+  '筹委财政',
+  '筹委票务',
+  '活动主席',
+  '活动秘书',
+  '活动财政',
+  '活动票务',
+];
 
 interface Props {
   initialValues: Event;
@@ -66,13 +80,26 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
       title: '职位',
       dataIndex: 'position',
       key: 'position',
-      width: 150,
+      width: 180,
       render: (position: string, record: CommitteeMember) => (
-        <Input
+        <Select
           value={position}
-          onChange={(e) => updateCommitteeMember(record.id, 'position', e.target.value)}
-          placeholder="请输入职位"
-        />
+          onChange={(value) => updateCommitteeMember(record.id, 'position', value)}
+          placeholder="请选择职位"
+          style={{ width: '100%' }}
+          showSearch
+          allowClear
+          filterOption={(input, option) => {
+            const label = option?.children?.toString() || '';
+            return label.toLowerCase().includes(input.toLowerCase());
+          }}
+        >
+          {DEFAULT_POSITIONS.map(pos => (
+            <Option key={pos} value={pos}>
+              {pos}
+            </Option>
+          ))}
+        </Select>
       ),
     },
     {
