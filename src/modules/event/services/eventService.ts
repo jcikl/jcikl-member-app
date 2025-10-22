@@ -83,7 +83,12 @@ const convertToEvent = (docId: string, data: DocumentData): Event => {
     registrationTargetAudience: data.registrationTargetAudience || [],
     
     // Pricing
-    pricing: data.pricing || {
+    pricing: data.pricing ? {
+      ...data.pricing,
+      earlyBirdDeadline: data.pricing.earlyBirdDeadline 
+        ? safeTimestampToISO(data.pricing.earlyBirdDeadline)
+        : undefined,
+    } : {
       regularPrice: 0,
       memberPrice: 0,
       alumniPrice: 0,
@@ -93,6 +98,7 @@ const convertToEvent = (docId: string, data: DocumentData): Event => {
     },
     isFree: data.isFree || false,
     financialAccount: data.financialAccount ?? null,
+    financialAccountName: data.financialAccountName ?? null,
     
     // Organizers
     organizerId: data.organizerId || '',
@@ -320,7 +326,9 @@ export const createEvent = async (
         alumniPrice: formData.alumniPrice || 0,
         earlyBirdPrice: formData.earlyBirdPrice || 0,
         committeePrice: formData.committeePrice || 0,
-        earlyBirdDeadline: formData.earlyBirdDeadline ?? null,
+        earlyBirdDeadline: formData.earlyBirdDeadline 
+          ? Timestamp.fromDate(new Date(formData.earlyBirdDeadline))
+          : null,
         currency: 'RM',
       },
       isFree: formData.isFree || false,
@@ -429,6 +437,8 @@ export const updateEvent = async (
     if (formData.isPrivate !== undefined) updateData.isPrivate = formData.isPrivate;
     if (formData.registrationTargetAudience !== undefined) updateData.registrationTargetAudience = formData.registrationTargetAudience || [];
     if (formData.financialAccount !== undefined) updateData.financialAccount = formData.financialAccount ?? null;
+    if ((formData as any).financialAccountName !== undefined) updateData.financialAccountName = (formData as any).financialAccountName ?? null;
+    if ((formData as any).isFree !== undefined) updateData.isFree = (formData as any).isFree || false;
     if (formData.coOrganizers !== undefined) updateData.coOrganizers = formData.coOrganizers || [];
     if (formData.posterImage !== undefined) updateData.posterImage = formData.posterImage ?? null;
     if ((formData as any).agendaItems !== undefined) updateData.agendaItems = (formData as any).agendaItems || [];
@@ -454,11 +464,21 @@ export const updateEvent = async (
     }
     
     // Pricing updates
-    if (formData.regularPrice !== undefined || 
+    if ((formData as any).pricing !== undefined) {
+      // Handle complete pricing object from EventPricingForm
+      const pricingData = (formData as any).pricing;
+      updateData.pricing = {
+        ...pricingData,
+        earlyBirdDeadline: pricingData.earlyBirdDeadline 
+          ? Timestamp.fromDate(new Date(pricingData.earlyBirdDeadline))
+          : null,
+      };
+    } else if (formData.regularPrice !== undefined || 
         formData.memberPrice !== undefined || 
         formData.alumniPrice !== undefined || 
         formData.earlyBirdPrice !== undefined || 
         formData.committeePrice !== undefined) {
+      // Handle individual price field updates
       const currentEvent = await getEventById(eventId);
       if (currentEvent) {
         updateData.pricing = {
