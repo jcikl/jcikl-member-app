@@ -447,17 +447,24 @@ export const updateEvent = async (
     
     // Date fields
     if (formData.startDate !== undefined) {
-      updateData.startDate = Timestamp.fromDate(new Date(formData.startDate));
+      console.log('📅 [updateEvent] startDate received:', formData.startDate);
+      const dateObj = new Date(formData.startDate);
+      console.log('📅 [updateEvent] Date object created:', dateObj.toISOString());
+      updateData.startDate = Timestamp.fromDate(dateObj);
+      console.log('📅 [updateEvent] Timestamp created:', updateData.startDate);
     }
     if (formData.endDate !== undefined) {
+      console.log('📅 [updateEvent] endDate received:', formData.endDate);
       updateData.endDate = Timestamp.fromDate(new Date(formData.endDate));
     }
     if (formData.registrationStartDate !== undefined) {
+      console.log('📅 [updateEvent] registrationStartDate received:', formData.registrationStartDate);
       updateData.registrationStartDate = formData.registrationStartDate 
         ? Timestamp.fromDate(new Date(formData.registrationStartDate)) 
         : null;
     }
     if (formData.registrationDeadline !== undefined) {
+      console.log('📅 [updateEvent] registrationDeadline received:', formData.registrationDeadline);
       updateData.registrationDeadline = formData.registrationDeadline 
         ? Timestamp.fromDate(new Date(formData.registrationDeadline)) 
         : null;
