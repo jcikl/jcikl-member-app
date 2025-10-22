@@ -168,11 +168,11 @@ const EventFinancialPage: React.FC = () => {
         }))
       });
       
-      // 🆕 从 projects collection 加载活动详细信息
+      // 🆕 从 projects collection 加载活动详细信息（取消状态限制）
       const projectsResult = await getEvents({
         page: 1,
         limit: 1000,
-        status: 'Published', // 只获取已发布的活动
+        // 取消状态限制，获取所有活动
       });
       console.log('🎯 [EventFinancialPage] Projects Result:', {
         count: projectsResult.data.length,
@@ -279,7 +279,11 @@ const EventFinancialPage: React.FC = () => {
                 chairName: eventChair,
                 treasurerFound: !!treasurer,
                 treasurerName: eventTreasurer,
-                allPositions: projectInfo.committeeMembers.map(m => m.position)
+                allPositions: projectInfo.committeeMembers.map(m => m.position),
+                allMembers: projectInfo.committeeMembers.map(m => ({
+                  name: m.name,
+                  position: m.position
+                }))
               });
             } else {
               console.log(`⚠️ [EventFinancialPage] No committee members found for "${event.eventName}"`);
