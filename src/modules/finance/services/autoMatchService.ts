@@ -224,6 +224,10 @@ export const autoMatchUncategorizedTransactions = async (): Promise<AutoMatchPre
 
 /**
  * 获取所有未分类的交易
+ * 排除：
+ * 1. 已有分类的交易
+ * 2. 已拆分的主交易（isSplit = true）
+ * 3. 虚拟交易（isVirtual = true）
  */
 const getUncategorizedTransactions = async (): Promise<Transaction[]> => {
   try {
@@ -236,12 +240,18 @@ const getUncategorizedTransactions = async (): Promise<Transaction[]> => {
     const transactions: Transaction[] = [];
 
     snapshot.forEach((doc) => {
-      transactions.push({
-        id: doc.id,
-        ...doc.data(),
-      } as Transaction);
+      const data = doc.data() as Transaction;
+      
+      // 排除已拆分的主交易和虚拟交易
+      if (!data.isSplit && !data.isVirtual) {
+        transactions.push({
+          id: doc.id,
+          ...data,
+        } as Transaction);
+      }
     });
 
+    console.log(`📋 [getUncategorizedTransactions] Found ${transactions.length} uncategorized transactions (excluded isSplit and isVirtual)`);
     return transactions;
   } catch (error) {
     // Firebase 不支持对 undefined 的查询，改用客户端过滤
@@ -255,7 +265,9 @@ const getUncategorizedTransactions = async (): Promise<Transaction[]> => {
 
     snapshot.forEach((doc) => {
       const data = doc.data() as Transaction;
-      if (!data.category || !data.txAccount) {
+      
+      // 排除已分类、已拆分的主交易和虚拟交易
+      if ((!data.category || !data.txAccount) && !data.isSplit && !data.isVirtual) {
         transactions.push({
           ...data,
           id: doc.id,
@@ -263,6 +275,7 @@ const getUncategorizedTransactions = async (): Promise<Transaction[]> => {
       }
     });
 
+    console.log(`📋 [getUncategorizedTransactions] Found ${transactions.length} uncategorized transactions (excluded isSplit and isVirtual)`);
     return transactions;
   }
 };
