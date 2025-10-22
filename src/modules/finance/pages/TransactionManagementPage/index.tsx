@@ -66,6 +66,7 @@ import {
 import SplitTransactionModal from '../../components/SplitTransactionModal';
 import BatchSplitModal from '../../components/BatchSplitModal';
 import BatchSetCategoryModal from '../../components/BatchSetCategoryModal';
+import EditTransactionModal from '../../components/EditTransactionModal';
 import { useNavigate } from 'react-router-dom';
 import { getAllBankAccounts } from '../../services/bankAccountService';
 import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
@@ -539,6 +540,7 @@ const TransactionManagementPage: React.FC = () => {
         subDescription: values.subDescription,
         amount: values.amount,
         payerPayee: values.payerPayee,
+        payerId: values.payerId, // 🆕 会员ID
         category: values.category,
         txAccount: values.txAccount, // 🆕 二次分类
         paymentMethod: values.paymentMethod,
@@ -1947,135 +1949,19 @@ const TransactionManagementPage: React.FC = () => {
         </Card>
 
         {/* Create/Edit Transaction Modal */}
-        <Modal
-          title={editingTransaction ? '编辑交易' : '创建新交易'}
-          open={modalVisible}
+        {/* Edit/Create Transaction Modal */}
+        <EditTransactionModal
+          visible={modalVisible}
+          transaction={editingTransaction}
+          bankAccounts={bankAccounts}
+          form={form}
           onOk={handleSubmit}
           onCancel={() => {
             setModalVisible(false);
             form.resetFields();
             setEditingTransaction(null);
           }}
-          width={700}
-        >
-          <Form form={form} layout="vertical">
-            <Form.Item
-              label="银行账户"
-              name="bankAccountId"
-              rules={[{ required: true, message: '请选择银行账户' }]}
-            >
-              <Select placeholder="选择银行账户">
-                {bankAccounts.map(acc => (
-                  <Option key={acc.id} value={acc.id}>
-                    {acc.accountName} ({acc.bankName})
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              label="交易日期"
-              name="transactionDate"
-              rules={[{ required: true, message: '请选择交易日期' }]}
-            >
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="交易类型"
-              name="transactionType"
-              rules={[{ required: true, message: '请选择交易类型' }]}
-            >
-              <Radio.Group>
-                <Radio value="income">收入</Radio>
-                <Radio value="expense">支出</Radio>
-              </Radio.Group>
-            </Form.Item>
-
-            <Form.Item
-              label="主要描述"
-              name="mainDescription"
-              rules={[{ required: true, message: '请输入交易描述' }]}
-            >
-              <Input placeholder="例如: 会员费 - 张三" />
-            </Form.Item>
-
-            <Form.Item label="次要描述" name="subDescription">
-              <Input placeholder="可选的额外说明" />
-            </Form.Item>
-
-            <Form.Item
-              label="金额"
-              name="amount"
-              rules={[
-                { required: true, message: '请输入金额' },
-                { type: 'number', min: 0.01, message: '金额必须大于0' },
-              ]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                prefix="RM"
-                precision={2}
-                min={0.01}
-              />
-            </Form.Item>
-
-            <Form.Item label="付款人/收款人" name="payerPayee">
-              <Input placeholder="例如: 会员姓名或供应商" />
-            </Form.Item>
-
-            <Form.Item 
-              label="主要类别" 
-              name="category"
-              rules={[{ required: true, message: '请选择主要类别' }]}
-              tooltip="选择主要类别后，可在对应页面进行二次分类"
-            >
-              <Select placeholder="选择主要类别">
-                <Option value="member-fees">
-                  <Space>
-                    <span>会员费</span>
-                    <span style={{ fontSize: '12px', color: '#999' }}>→ 在会员费页面二次分类</span>
-                  </Space>
-                </Option>
-                <Option value="event-finance">
-                  <Space>
-                    <span>活动财务</span>
-                    <span style={{ fontSize: '12px', color: '#999' }}>→ 在活动财务页面二次分类</span>
-                  </Space>
-                </Option>
-                <Option value="general-accounts">
-                  <Space>
-                    <span>日常账户</span>
-                    <span style={{ fontSize: '12px', color: '#999' }}>→ 在日常账户页面二次分类</span>
-                  </Space>
-                </Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item 
-              label="二次分类" 
-              name="txAccount"
-              tooltip="可选：为交易设置具体的二次分类"
-            >
-              <Input placeholder="例如: 活动名称、会员类别或具体分类" allowClear />
-            </Form.Item>
-
-            <Form.Item label="付款方式" name="paymentMethod">
-              <Select placeholder="选择付款方式" allowClear>
-                <Option value="cash">现金</Option>
-                <Option value="bank_transfer">银行转账</Option>
-                <Option value="credit_card">信用卡</Option>
-                <Option value="cheque">支票</Option>
-                <Option value="online_payment">在线支付</Option>
-                <Option value="other">其他</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item label="备注" name="notes">
-              <Input.TextArea rows={3} placeholder="可选的额外备注" />
-            </Form.Item>
-          </Form>
-        </Modal>
+        />
 
         {/* Bulk Import Modal */}
         <Modal

@@ -25,7 +25,8 @@ export interface Transaction {
   expense?: number; // Legacy field - use amount + transactionType instead
   income?: number;  // Legacy field - use amount + transactionType instead
   
-  payerPayee?: string; // 付款人/收款人
+  payerPayee?: string; // 付款人/收款人（姓名）
+  payerId?: string; // 付款人/收款人ID（如果是会员）
   transactionPurpose?: string; // Purpose ID
   transactionPurposeDetails?: TransactionPurpose;
   category?: string;
@@ -75,6 +76,7 @@ export interface TransactionFormData {
   subDescription?: string;
   amount: number;
   payerPayee?: string;
+  payerId?: string; // 🆕 付款人/收款人ID（如果是会员）
   transactionPurpose?: string;
   category?: string;
   txAccount?: string;
