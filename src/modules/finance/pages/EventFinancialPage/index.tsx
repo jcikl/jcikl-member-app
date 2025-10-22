@@ -40,9 +40,11 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
 import { getAllFinanceEvents, createFinanceEvent, updateFinanceEvent } from '../../services/financeEventService';
 import { getAllActiveMembers, getMembers, getMemberById } from '../../../member/services/memberService';
+import { getEvents } from '../../../event/services/eventService';
 import { generateYearOptions } from '@/utils/dateHelpers';
 import type { Transaction, FinanceEvent } from '../../types';
 import type { Member } from '../../../member/types';
+import type { Event } from '../../../event/types';
 import './styles.css';
 
 const { Option } = Select;
@@ -52,6 +54,8 @@ interface EventFinancialSummary {
   eventName: string;
   eventDate: string;
   boardMember?: string; // 🆕 负责理事
+  eventChair?: string; // 🆕 活动主席（从projects读取）
+  eventTreasurer?: string; // 🆕 活动财政（从projects读取）
   totalRevenue: number;
   totalExpense: number;
   netIncome: number;
@@ -154,6 +158,14 @@ const EventFinancialPage: React.FC = () => {
       // 🆕 从 financeEvents 加载实际活动数据并转换为财务汇总格式
       const financeEventsList = await getAllFinanceEvents();
       
+      // 🆕 从 projects collection 加载活动详细信息
+      const projectsResult = await getEvents({
+        page: 1,
+        limit: 1000,
+        status: 'Published', // 只获取已发布的活动
+      });
+      const projectsMap = new Map<string, Event>(projectsResult.data.map(p => [p.name, p]));
+      
       // 🔑 获取所有活动财务交易记录
       const allEventTransactions = await getTransactions({
         page: 1,
@@ -183,11 +195,33 @@ const EventFinancialPage: React.FC = () => {
             
           const netIncome = totalRevenue - totalExpense;
           
+          // 🆕 从projects collection读取活动信息
+          const projectInfo = projectsMap.get(event.eventName);
+          let eventChair = '';
+          let eventTreasurer = '';
+          let eventDate = event.eventDate || new Date().toISOString();
+          
+          if (projectInfo) {
+            // 从startDate读取活动日期
+            eventDate = projectInfo.startDate;
+            
+            // 从committeeMembers读取活动主席和财政
+            if (projectInfo.committeeMembers && projectInfo.committeeMembers.length > 0) {
+              const chair = projectInfo.committeeMembers.find(m => m.position === '活动主席' || m.position === 'Chair');
+              const treasurer = projectInfo.committeeMembers.find(m => m.position === '活动财政' || m.position === 'Treasurer');
+              
+              eventChair = chair ? chair.name : '';
+              eventTreasurer = treasurer ? treasurer.name : '';
+            }
+          }
+          
           return {
             eventId: event.id,
             eventName: event.eventName,
-            eventDate: event.eventDate || new Date().toISOString(),
+            eventDate, // ✅ 从projects读取
             boardMember: event.boardMember, // 🆕 添加负责理事
+            eventChair, // ✅ 从projects读取
+            eventTreasurer, // ✅ 从projects读取
             totalRevenue, // ✅ 从交易记录统计
             totalExpense, // ✅ 从交易记录统计
             netIncome, // ✅ 计算净收入
@@ -795,9 +829,7 @@ const EventFinancialPage: React.FC = () => {
       dataIndex: 'eventChair',
       key: 'eventChair',
       width: 140,
-      render: (_: string, record: EventFinancialSummary) => {
-        const event = financeEvents.find(e => e.eventName === record.eventName);
-        const chair = event?.eventChair;
+      render: (chair: string) => {
         return chair ? <Tag color="blue">{chair}</Tag> : <Tag color="default">未设置</Tag>;
       },
     },
@@ -806,9 +838,7 @@ const EventFinancialPage: React.FC = () => {
       dataIndex: 'eventTreasurer',
       key: 'eventTreasurer',
       width: 140,
-      render: (_: string, record: EventFinancialSummary) => {
-        const event = financeEvents.find(e => e.eventName === record.eventName);
-        const treasurer = event?.eventTreasurer;
+      render: (treasurer: string) => {
         return treasurer ? <Tag color="green">{treasurer}</Tag> : <Tag color="default">未设置</Tag>;
       },
     },
@@ -1944,10 +1974,7 @@ const EventFinancialPage: React.FC = () => {
                       {globalDateService.formatDate(new Date(selectedEventDetail.eventDate), 'display')}
                     </Descriptions.Item>
                     <Descriptions.Item label="活动主席">
-                      {(() => {
-                        const event = financeEvents.find(e => e.eventName === selectedEventDetail.eventName);
-                        return event?.eventChair || '未设置';
-                      })()}
+                      {selectedEventDetail.eventChair || '未设置'}
                     </Descriptions.Item>
                     <Descriptions.Item label="负责理事">
                       <Tag color="purple">
@@ -1955,10 +1982,7 @@ const EventFinancialPage: React.FC = () => {
                       </Tag>
                     </Descriptions.Item>
                     <Descriptions.Item label="活动财政">
-                      {(() => {
-                        const event = financeEvents.find(e => e.eventName === selectedEventDetail.eventName);
-                        return event?.eventTreasurer || '未设置';
-                      })()}
+                      {selectedEventDetail.eventTreasurer || '未设置'}
                     </Descriptions.Item>
                     <Descriptions.Item label="状态">
                       {(() => {
