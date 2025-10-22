@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Space, Card, Table, Switch, Popconfirm, Select } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Button, Space, Card, Table, Switch, Popconfirm, Select, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { Event, CommitteeMember } from '../../types';
+import { getMembers } from '../../../member/services/memberService';
+import type { Member } from '../../../member/types';
 
 const { Option } = Select;
 
@@ -27,6 +29,30 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
   const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>(
     initialValues.committeeMembers || []
   );
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  // 加载会员列表
+  useEffect(() => {
+    loadMembers();
+  }, []);
+
+  const loadMembers = async () => {
+    setLoadingMembers(true);
+    try {
+      const result = await getMembers({
+        page: 1,
+        limit: 1000,
+        status: 'active', // 只加载活跃会员
+      });
+      setMembers(result.data);
+    } catch (error) {
+      console.error('加载会员列表失败:', error);
+      message.error('加载会员列表失败');
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
 
   const addCommitteeMember = () => {
     const newMember: CommitteeMember = {
@@ -51,6 +77,21 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
     ));
   };
 
+  // 当选择会员时，自动填充联系方式和邮箱
+  const handleMemberSelect = (memberId: string, record: CommitteeMember) => {
+    const selectedMember = members.find(m => m.id === memberId);
+    if (selectedMember) {
+      setCommitteeMembers(committeeMembers.map(member => 
+        member.id === record.id ? {
+          ...member,
+          name: selectedMember.name,
+          contact: selectedMember.phone || member.contact,
+          email: selectedMember.email || member.email,
+        } : member
+      ));
+    }
+  };
+
   const handleFinish = async () => {
     await onSubmit({ committeeMembers } as any);
   };
@@ -67,13 +108,37 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
       title: '姓名',
       dataIndex: 'name',
       key: 'name',
-      width: 150,
+      width: 200,
       render: (name: string, record: CommitteeMember) => (
-        <Input
-          value={name}
-          onChange={(e) => updateCommitteeMember(record.id, 'name', e.target.value)}
-          placeholder="请输入姓名"
-        />
+        <Select
+          value={name || undefined}
+          onChange={(value) => {
+            // 如果选择的是会员ID，自动填充信息
+            const selectedMember = members.find(m => m.id === value);
+            if (selectedMember) {
+              handleMemberSelect(value, record);
+            } else {
+              // 如果是手动输入的名字
+              updateCommitteeMember(record.id, 'name', value);
+            }
+          }}
+          placeholder="请选择会员"
+          style={{ width: '100%' }}
+          showSearch
+          allowClear
+          loading={loadingMembers}
+          filterOption={(input, option) => {
+            const label = option?.children?.toString() || '';
+            return label.toLowerCase().includes(input.toLowerCase());
+          }}
+          notFoundContent={loadingMembers ? '加载中...' : '无匹配会员'}
+        >
+          {members.map(m => (
+            <Option key={m.id} value={m.id}>
+              {m.name} - {m.email}
+            </Option>
+          ))}
+        </Select>
       ),
     },
     {
