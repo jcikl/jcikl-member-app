@@ -1146,37 +1146,6 @@ const TransactionManagementPage: React.FC = () => {
       // 🆕 为树形视图加载所有交易数据
       const allTransactions = await loadAllTransactionsForTreeView();
       
-      // 🆕 加载所有活动数据用于获取负责理事信息
-      const eventsResult = await getEvents({ page: 1, limit: 1000 });
-      const allEvents = eventsResult.data;
-      console.log('🔍 [TreeView Debug] 加载活动数据:', allEvents.length, '个活动');
-      
-      // 🆕 创建活动ID到活动信息的映射
-      const eventMap = new Map();
-      allEvents.forEach(event => {
-        eventMap.set(event.id, event);
-      });
-      
-      // 🆕 获取活动负责理事的函数
-      const getEventResponsibleOfficer = (eventId: string): string => {
-        const event = eventMap.get(eventId);
-        if (!event || !event.committeeMembers) {
-          return '未指定理事';
-        }
-        
-        // 查找活动主席
-        const chairPositions = ['活动主席', 'Chair', '筹委主席', '项目主席'];
-        const chair = event.committeeMembers.find((member: any) => 
-          chairPositions.includes(member.position)
-        );
-        
-        if (chair && chair.memberName) {
-          return chair.memberName;
-        }
-        
-        return '未指定理事';
-      };
-      
       if (!allTransactions || allTransactions.length === 0) {
         console.log('🔍 [TreeView Debug] No transactions found');
         setTreeData([]);
@@ -1368,100 +1337,38 @@ const TransactionManagementPage: React.FC = () => {
         children: [],
       };
 
-      if (category === 'event-finance') {
-        // 🆕 活动财务：按负责理事分组
-        const officerGroups: Record<string, Record<string, Transaction[]>> = {};
-        
-        // 按负责理事分组活动财务交易
-        Object.values(subGroups).flat().forEach(transaction => {
-          // 从交易中获取活动ID（通过txAccount或relatedEventId）
-          let eventId = '';
-          if (transaction.txAccount && transaction.txAccount !== 'uncategorized') {
-            // 通过活动名称查找活动ID
-            const event = allEvents.find(e => e.name === transaction.txAccount);
-            eventId = event ? event.id : '';
-          }
+      Object.entries(subGroups).forEach(([txAccount, items]) => {
+        // 🆕 对于活动财务，分别显示收入和支出
+        if (category === 'event-finance') {
+          const incomeItems = items.filter(t => t.transactionType === 'income');
+          const expenseItems = items.filter(t => t.transactionType === 'expense');
           
-          const responsibleOfficer = getEventResponsibleOfficer(eventId);
-          
-          if (!officerGroups[responsibleOfficer]) {
-            officerGroups[responsibleOfficer] = {};
-          }
-          
-          const eventName = transaction.txAccount || '未分类活动';
-          if (!officerGroups[responsibleOfficer][eventName]) {
-            officerGroups[responsibleOfficer][eventName] = [];
-          }
-          
-          officerGroups[responsibleOfficer][eventName].push(transaction);
-        });
-        
-        // 构建按负责理事分组的树形结构
-        Object.entries(officerGroups).forEach(([officer, eventGroups]) => {
-          const officerNode: DataNode = {
+          // 🆕 排除已拆分的父交易
+          const incomeTotal = incomeItems
+            .filter(t => t.isSplit !== true)
+            .reduce((sum, t) => sum + (t.amount || 0), 0);
+          const expenseTotal = expenseItems
+            .filter(t => t.isSplit !== true)
+            .reduce((sum, t) => sum + (t.amount || 0), 0);
+          const netTotal = incomeTotal - expenseTotal;
+
+          categoryNode.children!.push({
             title: (
-              <span style={{ fontWeight: 500 }}>
-                📋 {officer}
+              <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
+                {txAccount === 'uncategorized' ? '未分类' : txAccount}
                 <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                  ({Object.values(eventGroups).flat().length}笔交易)
+                  ({items.length}) 净收入: RM {netTotal.toFixed(2)}
+                </Text>
+                <Text type="secondary" style={{ marginLeft: 8, fontSize: 10 }}>
+                  (收入: RM {incomeTotal.toFixed(2)} - 支出: RM {expenseTotal.toFixed(2)})
                 </Text>
               </span>
             ),
-            key: `income-${category}-officer-${officer}`,
-            children: [],
-          };
-          
-          // 按活动日期排序
-          const sortedEvents = Object.entries(eventGroups).sort(([, a], [, b]) => {
-            const eventA = allEvents.find(e => e.name === a[0]?.txAccount);
-            const eventB = allEvents.find(e => e.name === b[0]?.txAccount);
-            
-            if (!eventA || !eventB) return 0;
-            
-            const dateA = new Date(eventA.startDate);
-            const dateB = new Date(eventB.startDate);
-            return dateA.getTime() - dateB.getTime(); // 从旧到新排序
+            key: `income-${category}-${txAccount}`,
+            isLeaf: true,
           });
-          
-          sortedEvents.forEach(([eventName, items]) => {
-            const incomeItems = items.filter(t => t.transactionType === 'income');
-            const expenseItems = items.filter(t => t.transactionType === 'expense');
-            
-            // 🆕 排除已拆分的父交易
-            const incomeTotal = incomeItems
-              .filter(t => t.isSplit !== true)
-              .reduce((sum, t) => sum + (t.amount || 0), 0);
-            const expenseTotal = expenseItems
-              .filter(t => t.isSplit !== true)
-              .reduce((sum, t) => sum + (t.amount || 0), 0);
-            const netTotal = incomeTotal - expenseTotal;
-            
-            // 获取活动日期
-            const event = allEvents.find(e => e.name === eventName);
-            const eventDate = event ? dayjs(event.startDate).format('YYYY-MM-DD') : '未知日期';
-            
-            officerNode.children!.push({
-              title: (
-                <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-                  🎯 {eventName} ({eventDate})
-                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                    ({items.length}) 净收入: RM {netTotal.toFixed(2)}
-                  </Text>
-                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 10 }}>
-                    (收入: RM {incomeTotal.toFixed(2)} - 支出: RM {expenseTotal.toFixed(2)})
-                  </Text>
-                </span>
-              ),
-              key: `income-${category}-officer-${officer}-${eventName}`,
-              isLeaf: true,
-            });
-          });
-          
-          categoryNode.children!.push(officerNode);
-        });
-      } else {
-        // 其他类别：按txAccount分组
-        Object.entries(subGroups).forEach(([txAccount, items]) => {
+        } else {
+          // 其他类别：正常显示
           // 🆕 排除已拆分的父交易
           const subTotal = items
             .filter(t => t.isSplit !== true)
@@ -1479,8 +1386,8 @@ const TransactionManagementPage: React.FC = () => {
             key: `income-${category}-${txAccount}`,
             isLeaf: true,
           });
-        });
-      }
+        }
+      });
 
       incomeNode.children!.push(categoryNode);
     });
