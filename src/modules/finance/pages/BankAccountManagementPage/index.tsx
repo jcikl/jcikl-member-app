@@ -414,56 +414,64 @@ const BankAccountManagementPage: React.FC = () => {
               <p className="mt-2">加载月份数据中...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
+            <div 
+              className="flex gap-4 overflow-x-auto pb-4"
+              style={{ 
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#1890ff #f0f0f0'
+              }}
+            >
               {monthlyData.map((monthData) => (
                 <Card
                   key={monthData.month}
                   size="small"
                   className="monthly-card"
                   style={{
+                    minWidth: '140px',
+                    maxWidth: '140px',
+                    flexShrink: 0,
                     border: monthData.month === new Date().getMonth() + 1 ? '2px solid #1890ff' : '1px solid #d9d9d9',
                     backgroundColor: monthData.month === new Date().getMonth() + 1 ? '#f6ffed' : '#fff',
                   }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="text-lg font-bold text-primary" style={{ minWidth: '80px' }}>
+                  <div className="text-center">
+                    <div className="text-base font-bold mb-3 text-primary">
                       {monthData.monthName}
                     </div>
                     
-                    <div className="flex-1 flex items-center justify-between gap-6 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-600">月初余额:</span>
-                        <span className="font-medium">
-                          RM {monthData.openingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </span>
+                    <div className="space-y-1.5 text-xs">
+                      <div>
+                        <div className="text-gray-500 mb-0.5">月初</div>
+                        <div className="font-medium text-gray-700">
+                          {monthData.openingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-600">月总收入:</span>
-                        <span className="font-medium text-green-600">
-                          RM {monthData.totalIncome.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </span>
+                      <div className="border-t pt-1.5">
+                        <div className="text-green-600 mb-0.5">+收入</div>
+                        <div className="font-medium text-green-600">
+                          {monthData.totalIncome.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                        <span className="text-red-600">月总支出:</span>
-                        <span className="font-medium text-red-600">
-                          RM {monthData.totalExpense.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </span>
+                      <div className="border-t pt-1.5">
+                        <div className="text-red-600 mb-0.5">-支出</div>
+                        <div className="font-medium text-red-600">
+                          {monthData.totalExpense.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 border-l pl-6">
-                        <span className="text-gray-800 font-bold">月末余额:</span>
-                        <span className={`font-bold ${
+                      <div className="border-t pt-1.5">
+                        <div className="text-gray-800 font-semibold mb-0.5">月末</div>
+                        <div className={`font-bold ${
                           monthData.closingBalance >= 0 ? 'text-green-600' : 'text-red-600'
                         }`}>
-                          RM {monthData.closingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </span>
+                          {monthData.closingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>交易数:</span>
-                        <span className="font-medium">{monthData.transactionCount}笔</span>
+                      <div className="border-t pt-1.5 text-gray-500">
+                        <div>{monthData.transactionCount}笔</div>
                       </div>
                     </div>
                   </div>
