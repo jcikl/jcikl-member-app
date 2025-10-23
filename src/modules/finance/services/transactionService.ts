@@ -739,15 +739,25 @@ export const getTransactions = async (
     }
     if (category) {
       if (category === 'uncategorized') {
-        // 🆕 筛选未分类的交易
-        transactions = transactions.filter(t => !t.txAccount || t.txAccount.trim() === '');
+        // 🆕 筛选未分类的交易（排除已拆分的父交易）
+        transactions = transactions.filter(t => 
+          (!t.txAccount || t.txAccount.trim() === '') && 
+          t.isSplit !== true
+        );
       } else {
-        transactions = transactions.filter(t => t.category === category);
+        // 🆕 筛选指定类别的交易（排除已拆分的父交易）
+        transactions = transactions.filter(t => 
+          t.category === category && 
+          t.isSplit !== true
+        );
       }
     }
-    // 🔑 二次分类过滤
+    // 🔑 二次分类过滤（排除已拆分的父交易）
     if (params.txAccount) {
-      transactions = transactions.filter(t => t.txAccount === params.txAccount);
+      transactions = transactions.filter(t => 
+        t.txAccount === params.txAccount && 
+        t.isSplit !== true
+      );
     }
     if (startDate) {
       transactions = transactions.filter(t => t.transactionDate >= startDate);
