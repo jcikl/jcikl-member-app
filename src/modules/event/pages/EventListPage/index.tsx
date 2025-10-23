@@ -252,11 +252,15 @@ const EventListPage: React.FC = () => {
       oldPageSize: pagination.pageSize,
       newCurrent: newPagination.current,
       newPageSize: newPagination.pageSize,
-      pageSize: newPagination.pageSize,
+      pageSizeChanged: pagination.pageSize !== newPagination.pageSize,
     });
     
+    // 🔑 检测pageSize是否变化
+    const pageSizeChanged = pagination.pageSize !== newPagination.pageSize;
+    
     setPagination(prev => ({
-      current: newPagination.current || prev.current,
+      // 如果pageSize变化，重置到第1页
+      current: pageSizeChanged ? 1 : (newPagination.current || prev.current),
       pageSize: newPagination.pageSize || prev.pageSize,
       total: prev.total,
     }));
