@@ -414,7 +414,7 @@ const BankAccountManagementPage: React.FC = () => {
               <p className="mt-2">加载月份数据中...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {monthlyData.map((monthData) => (
                 <Card
                   key={monthData.month}
@@ -425,34 +425,34 @@ const BankAccountManagementPage: React.FC = () => {
                     backgroundColor: monthData.month === new Date().getMonth() + 1 ? '#f6ffed' : '#fff',
                   }}
                 >
-                  <div className="text-center">
-                    <div className="text-lg font-bold mb-2 text-primary">
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-bold text-primary" style={{ minWidth: '80px' }}>
                       {monthData.monthName}
                     </div>
                     
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
+                    <div className="flex-1 flex items-center justify-between gap-6 text-sm">
+                      <div className="flex items-center gap-2">
                         <span className="text-gray-600">月初余额:</span>
                         <span className="font-medium">
                           RM {monthData.openingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       
-                      <div className="flex justify-between">
+                      <div className="flex items-center gap-2">
                         <span className="text-green-600">月总收入:</span>
                         <span className="font-medium text-green-600">
                           RM {monthData.totalIncome.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       
-                      <div className="flex justify-between">
+                      <div className="flex items-center gap-2">
                         <span className="text-red-600">月总支出:</span>
                         <span className="font-medium text-red-600">
                           RM {monthData.totalExpense.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       
-                      <div className="flex justify-between border-t pt-2">
+                      <div className="flex items-center gap-2 border-l pl-6">
                         <span className="text-gray-800 font-bold">月末余额:</span>
                         <span className={`font-bold ${
                           monthData.closingBalance >= 0 ? 'text-green-600' : 'text-red-600'
@@ -461,9 +461,9 @@ const BankAccountManagementPage: React.FC = () => {
                         </span>
                       </div>
                       
-                      <div className="flex justify-between text-xs text-gray-500">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span>交易数:</span>
-                        <span>{monthData.transactionCount}笔</span>
+                        <span className="font-medium">{monthData.transactionCount}笔</span>
                       </div>
                     </div>
                   </div>
