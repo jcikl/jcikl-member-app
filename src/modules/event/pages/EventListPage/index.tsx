@@ -48,6 +48,7 @@ import {
 import { handleAsyncOperation } from '@/utils/errorHelpers';
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
+import { useAuthStore } from '@/stores/authStore';
 import type { DataGridColumn } from '@/components';
 import './styles.css';
 
@@ -56,6 +57,7 @@ import './styles.css';
  */
 const EventListPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   
   // State
   const [events, setEvents] = useState<Event[]>([]);
