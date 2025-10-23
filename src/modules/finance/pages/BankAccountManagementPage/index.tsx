@@ -43,6 +43,8 @@ import {
   createBankAccount,
   updateBankAccount,
   getTotalBalance,
+  getAllBankAccountsMonthlyData,
+  type MonthlyFinancialData,
 } from '../../services/bankAccountService';
 import type { BankAccount, BankAccountType } from '../../types';
 import './styles.css';
@@ -61,14 +63,25 @@ const BankAccountManagementPage: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
+  
+  // 🆕 月份财务数据状态
+  const [monthlyData, setMonthlyData] = useState<MonthlyFinancialData[]>([]);
+  const [monthlyDataLoading, setMonthlyDataLoading] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   useEffect(() => {
     loadBankAccounts();
+    loadMonthlyData();
   }, []);
 
   useEffect(() => {
     filterAccounts();
   }, [accounts, searchText]);
+
+  // 🆕 当年份变化时重新加载月份数据
+  useEffect(() => {
+    loadMonthlyData();
+  }, [selectedYear]);
 
   const loadBankAccounts = async () => {
     if (!user) return;
@@ -92,6 +105,20 @@ const BankAccountManagementPage: React.FC = () => {
       console.error('[Finance] Failed to load bank accounts:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🆕 加载月份财务数据
+  const loadMonthlyData = async () => {
+    try {
+      setMonthlyDataLoading(true);
+      const data = await getAllBankAccountsMonthlyData(selectedYear);
+      setMonthlyData(data);
+    } catch (error) {
+      message.error('加载月份财务数据失败');
+      console.error('[Finance] Failed to load monthly data:', error);
+    } finally {
+      setMonthlyDataLoading(false);
     }
   };
 
@@ -356,6 +383,94 @@ const BankAccountManagementPage: React.FC = () => {
             loading={loading}
             scroll={{ x: 1000 }}
           />
+        </Card>
+
+        {/* 🆕 月份财务数据卡片 */}
+        <Card 
+          title={
+            <div className="flex justify-between items-center">
+              <span>📊 月份财务概览</span>
+              <Select
+                value={selectedYear}
+                onChange={setSelectedYear}
+                style={{ width: 120 }}
+              >
+                {Array.from({ length: 5 }, (_, i) => {
+                  const year = new Date().getFullYear() - 2 + i;
+                  return (
+                    <Option key={year} value={year}>
+                      {year}年
+                    </Option>
+                  );
+                })}
+              </Select>
+            </div>
+          }
+          className="mb-6"
+        >
+          {monthlyDataLoading ? (
+            <div className="text-center py-8">
+              <LoadingSpinner />
+              <p className="mt-2">加载月份数据中...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {monthlyData.map((monthData) => (
+                <Card
+                  key={monthData.month}
+                  size="small"
+                  className="monthly-card"
+                  style={{
+                    border: monthData.month === new Date().getMonth() + 1 ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                    backgroundColor: monthData.month === new Date().getMonth() + 1 ? '#f6ffed' : '#fff',
+                  }}
+                >
+                  <div className="text-center">
+                    <div className="text-lg font-bold mb-2 text-primary">
+                      {monthData.monthName}
+                    </div>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">月初余额:</span>
+                        <span className="font-medium">
+                          RM {monthData.openingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span className="text-green-600">月总收入:</span>
+                        <span className="font-medium text-green-600">
+                          RM {monthData.totalIncome.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span className="text-red-600">月总支出:</span>
+                        <span className="font-medium text-red-600">
+                          RM {monthData.totalExpense.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-gray-800 font-bold">月末余额:</span>
+                        <span className={`font-bold ${
+                          monthData.closingBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          RM {monthData.closingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>交易数:</span>
+                        <span>{monthData.transactionCount}笔</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Sidebar Info */}

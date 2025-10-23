@@ -28,6 +28,7 @@ import type {
   BankAccount,
   BankAccountFormData,
   BankAccountStatus,
+  Transaction,
 } from '../types';
 
 /**
@@ -445,6 +446,227 @@ export const getTotalBalance = async (): Promise<number> => {
       'bankAccountService.getTotalBalance',
       { error: error.message }
     );
+    throw error;
+  }
+};
+
+// ========== 月份财务数据 ==========
+
+export interface MonthlyFinancialData {
+  month: number;              // 1-12
+  monthName: string;          // "1月", "2月", etc.
+  year: number;               // 年份
+  openingBalance: number;     // 月初余额
+  totalIncome: number;        // 月总收入
+  totalExpense: number;       // 月总支出
+  closingBalance: number;     // 月末余额
+  transactionCount: number;   // 月交易数
+}
+
+/**
+ * 获取指定银行账户的月份财务数据
+ */
+export const getBankAccountMonthlyData = async (
+  bankAccountId: string,
+  year: number = new Date().getFullYear()
+): Promise<MonthlyFinancialData[]> => {
+  try {
+    console.log('📊 [getBankAccountMonthlyData] Starting...', { bankAccountId, year });
+    
+    // 获取银行账户信息
+    const account = await getBankAccountById(bankAccountId);
+    if (!account) {
+      throw new Error('银行账户不存在');
+    }
+    
+    // 获取该账户的所有交易记录
+    const transactionsQuery = query(
+      collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
+      where('bankAccountId', '==', bankAccountId),
+      orderBy('transactionDate', 'asc')
+    );
+    
+    const transactionsSnapshot = await getDocs(transactionsQuery);
+    const transactions = transactionsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      transactionDate: safeTimestampToISO(doc.data().transactionDate),
+    })) as Transaction[];
+    
+    console.log('📊 [getBankAccountMonthlyData] Found transactions:', transactions.length);
+    
+    // 按月份分组计算财务数据
+    const monthlyData: MonthlyFinancialData[] = [];
+    
+    for (let month = 1; month <= 12; month++) {
+      const monthStart = new Date(year, month - 1, 1);
+      const monthEnd = new Date(year, month, 0, 23, 59, 59);
+      
+      // 过滤当月交易
+      const monthTransactions = transactions.filter(tx => {
+        if (!tx.transactionDate) return false;
+        const txDate = new Date(tx.transactionDate);
+        return txDate >= monthStart && txDate <= monthEnd;
+      });
+      
+      // 计算月初余额（上月月末余额）
+      let openingBalance = 0;
+      if (month === 1) {
+        // 1月的月初余额 = 账户初始余额 + 去年12月之前的交易
+        openingBalance = account.initialBalance || 0;
+        const lastYearTransactions = transactions.filter(tx => {
+          if (!tx.transactionDate) return false;
+          const txDate = new Date(tx.transactionDate);
+          return txDate.getFullYear() < year;
+        });
+        
+        lastYearTransactions.forEach(tx => {
+          if (tx.transactionType === 'income') {
+            openingBalance += tx.amount;
+          } else {
+            openingBalance -= tx.amount;
+          }
+        });
+      } else {
+        // 其他月份的月初余额 = 上月月末余额
+        const prevMonthData = monthlyData[month - 2];
+        openingBalance = prevMonthData.closingBalance;
+      }
+      
+      // 计算当月收入和支出
+      let totalIncome = 0;
+      let totalExpense = 0;
+      
+      monthTransactions.forEach(tx => {
+        if (tx.transactionType === 'income') {
+          totalIncome += tx.amount;
+        } else {
+          totalExpense += tx.amount;
+        }
+      });
+      
+      // 计算月末余额
+      const closingBalance = openingBalance + totalIncome - totalExpense;
+      
+      monthlyData.push({
+        month,
+        monthName: `${month}月`,
+        year,
+        openingBalance,
+        totalIncome,
+        totalExpense,
+        closingBalance,
+        transactionCount: monthTransactions.length,
+      });
+    }
+    
+    console.log('📊 [getBankAccountMonthlyData] Monthly data calculated:', monthlyData.length);
+    return monthlyData;
+    
+  } catch (error) {
+    console.error('❌ [getBankAccountMonthlyData] Failed:', error);
+    throw error;
+  }
+};
+
+/**
+ * 获取所有银行账户的月份财务数据汇总
+ */
+export const getAllBankAccountsMonthlyData = async (
+  year: number = new Date().getFullYear()
+): Promise<MonthlyFinancialData[]> => {
+  try {
+    console.log('📊 [getAllBankAccountsMonthlyData] Starting...', { year });
+    
+    // 获取所有活跃银行账户
+    const accounts = await getAllBankAccounts('active');
+    
+    // 获取所有交易记录
+    const transactionsQuery = query(
+      collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
+      orderBy('transactionDate', 'asc')
+    );
+    
+    const transactionsSnapshot = await getDocs(transactionsQuery);
+    const transactions = transactionsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      transactionDate: safeTimestampToISO(doc.data().transactionDate),
+    })) as Transaction[];
+    
+    console.log('📊 [getAllBankAccountsMonthlyData] Found accounts:', accounts.length);
+    console.log('📊 [getAllBankAccountsMonthlyData] Found transactions:', transactions.length);
+    
+    // 按月份分组计算财务数据
+    const monthlyData: MonthlyFinancialData[] = [];
+    
+    for (let month = 1; month <= 12; month++) {
+      const monthStart = new Date(year, month - 1, 1);
+      const monthEnd = new Date(year, month, 0, 23, 59, 59);
+      
+      // 过滤当月交易
+      const monthTransactions = transactions.filter(tx => {
+        if (!tx.transactionDate) return false;
+        const txDate = new Date(tx.transactionDate);
+        return txDate >= monthStart && txDate <= monthEnd;
+      });
+      
+      // 计算月初余额（上月月末余额）
+      let openingBalance = 0;
+      if (month === 1) {
+        // 1月的月初余额 = 所有账户初始余额 + 去年12月之前的交易
+        openingBalance = accounts.reduce((sum, account) => sum + (account.initialBalance || 0), 0);
+        const lastYearTransactions = transactions.filter(tx => {
+          if (!tx.transactionDate) return false;
+          const txDate = new Date(tx.transactionDate);
+          return txDate.getFullYear() < year;
+        });
+        
+        lastYearTransactions.forEach(tx => {
+          if (tx.transactionType === 'income') {
+            openingBalance += tx.amount;
+          } else {
+            openingBalance -= tx.amount;
+          }
+        });
+      } else {
+        // 其他月份的月初余额 = 上月月末余额
+        const prevMonthData = monthlyData[month - 2];
+        openingBalance = prevMonthData.closingBalance;
+      }
+      
+      // 计算当月收入和支出
+      let totalIncome = 0;
+      let totalExpense = 0;
+      
+      monthTransactions.forEach(tx => {
+        if (tx.transactionType === 'income') {
+          totalIncome += tx.amount;
+        } else {
+          totalExpense += tx.amount;
+        }
+      });
+      
+      // 计算月末余额
+      const closingBalance = openingBalance + totalIncome - totalExpense;
+      
+      monthlyData.push({
+        month,
+        monthName: `${month}月`,
+        year,
+        openingBalance,
+        totalIncome,
+        totalExpense,
+        closingBalance,
+        transactionCount: monthTransactions.length,
+      });
+    }
+    
+    console.log('📊 [getAllBankAccountsMonthlyData] Monthly data calculated:', monthlyData.length);
+    return monthlyData;
+    
+  } catch (error) {
+    console.error('❌ [getAllBankAccountsMonthlyData] Failed:', error);
     throw error;
   }
 };
