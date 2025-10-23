@@ -116,15 +116,29 @@ const EventListPage: React.FC = () => {
         }))
       });
       
-      setEvents(result.data);
+      // 🆕 按负责理事分组并创建带分组行的数据源
+      const grouped = groupEventsByBoardMember(result.data);
+      setGroupedEvents(grouped);
+      
+      // 🆕 创建带分组标题行的扁平数据
+      const eventsWithGroupHeaders: any[] = [];
+      grouped.forEach(group => {
+        // 添加分组标题行
+        eventsWithGroupHeaders.push({
+          id: `group-${group.boardMember}`,
+          isGroupHeader: true,
+          boardMemberLabel: group.boardMember,
+          eventCount: group.events.length,
+        });
+        // 添加该组的所有活动
+        eventsWithGroupHeaders.push(...group.events);
+      });
+      
+      setEvents(eventsWithGroupHeaders);
       setPagination(prev => ({
         ...prev,
         total: result.total,
       }));
-      
-      // 🆕 按负责理事分组
-      const grouped = groupEventsByBoardMember(result.data);
-      setGroupedEvents(grouped);
     } catch (error) {
       message.error('获取活动列表失败');
       console.error('❌ [EventListPage] Failed to fetch events:', error);
@@ -356,27 +370,60 @@ const EventListPage: React.FC = () => {
       key: 'name',
       width: 250,
       fixed: 'left',
-      render: (text: string, record: Event) => (
-        <a onClick={() => handleViewDetails(record.id)} className="text-primary hover:text-primary/80">
-          {text}
-        </a>
-      ),
+      render: (text: string, record: any) => {
+        // 🆕 如果是分组标题行，显示完整的分组信息
+        if (record.isGroupHeader) {
+          return {
+            children: (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8,
+                padding: '8px 0',
+              }}>
+                <Tag color="purple" style={{ fontSize: 14, padding: '4px 12px', margin: 0 }}>
+                  👑 {record.boardMemberLabel}
+                </Tag>
+                <span style={{ color: '#999', fontSize: 12 }}>
+                  ({record.eventCount} 个活动)
+                </span>
+              </div>
+            ),
+            props: {
+              colSpan: columns.length, // 跨所有列
+            },
+          };
+        }
+        // 正常活动行
+        return (
+          <a onClick={() => handleViewDetails(record.id)} className="text-primary hover:text-primary/80">
+            {text}
+          </a>
+        );
+      },
     },
     {
       title: '活动日期',
       dataIndex: 'startDate',
       key: 'date',
       width: 180,
-      render: (startDate: string, record: Event) => (
-        <div style={{ lineHeight: '1.5' }}>
-          <div style={{ fontWeight: 500 }}>
-            {globalDateService.formatDate(startDate, 'display')}
+      render: (startDate: string, record: any) => {
+        // 🆕 分组标题行：隐藏此列
+        if (record.isGroupHeader) {
+          return { props: { colSpan: 0 } };
+        }
+        // 正常活动行
+        return (
+          <div style={{ lineHeight: '1.5' }}>
+            <div style={{ fontWeight: 500 }}>
+              {globalDateService.formatDate(startDate, 'display')}
+            </div>
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              至 {globalDateService.formatDate(record.endDate, 'display')}
+            </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#999' }}>
-            至 {globalDateService.formatDate(record.endDate, 'display')}
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: '状态',
@@ -384,7 +431,8 @@ const EventListPage: React.FC = () => {
       key: 'status',
       width: 120,
       align: 'center',
-      render: (status: string) => {
+      render: (status: string, record: any) => {
+        if (record.isGroupHeader) return { props: { colSpan: 0 } };
         const colorMap: Record<string, string> = {
           'Draft': 'default',
           'Published': 'success',
@@ -406,7 +454,8 @@ const EventListPage: React.FC = () => {
       key: 'level',
       width: 100,
       align: 'center',
-      render: (level: string) => {
+      render: (level: string, record: any) => {
+        if (record.isGroupHeader) return { props: { colSpan: 0 } };
         const labelMap: Record<string, string> = {
           'Local': '本地',
           'Area': '区域',
@@ -421,9 +470,10 @@ const EventListPage: React.FC = () => {
       dataIndex: 'location',
       key: 'location',
       width: 150,
-      render: (text: string, record: Event) => (
-        record.isOnline ? <Tag color="blue">线上</Tag> : text || '-'
-      ),
+      render: (text: string, record: any) => {
+        if (record.isGroupHeader) return { props: { colSpan: 0 } };
+        return record.isOnline ? <Tag color="blue">线上</Tag> : text || '-';
+      },
     },
     {
       title: '参与人数',
@@ -431,19 +481,22 @@ const EventListPage: React.FC = () => {
       key: 'currentParticipants',
       width: 120,
       align: 'center',
-      render: (count: number, record: Event) => (
-        <a 
-          onClick={() => navigate(`/events/${record.id}/registrations`)}
-          className="text-primary hover:text-primary/80 cursor-pointer"
-          style={{ textDecoration: 'none' }}
-          title="查看报名管理"
-        >
-          <span style={{ fontWeight: 500 }}>
-            {count}
-            {record.maxParticipants && <span className="text-gray-400"> / {record.maxParticipants}</span>}
-          </span>
-        </a>
-      ),
+      render: (count: number, record: any) => {
+        if (record.isGroupHeader) return { props: { colSpan: 0 } };
+        return (
+          <a 
+            onClick={() => navigate(`/events/${record.id}/registrations`)}
+            className="text-primary hover:text-primary/80 cursor-pointer"
+            style={{ textDecoration: 'none' }}
+            title="查看报名管理"
+          >
+            <span style={{ fontWeight: 500 }}>
+              {count}
+              {record.maxParticipants && <span className="text-gray-400"> / {record.maxParticipants}</span>}
+            </span>
+          </a>
+        );
+      },
     },
     {
       title: '价格',
@@ -451,13 +504,14 @@ const EventListPage: React.FC = () => {
       key: 'pricing',
       width: 120,
       align: 'center',
-      render: (pricing: any, record: Event) => (
-        record.isFree ? (
+      render: (pricing: any, record: any) => {
+        if (record.isGroupHeader) return { props: { colSpan: 0 } };
+        return record.isFree ? (
           <Tag color="green">免费</Tag>
         ) : (
-          <span>RM {pricing.memberPrice}</span>
-        )
-      ),
+          <span>RM {pricing?.memberPrice}</span>
+        );
+      },
     },
     {
       title: '操作',
@@ -466,35 +520,38 @@ const EventListPage: React.FC = () => {
       width: 200,
       fixed: 'right',
       align: 'center',
-      render: (_: any, record: Event) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetails(record.id)}
-          >
-            查看
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record.id)}
-          >
-            编辑
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-          >
-            删除
-          </Button>
-        </Space>
-      ),
+      render: (_: any, record: any) => {
+        if (record.isGroupHeader) return { props: { colSpan: 0 } };
+        return (
+          <Space size="small">
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewDetails(record.id)}
+            >
+              查看
+            </Button>
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record.id)}
+            >
+              编辑
+            </Button>
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record.id)}
+            >
+              删除
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -667,40 +724,49 @@ const EventListPage: React.FC = () => {
       />
 
       {/* 🆕 按负责理事分组显示 */}
-      {groupedEvents.map((group, index) => (
-        <Card
-          key={group.boardMember}
-          title={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Tag color="purple" style={{ fontSize: 14, padding: '4px 12px' }}>
-                👑 {group.boardMember}
-              </Tag>
-              <span style={{ color: '#999', fontSize: 12 }}>
-                ({group.events.length} 个活动)
-              </span>
-            </div>
-          }
-          className="mb-4"
-          style={{ 
-            borderLeft: '4px solid #722ed1',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+      <Card>
+        <Table
+          columns={columns}
+          dataSource={events}
+          loading={loading}
+          rowKey="id"
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            ...globalComponentService.getTableConfig().pagination,
           }}
-        >
-          <Table
-            columns={columns}
-            dataSource={group.events}
-            loading={loading && index === 0}
-            rowKey="id"
-            pagination={false}
-            rowSelection={{
-              selectedRowKeys,
-              onChange: setSelectedRowKeys,
-            }}
-            scroll={{ x: 1500 }}
-            size="small"
-          />
-        </Card>
-      ))}
+          onChange={handleTableChange}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => {
+              // 过滤掉分组标题行的ID
+              const filteredKeys = keys.filter(key => !String(key).startsWith('group-'));
+              setSelectedRowKeys(filteredKeys);
+            },
+            getCheckboxProps: (record: any) => ({
+              disabled: record.isGroupHeader, // 分组标题行不可选
+            }),
+          }}
+          scroll={{ x: 1500 }}
+          rowClassName={(record: any) => record.isGroupHeader ? 'group-header-row' : ''}
+        />
+      </Card>
+      
+      <style>{`
+        .group-header-row {
+          background: linear-gradient(135deg, #722ed1 0%, #9254de 100%) !important;
+        }
+        .group-header-row:hover {
+          background: linear-gradient(135deg, #722ed1 0%, #9254de 100%) !important;
+        }
+        .group-header-row td {
+          color: white !important;
+          font-weight: 600 !important;
+          border-top: 2px solid #722ed1 !important;
+          padding: 12px 16px !important;
+        }
+      `}</style>
 
       {/* 🆕 批量设置负责理事Modal */}
       <Modal
