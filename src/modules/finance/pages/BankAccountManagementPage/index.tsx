@@ -68,6 +68,7 @@ const BankAccountManagementPage: React.FC = () => {
   const [monthlyData, setMonthlyData] = useState<MonthlyFinancialData[]>([]);
   const [monthlyDataLoading, setMonthlyDataLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedBankAccount, setSelectedBankAccount] = useState<string>('all'); // 🆕 选择的银行账户
 
   useEffect(() => {
     loadBankAccounts();
@@ -78,10 +79,10 @@ const BankAccountManagementPage: React.FC = () => {
     filterAccounts();
   }, [accounts, searchText]);
 
-  // 🆕 当年份变化时重新加载月份数据
+  // 🆕 当年份或银行账户变化时重新加载月份数据
   useEffect(() => {
     loadMonthlyData();
-  }, [selectedYear]);
+  }, [selectedYear, selectedBankAccount]);
 
   const loadBankAccounts = async () => {
     if (!user) return;
@@ -112,7 +113,17 @@ const BankAccountManagementPage: React.FC = () => {
   const loadMonthlyData = async () => {
     try {
       setMonthlyDataLoading(true);
-      const data = await getAllBankAccountsMonthlyData(selectedYear);
+      let data: MonthlyFinancialData[];
+      
+      if (selectedBankAccount === 'all') {
+        // 加载所有银行账户的汇总数据
+        data = await getAllBankAccountsMonthlyData(selectedYear);
+      } else {
+        // 加载指定银行账户的数据
+        const { getBankAccountMonthlyData } = await import('../../services/bankAccountService');
+        data = await getBankAccountMonthlyData(selectedBankAccount, selectedYear);
+      }
+      
       setMonthlyData(data);
     } catch (error) {
       message.error('加载月份财务数据失败');
@@ -388,22 +399,42 @@ const BankAccountManagementPage: React.FC = () => {
         {/* 🆕 月份财务数据卡片 */}
         <Card 
           title={
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-4">
               <span>📊 月份财务概览</span>
-              <Select
-                value={selectedYear}
-                onChange={setSelectedYear}
-                style={{ width: 120 }}
-              >
-                {Array.from({ length: 5 }, (_, i) => {
-                  const year = new Date().getFullYear() - 2 + i;
-                  return (
-                    <Option key={year} value={year}>
-                      {year}年
+              <div className="flex gap-3">
+                {/* 🆕 银行账户筛选 */}
+                <Select
+                  value={selectedBankAccount}
+                  onChange={setSelectedBankAccount}
+                  style={{ width: 200 }}
+                  placeholder="选择银行账户"
+                >
+                  <Option value="all">
+                    <BankOutlined /> 所有银行账户
+                  </Option>
+                  {accounts.map(account => (
+                    <Option key={account.id} value={account.id}>
+                      <BankOutlined /> {account.accountName}
                     </Option>
-                  );
-                })}
-              </Select>
+                  ))}
+                </Select>
+                
+                {/* 年份筛选 */}
+                <Select
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  style={{ width: 120 }}
+                >
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const year = new Date().getFullYear() - 2 + i;
+                    return (
+                      <Option key={year} value={year}>
+                        {year}年
+                      </Option>
+                    );
+                  })}
+                </Select>
+              </div>
             </div>
           }
           className="mb-6"
