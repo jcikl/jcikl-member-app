@@ -92,6 +92,7 @@ const EventListPage: React.FC = () => {
       console.log('🎯 [EventListPage] Fetching events with params:', {
         page: pagination.current,
         pageSize: pagination.pageSize,
+        limit: pagination.pageSize,
         searchParams
       });
       
@@ -245,12 +246,20 @@ const EventListPage: React.FC = () => {
     });
   };
 
-  const handleTableChange = (newPagination: any) => {
-    setPagination({
-      current: newPagination.current,
+  const handleTableChange = (newPagination: any, filters: any, sorter: any) => {
+    console.log('📊 [handleTableChange] Pagination changed:', {
+      oldCurrent: pagination.current,
+      oldPageSize: pagination.pageSize,
+      newCurrent: newPagination.current,
+      newPageSize: newPagination.pageSize,
       pageSize: newPagination.pageSize,
-      total: pagination.total,
     });
+    
+    setPagination(prev => ({
+      current: newPagination.current || prev.current,
+      pageSize: newPagination.pageSize || prev.pageSize,
+      total: prev.total,
+    }));
   };
 
   const handleExport = () => {
@@ -381,7 +390,7 @@ const EventListPage: React.FC = () => {
                 gap: 8,
                 padding: '8px 0',
               }}>
-                <Tag color="purple" style={{ fontSize: 14, padding: '4px 12px', margin: 0 }}>
+                <Tag color="purple" style={{ fontSize: 14, padding: '4px 0px', margin: 0 }}>
                   👑 {record.boardMemberLabel}
                 </Tag>
                 <span style={{ color: '#999', fontSize: 12 }}>
