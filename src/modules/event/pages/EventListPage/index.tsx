@@ -47,7 +47,6 @@ import {
   EVENT_CATEGORY_OPTIONS 
 } from '../../types';
 import { handleAsyncOperation } from '@/utils/errorHelpers';
-import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
 import { useAuthStore } from '@/stores/authStore';
 import type { ColumnsType } from 'antd/es/table';
@@ -738,13 +737,7 @@ const EventListPage: React.FC = () => {
           dataSource={events}
           loading={loading}
           rowKey="id"
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            ...globalComponentService.getTableConfig().pagination,
-          }}
-          onChange={handleTableChange}
+          pagination={false}
           rowSelection={{
             selectedRowKeys,
             onChange: (keys) => {
@@ -759,6 +752,49 @@ const EventListPage: React.FC = () => {
           scroll={{ x: 1500 }}
           rowClassName={(record: any) => record.isGroupHeader ? 'group-header-row' : ''}
         />
+        
+        {/* 🆕 自定义分页控件 */}
+        <div style={{ 
+          marginTop: 16, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          padding: '16px 0'
+        }}>
+          <div style={{ color: '#666' }}>
+            显示第 {(pagination.current - 1) * pagination.pageSize + 1} - {Math.min(pagination.current * pagination.pageSize, pagination.total)} 条，共 {pagination.total} 条活动
+          </div>
+          <Space>
+            <span>每页显示：</span>
+            <Select
+              value={pagination.pageSize}
+              onChange={(value) => handleTableChange({ current: 1, pageSize: value }, null, null)}
+              style={{ width: 100 }}
+            >
+              <Select.Option value={10}>10 条</Select.Option>
+              <Select.Option value={20}>20 条</Select.Option>
+              <Select.Option value={50}>50 条</Select.Option>
+              <Select.Option value={100}>100 条</Select.Option>
+            </Select>
+            <Button.Group>
+              <Button
+                onClick={() => handleTableChange({ current: pagination.current - 1, pageSize: pagination.pageSize }, null, null)}
+                disabled={pagination.current === 1}
+              >
+                上一页
+              </Button>
+              <Button disabled>
+                {pagination.current} / {Math.ceil(pagination.total / pagination.pageSize)}
+              </Button>
+              <Button
+                onClick={() => handleTableChange({ current: pagination.current + 1, pageSize: pagination.pageSize }, null, null)}
+                disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
+              >
+                下一页
+              </Button>
+            </Button.Group>
+          </Space>
+        </div>
       </Card>
       
       <style>{`
