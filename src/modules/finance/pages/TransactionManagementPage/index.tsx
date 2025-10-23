@@ -1143,6 +1143,12 @@ const TransactionManagementPage: React.FC = () => {
     setTreeLoading(true);
     
     try {
+      // 🆕 加载活动数据（用于获取负责理事信息）
+      const { getEvents } = await import('../../../event/services/eventService');
+      const eventsResult = await getEvents({ page: 1, limit: 10000 });
+      const eventsMap = new Map(eventsResult.data.map((e: any) => [e.name, e]));
+      console.log('🎯 [buildTreeData] Loaded events:', eventsResult.data.length);
+      
       // 🆕 为树形视图加载所有交易数据
       const allTransactions = await loadAllTransactionsForTreeView();
       
@@ -1338,34 +1344,105 @@ const TransactionManagementPage: React.FC = () => {
       };
 
       Object.entries(subGroups).forEach(([txAccount, items]) => {
-        // 🆕 对于活动财务，分别显示收入和支出
+        // 🆕 对于活动财务，按负责理事分组
         if (category === 'event-finance') {
-          const incomeItems = items.filter(t => t.transactionType === 'income');
-          const expenseItems = items.filter(t => t.transactionType === 'expense');
+          // 按负责理事分组活动
+          const boardMemberGroups: Record<string, { events: Record<string, Transaction[]> }> = {};
           
-          // 🆕 排除已拆分的父交易
-          const incomeTotal = incomeItems
-            .filter(t => t.isSplit !== true)
-            .reduce((sum, t) => sum + (t.amount || 0), 0);
-          const expenseTotal = expenseItems
-            .filter(t => t.isSplit !== true)
-            .reduce((sum, t) => sum + (t.amount || 0), 0);
-          const netTotal = incomeTotal - expenseTotal;
-
-          categoryNode.children!.push({
-            title: (
-              <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-                {txAccount === 'uncategorized' ? '未分类' : txAccount}
-                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                  ({items.length}) 净收入: RM {netTotal.toFixed(2)}
-                </Text>
-                <Text type="secondary" style={{ marginLeft: 8, fontSize: 10 }}>
-                  (收入: RM {incomeTotal.toFixed(2)} - 支出: RM {expenseTotal.toFixed(2)})
-                </Text>
-              </span>
-            ),
-            key: `income-${category}-${txAccount}`,
-            isLeaf: true,
+          items.forEach(transaction => {
+            const eventName = transaction.txAccount || 'uncategorized';
+            const event: any = eventsMap.get(eventName);
+            const boardMember = event?.boardMember || '未设置负责理事';
+            
+            if (!boardMemberGroups[boardMember]) {
+              boardMemberGroups[boardMember] = { events: {} };
+            }
+            if (!boardMemberGroups[boardMember].events[eventName]) {
+              boardMemberGroups[boardMember].events[eventName] = [];
+            }
+            boardMemberGroups[boardMember].events[eventName].push(transaction);
+          });
+          
+          // 负责理事标签映射
+          const boardMemberLabels: Record<string, string> = {
+            'president': 'President（会长）',
+            'secretary': 'Secretary（秘书）',
+            'honorary-treasurer': 'Honorary Treasurer（名誉司库）',
+            'general-legal-council': 'General Legal Council（法律顾问）',
+            'executive-vp': 'Executive Vice President（执行副会长）',
+            'vp-individual': 'VP Individual（个人发展副会长）',
+            'vp-community': 'VP Community（社区发展副会长）',
+            'vp-business': 'VP Business（商业发展副会长）',
+            'vp-international': 'VP International（国际事务副会长）',
+            'vp-lom': 'VP LOM（地方组织副会长）',
+            'immediate-past-president': 'Immediate Past President（卸任会长）',
+            '未设置负责理事': '未设置负责理事',
+          };
+          
+          // 构建负责理事节点
+          Object.entries(boardMemberGroups).forEach(([boardMember, groupData]) => {
+            const allEventsInGroup = Object.values(groupData.events).flat();
+            const groupIncomeTotal = allEventsInGroup
+              .filter(t => t.transactionType === 'income' && t.isSplit !== true)
+              .reduce((sum, t) => sum + (t.amount || 0), 0);
+            const groupExpenseTotal = allEventsInGroup
+              .filter(t => t.transactionType === 'expense' && t.isSplit !== true)
+              .reduce((sum, t) => sum + (t.amount || 0), 0);
+            const groupNetTotal = groupIncomeTotal - groupExpenseTotal;
+            
+            const boardMemberNode: DataNode = {
+              title: (
+                <span>
+                  👑 {boardMemberLabels[boardMember] || boardMember}
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                    ({Object.keys(groupData.events).length}个活动) 净收入: RM {groupNetTotal.toFixed(2)}
+                  </Text>
+                </span>
+              ),
+              key: `income-${category}-${boardMember}`,
+              children: [],
+            };
+            
+            // 构建每个活动节点
+            Object.entries(groupData.events).forEach(([eventName, eventTransactions]) => {
+              const incomeItems = eventTransactions.filter(t => t.transactionType === 'income');
+              const expenseItems = eventTransactions.filter(t => t.transactionType === 'expense');
+              
+              const incomeTotal = incomeItems
+                .filter(t => t.isSplit !== true)
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+              const expenseTotal = expenseItems
+                .filter(t => t.isSplit !== true)
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+              const netTotal = incomeTotal - expenseTotal;
+              
+              // 获取活动日期
+              const event: any = eventsMap.get(eventName);
+              const eventDate = event?.startDate ? globalDateService.formatDate(event.startDate, 'display') : '';
+              
+              boardMemberNode.children!.push({
+                title: (
+                  <span onClick={() => handleTreeNodeClick(eventTransactions)} style={{ cursor: 'pointer' }}>
+                    {eventName === 'uncategorized' ? '未分类' : eventName}
+                    {eventDate && (
+                      <Text type="secondary" style={{ marginLeft: 8, fontSize: 11 }}>
+                        ({eventDate})
+                      </Text>
+                    )}
+                    <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                      净收入: RM {netTotal.toFixed(2)}
+                    </Text>
+                    <Text type="secondary" style={{ marginLeft: 8, fontSize: 10 }}>
+                      (收入: RM {incomeTotal.toFixed(2)} - 支出: RM {expenseTotal.toFixed(2)})
+                    </Text>
+                  </span>
+                ),
+                key: `income-${category}-${boardMember}-${eventName}`,
+                isLeaf: true,
+              });
+            });
+            
+            categoryNode.children!.push(boardMemberNode);
           });
         } else {
           // 其他类别：正常显示
@@ -1417,23 +1494,112 @@ const TransactionManagementPage: React.FC = () => {
       };
 
       Object.entries(subGroups).forEach(([txAccount, items]) => {
-        // 🆕 排除已拆分的父交易
-        const subTotal = items
-          .filter(t => t.isSplit !== true)
-          .reduce((sum, t) => sum + (t.amount || 0), 0);
+        // 🆕 对于活动财务，按负责理事分组
+        if (category === 'event-finance') {
+          // 按负责理事分组活动
+          const boardMemberGroups: Record<string, { events: Record<string, Transaction[]> }> = {};
+          
+          items.forEach(transaction => {
+            const eventName = transaction.txAccount || 'uncategorized';
+            const event: any = eventsMap.get(eventName);
+            const boardMember = event?.boardMember || '未设置负责理事';
+            
+            if (!boardMemberGroups[boardMember]) {
+              boardMemberGroups[boardMember] = { events: {} };
+            }
+            if (!boardMemberGroups[boardMember].events[eventName]) {
+              boardMemberGroups[boardMember].events[eventName] = [];
+            }
+            boardMemberGroups[boardMember].events[eventName].push(transaction);
+          });
+          
+          // 负责理事标签映射
+          const boardMemberLabels: Record<string, string> = {
+            'president': 'President（会长）',
+            'secretary': 'Secretary（秘书）',
+            'honorary-treasurer': 'Honorary Treasurer（名誉司库）',
+            'general-legal-council': 'General Legal Council（法律顾问）',
+            'executive-vp': 'Executive Vice President（执行副会长）',
+            'vp-individual': 'VP Individual（个人发展副会长）',
+            'vp-community': 'VP Community（社区发展副会长）',
+            'vp-business': 'VP Business（商业发展副会长）',
+            'vp-international': 'VP International（国际事务副会长）',
+            'vp-lom': 'VP LOM（地方组织副会长）',
+            'immediate-past-president': 'Immediate Past President（卸任会长）',
+            '未设置负责理事': '未设置负责理事',
+          };
+          
+          // 构建负责理事节点
+          Object.entries(boardMemberGroups).forEach(([boardMember, groupData]) => {
+            const allEventsInGroup = Object.values(groupData.events).flat();
+            const groupTotal = allEventsInGroup
+              .filter(t => t.isSplit !== true)
+              .reduce((sum, t) => sum + (t.amount || 0), 0);
+            
+            const boardMemberNode: DataNode = {
+              title: (
+                <span>
+                  👑 {boardMemberLabels[boardMember] || boardMember}
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                    ({Object.keys(groupData.events).length}个活动) RM {groupTotal.toFixed(2)}
+                  </Text>
+                </span>
+              ),
+              key: `expense-${category}-${boardMember}`,
+              children: [],
+            };
+            
+            // 构建每个活动节点
+            Object.entries(groupData.events).forEach(([eventName, eventTransactions]) => {
+              const subTotal = eventTransactions
+                .filter(t => t.isSplit !== true)
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+              
+              // 获取活动日期
+              const event: any = eventsMap.get(eventName);
+              const eventDate = event?.startDate ? globalDateService.formatDate(event.startDate, 'display') : '';
+              
+              boardMemberNode.children!.push({
+                title: (
+                  <span onClick={() => handleTreeNodeClick(eventTransactions)} style={{ cursor: 'pointer' }}>
+                    {eventName === 'uncategorized' ? '未分类' : eventName}
+                    {eventDate && (
+                      <Text type="secondary" style={{ marginLeft: 8, fontSize: 11 }}>
+                        ({eventDate})
+                      </Text>
+                    )}
+                    <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                      RM {subTotal.toFixed(2)}
+                    </Text>
+                  </span>
+                ),
+                key: `expense-${category}-${boardMember}-${eventName}`,
+                isLeaf: true,
+              });
+            });
+            
+            categoryNode.children!.push(boardMemberNode);
+          });
+        } else {
+          // 其他类别：正常显示
+          // 🆕 排除已拆分的父交易
+          const subTotal = items
+            .filter(t => t.isSplit !== true)
+            .reduce((sum, t) => sum + (t.amount || 0), 0);
 
-        categoryNode.children!.push({
-          title: (
-            <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-              {txAccount === 'uncategorized' ? '未分类' : txAccount}
-              <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                ({items.length}) RM {subTotal.toFixed(2)}
-              </Text>
-            </span>
-          ),
-          key: `expense-${category}-${txAccount}`,
-          isLeaf: true,
-        });
+          categoryNode.children!.push({
+            title: (
+              <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
+                {txAccount === 'uncategorized' ? '未分类' : txAccount}
+                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                  ({items.length}) RM {subTotal.toFixed(2)}
+                </Text>
+              </span>
+            ),
+            key: `expense-${category}-${txAccount}`,
+            isLeaf: true,
+          });
+        }
       });
 
       expenseNode.children!.push(categoryNode);
