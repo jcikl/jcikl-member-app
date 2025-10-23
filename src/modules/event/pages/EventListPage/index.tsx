@@ -108,10 +108,7 @@ const EventListPage: React.FC = () => {
           name: e.name,
           startDate: e.startDate,
           status: e.status,
-          committeeMembers: e.committeeMembers?.map(m => ({
-            name: m.name,
-            position: m.position
-          })) || []
+          boardMember: e.boardMember,
         }))
       });
       
@@ -132,10 +129,16 @@ const EventListPage: React.FC = () => {
         eventsWithGroupHeaders.push(...group.events);
       });
       
+      console.log('📊 [EventListPage] Events with group headers:', {
+        totalRows: eventsWithGroupHeaders.length,
+        groupHeaders: eventsWithGroupHeaders.filter(e => e.isGroupHeader).length,
+        actualEvents: result.data.length,
+      });
+      
       setEvents(eventsWithGroupHeaders);
       setPagination(prev => ({
         ...prev,
-        total: result.total,
+        total: result.total, // 保持真实的活动总数
       }));
     } catch (error) {
       message.error('获取活动列表失败');
