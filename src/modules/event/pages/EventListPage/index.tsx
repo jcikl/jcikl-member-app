@@ -101,12 +101,15 @@ const EventListPage: React.FC = () => {
       console.log('📊 [EventListPage] Events loaded:', {
         count: result.data.length,
         total: result.total,
-        events: result.data.slice(0, 3).map(e => ({
+        events: result.data.map(e => ({
           id: e.id,
           name: e.name,
           startDate: e.startDate,
-          endDate: e.endDate,
           status: e.status,
+          committeeMembers: e.committeeMembers?.map(m => ({
+            name: m.name,
+            position: m.position
+          })) || []
         }))
       });
       
@@ -319,18 +322,20 @@ const EventListPage: React.FC = () => {
       ),
     },
     {
-      title: '开始日期',
+      title: '活动日期',
       dataIndex: 'startDate',
-      key: 'startDate',
-      width: 150,
-      render: (date: string) => globalDateService.formatDate(date, 'display'),
-    },
-    {
-      title: '结束日期',
-      dataIndex: 'endDate',
-      key: 'endDate',
-      width: 150,
-      render: (date: string) => globalDateService.formatDate(date, 'display'),
+      key: 'date',
+      width: 180,
+      render: (startDate: string, record: Event) => (
+        <div style={{ lineHeight: '1.5' }}>
+          <div style={{ fontWeight: 500 }}>
+            {globalDateService.formatDate(startDate, 'display')}
+          </div>
+          <div style={{ fontSize: '12px', color: '#999' }}>
+            至 {globalDateService.formatDate(record.endDate, 'display')}
+          </div>
+        </div>
+      ),
     },
     {
       title: '状态',
