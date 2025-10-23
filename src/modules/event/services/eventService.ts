@@ -229,6 +229,15 @@ export const getEvents = async (
       );
     }
     
+    // 🆕 Client-side year filter
+    if (params.year) {
+      const targetYear = parseInt(params.year);
+      filteredEvents = filteredEvents.filter(event => {
+        const eventDate = new Date(event.startDate);
+        return eventDate.getFullYear() === targetYear;
+      });
+    }
+    
     // Client-side date range filter
     if (params.dateFrom || params.dateTo) {
       filteredEvents = filteredEvents.filter(event => {

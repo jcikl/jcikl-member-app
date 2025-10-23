@@ -80,6 +80,9 @@ const EventListPage: React.FC = () => {
   const [bulkBoardMember, setBulkBoardMember] = useState<string>('');
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  
+  // 🆕 年份筛选状态
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
 
   // ========== Data Fetching ==========
   
@@ -190,13 +193,44 @@ const EventListPage: React.FC = () => {
     }
   }, []);
 
+  // 🆕 获取活动的年份范围
+  const fetchAvailableYears = useCallback(async () => {
+    try {
+      // 获取所有活动（不分页）以获取完整的年份范围
+      const result = await getEvents({
+        page: 1,
+        limit: 10000, // 获取所有活动
+      });
+      
+      // 提取所有活动的年份
+      const years = new Set<number>();
+      result.data.forEach(event => {
+        if (event.startDate) {
+          const year = new Date(event.startDate).getFullYear();
+          if (!isNaN(year)) {
+            years.add(year);
+          }
+        }
+      });
+      
+      // 转换为数组并排序（从新到旧）
+      const yearArray = Array.from(years).sort((a, b) => b - a);
+      setAvailableYears(yearArray);
+      
+      console.log('📅 [fetchAvailableYears] Available years:', yearArray);
+    } catch (error) {
+      console.error('获取年份范围失败', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    fetchAvailableYears(); // 🆕 获取年份范围
+  }, [fetchStats, fetchAvailableYears]);
 
   // ========== Event Handlers ==========
   
@@ -343,6 +377,16 @@ const EventListPage: React.FC = () => {
   // ========== Filter Configuration ==========
   
   const filterFields: FilterField[] = [
+    {
+      name: 'year',
+      label: '年份',
+      type: 'select',
+      options: availableYears.map(year => ({
+        label: `${year}年`,
+        value: year.toString(),
+      })),
+      placeholder: '选择年份',
+    },
     {
       name: 'status',
       label: '活动状态',

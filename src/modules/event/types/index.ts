@@ -303,6 +303,7 @@ export interface EventSearchParams {
   status?: EventStatus;
   level?: EventLevel;
   category?: string;
+  year?: string;                // 🆕 Filter by year
   dateFrom?: string;
   dateTo?: string;
   isOnline?: boolean;
