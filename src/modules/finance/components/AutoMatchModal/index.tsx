@@ -593,9 +593,18 @@ export const AutoMatchModal: React.FC<Props> = ({
                         <div className="section-title">⚠️ 最佳尝试匹配（需手动确认）</div>
                         <Alert
                           message={
-                            item.topAttempt.daysDifference <= 30
-                              ? `未达到自动分类阈值（60分），但找到时间最接近的活动（相差${item.topAttempt.daysDifference}天，得分：${item.topAttempt.totalScore}/100）`
-                              : `未达到自动分类阈值（60分），但找到以下活动（得分：${item.topAttempt.totalScore}/100）`
+                            (() => {
+                              // 🔄 根据交易类型显示不同的阈值
+                              const threshold = item.transaction.transactionType === 'expense' ? 45 : 60;
+                              const maxScore = item.transaction.transactionType === 'expense' ? 60 : 100;
+                              const transactionTypeText = item.transaction.transactionType === 'expense' ? '支出交易' : '收入交易';
+                              
+                              if (item.topAttempt.daysDifference <= 30) {
+                                return `未达到${transactionTypeText}自动分类阈值（${threshold}分），但找到时间最接近的活动（相差${item.topAttempt.daysDifference}天，得分：${item.topAttempt.totalScore}/${maxScore}）`;
+                              } else {
+                                return `未达到${transactionTypeText}自动分类阈值（${threshold}分），但找到以下活动（得分：${item.topAttempt.totalScore}/${maxScore}）`;
+                              }
+                            })()
                           }
                           type="warning"
                           showIcon
