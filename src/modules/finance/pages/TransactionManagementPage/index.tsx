@@ -1288,6 +1288,25 @@ const TransactionManagementPage: React.FC = () => {
       'uncategorized': '未分类',
     };
 
+    // 🆕 日常财务二次分类名称映射
+    const generalAccountsNameMap: Record<string, string> = {
+      'office-rent': '办公室租金',
+      'utilities': '水电费',
+      'office-supplies': '办公用品',
+      'communication': '通讯费',
+      'transportation': '交通费',
+      'meals': '餐费',
+      'training': '培训费',
+      'equipment': '设备费',
+      'maintenance': '维护费',
+      'insurance': '保险费',
+      'legal': '法律费用',
+      'accounting': '会计费用',
+      'marketing': '营销费用',
+      'other': '其他费用',
+      'uncategorized': '未分类',
+    };
+
     // 构建收入树
     Object.entries(incomeGroups).forEach(([category, subGroups]) => {
       if (Object.keys(subGroups).length === 0) return;
@@ -1377,7 +1396,10 @@ const TransactionManagementPage: React.FC = () => {
           categoryNode.children!.push({
             title: (
               <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-                {txAccount === 'uncategorized' ? '未分类' : txAccount}
+                {category === 'general-accounts' 
+                  ? (generalAccountsNameMap[txAccount] || txAccount)
+                  : (txAccount === 'uncategorized' ? '未分类' : txAccount)
+                }
                 <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                   ({items.length}) RM {subTotal.toFixed(2)}
                 </Text>
@@ -1425,7 +1447,10 @@ const TransactionManagementPage: React.FC = () => {
         categoryNode.children!.push({
           title: (
             <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-              {txAccount === 'uncategorized' ? '未分类' : txAccount}
+              {category === 'general-accounts' 
+                ? (generalAccountsNameMap[txAccount] || txAccount)
+                : (txAccount === 'uncategorized' ? '未分类' : txAccount)
+              }
               <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                 ({items.length}) RM {subTotal.toFixed(2)}
               </Text>
