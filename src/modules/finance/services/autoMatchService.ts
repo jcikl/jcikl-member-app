@@ -2,14 +2,27 @@
  * Auto Match Service
  * 交易记录自动分类匹配服务
  * 
- * 匹配逻辑（权重调整为实际业务场景）：
+ * 匹配逻辑（根据交易类型区分）：
+ * 
+ * 【收入交易】（最高100分）
  * 1. 日期匹配 (40分) - 最重要，交易通常发生在活动当天或前后
  * 2. 票价匹配 (40分) - 次重要，金额是最可靠的匹配依据
  * 3. 活动名称匹配 (20分) - 参考项，银行描述不一定包含活动名称
  * 
- * 总分 >= 80: 高置信度（可自动应用）
- * 总分 60-79: 中置信度（需人工确认）
- * 总分 < 60: 低置信度（显示分析结果，建议手动分类）
+ * 置信度标准：
+ * - 总分 >= 80: 高置信度（可自动应用）
+ * - 总分 60-79: 中置信度（需人工确认）
+ * - 总分 < 60: 低置信度（显示分析结果，建议手动分类）
+ * 
+ * 【支出交易】（最高60分，不考虑票价）
+ * 1. 日期匹配 (40分) - 最重要
+ * 2. 活动名称匹配 (20分) - 参考项
+ * 3. 票价匹配 (0分) - 忽略（支出是付款金额，不是票价收入）
+ * 
+ * 置信度标准：
+ * - 总分 >= 55: 高置信度（可自动应用）
+ * - 总分 45-54: 中置信度（需人工确认）
+ * - 总分 < 45: 低置信度（显示分析结果，建议手动分类）
  */
 
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
@@ -98,28 +111,48 @@ export const findMatchesForTransaction = async (
       
       // 计算各项得分
       const nameScore = calculateNameScore(transaction, event);
-      const priceScore = calculatePriceScore(transaction.amount, event.pricing);
+      
+      // 🚫 支出交易不考虑票价匹配（支出是付款金额，不是票价收入）
+      const priceScore = transaction.transactionType === 'expense' 
+        ? { score: 0, type: '支出交易（忽略票价）', matchedPrice: undefined }
+        : calculatePriceScore(transaction.amount, event.pricing);
+      
       const dateScore = calculateDateScore(transaction.transactionDate, event.startDate);
 
-      const totalScore = nameScore.score + priceScore.score + dateScore.score;
+      // 🔄 支出交易总分计算：只考虑日期(40分)+名称(20分)，最高60分
+      const totalScore = transaction.transactionType === 'expense'
+        ? nameScore.score + dateScore.score
+        : nameScore.score + priceScore.score + dateScore.score;
+      
+      // 🔄 支出交易阈值调整为45分（因为不考虑票价，最高只有60分）
+      const threshold = transaction.transactionType === 'expense' ? 45 : 60;
       
       // 🔍 调试前3个匹配结果
-      if (debugCount < 3 || totalScore >= 60) {
+      if (debugCount < 3 || totalScore >= threshold) {
         console.log(`📊 [Match #${debugCount + 1}] ${event.name}:`, {
+          transactionType: transaction.transactionType,
           dateScore: `${dateScore.score}/40 (${dateScore.reason})`,
-          priceScore: `${priceScore.score}/40 (${priceScore.type})`,
+          priceScore: `${priceScore.score}/${transaction.transactionType === 'expense' ? '0(忽略)' : '40'} (${priceScore.type})`,
           nameScore: `${nameScore.score}/20 (${nameScore.reason})`,
-          totalScore: `${totalScore}/100`,
-          threshold: totalScore >= 60 ? '✅ PASS' : '❌ FAIL',
+          totalScore: `${totalScore}/${transaction.transactionType === 'expense' ? '60' : '100'}`,
+          threshold: totalScore >= threshold ? '✅ PASS' : '❌ FAIL',
         });
         debugCount++;
       }
 
       // 根据 includeAllScores 决定是否保留所有匹配
-      const shouldInclude = includeAllScores || totalScore >= 60;
+      const shouldInclude = includeAllScores || totalScore >= threshold;
       
       if (shouldInclude) {
-        const confidence = totalScore >= 80 ? 'high' : totalScore >= 60 ? 'medium' : 'low';
+        // 🔄 支出交易置信度调整（最高60分）
+        let confidence: 'high' | 'medium' | 'low';
+        if (transaction.transactionType === 'expense') {
+          // 支出交易：55-60分=高置信度，45-54分=中置信度，<45分=低置信度
+          confidence = totalScore >= 55 ? 'high' : totalScore >= 45 ? 'medium' : 'low';
+        } else {
+          // 收入交易：80+分=高置信度，60-79分=中置信度，<60分=低置信度
+          confidence = totalScore >= 80 ? 'high' : totalScore >= 60 ? 'medium' : 'low';
+        }
 
         // 转换 eventDate 为 ISO 字符串（处理 Firestore Timestamp）
         let eventDateStr = event.startDate;
