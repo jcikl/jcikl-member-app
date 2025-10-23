@@ -66,9 +66,9 @@ const EventEditPage: React.FC = () => {
       return;
     }
 
-    // 简单权限校验：仅组织者可编辑（如需更细粒度，接入全局权限服务）
-    if (event && event.organizerId && user.id !== event.organizerId) {
-      message.warning('您没有权限编辑此活动（仅组织者可编辑）');
+    // 🆕 权限校验：管理员或组织者可编辑
+    if (event && event.organizerId && user.id !== event.organizerId && user.role !== 'admin') {
+      message.warning('您没有权限编辑此活动（仅组织者或管理员可编辑）');
       return;
     }
 
@@ -164,8 +164,8 @@ const EventEditPage: React.FC = () => {
                     loading={loading}
                     onSubmit={async (partial) => {
                       if (!id || !user) return;
-                      if (event && event.organizerId && user.id !== event.organizerId) {
-                        message.warning('您没有权限编辑此活动（仅组织者可编辑）');
+                      if (event && event.organizerId && user.id !== event.organizerId && user.role !== 'admin') {
+                        message.warning('您没有权限编辑此活动（仅组织者或管理员可编辑）');
                         return;
                       }
                       await handleAsyncOperation(
@@ -189,8 +189,8 @@ const EventEditPage: React.FC = () => {
                     loading={loading}
                     onSubmit={async (partial) => {
                       if (!id || !user) return;
-                      if (event && event.organizerId && user.id !== event.organizerId) {
-                        message.warning('您没有权限编辑此活动（仅组织者可编辑）');
+                      if (event && event.organizerId && user.id !== event.organizerId && user.role !== 'admin') {
+                        message.warning('您没有权限编辑此活动（仅组织者或管理员可编辑）');
                         return;
                       }
                       await handleAsyncOperation(
@@ -214,8 +214,8 @@ const EventEditPage: React.FC = () => {
                     loading={loading}
                     onSubmit={async (partial) => {
                       if (!id || !user) return;
-                      if (event && event.organizerId && user.id !== event.organizerId) {
-                        message.warning('您没有权限编辑此活动（仅组织者可编辑）');
+                      if (event && event.organizerId && user.id !== event.organizerId && user.role !== 'admin') {
+                        message.warning('您没有权限编辑此活动（仅组织者或管理员可编辑）');
                         return;
                       }
                       await handleAsyncOperation(
@@ -239,8 +239,8 @@ const EventEditPage: React.FC = () => {
                     loading={loading}
                     onSubmit={async (partial) => {
                       if (!id || !user) return;
-                      if (event && event.organizerId && user.id !== event.organizerId) {
-                        message.warning('您没有权限编辑此活动（仅组织者可编辑）');
+                      if (event && event.organizerId && user.id !== event.organizerId && user.role !== 'admin') {
+                        message.warning('您没有权限编辑此活动（仅组织者或管理员可编辑）');
                         return;
                       }
                       await handleAsyncOperation(
@@ -264,8 +264,8 @@ const EventEditPage: React.FC = () => {
                     loading={loading}
                     onSubmit={async (partial) => {
                       if (!id || !user) return;
-                      if (event && event.organizerId && user.id !== event.organizerId) {
-                        message.warning('您没有权限编辑此活动（仅组织者可编辑）');
+                      if (event && event.organizerId && user.id !== event.organizerId && user.role !== 'admin') {
+                        message.warning('您没有权限编辑此活动（仅组织者或管理员可编辑）');
                         return;
                       }
                       await handleAsyncOperation(
@@ -289,8 +289,8 @@ const EventEditPage: React.FC = () => {
                     loading={loading}
                     onSubmit={async (partial) => {
                       if (!id || !user) return;
-                      if (event && event.organizerId && user.id !== event.organizerId) {
-                        message.warning('您没有权限编辑此活动（仅组织者可编辑）');
+                      if (event && event.organizerId && user.id !== event.organizerId && user.role !== 'admin') {
+                        message.warning('您没有权限编辑此活动（仅组织者或管理员可编辑）');
                         return;
                       }
                       await handleAsyncOperation(
