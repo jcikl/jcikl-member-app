@@ -71,6 +71,10 @@ const EventListPage: React.FC = () => {
   
   // UI States
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  
+  // 🆕 批量设置负责理事状态
+  const [bulkSetBoardMemberVisible, setBulkSetBoardMemberVisible] = useState(false);
+  const [bulkBoardMember, setBulkBoardMember] = useState<string>('');
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
@@ -197,7 +201,45 @@ const EventListPage: React.FC = () => {
 
   // ========== Bulk Operations ==========
   
+  // 🆕 批量设置负责理事处理函数
+  const handleBulkSetBoardMember = async () => {
+    if (!bulkBoardMember) {
+      message.error('请选择负责理事');
+      return;
+    }
+    
+    try {
+      const { updateEvent } = await import('../../services/eventService');
+      
+      // 批量更新选中的活动
+      await Promise.all(
+        selectedRowKeys.map(key => 
+          updateEvent(key as string, {
+            boardMember: bulkBoardMember,
+          } as any, user?.id || '')
+        )
+      );
+      
+      message.success(`已为 ${selectedRowKeys.length} 个活动设置负责理事`);
+      setBulkSetBoardMemberVisible(false);
+      setBulkBoardMember('');
+      setSelectedRowKeys([]);
+      fetchEvents(); // 重新加载列表
+    } catch (error) {
+      message.error('批量设置负责理事失败');
+      console.error('Bulk set board member failed:', error);
+    }
+  };
+
   const bulkActions: BulkAction[] = [
+    {
+      key: 'set-board-member',
+      label: '批量设置负责理事',
+      icon: <EditOutlined />,
+      onClick: () => {
+        setBulkSetBoardMemberVisible(true);
+      },
+    },
     {
       key: 'publish',
       label: '批量发布',
@@ -597,6 +639,53 @@ const EventListPage: React.FC = () => {
         }}
         scroll={{ x: 1500 }}
       />
+
+      {/* 🆕 批量设置负责理事Modal */}
+      <Modal
+        title="批量设置负责理事"
+        open={bulkSetBoardMemberVisible}
+        onOk={handleBulkSetBoardMember}
+        onCancel={() => {
+          setBulkSetBoardMemberVisible(false);
+          setBulkBoardMember('');
+        }}
+        okText="确定设置"
+        cancelText="取消"
+        width={500}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ marginBottom: 8, color: '#666' }}>
+            已选择 <strong style={{ color: '#1890ff' }}>{selectedRowKeys.length}</strong> 个活动
+          </p>
+          <p style={{ marginBottom: 16, fontSize: 12, color: '#999' }}>
+            将为所有选中的活动设置相同的负责理事
+          </p>
+        </div>
+        
+        <div>
+          <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+            选择负责理事 <span style={{ color: 'red' }}>*</span>
+          </label>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="选择负责理事"
+            value={bulkBoardMember || undefined}
+            onChange={setBulkBoardMember}
+          >
+            <Select.Option value="president">President（会长）</Select.Option>
+            <Select.Option value="secretary">Secretary（秘书）</Select.Option>
+            <Select.Option value="honorary-treasurer">Honorary Treasurer（名誉司库）</Select.Option>
+            <Select.Option value="general-legal-council">General Legal Council（法律顾问）</Select.Option>
+            <Select.Option value="executive-vp">Executive Vice President（执行副会长）</Select.Option>
+            <Select.Option value="vp-individual">VP Individual（个人发展副会长）</Select.Option>
+            <Select.Option value="vp-community">VP Community（社区发展副会长）</Select.Option>
+            <Select.Option value="vp-business">VP Business（商业发展副会长）</Select.Option>
+            <Select.Option value="vp-international">VP International（国际事务副会长）</Select.Option>
+            <Select.Option value="vp-lom">VP LOM（地方组织副会长）</Select.Option>
+            <Select.Option value="immediate-past-president">Immediate Past President（卸任会长）</Select.Option>
+          </Select>
+        </div>
+      </Modal>
 
       {/* Detail Drawer */}
       <DetailDrawer
