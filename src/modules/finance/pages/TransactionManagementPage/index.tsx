@@ -1908,7 +1908,7 @@ const TransactionManagementPage: React.FC = () => {
                     <Card className="mb-6" bordered={false}>
           <div className="flex flex-wrap gap-4 items-center">
             <Search
-              placeholder="模糊搜索：主描述、副描述、金额、付款人、备注、收据号、发票号..."
+              placeholder="模糊搜索：主描述、副描述、金额、付款人、备注、收据号、发票号、交易类型..."
               onSearch={setSearchText}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}

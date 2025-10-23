@@ -786,6 +786,9 @@ export const getTransactions = async (
           t.receiptNumber || '', // 🆕 添加收据号搜索
           t.invoiceNumber || '', // 🆕 添加发票号搜索
           t.inputByName || '', // 🆕 添加录入人搜索
+          t.transactionType || '', // 🆕 添加交易类型搜索（收入/支出）
+          t.status || '', // 🆕 添加状态搜索
+          t.paymentMethod || '', // 🆕 添加付款方式搜索
         ].join(' ').toLowerCase();
         
         // 🎯 Fuzzy匹配逻辑
