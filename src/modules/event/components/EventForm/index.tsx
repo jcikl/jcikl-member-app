@@ -15,7 +15,6 @@ import {
   Col,
   Upload,
   App,
-  Alert,
 } from 'antd';
 import { SaveOutlined, CloseOutlined, UploadOutlined } from '@ant-design/icons';
 import type { Event, EventFormData } from '../../types';
@@ -206,36 +205,6 @@ const EventForm: React.FC<EventFormProps> = ({
       {/* 已按需求从基本信息页移除了“日期时间/地点信息/价格信息/参与信息” */}
 
       <Card title="组织者信息" className="mb-4">
-        {/* 🆕 负责理事显示 */}
-        {initialValues.responsibleOfficer && (
-          <Alert
-            message="负责理事"
-            description={
-              <Space direction="vertical">
-                <div>
-                  <strong>姓名：</strong>{initialValues.responsibleOfficer.name}
-                </div>
-                <div>
-                  <strong>职位：</strong>{initialValues.responsibleOfficer.position}
-                </div>
-                {initialValues.responsibleOfficer.email && (
-                  <div>
-                    <strong>邮箱：</strong>{initialValues.responsibleOfficer.email}
-                  </div>
-                )}
-                {initialValues.responsibleOfficer.phone && (
-                  <div>
-                    <strong>电话：</strong>{initialValues.responsibleOfficer.phone}
-                  </div>
-                )}
-              </Space>
-            }
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-        )}
-        
         <Row gutter={16}>
           <Col xs={24} md={12}>
             <Form.Item
