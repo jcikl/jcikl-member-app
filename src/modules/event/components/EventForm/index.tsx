@@ -69,6 +69,7 @@ const EventForm: React.FC<EventFormProps> = ({
         category: values.category,
         organizerName: values.organizerName,
         coOrganizers: values.coOrganizers,
+        boardMember: values.boardMember, // 🆕 负责理事
         contactPerson: values.contactPerson,
         contactPhone: values.contactPhone,
         contactEmail: values.contactEmail,
@@ -206,7 +207,7 @@ const EventForm: React.FC<EventFormProps> = ({
 
       <Card title="组织者信息" className="mb-4">
         <Row gutter={16}>
-          <Col xs={24} md={12}>
+          <Col xs={24} md={8}>
             <Form.Item
               label="组织者名称"
               name="organizerName"
@@ -215,7 +216,7 @@ const EventForm: React.FC<EventFormProps> = ({
               <Input placeholder="请输入组织者名称" />
             </Form.Item>
           </Col>
-          <Col xs={24} md={12}>
+          <Col xs={24} md={8}>
             <Form.Item
               label="协办组织"
               name="coOrganizers"
@@ -225,6 +226,21 @@ const EventForm: React.FC<EventFormProps> = ({
                 placeholder="输入协办组织名称，按回车添加"
                 style={{ width: '100%' }}
               />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item
+              label="负责理事"
+              name="boardMember"
+              tooltip="选择负责此活动的理事会成员"
+            >
+              <Select placeholder="选择负责理事">
+                <Select.Option value="President">会长</Select.Option>
+                <Select.Option value="Vice President">副会长</Select.Option>
+                <Select.Option value="Secretary">秘书长</Select.Option>
+                <Select.Option value="Treasurer">财政</Select.Option>
+                <Select.Option value="Director">理事</Select.Option>
+              </Select>
             </Form.Item>
           </Col>
         </Row>

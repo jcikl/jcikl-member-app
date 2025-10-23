@@ -104,6 +104,7 @@ const convertToEvent = (docId: string, data: DocumentData): Event => {
     organizerId: data.organizerId || '',
     organizerName: data.organizerName || '',
     coOrganizers: data.coOrganizers || [],
+    boardMember: data.boardMember, // 🆕 负责理事
     contactPerson: data.contactPerson ?? null,
     contactPhone: data.contactPhone ?? null,
     contactEmail: data.contactEmail ?? null,
@@ -338,6 +339,7 @@ export const createEvent = async (
       organizerId: formData.organizerId || currentUserId,
       organizerName: formData.organizerName || '',
       coOrganizers: formData.coOrganizers || [],
+      boardMember: formData.boardMember, // 🆕 负责理事
       contactPerson: formData.contactPerson ?? null,
       contactPhone: formData.contactPhone ?? null,
       contactEmail: formData.contactEmail ?? null,
@@ -440,6 +442,7 @@ export const updateEvent = async (
     if ((formData as any).financialAccountName !== undefined) updateData.financialAccountName = (formData as any).financialAccountName ?? null;
     if ((formData as any).isFree !== undefined) updateData.isFree = (formData as any).isFree || false;
     if (formData.coOrganizers !== undefined) updateData.coOrganizers = formData.coOrganizers || [];
+    if (formData.boardMember !== undefined) updateData.boardMember = formData.boardMember; // 🆕 负责理事
     if (formData.posterImage !== undefined) updateData.posterImage = formData.posterImage ?? null;
     if ((formData as any).agendaItems !== undefined) updateData.agendaItems = (formData as any).agendaItems || [];
     if ((formData as any).committeeMembers !== undefined) {

@@ -111,6 +111,7 @@ export interface Event extends BaseEntity {
   organizerId: string;
   organizerName: string;
   coOrganizers?: string[];     // 协办组织
+  boardMember?: string;        // 🆕 负责理事（会长、副会长、秘书长、财政、理事）
   contactPerson?: string;
   contactPhone?: string;
   contactEmail?: string;
@@ -271,6 +272,7 @@ export interface EventFormData {
   organizerId?: string;
   organizerName?: string;
   coOrganizers?: string[];     // 协办组织
+  boardMember?: string;        // 🆕 负责理事
   contactPerson?: string;
   contactPhone?: string;
   contactEmail?: string;
