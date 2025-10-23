@@ -74,6 +74,7 @@ import type { AutoMatchPreviewItem, MatchResult } from '../../services/autoMatch
 import { useNavigate } from 'react-router-dom';
 import { getAllBankAccounts } from '../../services/bankAccountService';
 import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
+import { getAllFinancialCategories } from '../../../system/services/financialCategoryService'; // 🆕 导入财务类别服务
 import { getEvents } from '../../../event/services/eventService'; // 🆕 导入活动服务
 import { getMembers } from '../../../member/services/memberService'; // 🆕 导入会员服务
 import type { Transaction, TransactionFormData, TransactionStatus, BankAccount } from '../../types';
@@ -119,6 +120,9 @@ const TransactionManagementPage: React.FC = () => {
   // 🆕 交易用途选项（从财务类别管理加载）
   const [purposeOptions, setPurposeOptions] = useState<{ label: string; value: string }[]>([]);
   
+  // 🆕 财务类别映射（用于树形视图显示真实名称）
+  const [financialCategoryMap, setFinancialCategoryMap] = useState<Record<string, string>>({});
+  
   // 🎯 累计余额相关状态
   const [balanceMap, setBalanceMap] = useState<Map<string, number>>(new Map());
   const [sortBy] = useState<'transactionDate'>('transactionDate'); // 当前排序字段
@@ -159,6 +163,7 @@ const TransactionManagementPage: React.FC = () => {
   useEffect(() => {
     loadBankAccounts();
     loadPurposeOptions(); // 🆕 加载交易用途选项
+    loadFinancialCategoryMap(); // 🆕 加载财务类别映射
   }, []);
 
   // 🆕 加载交易用途选项
@@ -168,6 +173,37 @@ const TransactionManagementPage: React.FC = () => {
       setPurposeOptions(purposes);
     } catch (error) {
       console.error('加载交易用途选项失败:', error);
+    }
+  };
+
+  // 🆕 加载财务类别映射
+  const loadFinancialCategoryMap = async () => {
+    try {
+      const categories = await getAllFinancialCategories();
+      const categoryMap: Record<string, string> = {};
+      
+      // 构建类别代码到名称的映射
+      categories.forEach(category => {
+        categoryMap[category.value] = category.label;
+      });
+      
+      // 添加默认映射（用于兼容旧的硬编码类别）
+      categoryMap['member-fees'] = '会员费用';
+      categoryMap['event-finance'] = '活动财务';
+      categoryMap['general-accounts'] = '日常账户';
+      categoryMap['uncategorized'] = '未分类';
+      
+      setFinancialCategoryMap(categoryMap);
+      console.log('📊 [FinancialCategoryMap] Loaded:', categoryMap);
+    } catch (error) {
+      console.error('加载财务类别映射失败:', error);
+      // 使用默认映射作为fallback
+      setFinancialCategoryMap({
+        'member-fees': '会员费用',
+        'event-finance': '活动财务',
+        'general-accounts': '日常账户',
+        'uncategorized': '未分类',
+      });
     }
   };
 
@@ -1280,32 +1316,8 @@ const TransactionManagementPage: React.FC = () => {
     console.log('🔍 [TreeView Debug] 收入分组详情:', incomeGroups);
     console.log('🔍 [TreeView Debug] 支出分组详情:', expenseGroups);
 
-    // 类别名称映射
-    const categoryNameMap: Record<string, string> = {
-      'member-fees': '会员费用',
-      'event-finance': '活动财务',
-      'general-accounts': '日常账户',
-      'uncategorized': '未分类',
-    };
-
-    // 🆕 日常财务二次分类名称映射
-    const generalAccountsNameMap: Record<string, string> = {
-      'office-rent': '办公室租金',
-      'utilities': '水电费',
-      'office-supplies': '办公用品',
-      'communication': '通讯费',
-      'transportation': '交通费',
-      'meals': '餐费',
-      'training': '培训费',
-      'equipment': '设备费',
-      'maintenance': '维护费',
-      'insurance': '保险费',
-      'legal': '法律费用',
-      'accounting': '会计费用',
-      'marketing': '营销费用',
-      'other': '其他费用',
-      'uncategorized': '未分类',
-    };
+    // 🆕 使用财务类别管理中的真实名称映射
+    const categoryNameMap = financialCategoryMap;
 
     // 构建收入树
     Object.entries(incomeGroups).forEach(([category, subGroups]) => {
@@ -1396,10 +1408,7 @@ const TransactionManagementPage: React.FC = () => {
           categoryNode.children!.push({
             title: (
               <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-                {category === 'general-accounts' 
-                  ? (generalAccountsNameMap[txAccount] || txAccount)
-                  : (txAccount === 'uncategorized' ? '未分类' : txAccount)
-                }
+                {txAccount === 'uncategorized' ? '未分类' : txAccount}
                 <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                   ({items.length}) RM {subTotal.toFixed(2)}
                 </Text>
@@ -1447,10 +1456,7 @@ const TransactionManagementPage: React.FC = () => {
         categoryNode.children!.push({
           title: (
             <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-              {category === 'general-accounts' 
-                ? (generalAccountsNameMap[txAccount] || txAccount)
-                : (txAccount === 'uncategorized' ? '未分类' : txAccount)
-              }
+              {txAccount === 'uncategorized' ? '未分类' : txAccount}
               <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                 ({items.length}) RM {subTotal.toFixed(2)}
               </Text>
@@ -1507,12 +1513,12 @@ const TransactionManagementPage: React.FC = () => {
     setFilteredTransactions(items);
   };
 
-  // 🆕 当日期范围变化时，重新构建树形数据
+  // 🆕 当日期范围变化或财务类别映射加载完成时，重新构建树形数据
   useEffect(() => {
-    if (viewMode === 'tree') {
+    if (viewMode === 'tree' && Object.keys(financialCategoryMap).length > 0) {
       buildTreeData();
     }
-  }, [treeDateRangeType, treeSelectedYear, viewMode]);
+  }, [treeDateRangeType, treeSelectedYear, viewMode, financialCategoryMap]);
 
   const columns: ColumnsType<Transaction> = [
     {
