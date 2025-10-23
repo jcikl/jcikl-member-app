@@ -803,9 +803,22 @@ export const getTransactions = async (
       const resultTransactions: Transaction[] = [];
       
       directMatches.forEach(matched => {
-        // 如果是父交易，添加所有子交易
+        // 如果是父交易，检查是否已拆分
         if (!matched.parentTransactionId) {
-          // 添加父交易本身
+          // 🚫 跳过已拆分的父交易（isSplit为true）
+          if (matched.isSplit === true) {
+            // 只添加子交易，不添加父交易本身
+            const children = transactions.filter(t => t.parentTransactionId === matched.id);
+            children.forEach(child => {
+              if (!matchedIds.has(child.id)) {
+                matchedIds.add(child.id);
+                resultTransactions.push(child);
+              }
+            });
+            return; // 跳过父交易
+          }
+          
+          // 添加未拆分的父交易本身
           if (!matchedIds.has(matched.id)) {
             matchedIds.add(matched.id);
             resultTransactions.push(matched);
@@ -823,9 +836,9 @@ export const getTransactions = async (
           // 如果是子交易，添加父交易和所有兄弟子交易
           const parentId = matched.parentTransactionId;
           
-          // 🔑 查找并添加父交易
+          // 🔑 查找并添加父交易（如果父交易未拆分）
           const parent = transactions.find(t => t.id === parentId);
-          if (parent && !matchedIds.has(parent.id)) {
+          if (parent && !matchedIds.has(parent.id) && parent.isSplit !== true) {
             matchedIds.add(parent.id);
             resultTransactions.push(parent);
           }
