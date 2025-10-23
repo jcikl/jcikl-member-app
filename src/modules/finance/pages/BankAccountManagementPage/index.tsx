@@ -117,12 +117,25 @@ const BankAccountManagementPage: React.FC = () => {
       
       if (selectedBankAccount === 'all') {
         // 加载所有银行账户的汇总数据
+        console.log('📊 [loadMonthlyData] Loading all bank accounts data for year:', selectedYear);
         data = await getAllBankAccountsMonthlyData(selectedYear);
       } else {
         // 加载指定银行账户的数据
+        const selectedAccount = accounts.find(acc => acc.id === selectedBankAccount);
+        console.log('📊 [loadMonthlyData] Loading data for bank account:', {
+          id: selectedBankAccount,
+          name: selectedAccount?.accountName,
+          year: selectedYear
+        });
         const { getBankAccountMonthlyData } = await import('../../services/bankAccountService');
         data = await getBankAccountMonthlyData(selectedBankAccount, selectedYear);
       }
+      
+      console.log('📊 [loadMonthlyData] Monthly data loaded:', {
+        months: data.length,
+        totalTransactions: data.reduce((sum, m) => sum + m.transactionCount, 0),
+        accountType: selectedBankAccount === 'all' ? '所有账户' : '单个账户'
+      });
       
       setMonthlyData(data);
     } catch (error) {
@@ -400,7 +413,14 @@ const BankAccountManagementPage: React.FC = () => {
         <Card 
           title={
             <div className="flex justify-between items-center flex-wrap gap-4">
-              <span>📊 月份财务概览</span>
+              <div className="flex items-center gap-2">
+                <span>📊 月份财务概览</span>
+                {selectedBankAccount !== 'all' && (
+                  <Tag color="blue" icon={<BankOutlined />}>
+                    {accounts.find(acc => acc.id === selectedBankAccount)?.accountName || '未知账户'}
+                  </Tag>
+                )}
+              </div>
               <div className="flex gap-3">
                 {/* 🆕 银行账户筛选 */}
                 <Select
