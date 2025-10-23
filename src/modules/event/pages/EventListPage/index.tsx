@@ -738,6 +738,7 @@ const EventListPage: React.FC = () => {
           loading={loading}
           rowKey="id"
           pagination={false}
+          size="small"
           rowSelection={{
             selectedRowKeys,
             onChange: (keys) => {
@@ -798,6 +799,7 @@ const EventListPage: React.FC = () => {
       </Card>
       
       <style>{`
+        /* 🆕 分组标题行样式 */
         .group-header-row {
           background: linear-gradient(135deg, #722ed1 0%, #9254de 100%) !important;
         }
@@ -808,7 +810,17 @@ const EventListPage: React.FC = () => {
           color: white !important;
           font-weight: 600 !important;
           border-top: 2px solid #722ed1 !important;
-          padding: 12px 16px !important;
+          padding: 8px 12px !important;
+        }
+        
+        /* 🆕 减小普通行的间距 */
+        .ant-table-small .ant-table-tbody > tr > td {
+          padding: 6px 8px !important;
+        }
+        
+        /* 🆕 减小表头的间距 */
+        .ant-table-small .ant-table-thead > tr > th {
+          padding: 8px 8px !important;
         }
       `}</style>
 
