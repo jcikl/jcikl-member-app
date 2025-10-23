@@ -32,7 +32,6 @@ import {
   FilterPanel,
   DetailDrawer,
   BulkOperationBar,
-  DataGrid,
 } from '@/components';
 import type { FilterField, TabConfig, BulkAction } from '@/components';
 import type { Event, EventSearchParams, EventStats } from '../../types';
@@ -51,7 +50,7 @@ import { handleAsyncOperation } from '@/utils/errorHelpers';
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
 import { useAuthStore } from '@/stores/authStore';
-import type { DataGridColumn } from '@/components';
+import type { ColumnsType } from 'antd/es/table';
 import './styles.css';
 
 /**
@@ -63,7 +62,6 @@ const EventListPage: React.FC = () => {
   
   // State
   const [events, setEvents] = useState<Event[]>([]);
-  const [groupedEvents, setGroupedEvents] = useState<{ boardMember: string; events: Event[] }[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<EventStats | null>(null);
   const [pagination, setPagination] = useState({
@@ -119,7 +117,6 @@ const EventListPage: React.FC = () => {
       
       // 🆕 按负责理事分组并创建带分组行的数据源
       const grouped = groupEventsByBoardMember(result.data);
-      setGroupedEvents(grouped);
       
       // 🆕 创建带分组标题行的扁平数据
       const eventsWithGroupHeaders: any[] = [];
@@ -246,7 +243,7 @@ const EventListPage: React.FC = () => {
     });
   };
 
-  const handleTableChange = (newPagination: any, filters: any, sorter: any) => {
+  const handleTableChange = (newPagination: any, _filters: any, _sorter: any) => {
     console.log('📊 [handleTableChange] Pagination changed:', {
       oldCurrent: pagination.current,
       oldPageSize: pagination.pageSize,
@@ -376,7 +373,7 @@ const EventListPage: React.FC = () => {
 
   // ========== Table Columns ==========
   
-  const columns: DataGridColumn<Event>[] = [
+  const columns: ColumnsType<any> = [
     {
       title: '活动名称',
       dataIndex: 'name',
