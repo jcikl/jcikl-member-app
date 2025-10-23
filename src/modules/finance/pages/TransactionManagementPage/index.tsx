@@ -744,6 +744,43 @@ const TransactionManagementPage: React.FC = () => {
         selectedRowKeys: selectedRowKeys,
       });
 
+      // 🆕 加载活动和会员数据以获取名称
+      let eventName = '';
+      const memberMap = new Map<string, string>(); // memberId -> memberName
+      
+      try {
+        // 如果是活动财务类别，加载活动数据
+        if (data.category === 'event-finance' && data.eventId) {
+          const eventsResult = await getEvents({ page: 1, limit: 1000 });
+          const selectedEvent = eventsResult.data.find(e => e.id === data.eventId);
+          if (selectedEvent) {
+            eventName = selectedEvent.name;
+          }
+        }
+        
+        // 如果需要会员名称（活动财务或日常财务），加载会员数据
+        if (data.individualData && (data.category === 'event-finance' || data.category === 'general-accounts')) {
+          const memberIds: string[] = [];
+          
+          data.individualData.forEach(item => {
+            if (data.category === 'event-finance' && item.payeeMode === 'member' && item.payeeId) {
+              memberIds.push(item.payeeId);
+            } else if (data.category === 'general-accounts' && item.payerMode === 'member' && item.payerId) {
+              memberIds.push(item.payerId);
+            }
+          });
+          
+          if (memberIds.length > 0) {
+            const membersResult = await getMembers({ page: 1, limit: 1000, status: 'active' });
+            membersResult.data.forEach(member => {
+              memberMap.set(member.id, member.name);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('🔍 [TransactionManagementPage] 加载活动/会员数据失败:', error);
+      }
+
       // 🆕 为每条交易应用独立设置
       if (data.individualData && data.individualData.length > 0) {
         await Promise.all(
@@ -766,19 +803,34 @@ const TransactionManagementPage: React.FC = () => {
                 updates.payerPayee = individualItem.payerPayee;
               } else if (individualItem.payerMode === 'member' && individualItem.payerId) {
                 metadata.payerId = individualItem.payerId;
-                // 可选：也可以存储会员名称到payerPayee
+                
+                // ✅ 将会员名称保存到payerPayee
+                const memberName = memberMap.get(individualItem.payerId);
+                if (memberName) {
+                  updates.payerPayee = memberName;
+                }
               }
             } else if (data.category === 'event-finance') {
               // 活动财务：收款人信息和统一关联活动
+              
+              // ✅ 处理收款人/付款人信息
               if (individualItem.payeeMode === 'manual' && individualItem.payeeName) {
                 updates.payerPayee = individualItem.payeeName;
               } else if (individualItem.payeeMode === 'member' && individualItem.payeeId) {
-                metadata.payeeId = individualItem.payeeId;
+                metadata.memberId = individualItem.payeeId; // ✅ 保存会员ID到metadata.memberId
+                
+                // ✅ 将会员名称保存到payerPayee
+                const memberName = memberMap.get(individualItem.payeeId);
+                if (memberName) {
+                  updates.payerPayee = memberName;
+                }
               }
               
-              // 🆕 使用统一的活动ID而不是独立设置
-              if (data.eventId) {
-                metadata.eventId = data.eventId;
+              // 🆕 使用统一的活动ID，并保存活动名称到txAccount（二次分类）
+              if (data.eventId && eventName) {
+                updates.txAccount = eventName; // ✅ 活动名称保存到txAccount
+                metadata.eventId = data.eventId; // ✅ 活动ID保存到metadata
+                metadata.eventName = eventName; // ✅ 活动名称也保存到metadata（可选）
               }
             } else if (data.category === 'member-fees') {
               // 会员费：关联会员

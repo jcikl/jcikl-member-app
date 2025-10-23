@@ -167,8 +167,8 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       const allIndividualData = selectedTransactions.map(transaction => {
         const existingData = individualData[transaction.id] || {};
         return {
-          transactionId: transaction.id,
           ...existingData,
+          transactionId: transaction.id, // 确保transactionId是最后设置，覆盖existingData中可能存在的值
         };
       });
 
