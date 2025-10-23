@@ -521,10 +521,13 @@ export const getBankAccountMonthlyData = async (
         });
         
         lastYearTransactions.forEach(tx => {
-          if (tx.transactionType === 'income') {
-            openingBalance += tx.amount;
-          } else {
-            openingBalance -= tx.amount;
+          // 🆕 计算去年余额时也只统计父交易
+          if (!tx.parentTransactionId) {
+            if (tx.transactionType === 'income') {
+              openingBalance += tx.amount;
+            } else {
+              openingBalance -= tx.amount;
+            }
           }
         });
       } else {
@@ -534,14 +537,18 @@ export const getBankAccountMonthlyData = async (
       }
       
       // 计算当月收入和支出
+      // 🆕 只统计父交易记录（排除子交易，避免重复计算）
       let totalIncome = 0;
       let totalExpense = 0;
       
       monthTransactions.forEach(tx => {
-        if (tx.transactionType === 'income') {
-          totalIncome += tx.amount;
-        } else {
-          totalExpense += tx.amount;
+        // 只统计父交易（没有parentTransactionId的交易）
+        if (!tx.parentTransactionId) {
+          if (tx.transactionType === 'income') {
+            totalIncome += tx.amount;
+          } else {
+            totalExpense += tx.amount;
+          }
         }
       });
       
@@ -556,7 +563,7 @@ export const getBankAccountMonthlyData = async (
         totalIncome,
         totalExpense,
         closingBalance,
-        transactionCount: monthTransactions.length,
+        transactionCount: monthTransactions.filter(tx => !tx.parentTransactionId).length, // 🆕 只统计父交易数量
       });
     }
     
@@ -623,10 +630,13 @@ export const getAllBankAccountsMonthlyData = async (
         });
         
         lastYearTransactions.forEach(tx => {
-          if (tx.transactionType === 'income') {
-            openingBalance += tx.amount;
-          } else {
-            openingBalance -= tx.amount;
+          // 🆕 计算去年余额时也只统计父交易
+          if (!tx.parentTransactionId) {
+            if (tx.transactionType === 'income') {
+              openingBalance += tx.amount;
+            } else {
+              openingBalance -= tx.amount;
+            }
           }
         });
       } else {
@@ -636,14 +646,18 @@ export const getAllBankAccountsMonthlyData = async (
       }
       
       // 计算当月收入和支出
+      // 🆕 只统计父交易记录（排除子交易，避免重复计算）
       let totalIncome = 0;
       let totalExpense = 0;
       
       monthTransactions.forEach(tx => {
-        if (tx.transactionType === 'income') {
-          totalIncome += tx.amount;
-        } else {
-          totalExpense += tx.amount;
+        // 只统计父交易（没有parentTransactionId的交易）
+        if (!tx.parentTransactionId) {
+          if (tx.transactionType === 'income') {
+            totalIncome += tx.amount;
+          } else {
+            totalExpense += tx.amount;
+          }
         }
       });
       
@@ -658,7 +672,7 @@ export const getAllBankAccountsMonthlyData = async (
         totalIncome,
         totalExpense,
         closingBalance,
-        transactionCount: monthTransactions.length,
+        transactionCount: monthTransactions.filter(tx => !tx.parentTransactionId).length, // 🆕 只统计父交易数量
       });
     }
     
