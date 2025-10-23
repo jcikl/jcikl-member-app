@@ -101,15 +101,12 @@ const EventListPage: React.FC = () => {
       console.log('📊 [EventListPage] Events loaded:', {
         count: result.data.length,
         total: result.total,
-        events: result.data.map(e => ({
+        events: result.data.slice(0, 3).map(e => ({
           id: e.id,
           name: e.name,
           startDate: e.startDate,
+          endDate: e.endDate,
           status: e.status,
-          committeeMembers: e.committeeMembers?.map(m => ({
-            name: m.name,
-            position: m.position
-          })) || []
         }))
       });
       
