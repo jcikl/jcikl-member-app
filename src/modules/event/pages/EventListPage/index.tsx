@@ -13,6 +13,8 @@ import {
   Row,
   Col,
   Select,
+  Table,
+  Card,
 } from 'antd';
 import {
   PlusOutlined,
@@ -61,6 +63,7 @@ const EventListPage: React.FC = () => {
   
   // State
   const [events, setEvents] = useState<Event[]>([]);
+  const [groupedEvents, setGroupedEvents] = useState<{ boardMember: string; events: Event[] }[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<EventStats | null>(null);
   const [pagination, setPagination] = useState({
@@ -118,6 +121,10 @@ const EventListPage: React.FC = () => {
         ...prev,
         total: result.total,
       }));
+      
+      // 🆕 按负责理事分组
+      const grouped = groupEventsByBoardMember(result.data);
+      setGroupedEvents(grouped);
     } catch (error) {
       message.error('获取活动列表失败');
       console.error('❌ [EventListPage] Failed to fetch events:', error);
@@ -125,6 +132,40 @@ const EventListPage: React.FC = () => {
       setLoading(false);
     }
   }, [pagination.current, pagination.pageSize, searchParams]);
+  
+  // 🆕 按负责理事分组函数
+  const groupEventsByBoardMember = (eventList: Event[]): { boardMember: string; events: Event[] }[] => {
+    const boardMemberLabels: Record<string, string> = {
+      'president': 'President（会长）',
+      'secretary': 'Secretary（秘书）',
+      'honorary-treasurer': 'Honorary Treasurer（名誉司库）',
+      'general-legal-council': 'General Legal Council（法律顾问）',
+      'executive-vp': 'Executive Vice President（执行副会长）',
+      'vp-individual': 'VP Individual（个人发展副会长）',
+      'vp-community': 'VP Community（社区发展副会长）',
+      'vp-business': 'VP Business（商业发展副会长）',
+      'vp-international': 'VP International（国际事务副会长）',
+      'vp-lom': 'VP LOM（地方组织副会长）',
+      'immediate-past-president': 'Immediate Past President（卸任会长）',
+      '': '未设置负责理事',
+    };
+    
+    // 按负责理事分组
+    const groups: Record<string, Event[]> = {};
+    eventList.forEach(event => {
+      const boardMember = event.boardMember || '';
+      if (!groups[boardMember]) {
+        groups[boardMember] = [];
+      }
+      groups[boardMember].push(event);
+    });
+    
+    // 转换为数组格式
+    return Object.entries(groups).map(([boardMember, events]) => ({
+      boardMember: boardMemberLabels[boardMember] || boardMember || '未设置负责理事',
+      events,
+    }));
+  };
 
   const fetchStats = useCallback(async () => {
     try {
@@ -625,25 +666,41 @@ const EventListPage: React.FC = () => {
         onDeselectAll={() => setSelectedRowKeys([])}
       />
 
-      {/* Data Grid */}
-      <DataGrid
-        columns={columns}
-        dataSource={events}
-        loading={loading}
-        rowKey="id"
-        pagination={{
-          current: pagination.current,
-          pageSize: pagination.pageSize,
-          total: pagination.total,
-          ...globalComponentService.getTableConfig().pagination,
-        }}
-        onChange={handleTableChange}
-        rowSelection={{
-          selectedRowKeys,
-          onChange: setSelectedRowKeys,
-        }}
-        scroll={{ x: 1500 }}
-      />
+      {/* 🆕 按负责理事分组显示 */}
+      {groupedEvents.map((group, index) => (
+        <Card
+          key={group.boardMember}
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Tag color="purple" style={{ fontSize: 14, padding: '4px 12px' }}>
+                👑 {group.boardMember}
+              </Tag>
+              <span style={{ color: '#999', fontSize: 12 }}>
+                ({group.events.length} 个活动)
+              </span>
+            </div>
+          }
+          className="mb-4"
+          style={{ 
+            borderLeft: '4px solid #722ed1',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+          }}
+        >
+          <Table
+            columns={columns}
+            dataSource={group.events}
+            loading={loading && index === 0}
+            rowKey="id"
+            pagination={false}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: setSelectedRowKeys,
+            }}
+            scroll={{ x: 1500 }}
+            size="small"
+          />
+        </Card>
+      ))}
 
       {/* 🆕 批量设置负责理事Modal */}
       <Modal
