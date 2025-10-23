@@ -226,6 +226,37 @@ const EventPreview: React.FC<EventPreviewProps> = ({ event }) => {
       {/* 组织者信息 */}
       <Card title="组织者信息" className="mb-4">
         <Space direction="vertical" style={{ width: '100%' }}>
+          {/* 🆕 负责理事 */}
+          {event.responsibleOfficer && (
+            <div style={{ 
+              padding: '12px', 
+              backgroundColor: '#e6f7ff', 
+              border: '1px solid #91d5ff',
+              borderRadius: '4px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ marginBottom: 8 }}>
+                <Text strong style={{ color: '#1890ff' }}>负责理事</Text>
+              </div>
+              <div style={{ marginBottom: 4 }}>
+                <Text strong>{event.responsibleOfficer.name}</Text>
+                <Tag color="blue" style={{ marginLeft: 8 }}>
+                  {event.responsibleOfficer.position}
+                </Tag>
+              </div>
+              {event.responsibleOfficer.email && (
+                <div>
+                  <Text type="secondary">邮箱：{event.responsibleOfficer.email}</Text>
+                </div>
+              )}
+              {event.responsibleOfficer.phone && (
+                <div>
+                  <Text type="secondary">电话：{event.responsibleOfficer.phone}</Text>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div>
             <Text strong>{event.organizerName}</Text>
             {event.coOrganizers && event.coOrganizers.length > 0 && (
