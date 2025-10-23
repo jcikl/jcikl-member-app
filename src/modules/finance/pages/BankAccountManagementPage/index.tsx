@@ -439,39 +439,39 @@ const BankAccountManagementPage: React.FC = () => {
                       {monthData.monthName}
                     </div>
                     
-                    <div className="space-y-1.5 text-xs">
-                      <div>
-                        <div className="text-gray-500 mb-0.5">月初</div>
-                        <div className="font-medium text-gray-700">
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-gray-500">月初</span>
+                        <span className="font-medium text-gray-700">
                           {monthData.openingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
+                        </span>
                       </div>
                       
-                      <div className="border-t pt-1.5">
-                        <div className="text-green-600 mb-0.5">+收入</div>
-                        <div className="font-medium text-green-600">
+                      <div className="border-t pt-1 flex items-center justify-between px-1">
+                        <span className="text-green-600">+收入</span>
+                        <span className="font-medium text-green-600">
                           {monthData.totalIncome.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
+                        </span>
                       </div>
                       
-                      <div className="border-t pt-1.5">
-                        <div className="text-red-600 mb-0.5">-支出</div>
-                        <div className="font-medium text-red-600">
+                      <div className="border-t pt-1 flex items-center justify-between px-1">
+                        <span className="text-red-600">-支出</span>
+                        <span className="font-medium text-red-600">
                           {monthData.totalExpense.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
+                        </span>
                       </div>
                       
-                      <div className="border-t pt-1.5">
-                        <div className="text-gray-800 font-semibold mb-0.5">月末</div>
-                        <div className={`font-bold ${
+                      <div className="border-t pt-1 flex items-center justify-between px-1">
+                        <span className="text-gray-800 font-semibold">月末</span>
+                        <span className={`font-bold ${
                           monthData.closingBalance >= 0 ? 'text-green-600' : 'text-red-600'
                         }`}>
                           {monthData.closingBalance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
-                        </div>
+                        </span>
                       </div>
                       
-                      <div className="border-t pt-1.5 text-gray-500">
-                        <div>{monthData.transactionCount}笔</div>
+                      <div className="border-t pt-1 text-gray-500 text-center">
+                        {monthData.transactionCount}笔
                       </div>
                     </div>
                   </div>
