@@ -70,7 +70,9 @@ const EventListPage: React.FC = () => {
   });
   
   // Search & Filter
-  const [searchParams, setSearchParams] = useState<EventSearchParams>({});
+  const [searchParams, setSearchParams] = useState<EventSearchParams>({
+    year: new Date().getFullYear().toString(), // 🆕 默认为当前年份
+  });
   
   // UI States
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
