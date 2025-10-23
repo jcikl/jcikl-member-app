@@ -1131,11 +1131,17 @@ const EventFinancialPage: React.FC = () => {
                   placeholder="选择负责理事"
                 >
                   <Option value="all">所有理事</Option>
-                  <Option value="President">会长</Option>
-                  <Option value="Vice President">副会长</Option>
-                  <Option value="Secretary">秘书长</Option>
-                  <Option value="Treasurer">财政</Option>
-                  <Option value="Director">理事</Option>
+                  <Option value="president">President（会长）</Option>
+                  <Option value="secretary">Secretary（秘书）</Option>
+                  <Option value="honorary-treasurer">Honorary Treasurer（名誉司库）</Option>
+                  <Option value="general-legal-council">General Legal Council（法律顾问）</Option>
+                  <Option value="executive-vp">Executive Vice President（执行副会长）</Option>
+                  <Option value="vp-individual">VP Individual（个人发展副会长）</Option>
+                  <Option value="vp-community">VP Community（社区发展副会长）</Option>
+                  <Option value="vp-business">VP Business（商业发展副会长）</Option>
+                  <Option value="vp-international">VP International（国际事务副会长）</Option>
+                  <Option value="vp-lom">VP LOM（地方组织副会长）</Option>
+                  <Option value="immediate-past-president">Immediate Past President（卸任会长）</Option>
                 </Select>
               </div>
               
