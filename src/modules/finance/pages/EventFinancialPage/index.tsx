@@ -53,7 +53,7 @@ interface EventFinancialSummary {
   eventId: string;
   eventName: string;
   eventDate: string;
-  boardMember?: string; // 🆕 负责理事
+  boardMember?: string; // 🆕 负责理事（从projects读取）
   eventChair?: string; // 🆕 活动主席（从projects读取）
   eventTreasurer?: string; // 🆕 活动财政（从projects读取）
   totalRevenue: number;
@@ -202,10 +202,18 @@ const EventFinancialPage: React.FC = () => {
           let eventChair = '';
           let eventTreasurer = '';
           let eventDate = event.eventDate || new Date().toISOString();
+          let boardMember: string = event.boardMember || ''; // 默认从financeEvents读取
           
           if (projectInfo) {
             // 从startDate读取活动日期
             eventDate = projectInfo.startDate;
+            
+            // 🆕 从projects读取负责理事（优先使用projects的数据）
+            if (projectInfo.boardMember) {
+              boardMember = projectInfo.boardMember as string;
+            } else if (event.boardMember) {
+              boardMember = event.boardMember as string;
+            }
             
             // 从committeeMembers读取活动主席和财政
             if (projectInfo.committeeMembers && projectInfo.committeeMembers.length > 0) {
@@ -232,7 +240,7 @@ const EventFinancialPage: React.FC = () => {
             eventId: event.id,
             eventName: event.eventName,
             eventDate, // ✅ 从projects读取
-            boardMember: event.boardMember, // 🆕 添加负责理事
+            boardMember, // 🆕 从projects读取（优先）
             eventChair, // ✅ 从projects读取
             eventTreasurer, // ✅ 从projects读取
             totalRevenue, // ✅ 从交易记录统计
@@ -438,7 +446,8 @@ const EventFinancialPage: React.FC = () => {
     const dateToUse = selectedEventDetail.eventDate || event.eventDate || '';
     setEditEventDate(dateToUse ? new Date(dateToUse).toISOString().split('T')[0] : '');
     setEditEventDescription(event.description || '');
-    setEditEventBoardMember(event.boardMember);
+    // 🆕 从 selectedEventDetail 中获取负责理事（这是从 projects collection 的 boardMember 读取的）
+    setEditEventBoardMember(selectedEventDetail.boardMember || '');
     // 🆕 从 selectedEventDetail 中获取活动主席和活动财政（这些是从 projects collection 读取的）
     setEditEventChair(selectedEventDetail.eventChair || '');
     setEditEventTreasurer(selectedEventDetail.eventTreasurer || '');
@@ -464,6 +473,7 @@ const EventFinancialPage: React.FC = () => {
       const event = financeEvents.find(e => e.eventName === selectedEventDetail.eventName);
       if (!event) return;
       
+      // 更新financeEvents
       await updateFinanceEvent(
         event.id,
         {
