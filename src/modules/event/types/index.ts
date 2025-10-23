@@ -134,13 +134,13 @@ export interface Event extends BaseEntity {
   committeeMembers?: CommitteeMember[]; // 委员会成员
   speakers?: Speaker[];             // 讲师信息
   
-  // 🆕 负责理事信息
+  // 🆕 负责理事设定
   responsibleOfficer?: {
     memberId: string;               // 负责理事会员ID
-    name: string;                  // 负责理事姓名
-    position: string;              // 理事职位 (President, Vice President, Secretary, Treasurer, Director)
-    email?: string;                // 联系方式
-    phone?: string;                // 联系电话
+    name: string;                   // 负责理事姓名
+    position: string;               // 负责理事职位（会长、副会长、秘书长、财政等）
+    email?: string;                 // 负责理事邮箱
+    phone?: string;                 // 负责理事电话
   };
   
   // Metadata
@@ -293,15 +293,6 @@ export interface EventFormData {
   agendaItems?: EventAgendaItem[];  // 议程项目
   committeeMembers?: CommitteeMember[]; // 委员会成员
   speakers?: Speaker[];             // 讲师信息
-  
-  // 🆕 负责理事信息
-  responsibleOfficer?: {
-    memberId: string;               // 负责理事会员ID
-    name: string;                  // 负责理事姓名
-    position: string;              // 理事职位 (President, Vice President, Secretary, Treasurer, Director)
-    email?: string;                // 联系方式
-    phone?: string;                // 联系电话
-  };
 }
 
 // ========== Search & Filter ==========
@@ -339,15 +330,6 @@ export const PARTICIPANT_TYPE_OPTIONS: SelectOption[] = [
   { label: '校友', value: 'Alumni' },
   { label: '早鸟', value: 'EarlyBird' },
   { label: '委员会成员', value: 'Committee' },
-];
-
-// 🆕 负责理事职位选项
-export const RESPONSIBLE_OFFICER_POSITION_OPTIONS: SelectOption[] = [
-  { label: '会长', value: 'President' },
-  { label: '副会长', value: 'Vice President' },
-  { label: '秘书长', value: 'Secretary' },
-  { label: '财政', value: 'Treasurer' },
-  { label: '理事', value: 'Director' },
 ];
 
 export const REGISTRATION_STATUS_OPTIONS: SelectOption[] = [

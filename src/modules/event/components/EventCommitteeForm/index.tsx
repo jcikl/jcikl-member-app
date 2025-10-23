@@ -31,6 +31,15 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
   );
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  
+  // 🆕 负责理事状态
+  const [responsibleOfficer, setResponsibleOfficer] = useState<{
+    memberId: string;
+    name: string;
+    position: string;
+    email?: string;
+    phone?: string;
+  } | null>(initialValues.responsibleOfficer || null);
 
   // 加载会员列表
   useEffect(() => {
@@ -92,8 +101,38 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
     }
   };
 
+  // 🆕 负责理事处理函数
+  const handleResponsibleOfficerSelect = (memberId: string) => {
+    const selectedMember = members.find(m => m.id === memberId);
+    if (selectedMember) {
+      setResponsibleOfficer({
+        memberId: selectedMember.id,
+        name: selectedMember.name,
+        position: '负责理事', // 默认职位
+        email: selectedMember.email,
+        phone: selectedMember.phone,
+      });
+    }
+  };
+
+  const handleResponsibleOfficerPositionChange = (position: string) => {
+    if (responsibleOfficer) {
+      setResponsibleOfficer({
+        ...responsibleOfficer,
+        position,
+      });
+    }
+  };
+
+  const clearResponsibleOfficer = () => {
+    setResponsibleOfficer(null);
+  };
+
   const handleFinish = async () => {
-    await onSubmit({ committeeMembers } as any);
+    await onSubmit({ 
+      committeeMembers,
+      responsibleOfficer: responsibleOfficer || undefined
+    } as any);
   };
 
   const columns = [
@@ -236,6 +275,82 @@ const EventCommitteeForm: React.FC<Props> = ({ initialValues, onSubmit, loading 
 
   return (
     <div>
+      {/* 🆕 负责理事设定 */}
+      <Card title="🏢 负责理事设定" className="mb-4">
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>
+            选择负责理事 <span style={{ color: 'red' }}>*</span>
+          </div>
+          <Space style={{ width: '100%' }} direction="vertical">
+            <Select
+              style={{ width: '100%' }}
+              placeholder="选择负责理事"
+              value={responsibleOfficer?.memberId || undefined}
+              onChange={handleResponsibleOfficerSelect}
+              showSearch
+              optionFilterProp="children"
+              loading={loadingMembers}
+            >
+              {members.map(member => (
+                <Option key={member.id} value={member.id}>
+                  {member.name} ({member.email})
+                </Option>
+              ))}
+            </Select>
+            
+            {responsibleOfficer && (
+              <div style={{ 
+                padding: 12, 
+                backgroundColor: '#f6ffed', 
+                border: '1px solid #b7eb8f',
+                borderRadius: 6 
+              }}>
+                <div style={{ marginBottom: 8 }}>
+                  <strong>已选择负责理事：</strong>
+                  <span style={{ color: '#52c41a', marginLeft: 8 }}>
+                    {responsibleOfficer.name}
+                  </span>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>职位：</span>
+                  <Select
+                    style={{ width: 200, marginLeft: 8 }}
+                    value={responsibleOfficer.position}
+                    onChange={handleResponsibleOfficerPositionChange}
+                    placeholder="选择职位"
+                  >
+                    <Option value="会长">会长</Option>
+                    <Option value="副会长">副会长</Option>
+                    <Option value="秘书长">秘书长</Option>
+                    <Option value="财政">财政</Option>
+                    <Option value="理事">理事</Option>
+                    <Option value="负责理事">负责理事</Option>
+                  </Select>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>邮箱：</span>
+                  <span style={{ marginLeft: 8 }}>{responsibleOfficer.email || '未设置'}</span>
+                </div>
+                <div>
+                  <span style={{ fontWeight: 600 }}>电话：</span>
+                  <span style={{ marginLeft: 8 }}>{responsibleOfficer.phone || '未设置'}</span>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <Button 
+                    type="link" 
+                    danger 
+                    size="small"
+                    onClick={clearResponsibleOfficer}
+                  >
+                    清除选择
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Space>
+        </div>
+      </Card>
+
       <Card title="委员会成员" className="mb-4">
         <div className="mb-4">
           <Button type="primary" icon={<PlusOutlined />} onClick={addCommitteeMember}>
