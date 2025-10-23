@@ -74,7 +74,6 @@ import type { AutoMatchPreviewItem, MatchResult } from '../../services/autoMatch
 import { useNavigate } from 'react-router-dom';
 import { getAllBankAccounts } from '../../services/bankAccountService';
 import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
-import { getAllFinancialCategories } from '../../../system/services/financialCategoryService'; // 🆕 导入财务类别服务
 import { getEvents } from '../../../event/services/eventService'; // 🆕 导入活动服务
 import { getMembers } from '../../../member/services/memberService'; // 🆕 导入会员服务
 import type { Transaction, TransactionFormData, TransactionStatus, BankAccount } from '../../types';
@@ -120,9 +119,6 @@ const TransactionManagementPage: React.FC = () => {
   // 🆕 交易用途选项（从财务类别管理加载）
   const [purposeOptions, setPurposeOptions] = useState<{ label: string; value: string }[]>([]);
   
-  // 🆕 财务类别映射（用于树形视图显示真实名称）
-  const [financialCategoryMap, setFinancialCategoryMap] = useState<Record<string, string>>({});
-  
   // 🎯 累计余额相关状态
   const [balanceMap, setBalanceMap] = useState<Map<string, number>>(new Map());
   const [sortBy] = useState<'transactionDate'>('transactionDate'); // 当前排序字段
@@ -163,7 +159,6 @@ const TransactionManagementPage: React.FC = () => {
   useEffect(() => {
     loadBankAccounts();
     loadPurposeOptions(); // 🆕 加载交易用途选项
-    loadFinancialCategoryMap(); // 🆕 加载财务类别映射
   }, []);
 
   // 🆕 加载交易用途选项
@@ -173,37 +168,6 @@ const TransactionManagementPage: React.FC = () => {
       setPurposeOptions(purposes);
     } catch (error) {
       console.error('加载交易用途选项失败:', error);
-    }
-  };
-
-  // 🆕 加载财务类别映射
-  const loadFinancialCategoryMap = async () => {
-    try {
-      const categories = await getAllFinancialCategories();
-      const categoryMap: Record<string, string> = {};
-      
-      // 构建类别代码到名称的映射
-      categories.forEach(category => {
-        categoryMap[category.value] = category.label;
-      });
-      
-      // 添加默认映射（用于兼容旧的硬编码类别）
-      categoryMap['member-fees'] = '会员费用';
-      categoryMap['event-finance'] = '活动财务';
-      categoryMap['general-accounts'] = '日常账户';
-      categoryMap['uncategorized'] = '未分类';
-      
-      setFinancialCategoryMap(categoryMap);
-      console.log('📊 [FinancialCategoryMap] Loaded:', categoryMap);
-    } catch (error) {
-      console.error('加载财务类别映射失败:', error);
-      // 使用默认映射作为fallback
-      setFinancialCategoryMap({
-        'member-fees': '会员费用',
-        'event-finance': '活动财务',
-        'general-accounts': '日常账户',
-        'uncategorized': '未分类',
-      });
     }
   };
 
@@ -1182,6 +1146,37 @@ const TransactionManagementPage: React.FC = () => {
       // 🆕 为树形视图加载所有交易数据
       const allTransactions = await loadAllTransactionsForTreeView();
       
+      // 🆕 加载所有活动数据用于获取负责理事信息
+      const eventsResult = await getEvents({ page: 1, limit: 1000 });
+      const allEvents = eventsResult.data;
+      console.log('🔍 [TreeView Debug] 加载活动数据:', allEvents.length, '个活动');
+      
+      // 🆕 创建活动ID到活动信息的映射
+      const eventMap = new Map();
+      allEvents.forEach(event => {
+        eventMap.set(event.id, event);
+      });
+      
+      // 🆕 获取活动负责理事的函数
+      const getEventResponsibleOfficer = (eventId: string): string => {
+        const event = eventMap.get(eventId);
+        if (!event || !event.committeeMembers) {
+          return '未指定理事';
+        }
+        
+        // 查找活动主席
+        const chairPositions = ['活动主席', 'Chair', '筹委主席', '项目主席'];
+        const chair = event.committeeMembers.find((member: any) => 
+          chairPositions.includes(member.position)
+        );
+        
+        if (chair && chair.memberName) {
+          return chair.memberName;
+        }
+        
+        return '未指定理事';
+      };
+      
       if (!allTransactions || allTransactions.length === 0) {
         console.log('🔍 [TreeView Debug] No transactions found');
         setTreeData([]);
@@ -1316,8 +1311,13 @@ const TransactionManagementPage: React.FC = () => {
     console.log('🔍 [TreeView Debug] 收入分组详情:', incomeGroups);
     console.log('🔍 [TreeView Debug] 支出分组详情:', expenseGroups);
 
-    // 🆕 使用财务类别管理中的真实名称映射
-    const categoryNameMap = financialCategoryMap;
+    // 类别名称映射
+    const categoryNameMap: Record<string, string> = {
+      'member-fees': '会员费用',
+      'event-finance': '活动财务',
+      'general-accounts': '日常账户',
+      'uncategorized': '未分类',
+    };
 
     // 构建收入树
     Object.entries(incomeGroups).forEach(([category, subGroups]) => {
@@ -1368,38 +1368,100 @@ const TransactionManagementPage: React.FC = () => {
         children: [],
       };
 
-      Object.entries(subGroups).forEach(([txAccount, items]) => {
-        // 🆕 对于活动财务，分别显示收入和支出
-        if (category === 'event-finance') {
-          const incomeItems = items.filter(t => t.transactionType === 'income');
-          const expenseItems = items.filter(t => t.transactionType === 'expense');
+      if (category === 'event-finance') {
+        // 🆕 活动财务：按负责理事分组
+        const officerGroups: Record<string, Record<string, Transaction[]>> = {};
+        
+        // 按负责理事分组活动财务交易
+        Object.values(subGroups).flat().forEach(transaction => {
+          // 从交易中获取活动ID（通过txAccount或relatedEventId）
+          let eventId = '';
+          if (transaction.txAccount && transaction.txAccount !== 'uncategorized') {
+            // 通过活动名称查找活动ID
+            const event = allEvents.find(e => e.name === transaction.txAccount);
+            eventId = event ? event.id : '';
+          }
           
-          // 🆕 排除已拆分的父交易
-          const incomeTotal = incomeItems
-            .filter(t => t.isSplit !== true)
-            .reduce((sum, t) => sum + (t.amount || 0), 0);
-          const expenseTotal = expenseItems
-            .filter(t => t.isSplit !== true)
-            .reduce((sum, t) => sum + (t.amount || 0), 0);
-          const netTotal = incomeTotal - expenseTotal;
-
-          categoryNode.children!.push({
+          const responsibleOfficer = getEventResponsibleOfficer(eventId);
+          
+          if (!officerGroups[responsibleOfficer]) {
+            officerGroups[responsibleOfficer] = {};
+          }
+          
+          const eventName = transaction.txAccount || '未分类活动';
+          if (!officerGroups[responsibleOfficer][eventName]) {
+            officerGroups[responsibleOfficer][eventName] = [];
+          }
+          
+          officerGroups[responsibleOfficer][eventName].push(transaction);
+        });
+        
+        // 构建按负责理事分组的树形结构
+        Object.entries(officerGroups).forEach(([officer, eventGroups]) => {
+          const officerNode: DataNode = {
             title: (
-              <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-                {txAccount === 'uncategorized' ? '未分类' : txAccount}
+              <span style={{ fontWeight: 500 }}>
+                📋 {officer}
                 <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                  ({items.length}) 净收入: RM {netTotal.toFixed(2)}
-                </Text>
-                <Text type="secondary" style={{ marginLeft: 8, fontSize: 10 }}>
-                  (收入: RM {incomeTotal.toFixed(2)} - 支出: RM {expenseTotal.toFixed(2)})
+                  ({Object.values(eventGroups).flat().length}笔交易)
                 </Text>
               </span>
             ),
-            key: `income-${category}-${txAccount}`,
-            isLeaf: true,
+            key: `income-${category}-officer-${officer}`,
+            children: [],
+          };
+          
+          // 按活动日期排序
+          const sortedEvents = Object.entries(eventGroups).sort(([, a], [, b]) => {
+            const eventA = allEvents.find(e => e.name === a[0]?.txAccount);
+            const eventB = allEvents.find(e => e.name === b[0]?.txAccount);
+            
+            if (!eventA || !eventB) return 0;
+            
+            const dateA = new Date(eventA.startDate);
+            const dateB = new Date(eventB.startDate);
+            return dateA.getTime() - dateB.getTime(); // 从旧到新排序
           });
-        } else {
-          // 其他类别：正常显示
+          
+          sortedEvents.forEach(([eventName, items]) => {
+            const incomeItems = items.filter(t => t.transactionType === 'income');
+            const expenseItems = items.filter(t => t.transactionType === 'expense');
+            
+            // 🆕 排除已拆分的父交易
+            const incomeTotal = incomeItems
+              .filter(t => t.isSplit !== true)
+              .reduce((sum, t) => sum + (t.amount || 0), 0);
+            const expenseTotal = expenseItems
+              .filter(t => t.isSplit !== true)
+              .reduce((sum, t) => sum + (t.amount || 0), 0);
+            const netTotal = incomeTotal - expenseTotal;
+            
+            // 获取活动日期
+            const event = allEvents.find(e => e.name === eventName);
+            const eventDate = event ? dayjs(event.startDate).format('YYYY-MM-DD') : '未知日期';
+            
+            officerNode.children!.push({
+              title: (
+                <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
+                  🎯 {eventName} ({eventDate})
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                    ({items.length}) 净收入: RM {netTotal.toFixed(2)}
+                  </Text>
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 10 }}>
+                    (收入: RM {incomeTotal.toFixed(2)} - 支出: RM {expenseTotal.toFixed(2)})
+                  </Text>
+                </span>
+              ),
+              key: `income-${category}-officer-${officer}-${eventName}`,
+              isLeaf: true,
+            });
+          });
+          
+          categoryNode.children!.push(officerNode);
+        });
+      } else {
+        // 其他类别：按txAccount分组
+        Object.entries(subGroups).forEach(([txAccount, items]) => {
           // 🆕 排除已拆分的父交易
           const subTotal = items
             .filter(t => t.isSplit !== true)
@@ -1417,8 +1479,8 @@ const TransactionManagementPage: React.FC = () => {
             key: `income-${category}-${txAccount}`,
             isLeaf: true,
           });
-        }
-      });
+        });
+      }
 
       incomeNode.children!.push(categoryNode);
     });
@@ -1513,12 +1575,12 @@ const TransactionManagementPage: React.FC = () => {
     setFilteredTransactions(items);
   };
 
-  // 🆕 当日期范围变化或财务类别映射加载完成时，重新构建树形数据
+  // 🆕 当日期范围变化时，重新构建树形数据
   useEffect(() => {
-    if (viewMode === 'tree' && Object.keys(financialCategoryMap).length > 0) {
+    if (viewMode === 'tree') {
       buildTreeData();
     }
-  }, [treeDateRangeType, treeSelectedYear, viewMode, financialCategoryMap]);
+  }, [treeDateRangeType, treeSelectedYear, viewMode]);
 
   const columns: ColumnsType<Transaction> = [
     {
