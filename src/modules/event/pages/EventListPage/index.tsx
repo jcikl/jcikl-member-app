@@ -415,22 +415,17 @@ const EventListPage: React.FC = () => {
       title: '活动日期',
       dataIndex: 'startDate',
       key: 'date',
-      width: 180,
+      width: 220,
       render: (startDate: string, record: any) => {
         // 🆕 分组标题行：隐藏此列
         if (record.isGroupHeader) {
           return { props: { colSpan: 0 } };
         }
-        // 正常活动行
+        // 正常活动行：单行显示开始日期 - 结束日期
         return (
-          <div style={{ lineHeight: '1.5' }}>
-            <div style={{ fontWeight: 500 }}>
-              {globalDateService.formatDate(startDate, 'display')}
-            </div>
-            <div style={{ fontSize: '12px', color: '#999' }}>
-              至 {globalDateService.formatDate(record.endDate, 'display')}
-            </div>
-          </div>
+          <span>
+            {globalDateService.formatDate(startDate, 'display')} - {globalDateService.formatDate(record.endDate, 'display')}
+          </span>
         );
       },
     },
