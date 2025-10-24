@@ -1330,11 +1330,11 @@ const TransactionManagementPage: React.FC = () => {
 
       if (category === 'event-finance') {
         // 活动财务：分别计算收入和支出，然后计算净收入
-        Object.values(subGroups).flat().forEach(transaction => {
-          categoryCount++;
-          // 🆕 跳过已拆分的父交易
-          if (transaction.isSplit === true) return;
-          
+        const allTransactions = Object.values(subGroups).flat();
+        const validTransactions = allTransactions.filter(t => t.isSplit !== true);
+        categoryCount = validTransactions.length;
+        
+        validTransactions.forEach(transaction => {
           if (transaction.transactionType === 'income') {
             categoryTotal += transaction.amount || 0;  // 收入为正数
           } else {
@@ -1348,7 +1348,7 @@ const TransactionManagementPage: React.FC = () => {
         categoryTotal = allTransactions
           .filter(t => t.isSplit !== true)
           .reduce((sum, t) => sum + (t.amount || 0), 0);
-        categoryCount = allTransactions.length;
+        categoryCount = allTransactions.filter(t => t.isSplit !== true).length;
       }
 
       const categoryNode: DataNode = {
@@ -1464,12 +1464,13 @@ const TransactionManagementPage: React.FC = () => {
             .filter(t => t.isSplit !== true)
             .reduce((sum, t) => sum + (t.amount || 0), 0);
 
+          const validItemsCount = items.filter(t => t.isSplit !== true).length;
           categoryNode.children!.push({
             title: (
               <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
                 {txAccount === 'uncategorized' ? '未分类' : txAccount}
                 <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                  ({items.length}) RM {subTotal.toFixed(2)}
+                  ({validItemsCount}) RM {subTotal.toFixed(2)}
                 </Text>
               </span>
             ),
@@ -1491,7 +1492,7 @@ const TransactionManagementPage: React.FC = () => {
       const categoryTotal = allTransactions
         .filter(t => t.isSplit !== true)
         .reduce((sum, t) => sum + (t.amount || 0), 0);
-      const categoryCount = allTransactions.length;
+      const categoryCount = allTransactions.filter(t => t.isSplit !== true).length;
 
       const categoryNode: DataNode = {
         title: (
@@ -1512,12 +1513,13 @@ const TransactionManagementPage: React.FC = () => {
           .filter(t => t.isSplit !== true)
           .reduce((sum, t) => sum + (t.amount || 0), 0);
 
+        const validItemsCount = items.filter(t => t.isSplit !== true).length;
         categoryNode.children!.push({
           title: (
             <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
               {txAccount === 'uncategorized' ? '未分类' : txAccount}
               <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                ({items.length}) RM {subTotal.toFixed(2)}
+                ({validItemsCount}) RM {subTotal.toFixed(2)}
               </Text>
             </span>
           ),
