@@ -1876,7 +1876,9 @@ export const batchSplitTransactions = async (
 export const batchSetCategory = async (
   transactionIds: string[],
   category: string,
-  userId: string
+  userId: string,
+  updates?: Partial<Transaction>,
+  metadata?: Record<string, any>
 ): Promise<{
   successCount: number;
   failedCount: number;
@@ -1888,6 +1890,8 @@ export const batchSetCategory = async (
     transactionCount: transactionIds.length,
     category,
     userId,
+    updates,
+    metadata,
   });
 
   for (const transactionId of transactionIds) {
@@ -1906,10 +1910,27 @@ export const batchSetCategory = async (
         throw new Error('虚拟交易（子交易）的类别由拆分操作管理，不能单独修改');
       }
 
-      await updateDoc(transactionRef, {
+      // 构建更新数据
+      const updateData: any = {
         category,
         updatedAt: new Date().toISOString(),
-      });
+        updatedBy: userId,
+      };
+
+      // 添加额外更新字段
+      if (updates) {
+        Object.assign(updateData, cleanUndefinedValues(updates));
+      }
+
+      // 添加元数据
+      if (metadata && Object.keys(metadata).length > 0) {
+        updateData.metadata = {
+          ...data.metadata,
+          ...cleanUndefinedValues(metadata),
+        };
+      }
+
+      await updateDoc(transactionRef, updateData);
 
       successCount++;
     } catch (error: any) {

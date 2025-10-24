@@ -739,10 +739,28 @@ const TransactionManagementPage: React.FC = () => {
     if (!user) return;
 
     try {
+      // 🆕 构建更新数据和元数据
+      const updates: Partial<Transaction> = {};
+      const metadata: Record<string, any> = {};
+
+      // 全局字段
+      if (data.txAccount) {
+        updates.txAccount = data.txAccount;
+      }
+
+      // 根据类别设置元数据
+      if (data.category === 'member-fees' && data.year) {
+        metadata.year = data.year;
+      } else if (data.category === 'event-finance' && data.eventId) {
+        metadata.eventId = data.eventId;
+      }
+
       const result = await batchSetCategory(
         selectedRowKeys as string[],
         data.category,
-        user.id
+        user.id,
+        updates,
+        metadata
       );
 
       // 🔍 Debug: 检查接收到的数据
