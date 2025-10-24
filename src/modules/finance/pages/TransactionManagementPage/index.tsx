@@ -1517,15 +1517,37 @@ const TransactionManagementPage: React.FC = () => {
       expenseNode.children!.push(categoryNode);
     });
 
-    // 收集所有节点的 key 用于默认展开
+    // 🆕 收集所有节点的 key 用于默认展开（包括所有层级）
     const allKeys: React.Key[] = ['income-root', 'expense-root'];
     
     incomeNode.children?.forEach(categoryNode => {
       allKeys.push(categoryNode.key!);
+      
+      // 🆕 展开活动财务的负责理事分组
+      if (categoryNode.key === 'income-event-finance') {
+        categoryNode.children?.forEach(boardMemberNode => {
+          allKeys.push(boardMemberNode.key!);
+          
+          // 🆕 展开负责理事下的具体活动
+          boardMemberNode.children?.forEach(eventNode => {
+            allKeys.push(eventNode.key!);
+          });
+        });
+      } else {
+        // 🆕 展开其他类别的子节点
+        categoryNode.children?.forEach(subNode => {
+          allKeys.push(subNode.key!);
+        });
+      }
     });
     
     expenseNode.children?.forEach(categoryNode => {
       allKeys.push(categoryNode.key!);
+      
+      // 🆕 展开支出类别的子节点
+      categoryNode.children?.forEach(subNode => {
+        allKeys.push(subNode.key!);
+      });
     });
 
       setTreeData([incomeNode, expenseNode]);
