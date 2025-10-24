@@ -1,429 +1,399 @@
 /**
- * Fiscal Year Management Page
- * 财年管理页面
+ * Fiscal Year Configuration Page
+ * 财年配置页面 - 简化版，只设定起始月份和日期
  */
 
 import React, { useState, useEffect } from 'react';
 import {
   Card,
-  Table,
-  Button,
-  Modal,
   Form,
   Input,
   InputNumber,
-  DatePicker,
-  Select,
-  message,
-  Tag,
+  Button,
+  Alert,
   Space,
+  Typography,
+  Row,
+  Col,
   Progress,
+  Tag,
+  Divider,
+  message,
+  List
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
-import dayjs from 'dayjs';
-import { globalSystemService } from '@/config/globalSystemSettings';
-import { globalComponentService } from '@/config/globalComponentSettings';
-import { globalDateService } from '@/config/globalDateSettings';
-import { useAuthStore } from '@/stores/authStore';
-import { PageHeader } from '@/components/common/PageHeader';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import {
-  getAllFiscalYears,
-  createFiscalYear,
-  updateFiscalYear,
-  deleteFiscalYear,
-  closeFiscalYear,
-  generateFiscalYearDates,
-} from '../../services/fiscalYearService';
-import type { FiscalYear, FiscalYearStatus } from '../../types';
+  InfoCircleOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  SettingOutlined,
+  BulbOutlined
+} from '@ant-design/icons';
+import { 
+  FiscalYearConfig, 
+  FiscalYearPeriod, 
+  FiscalYearStatus
+} from '../types/fiscalYear';
+import { smartFiscalYearService } from '../services/smartFiscalYearService';
 
-const { Option } = Select;
-const { RangePicker } = DatePicker;
+const { Title, Text, Paragraph } = Typography;
 
 const FiscalYearManagementPage: React.FC = () => {
-  const { user } = useAuthStore();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(true);
-  const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingFiscalYear, setEditingFiscalYear] = useState<FiscalYear | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fiscalYearStatus, setFiscalYearStatus] = useState<FiscalYearStatus | null>(null);
+  const [historyData, setHistoryData] = useState<FiscalYearPeriod[]>([]);
 
+  // 加载财年配置
   useEffect(() => {
-    loadFiscalYears();
+    loadFiscalYearConfig();
   }, []);
 
-  const loadFiscalYears = async () => {
-    if (!user) return;
-
+  const loadFiscalYearConfig = async () => {
     try {
-      setLoading(true);
-      const data = await getAllFiscalYears();
-      setFiscalYears(data);
-    } catch (error: any) {
-      message.error('加载财年数据失败');
-      globalSystemService.log(
-        'error',
-        'Failed to load fiscal years',
-        'FiscalYearManagementPage.loadFiscalYears',
-        { error: error.message, userId: user.id }
-      );
+      // 从全局设置或本地存储加载配置
+      const savedConfig = localStorage.getItem('fiscalYearConfig');
+      let config: FiscalYearConfig;
+      
+      if (savedConfig) {
+        config = JSON.parse(savedConfig);
+      } else {
+        // 使用默认配置
+        config = {
+          id: 'jci-kl-fy',
+          name: 'JCI KL 财年',
+          startMonth: 10,
+          startDay: 1,
+          isActive: true,
+          isDefault: true,
+          description: 'JCI KL 财年从每年10月1日开始',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 'system',
+          updatedBy: 'system'
+        };
+      }
+
+      smartFiscalYearService.setConfig(config);
+      form.setFieldsValue({
+        startMonth: config.startMonth,
+        startDay: config.startDay,
+        name: config.name,
+        description: config.description
+      });
+      
+      // 检测财年状态
+      const status = smartFiscalYearService.detectCurrentFiscalYearStatus();
+      setFiscalYearStatus(status);
+      
+      // 加载历史数据
+      const history = smartFiscalYearService.getFiscalYearHistory(5);
+      setHistoryData(history);
+    } catch (error) {
+      console.error('Failed to load fiscal year config:', error);
+      message.error('加载财年配置失败');
+    }
+  };
+
+  const handleSave = async (values: any) => {
+    setLoading(true);
+    try {
+      // 验证配置
+      const config: FiscalYearConfig = {
+        id: 'jci-kl-fy',
+        name: values.name || 'JCI KL 财年',
+        startMonth: values.startMonth,
+        startDay: values.startDay,
+        isActive: true,
+        isDefault: true,
+        description: values.description || `财年从每年${values.startMonth}月${values.startDay}日开始`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: 'system',
+        updatedBy: 'system'
+      };
+
+      const validation = smartFiscalYearService.validateConfig(config);
+      if (!validation.isValid) {
+        message.error(`配置验证失败: ${validation.errors.join(', ')}`);
+        return;
+      }
+
+      // 保存到本地存储（实际项目中应该保存到后端）
+      localStorage.setItem('fiscalYearConfig', JSON.stringify(config));
+      
+      // 更新服务配置
+      smartFiscalYearService.setConfig(config);
+      
+      // 重新检测财年状态
+      const status = smartFiscalYearService.detectCurrentFiscalYearStatus();
+      setFiscalYearStatus(status);
+      
+      // 重新加载历史数据
+      const history = smartFiscalYearService.getFiscalYearHistory(5);
+      setHistoryData(history);
+      
+      message.success('财年配置保存成功');
+    } catch (error) {
+      console.error('Failed to save fiscal year config:', error);
+      message.error('保存财年配置失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreate = () => {
-    form.resetFields();
-    setEditingFiscalYear(null);
-    
-    // Set default dates for new fiscal year (Oct 1 - Sep 30)
-    const currentYear = new Date().getFullYear();
-    const { start, end } = generateFiscalYearDates(currentYear);
-    
+  const handleReset = () => {
     form.setFieldsValue({
-      name: `FY${currentYear}`,
-      year: currentYear,
-      dateRange: [dayjs(start), dayjs(end)],
-      status: 'draft',
-      isDefault: false,
+      startMonth: 10,
+      startDay: 1,
+      name: 'JCI KL 财年',
+      description: 'JCI KL 财年从每年10月1日开始'
     });
-    
-    setModalVisible(true);
   };
 
-  const handleEdit = (record: FiscalYear) => {
-    setEditingFiscalYear(record);
-    form.setFieldsValue({
-      name: record.name,
-      year: record.year,
-      dateRange: [dayjs(record.startDate), dayjs(record.endDate)],
-      status: record.status,
-      isDefault: record.isDefault,
-      description: record.description,
-      notes: record.notes,
-    });
-    setModalVisible(true);
-  };
-
-  const handleSubmit = async () => {
-    if (!user) return;
-
-    try {
-      const values = await form.validateFields();
-      const [startDate, endDate] = values.dateRange;
-
-      const formData = {
-        name: values.name,
-        year: values.year,
-        startDate: startDate.toDate(),
-        endDate: endDate.toDate(),
-        status: values.status,
-        isDefault: values.isDefault,
-        description: values.description,
-        notes: values.notes,
-      };
-
-      if (editingFiscalYear) {
-        await updateFiscalYear(editingFiscalYear.id, formData, user.id);
-        message.success('财年已更新');
-      } else {
-        await createFiscalYear(formData, user.id);
-        message.success('财年已创建');
-      }
-
-      setModalVisible(false);
-      form.resetFields();
-      setEditingFiscalYear(null);
-      loadFiscalYears();
-    } catch (error: any) {
-      message.error('保存失败');
+  const getStatusIcon = (period: FiscalYearPeriod) => {
+    if (period.isCompleted) {
+      return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+    } else if (period.isCurrent) {
+      return <ClockCircleOutlined style={{ color: '#1890ff' }} />;
+    } else {
+      return <ExclamationCircleOutlined style={{ color: '#d9d9d9' }} />;
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!user) return;
-
-    Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除此财年吗？此操作无法撤销。',
-      okText: '删除',
-      cancelText: '取消',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        try {
-          await deleteFiscalYear(id, user.id);
-          message.success('财年已删除');
-          loadFiscalYears();
-        } catch (error: any) {
-          message.error('删除失败: ' + error.message);
-        }
-      },
-    });
+  const getStatusColor = (period: FiscalYearPeriod) => {
+    if (period.isCompleted) return 'success';
+    if (period.isCurrent) return 'processing';
+    return 'default';
   };
-
-  const handleClose = async (id: string) => {
-    if (!user) return;
-
-    Modal.confirm({
-      title: '确认关闭财年',
-      content: '关闭后将无法修改此财年的数据。确定要继续吗？',
-      okText: '关闭',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          await closeFiscalYear(id, user.id);
-          message.success('财年已关闭');
-          loadFiscalYears();
-        } catch (error: any) {
-          message.error('关闭失败');
-        }
-      },
-    });
-  };
-
-  const handleQuickPreset = (preset: 'calendar' | 'july' | 'october') => {
-    const year = form.getFieldValue('year') || new Date().getFullYear();
-    let start: dayjs.Dayjs;
-    let end: dayjs.Dayjs;
-
-    switch (preset) {
-      case 'calendar':
-        start = dayjs(`${year}-01-01`);
-        end = dayjs(`${year}-12-31`);
-        break;
-      case 'july':
-        start = dayjs(`${year}-07-01`);
-        end = dayjs(`${year + 1}-06-30`);
-        break;
-      case 'october':
-        start = dayjs(`${year}-10-01`);
-        end = dayjs(`${year + 1}-09-30`);
-        break;
-    }
-
-    form.setFieldsValue({ dateRange: [start, end] });
-  };
-
-  const columns: ColumnsType<FiscalYear> = [
-    {
-      title: '财年名称',
-      dataIndex: 'name',
-      key: 'name',
-      width: 120,
-    },
-    {
-      title: '开始日期',
-      dataIndex: 'startDate',
-      key: 'startDate',
-      width: 120,
-      render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
-    },
-    {
-      title: '结束日期',
-      dataIndex: 'endDate',
-      key: 'endDate',
-      width: 120,
-      render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status: FiscalYearStatus, record: FiscalYear) => {
-        const statusConfig: Record<FiscalYearStatus, { color: string; text: string }> = {
-          draft: { color: 'default', text: '草稿' },
-          active: { color: 'success', text: '活跃' },
-          closed: { color: 'default', text: '已关闭' },
-          archived: { color: 'default', text: '已归档' },
-        };
-        const config = statusConfig[status];
-        return (
-          <Space>
-            <Tag color={config.color}>{config.text}</Tag>
-            {record.isDefault && <Tag color="blue">默认</Tag>}
-          </Space>
-        );
-      },
-    },
-    {
-      title: '进度',
-      key: 'progress',
-      width: 200,
-      render: (_, record) => {
-        if (record.status !== 'active') return '-';
-        
-        const start = new Date(record.startDate).getTime();
-        const end = new Date(record.endDate).getTime();
-        const now = Date.now();
-        
-        if (now < start) return <Progress percent={0} size="small" />;
-        if (now > end) return <Progress percent={100} size="small" />;
-        
-        const progress = Math.round(((now - start) / (end - start)) * 100);
-        return <Progress percent={progress} size="small" />;
-      },
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 180,
-      fixed: 'right',
-      render: (_, record) => (
-        <Space size="small">
-          <Button type="link" size="small" icon={<EyeOutlined />}>
-            查看
-          </Button>
-          {record.status !== 'closed' && (
-            <>
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => handleEdit(record)}
-              >
-                编辑
-              </Button>
-              {record.status === 'active' && (
-                <Button
-                  type="link"
-                  size="small"
-                  danger
-                  onClick={() => handleClose(record.id)}
-                >
-                  关闭
-                </Button>
-              )}
-            </>
-          )}
-          {record.status === 'draft' && (
-            <Button
-              type="link"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.id)}
-            >
-              删除
-            </Button>
-          )}
-        </Space>
-      ),
-    },
-  ];
-
-  const tableConfig = globalComponentService.getTableConfig();
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
 
   return (
-    <ErrorBoundary>
-      <div className="fiscal-year-management-page p-6">
-        <PageHeader
-          title="财年管理"
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '财务管理', path: '/finance' },
-            { title: '财年管理' },
-          ]}
-          extra={
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-              创建新财年
-            </Button>
-          }
-        />
+    <div style={{ padding: '24px' }}>
+      <Title level={2}>
+        <SettingOutlined style={{ marginRight: 8 }} />
+        财年配置
+      </Title>
 
-        <Card>
-          <Table
-            {...tableConfig}
-            columns={columns}
-            dataSource={fiscalYears}
-            rowKey="id"
-            loading={loading}
-          />
+      <Paragraph type="secondary">
+        财年管理只需要设定起始月份和日期，年份由用户在个别页面动态选择。
+        通常只有在统计数据时才需要被调用，并且一般情况下的数据统计是1月1号至12月31号。
+      </Paragraph>
+
+      <Row gutter={24}>
+        {/* 财年配置 */}
+        <Col span={16}>
+          <Card title="财年设置" style={{ marginBottom: 24 }}>
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSave}
+              initialValues={{
+                startMonth: 10,
+                startDay: 1,
+                name: 'JCI KL 财年',
+                description: 'JCI KL 财年从每年10月1日开始'
+              }}
+            >
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="name"
+                    label="财年名称"
+                    rules={[{ required: true, message: '请输入财年名称' }]}
+                  >
+                    <Input
+                      style={{ width: '100%' }}
+                      placeholder="如：JCI KL 财年"
+                      disabled
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="description"
+                    label="描述"
+                  >
+                    <Input
+                      style={{ width: '100%' }}
+                      placeholder="财年描述信息"
+                      disabled
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="startMonth"
+                    label="起始月份"
+                    rules={[{ required: true, message: '请选择起始月份' }]}
+                  >
+                    <InputNumber
+                      min={1}
+                      max={12}
+                      style={{ width: '100%' }}
+                      placeholder="月份"
+                      addonAfter="月"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="startDay"
+                    label="起始日期"
+                    rules={[{ required: true, message: '请选择起始日期' }]}
+                  >
+                    <InputNumber
+                      min={1}
+                      max={31}
+                      style={{ width: '100%' }}
+                      placeholder="日期"
+                      addonAfter="日"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Alert
+                message="配置说明"
+                description="设置财年的起始月份和日期后，系统将自动计算每年的财年范围。例如：设置10月1日，则2024年财年为2024-10-01至2025-09-30。"
+                type="info"
+                showIcon
+                icon={<InfoCircleOutlined />}
+                style={{ marginBottom: 16 }}
+              />
+
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" loading={loading}>
+                    保存配置
+                  </Button>
+                  <Button onClick={handleReset}>
+                    重置
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Card>
+        </Col>
+
+        {/* 当前财年状态 */}
+        <Col span={8}>
+          <Card title="当前财年状态" style={{ marginBottom: 24 }}>
+            {fiscalYearStatus?.currentPeriod ? (
+              <div>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <Title level={4} style={{ margin: 0 }}>
+                      {fiscalYearStatus.currentPeriod.displayName}
+                    </Title>
+                    <Text type="secondary">
+                      {fiscalYearStatus.currentPeriod.startDate} 至 {fiscalYearStatus.currentPeriod.endDate}
+                    </Text>
+                  </div>
+
+                  <Divider />
+
+                  <div>
+                    <Text strong>财年进度</Text>
+                    <Progress 
+                      percent={fiscalYearStatus.currentPeriod.progressPercentage}
+                      status="active"
+                      strokeColor={{
+                        '0%': '#108ee9',
+                        '100%': '#87d068',
+                      }}
+                    />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {fiscalYearStatus.currentPeriod.daysElapsed} 天 / {fiscalYearStatus.currentPeriod.totalDays} 天
+                    </Text>
+                  </div>
+
+                  <div>
+                    <Text strong>剩余天数</Text>
+                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f' }}>
+                      {fiscalYearStatus.currentPeriod.daysRemaining} 天
+                    </div>
+                  </div>
+
+                  <Alert
+                    message="财年状态"
+                    description={`当前正在${fiscalYearStatus.currentPeriod.displayName}，进度 ${fiscalYearStatus.currentPeriod.progressPercentage}%`}
+                    type="info"
+                    showIcon
+                    icon={<InfoCircleOutlined />}
+                  />
+                </Space>
+              </div>
+            ) : (
+              <Alert
+                message="未检测到当前财年"
+                description="请检查财年配置是否正确"
+                type="warning"
+                showIcon
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 智能建议 */}
+      {fiscalYearStatus?.suggestions && fiscalYearStatus.suggestions.length > 0 && (
+        <Card title="智能建议" style={{ marginBottom: 24 }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {fiscalYearStatus.suggestions.map((suggestion, index) => (
+              <Alert
+                key={index}
+                message={suggestion.reason}
+                description={`建议查看 ${suggestion.period.displayName} 的数据`}
+                type={suggestion.priority === 'high' ? 'success' : suggestion.priority === 'medium' ? 'info' : 'warning'}
+                showIcon
+                icon={<BulbOutlined />}
+              />
+            ))}
+          </Space>
         </Card>
+      )}
 
-        <Modal
-          title={editingFiscalYear ? '编辑财年' : '创建财年'}
-          open={modalVisible}
-          onOk={handleSubmit}
-          onCancel={() => {
-            setModalVisible(false);
-            form.resetFields();
-            setEditingFiscalYear(null);
-          }}
-          width={700}
-        >
-          <div className="mb-4">
-            <h4 className="font-semibold mb-2">快速预设</h4>
-            <Space>
-              <Button onClick={() => handleQuickPreset('calendar')}>日历年</Button>
-              <Button onClick={() => handleQuickPreset('july')}>7月1日 - 6月30日</Button>
-              <Button onClick={() => handleQuickPreset('october')}>10月1日 - 9月30日</Button>
-            </Space>
-          </div>
-
-          <Form form={form} layout="vertical">
-            <Form.Item
-              label="财年名称"
-              name="name"
-              rules={[{ required: true, message: '请输入财年名称' }]}
-            >
-              <Input placeholder="例如: FY2025" />
-            </Form.Item>
-
-            <Form.Item
-              label="年份"
-              name="year"
-              rules={[{ required: true, message: '请输入年份' }]}
-            >
-              <InputNumber style={{ width: '100%' }} min={2020} max={2050} />
-            </Form.Item>
-
-            <Form.Item
-              label="日期范围"
-              name="dateRange"
-              rules={[{ required: true, message: '请选择日期范围' }]}
-            >
-              <RangePicker style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="状态"
-              name="status"
-              rules={[{ required: true, message: '请选择状态' }]}
-            >
-              <Select>
-                <Option value="draft">草稿</Option>
-                <Option value="active">活跃</Option>
-                <Option value="closed">已关闭</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item label="设为默认" name="isDefault" valuePropName="checked">
-              <Select>
-                <Option value={true}>是</Option>
-                <Option value={false}>否</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item label="描述" name="description">
-              <Input.TextArea rows={2} />
-            </Form.Item>
-
-            <Form.Item label="备注" name="notes">
-              <Input.TextArea rows={3} />
-            </Form.Item>
-          </Form>
-        </Modal>
-      </div>
-    </ErrorBoundary>
+      {/* 财年预览 */}
+      <Card title="财年预览">
+        <List
+          dataSource={historyData}
+          renderItem={(period) => (
+            <List.Item>
+              <List.Item.Meta
+                avatar={getStatusIcon(period)}
+                title={
+                  <Space>
+                    <Text strong={period.isCurrent}>{period.displayName}</Text>
+                    <Tag color={getStatusColor(period)}>
+                      {period.isCompleted ? '已完成' : period.isCurrent ? '进行中' : '未开始'}
+                    </Tag>
+                  </Space>
+                }
+                description={
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Text type="secondary">
+                      {period.startDate} 至 {period.endDate}
+                    </Text>
+                    {period.isCurrent && (
+                      <Progress 
+                        percent={period.progressPercentage} 
+                        size="small" 
+                        status="active"
+                        format={(percent) => `${percent}% (剩余 ${period.daysRemaining} 天)`}
+                      />
+                    )}
+                  </Space>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      </Card>
+    </div>
   );
 };
 
 export default FiscalYearManagementPage;
-

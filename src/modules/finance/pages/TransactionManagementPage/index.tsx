@@ -1191,8 +1191,8 @@ const TransactionManagementPage: React.FC = () => {
     isLastChild: boolean; // 用于决定使用 ├── 还是 └──
     count: number; // 交易数量
     totalAmount: number; // 总金额
-    year2025: number; // 2025年金额
-    year2024: number; // 2024年金额
+    currentYear: number; // 当前年份金额
+    pastYear: number; // 过去年份金额
     transactions: Transaction[]; // 关联的交易数据
     category?: string; // 类别
     txAccount?: string; // 子账户
@@ -1201,18 +1201,22 @@ const TransactionManagementPage: React.FC = () => {
   }
 
   // 🆕 计算年度统计
-  const calculateYearlyStats = (transactions: Transaction[]) => {
+  const calculateYearlyStats = (transactions: Transaction[], targetYear?: string) => {
+    // 确定当前年份和过去年份
+    const currentYear = targetYear ? parseInt(targetYear) : new Date().getFullYear();
+    const pastYear = currentYear - 1;
+    
     console.log('🔍 [calculateYearlyStats] Calculating stats for:', {
       transactionsCount: transactions.length,
+      currentYear,
+      pastYear,
+      targetYear,
       transactions: transactions.slice(0, 3)
     });
     
-    const currentYear = new Date().getFullYear();
-    const lastYear = currentYear - 1;
-    
     const stats = {
       [currentYear]: { income: 0, expense: 0, net: 0 },
-      [lastYear]: { income: 0, expense: 0, net: 0 }
+      [pastYear]: { income: 0, expense: 0, net: 0 }
     };
     
     transactions.forEach(transaction => {
@@ -1228,10 +1232,10 @@ const TransactionManagementPage: React.FC = () => {
         amount,
         transactionType: transaction.transactionType,
         currentYear,
-        lastYear
+        pastYear
       });
       
-      if (transactionYear === currentYear || transactionYear === lastYear) {
+      if (transactionYear === currentYear || transactionYear === pastYear) {
         if (transaction.transactionType === 'income') {
           stats[transactionYear].income += amount;
           stats[transactionYear].net += amount;
@@ -1247,16 +1251,21 @@ const TransactionManagementPage: React.FC = () => {
   };
 
   // 🆕 构建树形表格数据
-  const buildTreeTableData = (transactions: Transaction[], events: EventType[]): TreeTableItem[] => {
+  const buildTreeTableData = (transactions: Transaction[], events: EventType[], targetYear?: string): TreeTableItem[] => {
+    // 确定当前年份和过去年份
+    const currentYear = targetYear ? parseInt(targetYear) : new Date().getFullYear();
+    const pastYear = currentYear - 1;
+    
     console.log('🔍 [buildTreeTableData] Starting with:', {
       transactionsCount: transactions.length,
       eventsCount: events.length,
+      currentYear,
+      pastYear,
+      targetYear,
       transactions: transactions.slice(0, 3), // 显示前3个交易
       events: events.slice(0, 3) // 显示前3个活动
     });
     
-    const currentYear = new Date().getFullYear();
-    const lastYear = currentYear - 1;
     const tableData: TreeTableItem[] = [];
     
     // 按类别分组交易
@@ -1318,29 +1327,29 @@ const TransactionManagementPage: React.FC = () => {
       incomeTransactions: incomeTransactions.slice(0, 3)
     });
     
-    if (incomeTransactions.length > 0) {
-      const incomeStats = calculateYearlyStats(incomeTransactions);
-      console.log('🔍 [buildTreeTableData] Income stats:', incomeStats);
-      
-      tableData.push({
-        key: 'income-header',
-        name: '收入',
-        level: 0,
-        isLastChild: false,
-        count: incomeTransactions.length,
-        totalAmount: incomeStats[currentYear].net + incomeStats[lastYear].net,
-        year2025: incomeStats[currentYear].net,
-        year2024: incomeStats[lastYear].net,
-        transactions: incomeTransactions,
-      });
-    }
+     if (incomeTransactions.length > 0) {
+       const incomeStats = calculateYearlyStats(incomeTransactions, targetYear);
+       console.log('🔍 [buildTreeTableData] Income stats:', incomeStats);
+       
+       tableData.push({
+         key: 'income-header',
+         name: '收入',
+         level: 0,
+         isLastChild: false,
+         count: incomeTransactions.length,
+         totalAmount: incomeStats[currentYear].net + incomeStats[pastYear].net,
+         currentYear: incomeStats[currentYear].net,
+         pastYear: incomeStats[pastYear].net,
+         transactions: incomeTransactions,
+       });
+     }
 
     // 处理收入子类别
     incomeCategories.forEach((category, categoryIndex) => {
       const categoryTransactions = groupedTransactions[category] || [];
       if (categoryTransactions.length === 0) return;
 
-      const categoryStats = calculateYearlyStats(categoryTransactions);
+      const categoryStats = calculateYearlyStats(categoryTransactions, targetYear);
       const categoryTotal = categoryTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
       
       // 添加类别节点
@@ -1351,8 +1360,8 @@ const TransactionManagementPage: React.FC = () => {
         isLastChild: categoryIndex === incomeCategories.length - 1,
         count: categoryTransactions.length,
         totalAmount: categoryTotal,
-        year2025: categoryStats[currentYear].net,
-        year2024: categoryStats[lastYear].net,
+        currentYear: categoryStats[currentYear].net,
+        pastYear: categoryStats[pastYear].net,
         transactions: categoryTransactions,
         category,
       });
@@ -1370,10 +1379,10 @@ const TransactionManagementPage: React.FC = () => {
           boardMemberGroups[boardMemberKey].push(transaction);
         });
 
-        const boardMemberKeys = Object.keys(boardMemberGroups);
-        boardMemberKeys.forEach((boardMemberKey, boardIndex) => {
-          const boardTransactions = boardMemberGroups[boardMemberKey];
-          const boardStats = calculateYearlyStats(boardTransactions);
+         const boardMemberKeys = Object.keys(boardMemberGroups);
+         boardMemberKeys.forEach((boardMemberKey, boardIndex) => {
+           const boardTransactions = boardMemberGroups[boardMemberKey];
+           const boardStats = calculateYearlyStats(boardTransactions, targetYear);
           
           // 计算净收入
           const incomeTotal = boardTransactions
@@ -1388,20 +1397,20 @@ const TransactionManagementPage: React.FC = () => {
           const eventNames = [...new Set(boardTransactions.map(t => t.txAccount).filter(name => name && name !== 'uncategorized'))] as string[];
           const eventCount = eventNames.length;
 
-          // 添加负责理事节点
-          tableData.push({
-            key: `income-${category}-board-${boardMemberKey}`,
-            name: `${boardMemberKey === 'unassigned' ? '未设置负责理事' : boardMemberNameMap[boardMemberKey] || boardMemberKey} (${eventCount}个活动) 净收入: RM ${netTotal.toFixed(2)}`,
-            level: 2,
-            isLastChild: boardIndex === boardMemberKeys.length - 1,
-            count: boardTransactions.length,
-            totalAmount: netTotal,
-            year2025: boardStats[currentYear].net,
-            year2024: boardStats[lastYear].net,
-            transactions: boardTransactions,
-            category,
-            boardMember: boardMemberKey,
-          });
+           // 添加负责理事节点
+           tableData.push({
+             key: `income-${category}-board-${boardMemberKey}`,
+             name: `${boardMemberKey === 'unassigned' ? '未设置负责理事' : boardMemberNameMap[boardMemberKey] || boardMemberKey} (${eventCount}个活动) 净收入: RM ${netTotal.toFixed(2)}`,
+             level: 2,
+             isLastChild: boardIndex === boardMemberKeys.length - 1,
+             count: boardTransactions.length,
+             totalAmount: netTotal,
+             currentYear: boardStats[currentYear].net,
+             pastYear: boardStats[pastYear].net,
+             transactions: boardTransactions,
+             category,
+             boardMember: boardMemberKey,
+           });
 
           // 为每个活动创建子节点
           eventNames.forEach((eventName, eventIndex) => {
@@ -1424,23 +1433,23 @@ const TransactionManagementPage: React.FC = () => {
               }
             }
 
-            const eventStats = calculateYearlyStats(eventItems);
-            
-            // 添加活动节点
-            tableData.push({
-              key: `income-${category}-board-${boardMemberKey}-event-${eventName}`,
-              name: `${eventName} (${eventDate}) 净收入: RM ${eventNetTotal.toFixed(2)}`,
-              level: 3,
-              isLastChild: eventIndex === eventNames.length - 1,
-              count: eventItems.length,
-              totalAmount: eventNetTotal,
-              year2025: eventStats[currentYear].net,
-              year2024: eventStats[lastYear].net,
-              transactions: eventItems,
-              category,
-              boardMember: boardMemberKey,
-              eventName,
-            });
+             const eventStats = calculateYearlyStats(eventItems, targetYear);
+             
+             // 添加活动节点
+             tableData.push({
+               key: `income-${category}-board-${boardMemberKey}-event-${eventName}`,
+               name: `${eventName} (${eventDate}) 净收入: RM ${eventNetTotal.toFixed(2)}`,
+               level: 3,
+               isLastChild: eventIndex === eventNames.length - 1,
+               count: eventItems.length,
+               totalAmount: eventNetTotal,
+               currentYear: eventStats[currentYear].net,
+               pastYear: eventStats[pastYear].net,
+               transactions: eventItems,
+               category,
+               boardMember: boardMemberKey,
+               eventName,
+             });
           });
         });
       } else {
@@ -1457,7 +1466,7 @@ const TransactionManagementPage: React.FC = () => {
         const subGroupKeys = Object.keys(subGroups);
         subGroupKeys.forEach((txAccount, subIndex) => {
           const items = subGroups[txAccount];
-          const subStats = calculateYearlyStats(items);
+          const subStats = calculateYearlyStats(items, targetYear);
           const subTotal = items.reduce((sum, t) => sum + (t.amount || 0), 0);
           
           // 格式化显示名称
@@ -1492,20 +1501,20 @@ const TransactionManagementPage: React.FC = () => {
             }
           }
           
-          // 添加子账户节点
-          tableData.push({
-            key: `income-${category}-${txAccount}`,
-            name: `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
-            level: 2,
-            isLastChild: subIndex === subGroupKeys.length - 1,
-            count: items.length,
-            totalAmount: subTotal,
-            year2025: subStats[currentYear].net,
-            year2024: subStats[lastYear].net,
-            transactions: items,
-            category,
-            txAccount,
-          });
+           // 添加子账户节点
+           tableData.push({
+             key: `income-${category}-${txAccount}`,
+             name: `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
+             level: 2,
+             isLastChild: subIndex === subGroupKeys.length - 1,
+             count: items.length,
+             totalAmount: subTotal,
+             currentYear: subStats[currentYear].net,
+             pastYear: subStats[pastYear].net,
+             transactions: items,
+             category,
+             txAccount,
+           });
         });
       }
     });
@@ -1513,16 +1522,16 @@ const TransactionManagementPage: React.FC = () => {
     // 添加支出标题
     const expenseTransactions = expenseCategories.flatMap(cat => groupedTransactions[cat] || []);
     if (expenseTransactions.length > 0) {
-      const expenseStats = calculateYearlyStats(expenseTransactions);
+      const expenseStats = calculateYearlyStats(expenseTransactions, targetYear);
       tableData.push({
         key: 'expense-header',
         name: '支出',
         level: 0,
         isLastChild: false,
         count: expenseTransactions.length,
-        totalAmount: expenseStats[currentYear].net + expenseStats[lastYear].net,
-        year2025: expenseStats[currentYear].net,
-        year2024: expenseStats[lastYear].net,
+        totalAmount: expenseStats[currentYear].net + expenseStats[pastYear].net,
+        currentYear: expenseStats[currentYear].net,
+        pastYear: expenseStats[pastYear].net,
         transactions: expenseTransactions,
       });
     }
@@ -1532,7 +1541,7 @@ const TransactionManagementPage: React.FC = () => {
       const categoryTransactions = groupedTransactions[category] || [];
       if (categoryTransactions.length === 0) return;
 
-      const categoryStats = calculateYearlyStats(categoryTransactions);
+      const categoryStats = calculateYearlyStats(categoryTransactions, targetYear);
       const categoryTotal = categoryTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
       
       // 添加类别节点
@@ -1543,8 +1552,8 @@ const TransactionManagementPage: React.FC = () => {
         isLastChild: categoryIndex === expenseCategories.length - 1,
         count: categoryTransactions.length,
         totalAmount: categoryTotal,
-        year2025: categoryStats[currentYear].net,
-        year2024: categoryStats[lastYear].net,
+        currentYear: categoryStats[currentYear].net,
+        pastYear: categoryStats[pastYear].net,
         transactions: categoryTransactions,
         category,
       });
@@ -1562,7 +1571,7 @@ const TransactionManagementPage: React.FC = () => {
       const subGroupKeys = Object.keys(subGroups);
       subGroupKeys.forEach((txAccount, subIndex) => {
         const items = subGroups[txAccount];
-        const subStats = calculateYearlyStats(items);
+        const subStats = calculateYearlyStats(items, targetYear);
         const subTotal = items.reduce((sum, t) => sum + (t.amount || 0), 0);
         
         // 格式化显示名称
@@ -1598,8 +1607,8 @@ const TransactionManagementPage: React.FC = () => {
           isLastChild: subIndex === subGroupKeys.length - 1,
           count: items.length,
           totalAmount: subTotal,
-          year2025: subStats[currentYear].net,
-          year2024: subStats[lastYear].net,
+          currentYear: subStats[currentYear].net,
+          pastYear: subStats[pastYear].net,
           transactions: items,
           category,
           txAccount,
@@ -1609,12 +1618,14 @@ const TransactionManagementPage: React.FC = () => {
 
     console.log('🔍 [buildTreeTableData] Final table data:', {
       totalRows: tableData.length,
+      currentYear,
+      pastYear,
       tableData: tableData.map(item => ({
         key: item.key,
         name: item.name,
         level: item.level,
-        year2025: item.year2025,
-        year2024: item.year2024,
+        currentYear: item.currentYear,
+        pastYear: item.pastYear,
         count: item.count
       }))
     });
@@ -1823,8 +1834,6 @@ const TransactionManagementPage: React.FC = () => {
         categoryCount = allTransactions.filter(t => t.isSplit !== true).length;
       }
 
-      // 🆕 计算该类别的年度统计
-      const allTransactions = Object.values(subGroups).flat();
       
       const categoryNode: DataNode = {
         title: (
@@ -2134,11 +2143,12 @@ const TransactionManagementPage: React.FC = () => {
         transactionsForTable: transactionsForTable.slice(0, 3)
       });
       
-      const tableData = buildTreeTableData(transactionsForTable, eventsResult.data);
-      console.log('🔍 [buildTreeData] Tree table data built:', {
-        tableDataLength: tableData.length,
-        tableData: tableData
-      });
+       const tableData = buildTreeTableData(transactionsForTable, eventsResult.data, treeSelectedYear);
+       console.log('🔍 [buildTreeData] Tree table data built:', {
+         tableDataLength: tableData.length,
+         treeSelectedYear,
+         tableData: tableData
+       });
       
       setTreeTableData(tableData);
       
@@ -2206,9 +2216,9 @@ const TransactionManagementPage: React.FC = () => {
       }
     },
     {
-      title: '2025 (RM)',
-      dataIndex: 'year2025',
-      key: 'year2025',
+      title: `${treeSelectedYear} (RM)`,
+      dataIndex: 'currentYear',
+      key: 'currentYear',
       align: 'right',
       width: 120,
       render: (amount: number) => (
@@ -2221,9 +2231,9 @@ const TransactionManagementPage: React.FC = () => {
       )
     },
     {
-      title: '2024 (RM)',
-      dataIndex: 'year2024',
-      key: 'year2024',
+      title: `${parseInt(treeSelectedYear) - 1} (RM)`,
+      dataIndex: 'pastYear',
+      key: 'pastYear',
       align: 'right',
       width: 120,
       render: (amount: number) => (
