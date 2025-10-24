@@ -704,13 +704,17 @@ const TransactionManagementPage: React.FC = () => {
 
   // 批量设置类别
   const handleBatchSetCategory = () => {
+    const currentDataSource = filteredTransactions.length > 0 ? filteredTransactions : transactions;
+    const selectedTransactions = currentDataSource.filter(t => selectedRowKeys.includes(t.id));
+    
     console.log('🔍 [handleBatchSetCategory] Debug info:', {
       selectedRowKeys,
       selectedRowKeysLength: selectedRowKeys.length,
       transactionsLength: transactions.length,
       filteredTransactionsLength: filteredTransactions.length,
-      selectedTransactions: transactions.filter(t => selectedRowKeys.includes(t.id)),
-      selectedTransactionsLength: transactions.filter(t => selectedRowKeys.includes(t.id)).length,
+      currentDataSourceLength: currentDataSource.length,
+      selectedTransactions: selectedTransactions,
+      selectedTransactionsLength: selectedTransactions.length,
     });
     setBatchCategoryModalVisible(true);
   };
@@ -2451,7 +2455,7 @@ const TransactionManagementPage: React.FC = () => {
         {/* Batch Set Category Modal */}
         <BatchSetCategoryModal
           visible={batchCategoryModalVisible}
-          selectedTransactions={transactions.filter(t => selectedRowKeys.includes(t.id))}
+          selectedTransactions={(filteredTransactions.length > 0 ? filteredTransactions : transactions).filter(t => selectedRowKeys.includes(t.id))}
           onOk={handleBatchSetCategoryOk}
           onCancel={() => setBatchCategoryModalVisible(false)}
           onManageSubcategory={(category) => {
