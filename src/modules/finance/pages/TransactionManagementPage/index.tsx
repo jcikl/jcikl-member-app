@@ -23,7 +23,6 @@ import {
   Tooltip,
   Tabs,
   Badge,
-  Tree,
   Alert,
   Typography,
   Row,
@@ -76,6 +75,7 @@ import { getAllBankAccounts } from '../../services/bankAccountService';
 import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
 import { getEvents } from '../../../event/services/eventService'; // 🆕 导入活动服务
 import { getMembers } from '../../../member/services/memberService'; // 🆕 导入会员服务
+import type { Event as EventType } from '../../../event/types'; // 🆕 导入活动类型
 import type { Transaction, TransactionFormData, TransactionStatus, BankAccount } from '../../types';
 import './styles.css';
 
@@ -97,7 +97,7 @@ const TransactionManagementPage: React.FC = () => {
   const [activeTabKey, setActiveTabKey] = useState<string>('all'); // 当前选中的标签页（银行账户ID）
   const [viewMode, setViewMode] = useState<'table' | 'tree'>('table'); // 🆕 视图模式：表格或树形
   const [treeData, setTreeData] = useState<DataNode[]>([]); // 🆕 树形数据
-  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]); // 🆕 展开的树节点
+  const [treeTableData, setTreeTableData] = useState<TreeTableItem[]>([]); // 🆕 树形表格数据
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]); // 🆕 树形视图筛选后的数据
   const [treeDateRangeType, setTreeDateRangeType] = useState<'fiscal' | 'calendar' | 'all'>('all'); // 🆕 树形视图日期范围类型
   const [treeSelectedYear, setTreeSelectedYear] = useState<string>(new Date().getFullYear().toString()); // 🆕 树形视图选择的年份
@@ -1183,6 +1183,445 @@ const TransactionManagementPage: React.FC = () => {
     }
   };
 
+  // 🆕 树形表格数据接口
+  interface TreeTableItem {
+    key: string;
+    name: string;
+    level: number; // 0=主类别, 1=子类别, 2=具体项目
+    isLastChild: boolean; // 用于决定使用 ├── 还是 └──
+    count: number; // 交易数量
+    totalAmount: number; // 总金额
+    year2025: number; // 2025年金额
+    year2024: number; // 2024年金额
+    transactions: Transaction[]; // 关联的交易数据
+    category?: string; // 类别
+    txAccount?: string; // 子账户
+    boardMember?: string; // 负责理事
+    eventName?: string; // 活动名称
+  }
+
+  // 🆕 计算年度统计
+  const calculateYearlyStats = (transactions: Transaction[]) => {
+    console.log('🔍 [calculateYearlyStats] Calculating stats for:', {
+      transactionsCount: transactions.length,
+      transactions: transactions.slice(0, 3)
+    });
+    
+    const currentYear = new Date().getFullYear();
+    const lastYear = currentYear - 1;
+    
+    const stats = {
+      [currentYear]: { income: 0, expense: 0, net: 0 },
+      [lastYear]: { income: 0, expense: 0, net: 0 }
+    };
+    
+    transactions.forEach(transaction => {
+      if (transaction.isSplit === true) return; // 跳过已拆分的父交易
+      
+      const transactionYear = new Date(transaction.transactionDate).getFullYear();
+      const amount = transaction.amount || 0;
+      
+      console.log('🔍 [calculateYearlyStats] Processing transaction:', {
+        transactionId: transaction.id,
+        transactionDate: transaction.transactionDate,
+        transactionYear,
+        amount,
+        transactionType: transaction.transactionType,
+        currentYear,
+        lastYear
+      });
+      
+      if (transactionYear === currentYear || transactionYear === lastYear) {
+        if (transaction.transactionType === 'income') {
+          stats[transactionYear].income += amount;
+          stats[transactionYear].net += amount;
+        } else {
+          stats[transactionYear].expense += amount;
+          stats[transactionYear].net -= amount;
+        }
+      }
+    });
+    
+    console.log('🔍 [calculateYearlyStats] Final stats:', stats);
+    return stats;
+  };
+
+  // 🆕 构建树形表格数据
+  const buildTreeTableData = (transactions: Transaction[], events: EventType[]): TreeTableItem[] => {
+    console.log('🔍 [buildTreeTableData] Starting with:', {
+      transactionsCount: transactions.length,
+      eventsCount: events.length,
+      transactions: transactions.slice(0, 3), // 显示前3个交易
+      events: events.slice(0, 3) // 显示前3个活动
+    });
+    
+    const currentYear = new Date().getFullYear();
+    const lastYear = currentYear - 1;
+    const tableData: TreeTableItem[] = [];
+    
+    // 按类别分组交易
+    const groupedTransactions = transactions.reduce((acc, transaction) => {
+      if (transaction.isSplit === true) return acc; // 跳过已拆分的父交易
+      
+      const category = transaction.category || 'uncategorized';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(transaction);
+      return acc;
+    }, {} as Record<string, Transaction[]>);
+    
+    console.log('🔍 [buildTreeTableData] Grouped transactions:', {
+      categories: Object.keys(groupedTransactions),
+      categoryCounts: Object.entries(groupedTransactions).map(([cat, txs]) => ({
+        category: cat,
+        count: txs.length,
+        sampleTransaction: txs[0]
+      }))
+    });
+
+    // 创建事件映射
+    const eventsMap = new Map(events.map(event => [event.name, event]));
+
+    // 负责理事名称映射
+    const boardMemberNameMap: Record<string, string> = {
+      'president': 'President（会长）',
+      'vp-community': 'VP Community（社区发展）',
+      'vp-membership': 'VP Membership（会员发展）',
+      'vp-business': 'VP Business（商业发展）',
+      'secretary': 'Secretary（秘书）',
+      'treasurer': 'Treasurer（财政）',
+      'immediate-past-president': 'Immediate Past President（前任会长）',
+      'director-public-relations': 'Director Public Relations（公关理事）',
+      'director-creative': 'Director Creative（创意理事）',
+      'director-training': 'Director Training（培训理事）',
+      'director-sports': 'Director Sports（体育理事）',
+    };
+
+    // 类别名称映射
+    const categoryNameMap: Record<string, string> = {
+      'event-finance': '活动财务',
+      'member-fees': '会员费用',
+      'general-accounts': '日常账户',
+      'uncategorized': '未分类',
+    };
+
+    // 处理收入类别
+    const incomeCategories = ['event-finance', 'member-fees', 'general-accounts', 'uncategorized'];
+    const expenseCategories = ['general-accounts', 'uncategorized'];
+
+    // 添加收入标题
+    const incomeTransactions = incomeCategories.flatMap(cat => groupedTransactions[cat] || []);
+    console.log('🔍 [buildTreeTableData] Income transactions:', {
+      incomeCategories,
+      incomeTransactionsCount: incomeTransactions.length,
+      incomeTransactions: incomeTransactions.slice(0, 3)
+    });
+    
+    if (incomeTransactions.length > 0) {
+      const incomeStats = calculateYearlyStats(incomeTransactions);
+      console.log('🔍 [buildTreeTableData] Income stats:', incomeStats);
+      
+      tableData.push({
+        key: 'income-header',
+        name: '收入',
+        level: 0,
+        isLastChild: false,
+        count: incomeTransactions.length,
+        totalAmount: incomeStats[currentYear].net + incomeStats[lastYear].net,
+        year2025: incomeStats[currentYear].net,
+        year2024: incomeStats[lastYear].net,
+        transactions: incomeTransactions,
+      });
+    }
+
+    // 处理收入子类别
+    incomeCategories.forEach((category, categoryIndex) => {
+      const categoryTransactions = groupedTransactions[category] || [];
+      if (categoryTransactions.length === 0) return;
+
+      const categoryStats = calculateYearlyStats(categoryTransactions);
+      const categoryTotal = categoryTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      // 添加类别节点
+      tableData.push({
+        key: `income-${category}`,
+        name: `${categoryNameMap[category] || category} (${categoryTransactions.length})`,
+        level: 1,
+        isLastChild: categoryIndex === incomeCategories.length - 1,
+        count: categoryTransactions.length,
+        totalAmount: categoryTotal,
+        year2025: categoryStats[currentYear].net,
+        year2024: categoryStats[lastYear].net,
+        transactions: categoryTransactions,
+        category,
+      });
+
+      // 特殊处理活动财务：按负责理事分组
+      if (category === 'event-finance') {
+        const boardMemberGroups: Record<string, Transaction[]> = {};
+        
+        categoryTransactions.forEach(transaction => {
+          const event = eventsMap.get(transaction.txAccount || '');
+          const boardMemberKey = event?.boardMember || 'unassigned';
+          if (!boardMemberGroups[boardMemberKey]) {
+            boardMemberGroups[boardMemberKey] = [];
+          }
+          boardMemberGroups[boardMemberKey].push(transaction);
+        });
+
+        const boardMemberKeys = Object.keys(boardMemberGroups);
+        boardMemberKeys.forEach((boardMemberKey, boardIndex) => {
+          const boardTransactions = boardMemberGroups[boardMemberKey];
+          const boardStats = calculateYearlyStats(boardTransactions);
+          
+          // 计算净收入
+          const incomeTotal = boardTransactions
+            .filter(t => t.transactionType === 'income')
+            .reduce((sum, t) => sum + (t.amount || 0), 0);
+          const expenseTotal = boardTransactions
+            .filter(t => t.transactionType === 'expense')
+            .reduce((sum, t) => sum + (t.amount || 0), 0);
+          const netTotal = incomeTotal - expenseTotal;
+
+          // 计算活动数量
+          const eventNames = [...new Set(boardTransactions.map(t => t.txAccount).filter(name => name && name !== 'uncategorized'))] as string[];
+          const eventCount = eventNames.length;
+
+          // 添加负责理事节点
+          tableData.push({
+            key: `income-${category}-board-${boardMemberKey}`,
+            name: `${boardMemberKey === 'unassigned' ? '未设置负责理事' : boardMemberNameMap[boardMemberKey] || boardMemberKey} (${eventCount}个活动) 净收入: RM ${netTotal.toFixed(2)}`,
+            level: 2,
+            isLastChild: boardIndex === boardMemberKeys.length - 1,
+            count: boardTransactions.length,
+            totalAmount: netTotal,
+            year2025: boardStats[currentYear].net,
+            year2024: boardStats[lastYear].net,
+            transactions: boardTransactions,
+            category,
+            boardMember: boardMemberKey,
+          });
+
+          // 为每个活动创建子节点
+          eventNames.forEach((eventName, eventIndex) => {
+            const eventItems = boardTransactions.filter(t => t.txAccount === eventName);
+            const eventIncomeItems = eventItems.filter(t => t.transactionType === 'income');
+            const eventExpenseItems = eventItems.filter(t => t.transactionType === 'expense');
+            
+            const eventIncomeTotal = eventIncomeItems.reduce((sum, t) => sum + (t.amount || 0), 0);
+            const eventExpenseTotal = eventExpenseItems.reduce((sum, t) => sum + (t.amount || 0), 0);
+            const eventNetTotal = eventIncomeTotal - eventExpenseTotal;
+
+            // 获取活动日期
+            const event = eventsMap.get(eventName);
+            let eventDate = '日期未知';
+            if (event && event.startDate && typeof event.startDate === 'string') {
+              try {
+                eventDate = dayjs(event.startDate).format('DD-MMM-YYYY');
+              } catch (error) {
+                eventDate = '日期未知';
+              }
+            }
+
+            const eventStats = calculateYearlyStats(eventItems);
+            
+            // 添加活动节点
+            tableData.push({
+              key: `income-${category}-board-${boardMemberKey}-event-${eventName}`,
+              name: `${eventName} (${eventDate}) 净收入: RM ${eventNetTotal.toFixed(2)}`,
+              level: 3,
+              isLastChild: eventIndex === eventNames.length - 1,
+              count: eventItems.length,
+              totalAmount: eventNetTotal,
+              year2025: eventStats[currentYear].net,
+              year2024: eventStats[lastYear].net,
+              transactions: eventItems,
+              category,
+              boardMember: boardMemberKey,
+              eventName,
+            });
+          });
+        });
+      } else {
+        // 其他类别：按子账户分组
+        const subGroups = categoryTransactions.reduce((acc, transaction) => {
+          const txAccount = transaction.txAccount || 'uncategorized';
+          if (!acc[txAccount]) {
+            acc[txAccount] = [];
+          }
+          acc[txAccount].push(transaction);
+          return acc;
+        }, {} as Record<string, Transaction[]>);
+
+        const subGroupKeys = Object.keys(subGroups);
+        subGroupKeys.forEach((txAccount, subIndex) => {
+          const items = subGroups[txAccount];
+          const subStats = calculateYearlyStats(items);
+          const subTotal = items.reduce((sum, t) => sum + (t.amount || 0), 0);
+          
+          // 格式化显示名称
+          let displayName = txAccount;
+          if (txAccount === 'uncategorized') {
+            displayName = '未分类';
+          } else if (category === 'member-fees') {
+            // 会员费：检查是否是年份+分类格式
+            const yearMatch = txAccount.match(/^(\d{4})(.+)$/);
+            if (yearMatch) {
+              const [, year, categoryName] = yearMatch;
+              displayName = `${year}年${categoryName}`;
+            }
+          } else if (category === 'general-accounts') {
+            // 日常账户：将代码映射为名称
+            const generalAccountNameMap: Record<string, string> = {
+              'TXGA-0001': 'Cukai',
+              'TXGA-0002': 'Secretariat Management Fees',
+              'TXGA-0003': 'Merchandise Pink Shirt',
+              'TXGA-0004': 'Merchandise Blue Jacket',
+              'TXGA-0005': 'FD Interest',
+              'TXGA-0006': 'Incentive',
+              'TXGA-0007': 'Internal Transfer',
+              'TXGA-0008': 'Miscellaneous',
+              'TXGA-0009': 'Indah Water',
+              'TXGA-0010': 'TNB',
+              'TXGA-0011': 'Professional Fees',
+            };
+            
+            if (generalAccountNameMap[txAccount]) {
+              displayName = generalAccountNameMap[txAccount];
+            }
+          }
+          
+          // 添加子账户节点
+          tableData.push({
+            key: `income-${category}-${txAccount}`,
+            name: `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
+            level: 2,
+            isLastChild: subIndex === subGroupKeys.length - 1,
+            count: items.length,
+            totalAmount: subTotal,
+            year2025: subStats[currentYear].net,
+            year2024: subStats[lastYear].net,
+            transactions: items,
+            category,
+            txAccount,
+          });
+        });
+      }
+    });
+
+    // 添加支出标题
+    const expenseTransactions = expenseCategories.flatMap(cat => groupedTransactions[cat] || []);
+    if (expenseTransactions.length > 0) {
+      const expenseStats = calculateYearlyStats(expenseTransactions);
+      tableData.push({
+        key: 'expense-header',
+        name: '支出',
+        level: 0,
+        isLastChild: false,
+        count: expenseTransactions.length,
+        totalAmount: expenseStats[currentYear].net + expenseStats[lastYear].net,
+        year2025: expenseStats[currentYear].net,
+        year2024: expenseStats[lastYear].net,
+        transactions: expenseTransactions,
+      });
+    }
+
+    // 处理支出子类别
+    expenseCategories.forEach((category, categoryIndex) => {
+      const categoryTransactions = groupedTransactions[category] || [];
+      if (categoryTransactions.length === 0) return;
+
+      const categoryStats = calculateYearlyStats(categoryTransactions);
+      const categoryTotal = categoryTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      // 添加类别节点
+      tableData.push({
+        key: `expense-${category}`,
+        name: `${categoryNameMap[category] || category} (${categoryTransactions.length})`,
+        level: 1,
+        isLastChild: categoryIndex === expenseCategories.length - 1,
+        count: categoryTransactions.length,
+        totalAmount: categoryTotal,
+        year2025: categoryStats[currentYear].net,
+        year2024: categoryStats[lastYear].net,
+        transactions: categoryTransactions,
+        category,
+      });
+
+      // 按子账户分组
+      const subGroups = categoryTransactions.reduce((acc, transaction) => {
+        const txAccount = transaction.txAccount || 'uncategorized';
+        if (!acc[txAccount]) {
+          acc[txAccount] = [];
+        }
+        acc[txAccount].push(transaction);
+        return acc;
+      }, {} as Record<string, Transaction[]>);
+
+      const subGroupKeys = Object.keys(subGroups);
+      subGroupKeys.forEach((txAccount, subIndex) => {
+        const items = subGroups[txAccount];
+        const subStats = calculateYearlyStats(items);
+        const subTotal = items.reduce((sum, t) => sum + (t.amount || 0), 0);
+        
+        // 格式化显示名称
+        let displayName = txAccount;
+        if (txAccount === 'uncategorized') {
+          displayName = '未分类';
+        } else if (category === 'general-accounts') {
+          // 日常账户：将代码映射为名称
+          const generalAccountNameMap: Record<string, string> = {
+            'TXGA-0001': 'Cukai',
+            'TXGA-0002': 'Secretariat Management Fees',
+            'TXGA-0003': 'Merchandise Pink Shirt',
+            'TXGA-0004': 'Merchandise Blue Jacket',
+            'TXGA-0005': 'FD Interest',
+            'TXGA-0006': 'Incentive',
+            'TXGA-0007': 'Internal Transfer',
+            'TXGA-0008': 'Miscellaneous',
+            'TXGA-0009': 'Indah Water',
+            'TXGA-0010': 'TNB',
+            'TXGA-0011': 'Professional Fees',
+          };
+          
+          if (generalAccountNameMap[txAccount]) {
+            displayName = generalAccountNameMap[txAccount];
+          }
+        }
+        
+        // 添加子账户节点
+        tableData.push({
+          key: `expense-${category}-${txAccount}`,
+          name: `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
+          level: 2,
+          isLastChild: subIndex === subGroupKeys.length - 1,
+          count: items.length,
+          totalAmount: subTotal,
+          year2025: subStats[currentYear].net,
+          year2024: subStats[lastYear].net,
+          transactions: items,
+          category,
+          txAccount,
+        });
+      });
+    });
+
+    console.log('🔍 [buildTreeTableData] Final table data:', {
+      totalRows: tableData.length,
+      tableData: tableData.map(item => ({
+        key: item.key,
+        name: item.name,
+        level: item.level,
+        year2025: item.year2025,
+        year2024: item.year2024,
+        count: item.count
+      }))
+    });
+    
+    return tableData;
+  };
+
   // 🆕 构建树形视图数据
   const buildTreeData = async () => {
     console.log('🌳 [buildTreeData] Starting tree data build...');
@@ -1195,7 +1634,6 @@ const TransactionManagementPage: React.FC = () => {
       if (!allTransactions || allTransactions.length === 0) {
         console.log('🔍 [TreeView Debug] No transactions found');
         setTreeData([]);
-        setExpandedKeys([]);
         return;
       }
       
@@ -1385,19 +1823,24 @@ const TransactionManagementPage: React.FC = () => {
         categoryCount = allTransactions.filter(t => t.isSplit !== true).length;
       }
 
+      // 🆕 计算该类别的年度统计
+      const allTransactions = Object.values(subGroups).flat();
+      
       const categoryNode: DataNode = {
         title: (
-          <span>
-            {categoryNameMap[category] || category}
-            <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-              ({categoryCount}) RM {categoryTotal.toFixed(2)}
-            </Text>
-            {category === 'event-finance' && categoryTotal < 0 && (
-              <Text type="danger" style={{ marginLeft: 8, fontSize: 12 }}>
-                (净亏损)
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>
+              {categoryNameMap[category] || category}
+              <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                ({categoryCount}) RM {categoryTotal.toFixed(2)}
               </Text>
-            )}
-          </span>
+              {category === 'event-finance' && categoryTotal < 0 && (
+                <Text type="danger" style={{ marginLeft: 8, fontSize: 12 }}>
+                  (净亏损)
+                </Text>
+              )}
+            </span>
+          </div>
         ),
         key: `income-${category}`,
         children: [],
@@ -1440,12 +1883,14 @@ const TransactionManagementPage: React.FC = () => {
 
           const boardMemberNode: DataNode = {
             title: (
-              <span>
-                {boardMemberKey === 'unassigned' ? '未设置负责理事' : boardMemberNameMap[boardMemberKey] || boardMemberKey}
-                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                  ({eventCount}个活动) 净收入: RM {netTotal.toFixed(2)}
-                </Text>
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>
+                  {boardMemberKey === 'unassigned' ? '未设置负责理事' : boardMemberNameMap[boardMemberKey] || boardMemberKey}
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                    ({eventCount}个活动) 净收入: RM {netTotal.toFixed(2)}
+                  </Text>
+                </span>
+              </div>
             ),
             key: `income-${category}-board-${boardMemberKey}`,
             children: [],
@@ -1479,9 +1924,11 @@ const TransactionManagementPage: React.FC = () => {
 
             boardMemberNode.children!.push({
               title: (
-                <span onClick={() => handleTreeNodeClick(eventItems)} style={{ cursor: 'pointer' }}>
-                  {eventName} ({eventDate}) 净收入: RM {eventNetTotal.toFixed(2)}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span onClick={() => handleTreeNodeClick(eventItems)} style={{ cursor: 'pointer' }}>
+                    {eventName} ({eventDate}) 净收入: RM {eventNetTotal.toFixed(2)}
+                  </span>
+                </div>
               ),
               key: `income-${category}-board-${boardMemberKey}-event-${eventName}`,
               isLeaf: true,
@@ -1534,12 +1981,14 @@ const TransactionManagementPage: React.FC = () => {
           
           categoryNode.children!.push({
             title: (
-              <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-                {displayName}
-                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                  ({validItemsCount}) RM {subTotal.toFixed(2)}
-                </Text>
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
+                  {displayName}
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                    ({validItemsCount}) RM {subTotal.toFixed(2)}
+                  </Text>
+                </span>
+              </div>
             ),
             key: `income-${category}-${txAccount}`,
             isLeaf: true,
@@ -1563,12 +2012,14 @@ const TransactionManagementPage: React.FC = () => {
 
       const categoryNode: DataNode = {
         title: (
-          <span>
-            {categoryNameMap[category] || category}
-            <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-              ({categoryCount}) RM {categoryTotal.toFixed(2)}
-            </Text>
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>
+              {categoryNameMap[category] || category}
+              <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                ({categoryCount}) RM {categoryTotal.toFixed(2)}
+              </Text>
+            </span>
+          </div>
         ),
         key: `expense-${category}`,
         children: [],
@@ -1616,12 +2067,14 @@ const TransactionManagementPage: React.FC = () => {
         
         categoryNode.children!.push({
           title: (
-            <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-              {displayName}
-              <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                ({validItemsCount}) RM {subTotal.toFixed(2)}
-              </Text>
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
+                {displayName}
+                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                  ({validItemsCount}) RM {subTotal.toFixed(2)}
+                </Text>
+              </span>
+            </div>
           ),
           key: `expense-${category}-${txAccount}`,
           isLeaf: true,
@@ -1665,7 +2118,29 @@ const TransactionManagementPage: React.FC = () => {
     });
 
       setTreeData([incomeNode, expenseNode]);
-      setExpandedKeys(allKeys);
+      
+      // 🆕 构建树形表格数据
+      console.log('🔍 [buildTreeData] About to build tree table data with:', {
+        filteredTransactionsCount: filteredTransactions.length,
+        eventsCount: eventsResult.data.length,
+        filteredTransactions: filteredTransactions.slice(0, 3),
+        events: eventsResult.data.slice(0, 3)
+      });
+      
+      // 🔧 修复：使用正确的交易数据
+      const transactionsForTable = filteredTransactions.length > 0 ? filteredTransactions : realTransactions;
+      console.log('🔍 [buildTreeData] Using transactions for table:', {
+        transactionsForTableCount: transactionsForTable.length,
+        transactionsForTable: transactionsForTable.slice(0, 3)
+      });
+      
+      const tableData = buildTreeTableData(transactionsForTable, eventsResult.data);
+      console.log('🔍 [buildTreeData] Tree table data built:', {
+        tableDataLength: tableData.length,
+        tableData: tableData
+      });
+      
+      setTreeTableData(tableData);
       
       // 🆕 计算并保存统计数据
       const surplus = totalIncome - totalExpense;
@@ -1702,6 +2177,65 @@ const TransactionManagementPage: React.FC = () => {
       buildTreeData();
     }
   }, [treeDateRangeType, treeSelectedYear, viewMode]);
+
+  // 🆕 树形表格列配置
+  const treeTableColumns: ColumnsType<TreeTableItem> = [
+    {
+      title: '账户/项目名称',
+      dataIndex: 'name',
+      key: 'name',
+      align: 'left',
+      render: (text: string, record: TreeTableItem) => {
+        const prefix = record.level === 0 ? '' : 
+                      record.isLastChild ? '└── ' : '├── ';
+        return (
+          <span 
+            style={{ 
+              paddingLeft: `${record.level * 20}px`,
+              cursor: record.level > 0 ? 'pointer' : 'default'
+            }}
+            onClick={() => {
+              if (record.level > 0 && record.transactions.length > 0) {
+                handleTreeNodeClick(record.transactions);
+              }
+            }}
+          >
+            {prefix}{text}
+          </span>
+        );
+      }
+    },
+    {
+      title: '2025 (RM)',
+      dataIndex: 'year2025',
+      key: 'year2025',
+      align: 'right',
+      width: 120,
+      render: (amount: number) => (
+        <span style={{ 
+          color: amount >= 0 ? '#52c41a' : '#ff4d4f',
+          fontWeight: 'bold'
+        }}>
+          RM {amount.toFixed(2)}
+        </span>
+      )
+    },
+    {
+      title: '2024 (RM)',
+      dataIndex: 'year2024',
+      key: 'year2024',
+      align: 'right',
+      width: 120,
+      render: (amount: number) => (
+        <span style={{ 
+          color: amount >= 0 ? '#52c41a' : '#ff4d4f',
+          fontWeight: 'bold'
+        }}>
+          RM {amount.toFixed(2)}
+        </span>
+      )
+    }
+  ];
 
   const columns: ColumnsType<Transaction> = [
     {
@@ -2355,14 +2889,24 @@ const TransactionManagementPage: React.FC = () => {
                         <div style={{ marginTop: 16, color: '#666' }}>正在加载所有交易数据...</div>
                       </div>
                     ) : (
-                      <Tree
-                        showLine
-                        showIcon={false}
-                        expandedKeys={expandedKeys}
-                        onExpand={setExpandedKeys}
-                        treeData={treeData}
-                        style={{ fontSize: 14 }}
-                      />
+                      <>
+                        {console.log('🔍 [TreeView Render] Rendering table with:', {
+                          treeTableDataLength: treeTableData.length,
+                          treeTableData: treeTableData,
+                          treeLoading: treeLoading
+                        })}
+                        <Table
+                          columns={treeTableColumns}
+                          dataSource={treeTableData}
+                          pagination={false}
+                          size="small"
+                          bordered
+                          style={{ fontSize: 14 }}
+                          rowKey="key"
+                          showHeader={true}
+                          scroll={{ x: 'max-content' }}
+                        />
+                      </>
                     )}
                   </div>
                 ),
