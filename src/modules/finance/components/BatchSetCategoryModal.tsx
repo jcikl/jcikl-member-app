@@ -576,10 +576,10 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               placeholder="选择会员费类型"
               allowClear
             >
-              <Option value="new-member-fee">新会员费</Option>
-              <Option value="renewal-fee">续会费</Option>
-              <Option value="alumni-fee">校友会</Option>
-              <Option value="visiting-member-fee">拜访会员</Option>
+              <Option value="新会员费">新会员费</Option>
+              <Option value="续会费">续会费</Option>
+              <Option value="校友会">校友会</Option>
+              <Option value="拜访会员">拜访会员</Option>
             </Select>
           </div>
 

@@ -743,16 +743,31 @@ const TransactionManagementPage: React.FC = () => {
       const updates: Partial<Transaction> = {};
       const metadata: Record<string, any> = {};
 
-      // 全局字段
-      if (data.txAccount) {
-        updates.txAccount = data.txAccount;
-      }
-
-      // 根据类别设置元数据
-      if (data.category === 'member-fees' && data.year) {
-        metadata.year = data.year;
-      } else if (data.category === 'event-finance' && data.eventId) {
-        metadata.eventId = data.eventId;
+      // 根据类别设置 txAccount 字段
+      if (data.category === 'member-fees') {
+        // 会员费：年份 + 二次分类
+        if (data.year && data.txAccount) {
+          updates.txAccount = `${data.year}${data.txAccount}`;
+        } else if (data.txAccount) {
+          updates.txAccount = data.txAccount;
+        }
+        // 年份也保存到元数据中
+        if (data.year) {
+          metadata.year = data.year;
+        }
+      } else if (data.category === 'event-finance') {
+        // 活动财务：活动名称
+        if (data.txAccount) {
+          updates.txAccount = data.txAccount;
+        }
+        if (data.eventId) {
+          metadata.eventId = data.eventId;
+        }
+      } else {
+        // 其他类别：直接使用 txAccount
+        if (data.txAccount) {
+          updates.txAccount = data.txAccount;
+        }
       }
 
       const result = await batchSetCategory(
@@ -1483,10 +1498,24 @@ const TransactionManagementPage: React.FC = () => {
             .reduce((sum, t) => sum + (t.amount || 0), 0);
 
           const validItemsCount = items.filter(t => t.isSplit !== true).length;
+          
+          // 格式化显示名称
+          let displayName = txAccount;
+          if (txAccount === 'uncategorized') {
+            displayName = '未分类';
+          } else if (category === 'member-fees') {
+            // 会员费：检查是否是年份+分类格式
+            const yearMatch = txAccount.match(/^(\d{4})(.+)$/);
+            if (yearMatch) {
+              const [, year, categoryName] = yearMatch;
+              displayName = `${year}年${categoryName}`;
+            }
+          }
+          
           categoryNode.children!.push({
             title: (
               <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-                {txAccount === 'uncategorized' ? '未分类' : txAccount}
+                {displayName}
                 <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                   ({validItemsCount}) RM {subTotal.toFixed(2)}
                 </Text>
@@ -1532,10 +1561,24 @@ const TransactionManagementPage: React.FC = () => {
           .reduce((sum, t) => sum + (t.amount || 0), 0);
 
         const validItemsCount = items.filter(t => t.isSplit !== true).length;
+        
+        // 格式化显示名称
+        let displayName = txAccount;
+        if (txAccount === 'uncategorized') {
+          displayName = '未分类';
+        } else if (category === 'member-fees') {
+          // 会员费：检查是否是年份+分类格式
+          const yearMatch = txAccount.match(/^(\d{4})(.+)$/);
+          if (yearMatch) {
+            const [, year, categoryName] = yearMatch;
+            displayName = `${year}年${categoryName}`;
+          }
+        }
+        
         categoryNode.children!.push({
           title: (
             <span onClick={() => handleTreeNodeClick(items)} style={{ cursor: 'pointer' }}>
-              {txAccount === 'uncategorized' ? '未分类' : txAccount}
+              {displayName}
               <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                 ({validItemsCount}) RM {subTotal.toFixed(2)}
               </Text>
@@ -1763,18 +1806,38 @@ const TransactionManagementPage: React.FC = () => {
           return <Tag color="default">未分类</Tag>;
         }
         
-        // 会员费二次分类（保留硬编码，因为这些是固定的会员类别）
-        const memberFeeConfig: Record<string, { color: string; text: string }> = {
-          'official-member': { color: 'blue', text: '官方会员' },
-          'associate-member': { color: 'cyan', text: '准会员' },
-          'honorary-member': { color: 'purple', text: '荣誉会员' },
-          'visiting-member': { color: 'geekblue', text: '访问会员' },
-        };
-        
-        // 如果是会员费，使用固定配置
-        if (record.category === 'member-fees' && memberFeeConfig[subCat]) {
-          const config = memberFeeConfig[subCat];
-          return <Tag color={config.color}>{config.text}</Tag>;
+        // 会员费二次分类显示逻辑
+        if (record.category === 'member-fees') {
+          // 检查是否是新的格式（年份+分类）
+          const yearMatch = subCat.match(/^(\d{4})(.+)$/);
+          if (yearMatch) {
+            const [, year, category] = yearMatch;
+            return (
+              <Tag color="blue">
+                {year}年{category}
+              </Tag>
+            );
+          }
+          
+          // 兼容旧格式
+          const memberFeeConfig: Record<string, { color: string; text: string }> = {
+            'official-member': { color: 'blue', text: '官方会员' },
+            'associate-member': { color: 'cyan', text: '准会员' },
+            'honorary-member': { color: 'purple', text: '荣誉会员' },
+            'visiting-member': { color: 'geekblue', text: '访问会员' },
+            '新会员费': { color: 'green', text: '新会员费' },
+            '续会费': { color: 'orange', text: '续会费' },
+            '校友会': { color: 'purple', text: '校友会' },
+            '拜访会员': { color: 'cyan', text: '拜访会员' },
+          };
+          
+          if (memberFeeConfig[subCat]) {
+            const config = memberFeeConfig[subCat];
+            return <Tag color={config.color}>{config.text}</Tag>;
+          }
+          
+          // 直接显示
+          return <Tag color="blue">{subCat}</Tag>;
         }
         
         // 如果是活动财务，txAccount 可能是活动名称
