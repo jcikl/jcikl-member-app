@@ -839,16 +839,16 @@ const TransactionManagementPage: React.FC = () => {
             const updates: Partial<Transaction> = {};
             const metadata: Record<string, any> = {};
 
-            // 全局的txAccount和year
-            if (data.txAccount) {
-              updates.txAccount = data.txAccount;
-            }
-            if (data.year) {
-              metadata.year = data.year;
-            }
+            // 🆕 使用已经组合好的 txAccount（从 batchSetCategory 的结果）
+            // 不再重新构建，避免覆盖 batchSetCategory 的结果
 
-            // 根据类别设置不同的字段
-            if (data.category === 'general-accounts') {
+            // 根据类别设置不同的字段（只处理会员费的特殊字段）
+            if (data.category === 'member-fees') {
+              // 会员费：关联会员
+              if (individualItem.memberId) {
+                metadata.memberId = individualItem.memberId;
+              }
+            } else if (data.category === 'general-accounts') {
               // 日常财务：付款人信息
               if (individualItem.payerMode === 'manual' && individualItem.payerPayee) {
                 updates.payerPayee = individualItem.payerPayee;
@@ -882,11 +882,6 @@ const TransactionManagementPage: React.FC = () => {
                 updates.txAccount = eventName; // ✅ 活动名称保存到txAccount
                 metadata.eventId = data.eventId; // ✅ 活动ID保存到metadata
                 metadata.eventName = eventName; // ✅ 活动名称也保存到metadata（可选）
-              }
-            } else if (data.category === 'member-fees') {
-              // 会员费：关联会员
-              if (individualItem.memberId) {
-                metadata.memberId = individualItem.memberId;
               }
             }
 
