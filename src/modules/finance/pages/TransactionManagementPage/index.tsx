@@ -704,6 +704,14 @@ const TransactionManagementPage: React.FC = () => {
 
   // 批量设置类别
   const handleBatchSetCategory = () => {
+    console.log('🔍 [handleBatchSetCategory] Debug info:', {
+      selectedRowKeys,
+      selectedRowKeysLength: selectedRowKeys.length,
+      transactionsLength: transactions.length,
+      filteredTransactionsLength: filteredTransactions.length,
+      selectedTransactions: transactions.filter(t => selectedRowKeys.includes(t.id)),
+      selectedTransactionsLength: transactions.filter(t => selectedRowKeys.includes(t.id)).length,
+    });
     setBatchCategoryModalVisible(true);
   };
 

@@ -84,6 +84,14 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   
   const selectedCount = selectedTransactions.length;
   
+  // 🆕 调试信息
+  console.log('🔍 [BatchSetCategoryModal] Debug info:', {
+    visible,
+    selectedTransactions,
+    selectedCount,
+    selectedTransactionsLength: selectedTransactions.length,
+  });
+  
   // 加载会员和活动列表
   useEffect(() => {
     if (visible) {
