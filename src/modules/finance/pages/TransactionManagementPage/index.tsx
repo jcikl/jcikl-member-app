@@ -748,8 +748,14 @@ const TransactionManagementPage: React.FC = () => {
         // 会员费：年份 + 二次分类
         if (data.year && data.txAccount) {
           updates.txAccount = `${data.year}${data.txAccount}`;
+          console.log('🔍 [TransactionManagementPage] 组合 txAccount:', {
+            year: data.year,
+            txAccount: data.txAccount,
+            combined: `${data.year}${data.txAccount}`
+          });
         } else if (data.txAccount) {
           updates.txAccount = data.txAccount;
+          console.log('🔍 [TransactionManagementPage] 直接使用 txAccount:', data.txAccount);
         }
         // 年份也保存到元数据中
         if (data.year) {

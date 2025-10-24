@@ -1919,7 +1919,13 @@ export const batchSetCategory = async (
 
       // 添加额外更新字段
       if (updates) {
-        Object.assign(updateData, cleanUndefinedValues(updates));
+        const cleanedUpdates = cleanUndefinedValues(updates);
+        console.log('🔍 [batchSetCategory] 添加更新字段:', {
+          transactionId,
+          updates: cleanedUpdates,
+          txAccount: cleanedUpdates.txAccount
+        });
+        Object.assign(updateData, cleanedUpdates);
       }
 
       // 添加元数据
