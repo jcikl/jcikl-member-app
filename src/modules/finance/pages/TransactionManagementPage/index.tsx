@@ -1511,6 +1511,25 @@ const TransactionManagementPage: React.FC = () => {
               const [, year, categoryName] = yearMatch;
               displayName = `${year}年${categoryName}`;
             }
+          } else if (category === 'general-accounts') {
+            // 日常账户：将代码映射为名称
+            const generalAccountNameMap: Record<string, string> = {
+              'TXGA-0001': 'Cukai',
+              'TXGA-0002': 'Secretariat Management Fees',
+              'TXGA-0003': 'Merchandise Pink Shirt',
+              'TXGA-0004': 'Merchandise Blue Jacket',
+              'TXGA-0005': 'FD Interest',
+              'TXGA-0006': 'Incentive',
+              'TXGA-0007': 'Internal Transfer',
+              'TXGA-0008': 'Miscellaneous',
+              'TXGA-0009': 'Indah Water',
+              'TXGA-0010': 'TNB',
+              'TXGA-0011': 'Professional Fees',
+            };
+            
+            if (generalAccountNameMap[txAccount]) {
+              displayName = generalAccountNameMap[txAccount];
+            }
           }
           
           categoryNode.children!.push({
@@ -1573,6 +1592,25 @@ const TransactionManagementPage: React.FC = () => {
           if (yearMatch) {
             const [, year, categoryName] = yearMatch;
             displayName = `${year}年${categoryName}`;
+          }
+        } else if (category === 'general-accounts') {
+          // 日常账户：将代码映射为名称
+          const generalAccountNameMap: Record<string, string> = {
+            'TXGA-0001': 'Cukai',
+            'TXGA-0002': 'Secretariat Management Fees',
+            'TXGA-0003': 'Merchandise Pink Shirt',
+            'TXGA-0004': 'Merchandise Blue Jacket',
+            'TXGA-0005': 'FD Interest',
+            'TXGA-0006': 'Incentive',
+            'TXGA-0007': 'Internal Transfer',
+            'TXGA-0008': 'Miscellaneous',
+            'TXGA-0009': 'Indah Water',
+            'TXGA-0010': 'TNB',
+            'TXGA-0011': 'Professional Fees',
+          };
+          
+          if (generalAccountNameMap[txAccount]) {
+            displayName = generalAccountNameMap[txAccount];
           }
         }
         
