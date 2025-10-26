@@ -248,6 +248,9 @@ export const updateTransaction = async (
     if (data.txAccount !== undefined) updates.txAccount = data.txAccount ?? null; // 🔑 二次分类
     if (data.paymentMethod !== undefined) updates.paymentMethod = data.paymentMethod ?? null;
     if (data.notes !== undefined) updates.notes = data.notes ?? null;
+    // 🆕 更新活动关联字段
+    if (data.relatedEventId !== undefined) updates.relatedEventId = data.relatedEventId ?? null;
+    if (data.relatedEventName !== undefined) updates.relatedEventName = data.relatedEventName ?? null;
     if (data.attachments !== undefined) updates.attachments = data.attachments;
     if (data.receiptNumber !== undefined) updates.receiptNumber = data.receiptNumber ?? null;
     if (data.invoiceNumber !== undefined) updates.invoiceNumber = data.invoiceNumber ?? null;

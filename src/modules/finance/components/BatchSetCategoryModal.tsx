@@ -84,14 +84,6 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   
   const selectedCount = selectedTransactions.length;
   
-  // 🆕 调试信息
-  console.log('🔍 [BatchSetCategoryModal] Debug info:', {
-    visible,
-    selectedTransactions,
-    selectedCount,
-    selectedTransactionsLength: selectedTransactions.length,
-  });
-  
   // 加载会员和活动列表
   useEffect(() => {
     if (visible) {
@@ -110,17 +102,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       setMembers(membersResult.data);
       setEvents(eventsResult.data);
       
-      // 🆕 调试信息
-      console.log('📋 [BatchSetCategoryModal] 加载数据:', {
-        会员数量: membersResult.data.length,
-        活动数量: eventsResult.data.length,
-        活动列表: eventsResult.data.map(e => ({
-          id: e.id,
-          name: e.name,
-          date: e.startDate,
-          year: e.startDate ? new Date(e.startDate).getFullYear() : '无日期'
-        }))
-      });
+
     } catch (error) {
       console.error('❌ [BatchSetCategoryModal] 加载数据失败:', error);
     } finally {
@@ -198,17 +180,6 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       } else if (selectedCategory === 'event-finance') {
         data.eventId = selectedEventId; // 🆕 统一设置活动ID
       }
-      
-      // 🔍 Debug: 检查提交的数据
-      console.log('🔍 [BatchSetCategoryModal] 提交数据:', {
-        category: data.category,
-        txAccount: data.txAccount,
-        year: data.year,
-        eventId: data.eventId,
-        individualDataCount: data.individualData?.length || 0,
-        individualData: data.individualData,
-        selectedTransactions: selectedTransactions.map(t => ({ id: t.id, mainDescription: t.mainDescription })),
-      });
       
       await onOk(data);
       // 成功消息由BaseModal的onSuccess回调处理
@@ -663,7 +634,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               }}
             >
               {events.map(event => (
-                <Option key={event.id} value={event.id}>
+                <Option key={event.id} value={event.financialAccount || event.id}>
                   {event.name}
                   {event.startDate && ` (${new Date(event.startDate).getFullYear()})`}
                 </Option>

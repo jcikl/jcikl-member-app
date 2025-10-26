@@ -512,15 +512,6 @@ const TransactionManagementPage: React.FC = () => {
 
     try {
       const values = await form.validateFields();
-      console.log('📋 [handleSubmit] Form values:', values);
-      console.log('📋 [handleSubmit] Is editing?:', !!editingTransaction);
-      if (editingTransaction) {
-        console.log('📋 [handleSubmit] Editing transaction:', {
-          id: editingTransaction.id,
-          oldBankAccountId: editingTransaction.bankAccountId,
-          newBankAccountId: values.bankAccountId,
-        });
-      }
 
       // Validate bank account exists
       if (!values.bankAccountId) {
@@ -529,11 +520,6 @@ const TransactionManagementPage: React.FC = () => {
       }
       
       const accountExists = bankAccounts.some(acc => acc.id === values.bankAccountId);
-      console.log('🏦 [handleSubmit] Bank account validation:', {
-        selectedAccountId: values.bankAccountId,
-        accountExists,
-        availableAccounts: bankAccounts.map(a => ({ id: a.id, name: a.accountName })),
-      });
       
       if (!accountExists) {
         message.error('选择的银行账户不存在，请重新选择');
@@ -556,17 +542,17 @@ const TransactionManagementPage: React.FC = () => {
         notes: values.notes,
       };
       
-      console.log('💾 [handleSubmit] Form data to save:', formData);
+      // 🆕 如果是活动财务类别，设置根级别的 relatedEventId
+      if (formData.category === 'event-finance' && values.txAccount) {
+        // values.txAccount 已经是 financialAccount（因为 Option 的 value 使用了 financialAccount）
+        (formData as any).relatedEventId = values.txAccount;
+      }
 
       if (editingTransaction) {
-        console.log('✏️ [handleSubmit] Calling updateTransaction...');
         await updateTransaction(editingTransaction.id, formData, user.id);
-        console.log('✅ [handleSubmit] updateTransaction completed');
         message.success('交易已更新');
       } else {
-        console.log('➕ [handleSubmit] Calling createTransaction...');
         await createTransaction(formData, user.id);
-        console.log('✅ [handleSubmit] createTransaction completed');
         message.success('交易已创建');
       }
 
@@ -739,15 +725,6 @@ const TransactionManagementPage: React.FC = () => {
     const currentDataSource = filteredTransactions.length > 0 ? filteredTransactions : transactions;
     const selectedTransactions = currentDataSource.filter(t => selectedRowKeys.includes(t.id));
     
-    console.log('🔍 [handleBatchSetCategory] Debug info:', {
-      selectedRowKeys,
-      selectedRowKeysLength: selectedRowKeys.length,
-      transactionsLength: transactions.length,
-      filteredTransactionsLength: filteredTransactions.length,
-      currentDataSourceLength: currentDataSource.length,
-      selectedTransactions: selectedTransactions,
-      selectedTransactionsLength: selectedTransactions.length,
-    });
     setBatchCategoryModalVisible(true);
   };
 
@@ -780,14 +757,8 @@ const TransactionManagementPage: React.FC = () => {
         // 会员费：年份 + 二次分类
         if (data.year && data.txAccount) {
           updates.txAccount = `${data.year}${data.txAccount}`;
-          console.log('🔍 [TransactionManagementPage] 组合 txAccount:', {
-            year: data.year,
-            txAccount: data.txAccount,
-            combined: `${data.year}${data.txAccount}`
-          });
         } else if (data.txAccount) {
           updates.txAccount = data.txAccount;
-          console.log('🔍 [TransactionManagementPage] 直接使用 txAccount:', data.txAccount);
         }
         // 年份也保存到元数据中
         if (data.year) {
@@ -799,6 +770,8 @@ const TransactionManagementPage: React.FC = () => {
           updates.txAccount = data.txAccount;
         }
         if (data.eventId) {
+          // 🆕 同时设置根级别的 relatedEventId 和 metadata.eventId
+          updates.relatedEventId = data.eventId;
           metadata.eventId = data.eventId;
         }
       } else {
@@ -815,17 +788,6 @@ const TransactionManagementPage: React.FC = () => {
         updates,
         metadata
       );
-
-      // 🔍 Debug: 检查接收到的数据
-      console.log('🔍 [TransactionManagementPage] 接收到的批量设置数据:', {
-        category: data.category,
-        txAccount: data.txAccount,
-        year: data.year,
-        eventId: data.eventId,
-        individualDataCount: data.individualData?.length || 0,
-        individualData: data.individualData,
-        selectedRowKeys: selectedRowKeys,
-      });
 
       // 🆕 加载活动和会员数据以获取名称
       let eventName = '';
@@ -920,14 +882,6 @@ const TransactionManagementPage: React.FC = () => {
             if (Object.keys(metadata).length > 0) {
               updates.metadata = metadata;
             }
-
-            // 🔍 Debug: 检查更新数据
-            console.log('🔍 [TransactionManagementPage] 更新交易数据:', {
-              transactionId: individualItem.transactionId,
-              updates,
-              metadata,
-              hasUpdates: Object.keys(updates).length > 0,
-            });
 
             // 更新单条交易
             if (Object.keys(updates).length > 0) {
@@ -1237,14 +1191,6 @@ const TransactionManagementPage: React.FC = () => {
     // 确定目标年份
     const selectedYear = targetYear ? parseInt(targetYear) : new Date().getFullYear();
     
-    console.log('🔍 [calculateYearlyStats] Calculating stats for:', {
-      transactionsCount: transactions.length,
-      selectedYear,
-      targetYear,
-      treeDateRangeType,
-      transactions: transactions.slice(0, 3)
-    });
-    
     // 根据日期范围类型确定要统计的年份
     let yearsToCalculate: number[] = [];
     
@@ -1289,18 +1235,6 @@ const TransactionManagementPage: React.FC = () => {
         transactionYear = transactionDate.year();
       }
       
-      console.log('🔍 [calculateYearlyStats] Processing transaction:', {
-        transactionId: transaction.id,
-        transactionDate: transaction.transactionDate,
-        transactionYear,
-        amount,
-        transactionType: transaction.transactionType,
-        yearsToCalculate,
-        dateRangeType: treeDateRangeType,
-        description: transaction.subDescription,
-        category: transaction.category
-      });
-      
       // 检查交易是否在要统计的年份范围内
       if (yearsToCalculate.includes(transactionYear)) {
         if (transaction.transactionType === 'income') {
@@ -1311,12 +1245,6 @@ const TransactionManagementPage: React.FC = () => {
           stats[transactionYear].net -= amount;
         }
       }
-    });
-    
-    console.log('🔍 [calculateYearlyStats] Final stats:', {
-      yearsToCalculate,
-      stats,
-      treeDateRangeType
     });
     
     return stats;
@@ -1365,16 +1293,6 @@ const TransactionManagementPage: React.FC = () => {
       };
     };
     
-    console.log('🔍 [buildTreeTableData] Starting with:', {
-      transactionsCount: transactions.length,
-      eventsCount: events.length,
-      currentYear,
-      pastYear,
-      targetYear,
-      transactions: transactions.slice(0, 3), // 显示前3个交易
-      events: events.slice(0, 3) // 显示前3个活动
-    });
-    
     const tableData: TreeTableItem[] = [];
     
     // 按类别分组交易
@@ -1388,15 +1306,6 @@ const TransactionManagementPage: React.FC = () => {
       acc[category].push(transaction);
       return acc;
     }, {} as Record<string, Transaction[]>);
-    
-    console.log('🔍 [buildTreeTableData] Grouped transactions:', {
-      categories: Object.keys(groupedTransactions),
-      categoryCounts: Object.entries(groupedTransactions).map(([cat, txs]) => ({
-        category: cat,
-        count: txs.length,
-        sampleTransaction: txs[0]
-      }))
-    });
 
     // 创建事件映射
     const eventsMap = new Map(events.map(event => [event.name, event]));
@@ -1430,11 +1339,6 @@ const TransactionManagementPage: React.FC = () => {
 
     // 添加收入标题
     const incomeTransactions = incomeCategories.flatMap(cat => groupedTransactions[cat] || []);
-    console.log('🔍 [buildTreeTableData] Income transactions:', {
-      incomeCategories,
-      incomeTransactionsCount: incomeTransactions.length,
-      incomeTransactions: incomeTransactions.slice(0, 3)
-    });
     
      if (incomeTransactions.length > 0) {
        tableData.push(createUnifiedTreeItem(
@@ -1672,27 +1576,12 @@ const TransactionManagementPage: React.FC = () => {
         ));
       });
     });
-
-    console.log('🔍 [buildTreeTableData] Final table data:', {
-      totalRows: tableData.length,
-      currentYear,
-      pastYear,
-      tableData: tableData.map(item => ({
-        key: item.key,
-        name: item.name,
-        level: item.level,
-        year2025: item.year2025,
-        year2024: item.year2024,
-        count: item.count
-      }))
-    });
     
     return tableData;
   };
 
   // 🆕 构建树形视图数据
   const buildTreeData = async () => {
-    console.log('🌳 [buildTreeData] Starting tree data build...');
     setTreeLoading(true);
     
     try {
@@ -1700,7 +1589,6 @@ const TransactionManagementPage: React.FC = () => {
       const allTransactions = await loadAllTransactionsForTreeView();
       
       if (!allTransactions || allTransactions.length === 0) {
-        console.log('🔍 [TreeView Debug] No transactions found');
         setTreeData([]);
         return;
       }
@@ -1708,21 +1596,9 @@ const TransactionManagementPage: React.FC = () => {
       // 🆕 获取所有活动数据（包含负责理事信息）
       const eventsResult = await getEvents({ page: 1, limit: 10000 });
       const eventsMap = new Map(eventsResult.data.map(event => [event.name, event]));
-      console.log('🔍 [TreeView Debug] 加载活动数据:', eventsResult.data.length, '个活动');
       
       // 过滤掉虚拟子交易（只显示真实交易）
       let realTransactions = allTransactions.filter(t => !t.isVirtual);
-      
-      // 🆕 调试信息：显示过滤前的交易数据
-      console.log('🔍 [TreeView Debug] 总交易数:', allTransactions.length);
-      console.log('🔍 [TreeView Debug] 过滤后交易数:', realTransactions.length);
-      console.log('🔍 [TreeView Debug] 交易类别分布:', 
-        realTransactions.reduce((acc, t) => {
-          const cat = t.category || 'uncategorized';
-          acc[cat] = (acc[cat] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>)
-      );
     
     // 🆕 根据日期范围类型过滤交易
     if (treeDateRangeType !== 'all') {
@@ -1757,16 +1633,6 @@ const TransactionManagementPage: React.FC = () => {
         
         return true;
       });
-      
-      // 🆕 调试信息：显示日期过滤后的数据
-      console.log('🔍 [TreeView Debug] 日期过滤后交易数:', realTransactions.length);
-      console.log('🔍 [TreeView Debug] 日期过滤后类别分布:', 
-        realTransactions.reduce((acc, t) => {
-          const cat = t.category || 'uncategorized';
-          acc[cat] = (acc[cat] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>)
-      );
     }
     
     // 🆕 根据审计报告要求，活动财务的支出合并到收入中
@@ -1848,14 +1714,6 @@ const TransactionManagementPage: React.FC = () => {
         }
       }
     });
-
-    // 🆕 调试信息：显示分组后的数据
-    const splitParentCount = realTransactions.filter(t => t.isSplit === true).length;
-    console.log('🔍 [TreeView Debug] 收入分组:', Object.keys(incomeGroups));
-    console.log('🔍 [TreeView Debug] 支出分组:', Object.keys(expenseGroups));
-    console.log('🔍 [TreeView Debug] 已拆分父交易数:', splitParentCount, '(已排除在统计之外)');
-    console.log('🔍 [TreeView Debug] 收入分组详情:', incomeGroups);
-    console.log('🔍 [TreeView Debug] 支出分组详情:', expenseGroups);
 
     // 类别名称映射
     const categoryNameMap: Record<string, string> = {
@@ -2191,26 +2049,10 @@ const TransactionManagementPage: React.FC = () => {
       setTreeData([incomeNode, expenseNode]);
       
       // 🆕 构建树形表格数据
-      console.log('🔍 [buildTreeData] About to build tree table data with:', {
-        filteredTransactionsCount: filteredTransactions.length,
-        eventsCount: eventsResult.data.length,
-        filteredTransactions: filteredTransactions.slice(0, 3),
-        events: eventsResult.data.slice(0, 3)
-      });
-      
       // 🔧 修复：使用正确的交易数据
       const transactionsForTable = filteredTransactions.length > 0 ? filteredTransactions : realTransactions;
-      console.log('🔍 [buildTreeData] Using transactions for table:', {
-        transactionsForTableCount: transactionsForTable.length,
-        transactionsForTable: transactionsForTable.slice(0, 3)
-      });
       
        const tableData = buildTreeTableData(transactionsForTable, eventsResult.data, treeSelectedYear);
-       console.log('🔍 [buildTreeData] Tree table data built:', {
-         tableDataLength: tableData.length,
-         treeSelectedYear,
-         tableData: tableData
-       });
       
       setTreeTableData(tableData);
       
@@ -2220,13 +2062,6 @@ const TransactionManagementPage: React.FC = () => {
         totalIncome,
         totalExpense,
         surplus,
-      });
-      
-      console.log('📊 [TreeView Statistics]', {
-        totalIncome: `RM ${totalIncome.toFixed(2)}`,
-        totalExpense: `RM ${totalExpense.toFixed(2)}`,
-        surplus: `RM ${surplus.toFixed(2)}`,
-        status: surplus >= 0 ? 'Surplus ✅' : 'Deficit ❌',
       });
     } catch (error) {
       console.error('❌ [buildTreeData] Failed to build tree data:', error);
@@ -2968,24 +2803,17 @@ const TransactionManagementPage: React.FC = () => {
                         <div style={{ marginTop: 16, color: '#666' }}>正在加载所有交易数据...</div>
                       </div>
                     ) : (
-                      <>
-                        {console.log('🔍 [TreeView Render] Rendering table with:', {
-                          treeTableDataLength: treeTableData.length,
-                          treeTableData: treeTableData,
-                          treeLoading: treeLoading
-                        })}
-                        <Table
-                          columns={treeTableColumns}
-                          dataSource={treeTableData}
-                          pagination={false}
-                          size="small"
-                          bordered
-                          style={{ fontSize: 14 }}
-                          rowKey="key"
-                          showHeader={true}
-                          scroll={{ x: 'max-content' }}
-                        />
-                      </>
+                      <Table
+                        columns={treeTableColumns}
+                        dataSource={treeTableData}
+                        pagination={false}
+                        size="small"
+                        bordered
+                        style={{ fontSize: 14 }}
+                        rowKey="key"
+                        showHeader={true}
+                        scroll={{ x: 'max-content' }}
+                      />
                     )}
                   </div>
                 ),

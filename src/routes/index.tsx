@@ -7,10 +7,10 @@ import DashboardPage from '@/pages/DashboardPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import GlobalSettingsPage from '@/modules/system/pages/GlobalSettingsPage';
 import FinancialCategoryManagementPage from '@/modules/system/pages/FinancialCategoryManagementPage';
-import InitializationPage from '@/pages/InitializationPage';
 import QuickAddEventTransactionPage from '@/pages/QuickAddEventTransactionPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
+import DataFixPage from '@/pages/DataFixPage';
 // import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage'; // 已删除
 
 // Member Module
@@ -93,10 +93,6 @@ export const router = createBrowserRouter(
             path: 'financial-categories',
             element: <FinancialCategoryManagementPage />,
           },
-          {
-            path: 'initialization',
-            element: <InitializationPage />,
-          },
         ],
       },
       {
@@ -110,6 +106,10 @@ export const router = createBrowserRouter(
       {
         path: 'financial-records-debug',
         element: <FinancialRecordsDebugPage />,
+      },
+      {
+        path: 'data-fix',
+        element: <DataFixPage />,
       },
       // 已删除：UpdateFinancialRecordsPayerInfoPage 路由
       // {

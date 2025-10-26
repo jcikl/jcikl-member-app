@@ -87,6 +87,8 @@ export interface TransactionFormData {
   invoiceNumber?: string;
   tags?: string[];
   metadata?: Record<string, any>;
+  relatedEventId?: string; // 🆕 关联的活动财务账户ID
+  relatedEventName?: string; // 🆕 关联的活动名称
 }
 
 // 🆕 Split Transaction Types (拆分交易类型)

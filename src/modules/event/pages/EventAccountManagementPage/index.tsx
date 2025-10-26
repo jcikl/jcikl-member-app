@@ -30,6 +30,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { globalSystemService } from '@/config/globalSystemSettings';
+import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
 import { useAuthStore } from '@/stores/authStore';
 import { PageHeader } from '@/components/common/PageHeader';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -268,7 +269,9 @@ const EventAccountManagementPage: React.FC = () => {
 
   // 加载银行交易记录
   const loadBankTransactions = async () => {
+    console.log('========================================');
     console.log('🔍 [loadBankTransactions] Starting...', { selectedEventId });
+    console.log('📋 [DEBUG] Total events loaded:', events.length);
     
     if (!selectedEventId) {
       console.log('⚠️ [loadBankTransactions] No selectedEventId, skipping');
@@ -280,6 +283,21 @@ const EventAccountManagementPage: React.FC = () => {
       // 1. 读取 projects collection 的 financialAccount 字段
       // 2. 使用 financialAccount 匹配 fin_transactions 的 relatedEventId
       const selectedEvent = events.find(e => e.id === selectedEventId);
+      
+      console.log('📋 [DEBUG] Selected event:', {
+        eventId: selectedEventId,
+        eventName: selectedEvent?.name,
+        eventStatus: selectedEvent?.status,
+        financialAccount: selectedEvent?.financialAccount,
+        financialAccountName: selectedEvent?.financialAccountName,
+      });
+      
+      // 🆕 调试：列出所有活动的 financialAccount
+      console.log('📋 [DEBUG] All events and their financialAccounts:');
+      events.forEach(e => {
+        console.log(`  - ${e.name}: financialAccount="${e.financialAccount}"`);
+      });
+      
       const financialAccountId = selectedEvent?.financialAccount;
       
       console.log('🔍 [loadBankTransactions] Event financial account:', {
@@ -289,10 +307,18 @@ const EventAccountManagementPage: React.FC = () => {
       });
       
       if (!financialAccountId) {
-        console.log('⚠️ [loadBankTransactions] Event has no financialAccount, no transactions to display');
+        console.log('⚠️ [loadBankTransactions] Event has no financialAccount!');
+        console.log('💡 [DEBUG] Event details:', selectedEvent);
         setBankTransactions([]);
         return;
       }
+      
+      // 🆕 调试：输出将要查询的值
+      console.log('🔍 [DEBUG] About to query with:', {
+        collection: GLOBAL_COLLECTIONS.TRANSACTIONS,
+        queryField: 'relatedEventId',
+        queryValue: financialAccountId,
+      });
       
       // 使用 financialAccount 查询 relatedEventId
       const transactions = await getTransactionsByEventId(financialAccountId);
@@ -302,8 +328,22 @@ const EventAccountManagementPage: React.FC = () => {
         queryValue: financialAccountId,
       });
       
+      // 🆕 调试：输出交易详情
+      if (transactions.length > 0) {
+        console.log('📋 [DEBUG] Transaction details (first 3):');
+        transactions.slice(0, 3).forEach((txn, index) => {
+          console.log(`  Transaction ${index + 1}:`, {
+            id: txn.id,
+            transactionNumber: txn.transactionNumber,
+            relatedEventId: txn.relatedEventId,
+            amount: txn.amount,
+            description: txn.mainDescription,
+          });
+        });
+      }
+      
       if (transactions.length === 0) {
-        console.log('ℹ️ [loadBankTransactions] No transactions found');
+        console.log('ℹ️ [loadBankTransactions] No transactions found for financialAccount:', financialAccountId);
         setBankTransactions([]);
         return;
       }

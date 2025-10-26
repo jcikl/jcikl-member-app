@@ -116,7 +116,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
     try {
       const [membersResult, eventsResult, purposesResult] = await Promise.all([
         getMembers({ page: 1, limit: 1000, status: 'active' }),
-        getEvents({ page: 1, limit: 1000, status: 'Published' }),
+        getEvents({ page: 1, limit: 1000 }), // 🆕 移除status限制，加载所有状态的活动
         getActiveTransactionPurposes(),
       ]);
       
@@ -378,7 +378,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
               }}
             >
               {events.map(e => (
-                <Option key={e.id} value={e.id}>
+                <Option key={e.id} value={e.financialAccount || e.id}>
                   {e.name}
                   {e.startDate && ` (${new Date(e.startDate).getFullYear()})`}
                 </Option>
