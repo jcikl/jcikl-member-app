@@ -53,6 +53,11 @@ export interface Transaction {
   allocatedAmount?: number;       // 已分配金额（父交易字段）
   unallocatedAmount?: number;     // 未分配金额（父交易字段）
   
+  // 🆕 Internal Transfer Fields (内部转账字段)
+  isInternalTransfer?: boolean;   // 是否为内部转账
+  relatedTransferTransactionId?: string; // 关联的对应转账记录ID
+  relatedBankAccountId?: string;  // 关联的银行账户ID
+  
   // 🆕 Event Relation Fields (活动关联字段 - 方案C)
   relatedEventId?: string;        // 关联的活动ID
   relatedEventName?: string;      // 关联的活动名称
@@ -89,6 +94,9 @@ export interface TransactionFormData {
   metadata?: Record<string, any>;
   relatedEventId?: string; // 🆕 关联的活动财务账户ID
   relatedEventName?: string; // 🆕 关联的活动名称
+  isInternalTransfer?: boolean; // 🆕 是否为内部转账
+  relatedTransferTransactionId?: string; // 🆕 关联的对应转账记录ID
+  relatedBankAccountId?: string; // 🆕 关联的银行账户ID
 }
 
 // 🆕 Split Transaction Types (拆分交易类型)

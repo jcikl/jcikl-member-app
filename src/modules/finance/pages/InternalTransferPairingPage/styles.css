@@ -1,0 +1,24 @@
+.internal-transfer-pairing-page {
+  padding: 24px;
+}
+
+.internal-transfer-pairing-page .ant-card {
+  border-radius: 8px;
+}
+
+.internal-transfer-pairing-page .ant-statistic {
+  text-align: center;
+}
+
+.internal-transfer-pairing-page .ant-statistic-title {
+  font-size: 14px;
+  color: #666;
+}
+
+.internal-transfer-pairing-page .ant-table {
+  background: white;
+}
+
+.internal-transfer-pairing-page .ant-tag {
+  border-radius: 4px;
+}

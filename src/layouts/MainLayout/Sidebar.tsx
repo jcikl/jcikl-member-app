@@ -88,6 +88,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           key: '/finance/records',
           label: '财务记录',
         },
+        {
+          key: '/finance/internal-transfer-pairing',
+          label: '内部转账配对',
+        },
       ],
     },
     {

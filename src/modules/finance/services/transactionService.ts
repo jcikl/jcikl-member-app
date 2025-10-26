@@ -1376,6 +1376,9 @@ export const getTransactionStatistics = async (
       // 🆕 排除虚拟交易（子交易不影响统计）
       if (data.isVirtual === true) return;
       
+      // 🆕 排除内部转账（Internal Transfer）
+      if (data.isInternalTransfer === true) return;
+      
       // Check date range
       if (startDate && data.transactionDate < startDate) return;
       if (endDate && data.transactionDate > endDate) return;
@@ -1912,6 +1915,12 @@ export const batchSetCategory = async (
       if (data.isVirtual) {
         throw new Error('虚拟交易（子交易）的类别由拆分操作管理，不能单独修改');
       }
+
+      // 🔧 允许覆盖已分类的交易：直接更新分类
+      console.log(`📝 [batchSetCategory] 更新交易分类: ${transactionId}`, {
+        oldCategory: data.category,
+        newCategory: category,
+      });
 
       // 构建更新数据
       const updateData: any = {

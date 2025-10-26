@@ -18,6 +18,7 @@ import {
   Tag,
   Alert,
   Spin,
+  Modal,
 } from 'antd';
 import {
   PlusOutlined,
@@ -225,12 +226,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
   return (
     <BaseModal
       visible={visible}
-      title={
-        <Space>
-          <span>{transaction.isSplit ? '重新拆分交易' : '拆分交易'}</span>
-          <Tag color="blue">RM {parentAmount.toFixed(2)}</Tag>
-        </Space>
-      }
+      title={`${transaction.isSplit ? '重新拆分交易' : '拆分交易'} - RM ${parentAmount.toFixed(2)}`}
       onOk={handleOk}
       onCancel={handleCancel}
       width={800}

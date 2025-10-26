@@ -36,10 +36,8 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
 import { getMembers, getMemberById } from '../../../member/services/memberService';
-import { smartFiscalYearService } from '../../services/smartFiscalYearService';
 import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
 import type { Transaction } from '../../types';
-import type { FiscalYearPeriod } from '../../types/fiscalYear';
 import './styles.css';
 
 const { Option } = Select;
@@ -48,11 +46,11 @@ const GeneralAccountsPage: React.FC = () => {
   const { user } = useAuthStore();
   
   // 筛选状态管理
-  const [selectedYear, setSelectedYear] = useState<string>('all');
-  const [fiscalYearOptions, setFiscalYearOptions] = useState<Array<{ label: string; value: string; period: FiscalYearPeriod }>>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all'); // 收入/支出分类
   const [searchText, setSearchText] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'list' | 'transactions'>('list');
+  
+  // 🆕 日常账户分组数据
+  const [accountGroups, setAccountGroups] = useState<Record<string, Transaction[]>>({});
   
   // 交易管理相关状态
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -60,7 +58,6 @@ const GeneralAccountsPage: React.FC = () => {
   const [transactionTotal, setTransactionTotal] = useState(0);
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionPageSize, setTransactionPageSize] = useState(100); // 🆕 增加默认显示数量以匹配实际数据
-  const [txAccountFilter, setTxAccountFilter] = useState<string>('all');
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   // 🆕 会员搜索相关状态
@@ -86,16 +83,11 @@ const GeneralAccountsPage: React.FC = () => {
   
   // 🆕 会员信息缓存（用于显示描述栏中的会员信息）
   const [memberInfoCache, setMemberInfoCache] = useState<Record<string, { name: string; email?: string; phone?: string }>>({});
-  
-  // 🆕 动态二次分类选项
-  const [availableSubCategories, setAvailableSubCategories] = useState<string[]>([]);
-  const [hasUncategorized, setHasUncategorized] = useState(false); // 是否有未分类交易
 
   useEffect(() => {
     loadTransactions();
     loadPurposeOptions(); // 🆕 加载交易用途选项
-    loadFiscalYearOptions(); // 🆕 加载财年选项
-  }, [transactionPage, transactionPageSize, txAccountFilter, selectedYear, selectedCategory, searchText]);
+  }, [transactionPage, transactionPageSize, searchText]);
 
   // 🆕 加载交易用途选项
   const loadPurposeOptions = async () => {
@@ -104,16 +96,6 @@ const GeneralAccountsPage: React.FC = () => {
       setPurposeOptions(purposes);
     } catch (error) {
       console.error('加载交易用途选项失败:', error);
-    }
-  };
-
-  // 🆕 加载财年选项
-  const loadFiscalYearOptions = async () => {
-    try {
-      const options = await smartFiscalYearService.getSmartFiscalYearOptions();
-      setFiscalYearOptions(options);
-    } catch (error) {
-      console.error('加载财年选项失败:', error);
     }
   };
 
@@ -136,35 +118,6 @@ const GeneralAccountsPage: React.FC = () => {
       // 应用客户端筛选
       let filteredData = result.data;
 
-      // 年份筛选
-      if (selectedYear !== 'all') {
-        filteredData = filteredData.filter(tx => {
-          const txYear = new Date(tx.transactionDate).getFullYear();
-          const targetYear = parseInt(selectedYear.replace('FY', ''));
-          return txYear === targetYear;
-        });
-      }
-
-      // 收入/支出分类筛选
-      if (selectedCategory !== 'all') {
-        if (selectedCategory === 'income') {
-          filteredData = filteredData.filter(tx => tx.transactionType === 'income');
-        } else if (selectedCategory === 'expense') {
-          filteredData = filteredData.filter(tx => tx.transactionType === 'expense');
-        }
-      }
-
-      // 🆕 二次分类筛选（txAccount）
-      if (txAccountFilter !== 'all') {
-        if (txAccountFilter === 'uncategorized') {
-          // 筛选未分类的交易
-          filteredData = filteredData.filter(tx => !tx.txAccount || tx.txAccount.trim() === '');
-        } else {
-          // 筛选指定分类的交易
-          filteredData = filteredData.filter(tx => tx.txAccount === txAccountFilter);
-        }
-      }
-
       // 搜索文本筛选
       if (searchText.trim()) {
         const searchLower = searchText.toLowerCase().trim();
@@ -186,19 +139,16 @@ const GeneralAccountsPage: React.FC = () => {
       setTransactions(paginatedData);
       setTransactionTotal(filteredData.length);
       
-      // 🆕 提取所有唯一的二次分类选项
-      const uniqueSubCategories = Array.from(
-        new Set(
-          result.data
-            .map(t => t.txAccount)
-            .filter((cat): cat is string => Boolean(cat) && typeof cat === 'string' && cat.trim() !== '')
-        )
-      ).sort();
-      setAvailableSubCategories(uniqueSubCategories);
-      
-      // 🆕 检测是否有未分类交易
-      const uncategorizedCount = result.data.filter(t => !t.txAccount || t.txAccount.trim() === '').length;
-      setHasUncategorized(uncategorizedCount > 0);
+      // 🆕 按 txAccount 分组数据
+      const grouped: Record<string, Transaction[]> = {};
+      filteredData.forEach(tx => {
+        const groupKey = tx.txAccount && tx.txAccount.trim() ? tx.txAccount.trim() : '未分类';
+        if (!grouped[groupKey]) {
+          grouped[groupKey] = [];
+        }
+        grouped[groupKey].push(tx);
+      });
+      setAccountGroups(grouped);
       
       // 计算统计数据（基于筛选后的全部数据，不是分页后的）
       const stats = filteredData.reduce((acc, tx) => {
@@ -566,103 +516,9 @@ const GeneralAccountsPage: React.FC = () => {
           </Col>
         </Row>
 
-        {/* 第二行：左侧筛选 + 右侧搜索和内容 */}
+        {/* 第二行：搜索和内容 */}
         <Row gutter={16}>
-          {/* 左侧筛选卡片 */}
-          <Col xs={24} lg={6}>
-            <Card title="🏦 日常账户筛选" style={{ position: 'sticky', top: 16 }}>
-              {/* 年份筛选 */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>📅 年份</div>
-                <Select
-                  style={{ width: '100%' }}
-                  value={selectedYear}
-                  onChange={setSelectedYear}
-                  placeholder="选择年份"
-                  showSearch
-                >
-                  <Option value="all">所有年份</Option>
-                  {fiscalYearOptions.map(option => (
-                    <Option key={option.value} value={option.value}>
-                      {option.label}
-                    </Option>
-                  ))}
-                </Select>
-              </div>
-              
-              {/* 收入/支出分类筛选 */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>💰 交易类型</div>
-                <Select
-                  style={{ width: '100%' }}
-                  value={selectedCategory}
-                  onChange={setSelectedCategory}
-                  placeholder="选择类型"
-                >
-                  <Option value="all">所有类型</Option>
-                  <Option value="income">📈 收入</Option>
-                  <Option value="expense">📉 支出</Option>
-                </Select>
-              </div>
-              
-              {/* 二次分类筛选 */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>🏷️ 二次分类</div>
-                <Select
-                  style={{ width: '100%' }}
-                  placeholder="选择分类"
-                  value={txAccountFilter}
-                  onChange={setTxAccountFilter}
-                  showSearch
-                  filterOption={(input, option) => {
-                    const label = option?.children?.toString() || '';
-                    return label.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
-                  <Option value="all">所有分类</Option>
-                  {availableSubCategories.map(category => (
-                    <Option key={category} value={category}>
-                      {category}
-                    </Option>
-                  ))}
-                </Select>
-              </div>
-              
-              {/* 快速筛选按钮 */}
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-                {/* 🆕 未分类快速筛选 */}
-                <Button 
-                  type="default"
-                  size="small" 
-                  onClick={() => {
-                    setTxAccountFilter('uncategorized');
-                  }}
-                  disabled={!hasUncategorized}
-                  style={{ width: '100%', marginBottom: 8 }}
-                  danger={hasUncategorized}
-                >
-                  {hasUncategorized ? '🔴 显示未分类交易' : '✅ 无未分类交易'}
-                </Button>
-                
-                <Button 
-                  type="link" 
-                  size="small" 
-                  onClick={() => {
-                    setSelectedYear('all');
-                    setSelectedCategory('all');
-                    setTxAccountFilter('all');
-                    setSearchText('');
-                  }}
-                  style={{ width: '100%' }}
-                >
-                  清除所有筛选
-                </Button>
-              </div>
-            </Card>
-          </Col>
-          
-          {/* 右侧搜索和内容区域 */}
-          <Col xs={24} lg={18}>
+          <Col xs={24}>
             {/* 搜索输入框 */}
             <Card style={{ marginBottom: 16 }}>
               <Input
@@ -695,26 +551,70 @@ const GeneralAccountsPage: React.FC = () => {
                     key: 'list',
                     label: '日常账户列表',
                     children: (
-                      <Card title="日常账户交易记录">
-                        <Table
-                          {...tableConfig}
-                          columns={transactionColumns}
-                          dataSource={transactions}
-                          rowKey="id"
-                          loading={transactionsLoading}
-                          pagination={{
-                            current: transactionPage,
-                            pageSize: transactionPageSize,
-                            total: transactionTotal,
-                            onChange: (page, size) => {
-                              setTransactionPage(page);
-                              setTransactionPageSize(size || 20);
-                            },
-                            showSizeChanger: true,
-                            showTotal: (total) => `共 ${total} 条交易`,
-                          }}
-                          scroll={{ x: 1200 }}
-                        />
+                      <Card>
+                        {Object.keys(accountGroups).length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
+                            {transactionsLoading ? '加载中...' : '暂无交易记录'}
+                          </div>
+                        ) : (
+                          Object.keys(accountGroups).map(groupKey => {
+                            const groupTransactions = accountGroups[groupKey];
+                            const groupStats = groupTransactions.reduce(
+                              (acc, tx) => {
+                                if (tx.transactionType === 'income') {
+                                  acc.income += tx.amount || 0;
+                                } else {
+                                  acc.expense += tx.amount || 0;
+                                }
+                                acc.net += (tx.transactionType === 'income' ? 1 : -1) * (tx.amount || 0);
+                                return acc;
+                              },
+                              { income: 0, expense: 0, net: 0 }
+                            );
+                            
+                            return (
+                              <Card
+                                key={groupKey}
+                                title={
+                                  <Space>
+                                    <span style={{ fontWeight: 600, fontSize: 16 }}>{groupKey}</span>
+                                    <Tag color="purple">{groupTransactions.length} 笔交易</Tag>
+                                  </Space>
+                                }
+                                style={{ marginBottom: 16 }}
+                                extra={
+                                  <Row gutter={16}>
+                                    <Col>
+                                      <span style={{ color: '#3f8600' }}>
+                                        收入: RM {groupStats.income.toFixed(2)}
+                                      </span>
+                                    </Col>
+                                    <Col style={{ margin: '0 8px' }}>
+                                      <span style={{ color: '#cf1322' }}>
+                                        支出: RM {groupStats.expense.toFixed(2)}
+                                      </span>
+                                    </Col>
+                                    <Col>
+                                      <span style={{ fontWeight: 600, color: groupStats.net >= 0 ? '#3f8600' : '#cf1322' }}>
+                                        净额: RM {Math.abs(groupStats.net).toFixed(2)}
+                                      </span>
+                                    </Col>
+                                  </Row>
+                                }
+                              >
+                                <Table
+                                  {...tableConfig}
+                                  columns={transactionColumns}
+                                  dataSource={groupTransactions}
+                                  rowKey="id"
+                                  loading={transactionsLoading}
+                                  pagination={false}
+                                  size="middle"
+                                />
+                              </Card>
+                            );
+                          })
+                        )}
                       </Card>
                     ),
                   },

@@ -5,7 +5,7 @@
  * View and manage all financial transactions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Table,
@@ -95,6 +95,8 @@ const TransactionManagementPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all'); // 🆕 二次分类筛选
+  const [availableSubCategories, setAvailableSubCategories] = useState<string[]>([]); // 🆕 可用的二次分类列表
   const [activeTabKey, setActiveTabKey] = useState<string>('all'); // 当前选中的标签页（银行账户ID）
   const [viewMode, setViewMode] = useState<'table' | 'tree'>('table'); // 🆕 视图模式：表格或树形
   const [treeData, setTreeData] = useState<DataNode[]>([]); // 🆕 树形数据
@@ -139,11 +141,13 @@ const TransactionManagementPage: React.FC = () => {
   // 🆕 批量粘贴导入
   const [bulkImportVisible, setBulkImportVisible] = useState(false);
   const [bulkImportText, setBulkImportText] = useState('');
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>(''); // 🆕 统一银行账户设置
   const [bulkImportData, setBulkImportData] = useState<Array<{
     key: string;
     transactionType: 'income' | 'expense';
     category: string;
-    description: string;
+    mainDescription: string;
+    subDescription: string;
     payerPayee: string;
     amount: number;
     transactionDate: string;
@@ -205,7 +209,7 @@ const TransactionManagementPage: React.FC = () => {
 
   useEffect(() => {
     loadTransactions();
-  }, [currentPage, pageSize, searchText, categoryFilter, activeTabKey]);
+  }, [currentPage, pageSize, searchText, categoryFilter, subCategoryFilter, activeTabKey]);
   
   useEffect(() => {
     // 当切换标签页时，重置到第一页
@@ -293,12 +297,45 @@ const TransactionManagementPage: React.FC = () => {
         includeVirtual: true, // 🔑 显示子交易（虚拟交易）
       });
 
-      setTransactions(result.data);
+      // 🆕 应用二次分类筛选
+      let filteredData = result.data;
+      if (categoryFilter !== 'all' && subCategoryFilter !== 'all') {
+        if (subCategoryFilter === 'uncategorized') {
+          // 筛选未分类的交易
+          filteredData = result.data.filter(t => !t.txAccount || t.txAccount.trim() === '');
+        } else {
+          // 筛选指定二次分类的交易
+          filteredData = result.data.filter(t => t.txAccount === subCategoryFilter);
+        }
+      }
+
+      setTransactions(filteredData);
       setTotal(result.total);
       
       // 🆕 检测是否有未分类交易
       const uncategorizedCount = result.data.filter(t => !t.txAccount || t.txAccount.trim() === '').length;
       setHasUncategorized(uncategorizedCount > 0);
+      
+      // 🆕 动态生成可用的二次分类列表
+      if (categoryFilter !== 'all') {
+        const subCategories = new Set<string>();
+        
+        filteredData.forEach(t => {
+          // 收集所有非空的 txAccount
+          if (t.txAccount && t.txAccount.trim() !== '') {
+            subCategories.add(t.txAccount);
+          }
+        });
+        
+        setAvailableSubCategories(Array.from(subCategories).sort());
+        
+        // 如果当前选择的二次分类不在列表中，重置为"全部"
+        if (subCategoryFilter !== 'all' && !subCategories.has(subCategoryFilter) && subCategoryFilter !== 'uncategorized') {
+          setSubCategoryFilter('all');
+        }
+      } else {
+        setAvailableSubCategories([]);
+      }
       
       // 🎯 计算累计余额（仅针对单个账户）
       if (activeTabKey !== 'all' && result.data.length > 0) {
@@ -542,10 +579,21 @@ const TransactionManagementPage: React.FC = () => {
         notes: values.notes,
       };
       
-      // 🆕 如果是活动财务类别，设置根级别的 relatedEventId
+      // 🆕 如果是活动财务类别，设置根级别的 relatedEventId 和活动名称
       if (formData.category === 'event-finance' && values.txAccount) {
         // values.txAccount 已经是 financialAccount（因为 Option 的 value 使用了 financialAccount）
         (formData as any).relatedEventId = values.txAccount;
+        
+        // 🔧 查找活动名称并保存到 txAccount
+        try {
+          const eventsResult = await getEvents({ page: 1, limit: 1000 });
+          const selectedEvent = eventsResult.data.find(e => e.financialAccount === values.txAccount || e.id === values.txAccount);
+          if (selectedEvent) {
+            formData.txAccount = selectedEvent.name; // 保存活动名称而不是ID
+          }
+        } catch (error) {
+          console.error('❌ [handleSubmit] 加载活动数据失败:', error);
+        }
       }
 
       if (editingTransaction) {
@@ -722,9 +770,6 @@ const TransactionManagementPage: React.FC = () => {
 
   // 批量设置类别
   const handleBatchSetCategory = () => {
-    const currentDataSource = filteredTransactions.length > 0 ? filteredTransactions : transactions;
-    const selectedTransactions = currentDataSource.filter(t => selectedRowKeys.includes(t.id));
-    
     setBatchCategoryModalVisible(true);
   };
 
@@ -748,56 +793,15 @@ const TransactionManagementPage: React.FC = () => {
     if (!user) return;
 
     try {
-      // 🆕 构建更新数据和元数据
-      const updates: Partial<Transaction> = {};
-      const metadata: Record<string, any> = {};
-
-      // 根据类别设置 txAccount 字段
-      if (data.category === 'member-fees') {
-        // 会员费：年份 + 二次分类
-        if (data.year && data.txAccount) {
-          updates.txAccount = `${data.year}${data.txAccount}`;
-        } else if (data.txAccount) {
-          updates.txAccount = data.txAccount;
-        }
-        // 年份也保存到元数据中
-        if (data.year) {
-          metadata.year = data.year;
-        }
-      } else if (data.category === 'event-finance') {
-        // 活动财务：活动名称
-        if (data.txAccount) {
-          updates.txAccount = data.txAccount;
-        }
-        if (data.eventId) {
-          // 🆕 同时设置根级别的 relatedEventId 和 metadata.eventId
-          updates.relatedEventId = data.eventId;
-          metadata.eventId = data.eventId;
-        }
-      } else {
-        // 其他类别：直接使用 txAccount
-        if (data.txAccount) {
-          updates.txAccount = data.txAccount;
-        }
-      }
-
-      const result = await batchSetCategory(
-        selectedRowKeys as string[],
-        data.category,
-        user.id,
-        updates,
-        metadata
-      );
-
-      // 🆕 加载活动和会员数据以获取名称
+      // 🆕 先加载活动和会员数据以获取名称
       let eventName = '';
       const memberMap = new Map<string, string>(); // memberId -> memberName
       
       try {
-        // 如果是活动财务类别，加载活动数据
+        // 如果是活动财务类别，先加载活动数据
         if (data.category === 'event-finance' && data.eventId) {
           const eventsResult = await getEvents({ page: 1, limit: 1000 });
-          const selectedEvent = eventsResult.data.find(e => e.id === data.eventId);
+          const selectedEvent = eventsResult.data.find(e => e.financialAccount === data.eventId || e.id === data.eventId);
           if (selectedEvent) {
             eventName = selectedEvent.name;
           }
@@ -825,6 +829,49 @@ const TransactionManagementPage: React.FC = () => {
       } catch (error) {
         console.error('🔍 [TransactionManagementPage] 加载活动/会员数据失败:', error);
       }
+
+      // 🆕 构建更新数据和元数据
+      const updates: Partial<Transaction> = {};
+      const metadata: Record<string, any> = {};
+
+      // 根据类别设置 txAccount 字段
+      if (data.category === 'member-fees') {
+        // 会员费：年份 + 二次分类
+        if (data.year && data.txAccount) {
+          updates.txAccount = `${data.year}${data.txAccount}`;
+        } else if (data.txAccount) {
+          updates.txAccount = data.txAccount;
+        }
+        // 年份也保存到元数据中
+        if (data.year) {
+          metadata.year = data.year;
+        }
+      } else if (data.category === 'event-finance') {
+        // 活动财务：使用活动名称
+        if (eventName) {
+          updates.txAccount = eventName; // 🔧 使用加载的活动名称
+        } else if (data.txAccount) {
+          updates.txAccount = data.txAccount;
+        }
+        if (data.eventId) {
+          // 🆕 同时设置根级别的 relatedEventId 和 metadata.eventId
+          updates.relatedEventId = data.eventId;
+          metadata.eventId = data.eventId;
+        }
+      } else {
+        // 其他类别：直接使用 txAccount
+        if (data.txAccount) {
+          updates.txAccount = data.txAccount;
+        }
+      }
+
+      const result = await batchSetCategory(
+        selectedRowKeys as string[],
+        data.category,
+        user.id,
+        updates,
+        metadata
+      );
 
       // 🆕 为每条交易应用独立设置
       if (data.individualData && data.individualData.length > 0) {
@@ -911,17 +958,21 @@ const TransactionManagementPage: React.FC = () => {
   // 🆕 批量导入功能
   const handleOpenBulkImport = () => {
     setBulkImportVisible(true);
-    // 自动添加第一行
+    // 🆕 设置默认银行账户
     const defaultBankAccount = bankAccounts[0]?.id || '';
+    setSelectedBankAccountId(defaultBankAccount);
+    
+    // 自动添加第一行（不包含银行账户）
     setBulkImportData([{
       key: `bulk-${Date.now()}`,
       transactionType: 'income',
       category: 'member-fees',
-      description: '',
+      mainDescription: '',
+      subDescription: '',
       payerPayee: '',
       amount: 0,
       transactionDate: dayjs().format('YYYY-MM-DD'),
-      bankAccountId: defaultBankAccount,
+      bankAccountId: '', // 不再使用单独的 bankAccountId
     }]);
   };
   
@@ -1058,20 +1109,39 @@ const TransactionManagementPage: React.FC = () => {
 
   const parseBulkImportText = (text: string) => {
     const lines = text.trim().split('\n').filter(line => line.trim());
-    const defaultBankAccount = bankAccounts[0]?.id || '';
     
     const items = lines.map((line, index) => {
       const parts = line.split('\t').map(p => p.trim());
       
+      // 🔧 新的列顺序：日期、主描述、副描述、支出、收入
+      const dateStr = parts[0] || '';
+      const mainDescription = parts[1] || '';
+      const subDescription = parts[2] || '';
+      const expenseStr = parts[3] || '0';
+      const incomeStr = parts[4] || '0';
+      
+      // 解析金额（支出或收入）
+      const expense = parseFloat(expenseStr) || 0;
+      const income = parseFloat(incomeStr) || 0;
+      const amount = expense > 0 ? expense : income;
+      const transactionType = expense > 0 ? 'expense' : 'income';
+      
+      // 解析日期
+      let transactionDate = dateStr;
+      if (!transactionDate || transactionDate === '') {
+        transactionDate = dayjs().format('YYYY-MM-DD');
+      }
+      
       return {
         key: `bulk-${Date.now()}-${index}`,
-        transactionType: 'income' as const,
+        transactionType: transactionType as 'income' | 'expense',
         category: 'member-fees',
-        description: parts[0] || '',
-        payerPayee: parts[1] || '',
-        amount: parseFloat(parts[2]) || 0,
-        transactionDate: parts[3] || dayjs().format('YYYY-MM-DD'),
-        bankAccountId: defaultBankAccount,
+        mainDescription,
+        subDescription,
+        payerPayee: '',
+        amount: amount,
+        transactionDate: transactionDate,
+        bankAccountId: '', // 🆕 使用统一的银行账户设置
       };
     });
     
@@ -1086,18 +1156,18 @@ const TransactionManagementPage: React.FC = () => {
   };
 
   const handleAddBulkRow = () => {
-    const defaultBankAccount = bankAccounts[0]?.id || '';
     setBulkImportData([
       ...bulkImportData,
       {
         key: `bulk-${Date.now()}`,
         transactionType: 'income',
         category: 'member-fees',
-        description: '',
+        mainDescription: '',
+        subDescription: '',
         payerPayee: '',
         amount: 0,
         transactionDate: dayjs().format('YYYY-MM-DD'),
-        bankAccountId: defaultBankAccount,
+        bankAccountId: '', // 🆕 使用统一的银行账户设置
       }
     ]);
   };
@@ -1121,13 +1191,19 @@ const TransactionManagementPage: React.FC = () => {
         return;
       }
       
+      // 🆕 验证统一银行账户设置
+      if (!selectedBankAccountId) {
+        message.error('请选择银行账户');
+        return;
+      }
+      
       // 验证数据
       const invalidRows = bulkImportData.filter(item => 
-        !item.description || item.amount <= 0 || !item.bankAccountId
+        !item.mainDescription || item.amount <= 0
       );
       
       if (invalidRows.length > 0) {
-        message.error(`有 ${invalidRows.length} 行数据不完整（描述、金额、银行账户必填，且金额需大于0）`);
+        message.error(`有 ${invalidRows.length} 行数据不完整（主描述、金额必填，且金额需大于0）`);
         return;
       }
       
@@ -1139,11 +1215,12 @@ const TransactionManagementPage: React.FC = () => {
           await createTransaction({
             transactionType: item.transactionType,
             category: item.category,
-            mainDescription: item.description,
+            mainDescription: item.mainDescription,
+            subDescription: item.subDescription,
             payerPayee: item.payerPayee,
             amount: item.amount,
             transactionDate: item.transactionDate,
-            bankAccountId: item.bankAccountId,
+            bankAccountId: selectedBankAccountId, // 🆕 使用统一的银行账户
           }, user.id);
           successCount++;
         } catch (error) {
@@ -1161,6 +1238,7 @@ const TransactionManagementPage: React.FC = () => {
       
       setBulkImportVisible(false);
       setBulkImportData([]);
+      setSelectedBankAccountId(''); // 🆕 重置银行账户
       clearBalanceCache();
       await loadTransactions();
     } catch (error: any) {
@@ -1217,32 +1295,52 @@ const TransactionManagementPage: React.FC = () => {
       if (transaction.isSplit === true) return; // 跳过已拆分的父交易
       
       const transactionDate = dayjs(transaction.transactionDate);
+      const transactionDateStr = transactionDate.format('YYYY-MM-DD');
       const amount = transaction.amount || 0;
       
-      let transactionYear: number;
-      
       if (treeDateRangeType === 'fiscal') {
-        // 财年模式：根据财年配置判断交易属于哪个财年
-        try {
-          const fiscalYear = smartFiscalYearService.detectFiscalYearPeriod(transactionDate.year());
-          transactionYear = fiscalYear.year;
-        } catch (error) {
-          console.warn('Failed to detect fiscal year for transaction:', error);
-          transactionYear = transactionDate.year();
+        // 🔧 财年模式：根据财年管理的设定，判断交易在哪个财年范围
+        yearsToCalculate.forEach(year => {
+          try {
+            const fiscalPeriod = smartFiscalYearService.detectFiscalYearPeriod(year);
+            
+            // 判断交易日期是否在该财年范围内
+            if (transactionDateStr >= fiscalPeriod.startDate && transactionDateStr <= fiscalPeriod.endDate) {
+              if (transaction.transactionType === 'income') {
+                stats[year].income += amount;
+                stats[year].net += amount;
+              } else {
+                stats[year].expense += amount;
+                stats[year].net -= amount;
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to detect fiscal year ${year} period for transaction:`, error);
+          }
+        });
+      } else if (treeDateRangeType === 'calendar') {
+        // 自然年模式：判断交易属于哪个自然年
+        const transactionYear = transactionDate.year();
+        if (yearsToCalculate.includes(transactionYear)) {
+          if (transaction.transactionType === 'income') {
+            stats[transactionYear].income += amount;
+            stats[transactionYear].net += amount;
+          } else {
+            stats[transactionYear].expense += amount;
+            stats[transactionYear].net -= amount;
+          }
         }
       } else {
-        // 自然年模式：使用交易的实际年份
-        transactionYear = transactionDate.year();
-      }
-      
-      // 检查交易是否在要统计的年份范围内
-      if (yearsToCalculate.includes(transactionYear)) {
-        if (transaction.transactionType === 'income') {
-          stats[transactionYear].income += amount;
-          stats[transactionYear].net += amount;
-        } else {
-          stats[transactionYear].expense += amount;
-          stats[transactionYear].net -= amount;
+        // 全部模式：按自然年统计
+        const transactionYear = transactionDate.year();
+        if (yearsToCalculate.includes(transactionYear)) {
+          if (transaction.transactionType === 'income') {
+            stats[transactionYear].income += amount;
+            stats[transactionYear].net += amount;
+          } else {
+            stats[transactionYear].expense += amount;
+            stats[transactionYear].net -= amount;
+          }
         }
       }
     });
@@ -1334,11 +1432,48 @@ const TransactionManagementPage: React.FC = () => {
     };
 
     // 处理收入类别
-    const incomeCategories = ['event-finance', 'member-fees', 'general-accounts', 'uncategorized'];
-    const expenseCategories = ['general-accounts', 'uncategorized'];
+    // 🔧 修复：日常账户和未分类需要按交易类型分开显示
+    const baseIncomeCategories = ['event-finance', 'member-fees'];
+    const incomeCategories: string[] = [...baseIncomeCategories]; // 使用副本
+    const expenseCategories: string[] = [];
+    
+    // 🔧 检查是否有日常账户，分别添加到收入和支出类别
+    if (groupedTransactions['general-accounts']) {
+      const generalAccountIncome = groupedTransactions['general-accounts']
+        .filter(t => t.transactionType === 'income');
+      if (generalAccountIncome.length > 0) {
+        incomeCategories.push('general-accounts');
+      }
+      
+      const generalAccountExpense = groupedTransactions['general-accounts']
+        .filter(t => t.transactionType === 'expense');
+      if (generalAccountExpense.length > 0) {
+        expenseCategories.push('general-accounts');
+      }
+    }
+    
+    // 🔧 检查是否有未分类交易，分别添加到收入和支出类别
+    if (groupedTransactions['uncategorized']) {
+      const uncategorizedIncome = groupedTransactions['uncategorized']
+        .filter(t => t.transactionType === 'income');
+      if (uncategorizedIncome.length > 0) {
+        incomeCategories.push('uncategorized');
+      }
+      
+      const uncategorizedExpense = groupedTransactions['uncategorized']
+        .filter(t => t.transactionType === 'expense');
+      if (uncategorizedExpense.length > 0) {
+        expenseCategories.push('uncategorized');
+      }
+    }
 
     // 添加收入标题
-    const incomeTransactions = incomeCategories.flatMap(cat => groupedTransactions[cat] || []);
+    const incomeTransactions = incomeCategories.flatMap(cat => {
+      if (cat === 'general-accounts' || cat === 'uncategorized') {
+        return groupedTransactions[cat]?.filter(t => t.transactionType === 'income') || [];
+      }
+      return groupedTransactions[cat] || [];
+    });
     
      if (incomeTransactions.length > 0) {
        tableData.push(createUnifiedTreeItem(
@@ -1352,7 +1487,16 @@ const TransactionManagementPage: React.FC = () => {
 
     // 处理收入子类别
     incomeCategories.forEach((category, categoryIndex) => {
-      const categoryTransactions = groupedTransactions[category] || [];
+      let categoryTransactions: Transaction[] = [];
+      
+      // 🔧 日常账户和未分类：按交易类型过滤
+      if (category === 'general-accounts' || category === 'uncategorized') {
+        categoryTransactions = (groupedTransactions[category] || [])
+          .filter(t => t.transactionType === 'income');
+      } else {
+        categoryTransactions = groupedTransactions[category] || [];
+      }
+      
       if (categoryTransactions.length === 0) return;
 
       // 添加类别节点
@@ -1369,14 +1513,41 @@ const TransactionManagementPage: React.FC = () => {
       if (category === 'event-finance') {
         const boardMemberGroups: Record<string, Transaction[]> = {};
         
+        // 🔍 调试：检查是否有不匹配的活动
+        const unmatchedActivities = new Set<string>();
+        
         categoryTransactions.forEach(transaction => {
-          const event = eventsMap.get(transaction.txAccount || '');
+          // 🔧 去除空格以确保匹配
+          const txAccount = (transaction.txAccount || '').trim();
+          
+          // 尝试精确匹配
+          let event = eventsMap.get(txAccount);
+          
+          // 如果精确匹配失败，尝试模糊匹配（去掉前后空格）
+          if (!event && txAccount) {
+            for (const [eventName, eventData] of eventsMap.entries()) {
+              if (eventName.trim() === txAccount) {
+                event = eventData;
+                break;
+              }
+            }
+          }
+          
+          if (!event && txAccount && txAccount !== 'uncategorized') {
+            unmatchedActivities.add(txAccount);
+          }
+          
           const boardMemberKey = event?.boardMember || 'unassigned';
           if (!boardMemberGroups[boardMemberKey]) {
             boardMemberGroups[boardMemberKey] = [];
           }
           boardMemberGroups[boardMemberKey].push(transaction);
         });
+        
+        // 🔍 如果有不匹配的活动，记录日志
+        if (unmatchedActivities.size > 0) {
+          console.warn('⚠️ [buildTreeTableData] 发现不匹配的活动:', Array.from(unmatchedActivities));
+        }
 
          const boardMemberKeys = Object.keys(boardMemberGroups);
          boardMemberKeys.forEach((boardMemberKey, boardIndex) => {
@@ -1392,7 +1563,32 @@ const TransactionManagementPage: React.FC = () => {
           const netTotal = incomeTotal - expenseTotal;
 
           // 计算活动数量
-          const eventNames = [...new Set(boardTransactions.map(t => t.txAccount).filter(name => name && name !== 'uncategorized'))] as string[];
+          // 🔧 去除空格以确保匹配
+          const eventNamesSet = new Set(
+            boardTransactions
+              .map(t => t.txAccount?.trim() || '')
+              .filter(name => name && name !== 'uncategorized')
+          ) as Set<string>;
+          let eventNames = Array.from(eventNamesSet);
+          
+          // 🔧 排序：先按活动日期从旧至新，再按活动名称字母排序
+          eventNames = eventNames.sort((name1, name2) => {
+            const event1 = eventsMap.get(name1);
+            const event2 = eventsMap.get(name2);
+            
+            // 获取活动日期
+            const date1 = event1?.startDate ? new Date(event1.startDate).getTime() : 0;
+            const date2 = event2?.startDate ? new Date(event2.startDate).getTime() : 0;
+            
+            // 先按日期排序（从旧到新）
+            if (date1 !== date2) {
+              return date1 - date2;
+            }
+            
+            // 如果日期相同，按名称字母排序（从A到Z）
+            return name1.localeCompare(name2, 'zh-CN');
+          });
+          
           const eventCount = eventNames.length;
 
            // 添加负责理事节点
@@ -1407,7 +1603,8 @@ const TransactionManagementPage: React.FC = () => {
 
           // 为每个活动创建子节点
           eventNames.forEach((eventName, eventIndex) => {
-            const eventItems = boardTransactions.filter(t => t.txAccount === eventName);
+            // 🔧 去除空格以确保精确匹配
+            const eventItems = boardTransactions.filter(t => (t.txAccount || '').trim() === eventName);
             const eventIncomeItems = eventItems.filter(t => t.transactionType === 'income');
             const eventExpenseItems = eventItems.filter(t => t.transactionType === 'expense');
             
@@ -1499,7 +1696,13 @@ const TransactionManagementPage: React.FC = () => {
     });
 
     // 添加支出标题
-    const expenseTransactions = expenseCategories.flatMap(cat => groupedTransactions[cat] || []);
+    const expenseTransactions = expenseCategories.flatMap(cat => {
+      if (cat === 'general-accounts' || cat === 'uncategorized') {
+        return groupedTransactions[cat]?.filter(t => t.transactionType === 'expense') || [];
+      }
+      return groupedTransactions[cat] || [];
+    });
+    
     if (expenseTransactions.length > 0) {
       tableData.push(createUnifiedTreeItem(
         'expense-header',
@@ -1509,10 +1712,19 @@ const TransactionManagementPage: React.FC = () => {
         expenseTransactions
       ));
     }
-
+    
     // 处理支出子类别
     expenseCategories.forEach((category, categoryIndex) => {
-      const categoryTransactions = groupedTransactions[category] || [];
+      let categoryTransactions: Transaction[] = [];
+      
+      // 🔧 日常账户和未分类：按交易类型过滤
+      if (category === 'general-accounts' || category === 'uncategorized') {
+        categoryTransactions = (groupedTransactions[category] || [])
+          .filter(t => t.transactionType === 'expense');
+      } else {
+        categoryTransactions = groupedTransactions[category] || [];
+      }
+      
       if (categoryTransactions.length === 0) return;
 
       // 添加类别节点
@@ -1601,8 +1813,10 @@ const TransactionManagementPage: React.FC = () => {
       let realTransactions = allTransactions.filter(t => !t.isVirtual);
     
     // 🆕 根据日期范围类型过滤交易
+    // 🔧 修复：需要保留当前年和前一年的数据用于统计对比
     if (treeDateRangeType !== 'all') {
       const year = parseInt(treeSelectedYear);
+      const previousYear = year - 1; // 前一年
       
       realTransactions = realTransactions.filter(transaction => {
         if (!transaction.transactionDate) return false;
@@ -1616,19 +1830,25 @@ const TransactionManagementPage: React.FC = () => {
           try {
             const fiscalPeriod = smartFiscalYearService.detectFiscalYearPeriod(year);
             const txDateStr = transaction.transactionDate.split('T')[0]; // 获取日期部分
-            return txDateStr >= fiscalPeriod.startDate && txDateStr <= fiscalPeriod.endDate;
+            // 🔧 保留当前财年和前一个财年的数据
+            const inCurrentFiscal = txDateStr >= fiscalPeriod.startDate && txDateStr <= fiscalPeriod.endDate;
+            
+            // 检查前一个财年
+            const previousFiscalPeriod = smartFiscalYearService.detectFiscalYearPeriod(previousYear);
+            const inPreviousFiscal = txDateStr >= previousFiscalPeriod.startDate && txDateStr <= previousFiscalPeriod.endDate;
+            
+            return inCurrentFiscal || inPreviousFiscal;
           } catch (error) {
             console.warn('Failed to detect fiscal year period:', error);
             // 回退到默认逻辑（10月1日-9月30日）
-            if (txMonth >= 10) {
-              return txYear === year;
-            } else {
-              return txYear === year + 1;
-            }
+            const inCurrentFiscal = (txMonth >= 10 && txYear === year) || (txMonth < 10 && txYear === year + 1);
+            const inPreviousFiscal = (txMonth >= 10 && txYear === previousYear) || (txMonth < 10 && txYear === previousYear + 1);
+            return inCurrentFiscal || inPreviousFiscal;
           }
         } else if (treeDateRangeType === 'calendar') {
           // 自然年：1月1日 至 12月31日
-          return txYear === year;
+          // 🔧 保留当前年和前一年的数据
+          return txYear === year || txYear === previousYear;
         }
         
         return true;
@@ -1738,6 +1958,9 @@ const TransactionManagementPage: React.FC = () => {
         categoryCount = validTransactions.length;
         
         validTransactions.forEach(transaction => {
+          // 🆕 排除内部转账
+          if (transaction.isInternalTransfer === true) return;
+          
           if (transaction.transactionType === 'income') {
             categoryTotal += transaction.amount || 0;  // 收入为正数
           } else {
@@ -1747,11 +1970,11 @@ const TransactionManagementPage: React.FC = () => {
       } else {
         // 其他类别：正常计算总收入
         const allTransactions = Object.values(subGroups).flat();
-        // 🆕 排除已拆分的父交易
+        // 🆕 排除已拆分的父交易和内部转账
         categoryTotal = allTransactions
-          .filter(t => t.isSplit !== true)
+          .filter(t => t.isSplit !== true && t.isInternalTransfer !== true)
           .reduce((sum, t) => sum + (t.amount || 0), 0);
-        categoryCount = allTransactions.filter(t => t.isSplit !== true).length;
+        categoryCount = allTransactions.filter(t => t.isSplit !== true && t.isInternalTransfer !== true).length;
       }
 
       
@@ -2085,8 +2308,8 @@ const TransactionManagementPage: React.FC = () => {
     }
   }, [treeDateRangeType, treeSelectedYear, viewMode]);
 
-  // 🆕 树形表格列配置
-  const treeTableColumns: ColumnsType<TreeTableItem> = [
+  // 🆕 树形表格列配置（使用 useMemo 确保依赖变化时更新）
+  const treeTableColumns: ColumnsType<TreeTableItem> = useMemo(() => [
     {
       title: '账户/项目名称',
       dataIndex: 'name',
@@ -2113,7 +2336,16 @@ const TransactionManagementPage: React.FC = () => {
       }
     },
     {
-      title: `${treeSelectedYear} (RM)`,
+      title: (() => {
+        // 动态生成第2列标题（当前选择的年份）
+        if (treeDateRangeType === 'fiscal') {
+          return `FY${treeSelectedYear} (RM)`;
+        } else if (treeDateRangeType === 'calendar') {
+          return `${treeSelectedYear} (RM)`;
+        } else {
+          return `${treeSelectedYear} (RM)`;
+        }
+      })(),
       dataIndex: 'year2025',
       key: 'year2025',
       align: 'right',
@@ -2128,7 +2360,19 @@ const TransactionManagementPage: React.FC = () => {
       )
     },
     {
-      title: `${parseInt(treeSelectedYear) - 1} (RM)`,
+      title: (() => {
+        // 🔧 动态生成第3列标题（前一年，根据日期范围类型）
+        const selectedYear = parseInt(treeSelectedYear);
+        const previousYear = selectedYear - 1;
+        
+        if (treeDateRangeType === 'fiscal') {
+          return `FY${previousYear} (RM)`;
+        } else if (treeDateRangeType === 'calendar') {
+          return `${previousYear} (RM)`;
+        } else {
+          return `${previousYear} (RM)`;
+        }
+      })(),
       dataIndex: 'year2024',
       key: 'year2024',
       align: 'right',
@@ -2142,7 +2386,7 @@ const TransactionManagementPage: React.FC = () => {
         </span>
       )
     }
-  ];
+  ], [treeDateRangeType, treeSelectedYear]);
 
   const columns: ColumnsType<Transaction> = [
     {
@@ -2583,7 +2827,7 @@ const TransactionManagementPage: React.FC = () => {
                     <Card className="mb-6" bordered={false}>
           <div className="flex flex-wrap gap-4 items-center">
             <Search
-              placeholder="模糊搜索：主描述、副描述、金额、付款人、备注、收据号、发票号、交易类型..."
+              placeholder="模糊搜索：主描述、副描述、二次分类、金额、付款人、备注、收据号、发票号、交易类型..."
               onSearch={setSearchText}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
@@ -2596,25 +2840,46 @@ const TransactionManagementPage: React.FC = () => {
                           style={{ width: 180 }}
                           placeholder="主要类别"
               value={categoryFilter}
-              onChange={setCategoryFilter}
+              onChange={(value) => {
+                setCategoryFilter(value);
+                if (value === 'all') {
+                  setSubCategoryFilter('all'); // 重置二次分类筛选
+                }
+              }}
             >
               <Option value="all">所有类别</Option>
-                          <Option value="member-fees">会员费用</Option>
-                          <Option value="event-finance">活动财务</Option>
-                          <Option value="general-accounts">日常账户</Option>
-                          <Option value="uncategorized">🔴 未分类</Option>
+              <Option value="member-fees">会员费用</Option>
+              <Option value="event-finance">活动财务</Option>
+              <Option value="general-accounts">日常账户</Option>
+              <Option value="uncategorized">未分类</Option>
             </Select>
 
-                        {/* 🆕 未分类快速筛选按钮 */}
-                        <Button 
-                          type={hasUncategorized ? "default" : "default"}
-                          danger={hasUncategorized}
-                          disabled={!hasUncategorized}
-                          icon={<TagOutlined />}
-                          onClick={() => setCategoryFilter('uncategorized')}
-                        >
-                          {hasUncategorized ? '🔴 显示未分类' : '✅ 无未分类'}
-                        </Button>
+            {/* 🆕 二次分类筛选下拉框 */}
+            {categoryFilter !== 'all' && (
+              <Select
+                style={{ width: 180 }}
+                placeholder="二次分类"
+                value={subCategoryFilter}
+                onChange={setSubCategoryFilter}
+                showSearch
+                filterOption={(input, option) => {
+                  const label = option?.label || option?.value;
+                  return String(label).toLowerCase().includes(input.toLowerCase());
+                }}
+              >
+                <Option value="all">全部二次分类</Option>
+                {/* 🆕 未分类选项 */}
+                {availableSubCategories.length > 0 && (
+                  <Option value="uncategorized">未分类</Option>
+                )}
+                {/* 🆕 动态生成的其他二次分类选项 */}
+                {availableSubCategories.map(subCategory => (
+                  <Option key={subCategory} value={subCategory}>
+                    {subCategory}
+                  </Option>
+                ))}
+              </Select>
+            )}
 
             <Button icon={<DownloadOutlined />}>导出报表</Button>
             <div className="ml-auto">
@@ -2852,6 +3117,25 @@ const TransactionManagementPage: React.FC = () => {
         >
           <div style={{ marginBottom: 16 }}>
             <Space direction="vertical" style={{ width: '100%' }}>
+              {/* 🆕 统一银行账户选择 */}
+              <div>
+                <span style={{ color: 'red', marginRight: 8 }}>*</span>
+                <span style={{ marginRight: 8 }}>银行账户：</span>
+                <Select
+                  value={selectedBankAccountId}
+                  onChange={setSelectedBankAccountId}
+                  style={{ width: 200 }}
+                  placeholder="请选择银行账户"
+                  status={!selectedBankAccountId ? 'error' : ''}
+                >
+                  {bankAccounts.map(account => (
+                    <Option key={account.id} value={account.id}>
+                      {account.accountName}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+              
               <div style={{ color: '#666', fontSize: '12px' }}>
                 💡 提示：可直接粘贴Excel表格数据（格式：描述 ｜ 付款人/收款人 ｜ 金额 ｜ 日期），或手动添加行
               </div>
@@ -2877,15 +3161,27 @@ const TransactionManagementPage: React.FC = () => {
             scroll={{ y: 400 }}
             columns={[
               {
-                title: <span style={{ color: 'red' }}>描述 *</span>,
-                dataIndex: 'description',
-                width: 200,
+                title: <span style={{ color: 'red' }}>主描述 *</span>,
+                dataIndex: 'mainDescription',
+                width: 180,
                 render: (text, record) => (
                   <Input
                     value={text}
-                    onChange={(e) => handleBulkDataChange(record.key, 'description', e.target.value)}
-                    placeholder="请输入描述"
+                    onChange={(e) => handleBulkDataChange(record.key, 'mainDescription', e.target.value)}
+                    placeholder="主描述"
                     status={!text ? 'error' : ''}
+                  />
+                ),
+              },
+              {
+                title: '副描述',
+                dataIndex: 'subDescription',
+                width: 120,
+                render: (text, record) => (
+                  <Input
+                    value={text}
+                    onChange={(e) => handleBulkDataChange(record.key, 'subDescription', e.target.value)}
+                    placeholder="副描述"
                   />
                 ),
               },
@@ -2959,26 +3255,6 @@ const TransactionManagementPage: React.FC = () => {
                     <Option value="event-finance">活动财务</Option>
                     <Option value="general-accounts">日常账户</Option>
               </Select>
-                ),
-              },
-              {
-                title: <span style={{ color: 'red' }}>银行账户 *</span>,
-                dataIndex: 'bankAccountId',
-                width: 150,
-                render: (text, record) => (
-                  <Select
-                    value={text}
-                    onChange={(value) => handleBulkDataChange(record.key, 'bankAccountId', value)}
-                    style={{ width: '100%' }}
-                    placeholder="选择账户"
-                    status={!text ? 'error' : ''}
-                  >
-                    {bankAccounts.map(account => (
-                      <Option key={account.id} value={account.id}>
-                        {account.accountName}
-                      </Option>
-                    ))}
-                  </Select>
                 ),
               },
               {
