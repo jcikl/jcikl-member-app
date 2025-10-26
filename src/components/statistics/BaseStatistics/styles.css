@@ -1,0 +1,51 @@
+/* BaseStatistics Styles */
+.base-statistics {
+  /* 基础统计组件样式 */
+}
+
+.base-statistics .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.base-statistics .ant-card-body {
+  padding: 24px;
+}
+
+.base-statistics-item {
+  /* 统计项样式 */
+}
+
+.base-statistics-item .ant-statistic-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.base-statistics-item .ant-statistic-content {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* 趋势样式 */
+.base-statistics-item .trend-up {
+  color: #52c41a;
+}
+
+.base-statistics-item .trend-down {
+  color: #ff4d4f;
+}
+
+.base-statistics-item .trend-neutral {
+  color: #666;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .base-statistics .ant-card-body {
+    padding: 16px;
+  }
+  
+  .base-statistics-item .ant-statistic-content {
+    font-size: 20px;
+  }
+}

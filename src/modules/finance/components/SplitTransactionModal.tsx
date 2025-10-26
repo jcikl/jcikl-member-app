@@ -7,7 +7,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   Form,
   Input,
   InputNumber,
@@ -27,6 +26,7 @@ import {
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
+import { BaseModal } from '@/components/common/BaseModal';
 import type { Transaction } from '../types';
 
 const { Option } = Select;
@@ -182,11 +182,10 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
 
       setLoading(true);
       await onOk(splits);
-      message.success('交易拆分成功');
-      setSplits([{ amount: 0, category: undefined, notes: undefined }]);
-      form.resetFields();
+      // 成功消息由BaseModal的onSuccess回调处理
     } catch (error: any) {
-      message.error(error.message || '拆分失败');
+      // 错误消息由BaseModal的onError回调处理
+      throw error; // 重新抛出错误，让BaseModal处理
     } finally {
       setLoading(false);
     }
@@ -224,14 +223,14 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
   };
 
   return (
-    <Modal
+    <BaseModal
+      visible={visible}
       title={
         <Space>
           <span>{transaction.isSplit ? '重新拆分交易' : '拆分交易'}</span>
           <Tag color="blue">RM {parentAmount.toFixed(2)}</Tag>
         </Space>
       }
-      open={visible}
       onOk={handleOk}
       onCancel={handleCancel}
       width={800}
@@ -270,6 +269,14 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
           </Space>
         </div>
       }
+      onSuccess={() => {
+        message.success('交易拆分成功');
+        setSplits([{ amount: 0, category: undefined, notes: undefined }]);
+        form.resetFields();
+      }}
+      onError={(error) => {
+        message.error(error.message || '拆分失败');
+      }}
     >
       {/* 🆕 加载状态 */}
       {loadingExistingSplits && (
@@ -454,7 +461,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       </Form>
         </>
       )}
-    </Modal>
+    </BaseModal>
   );
 };
 

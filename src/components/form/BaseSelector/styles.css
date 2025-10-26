@@ -1,0 +1,23 @@
+/* BaseSelector Styles */
+.base-selector {
+  /* 基础选择器样式 */
+}
+
+.base-selector .ant-select-selector {
+  border-radius: 6px;
+}
+
+.base-selector .ant-select-selection-item {
+  font-weight: 500;
+}
+
+.base-selector .ant-select-selection-placeholder {
+  color: #bfbfbf;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .base-selector {
+    width: 100% !important;
+  }
+}

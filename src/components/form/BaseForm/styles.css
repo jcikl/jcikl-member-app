@@ -1,0 +1,27 @@
+/* BaseForm Styles */
+.base-form {
+  /* 基础表单样式 */
+}
+
+.base-form .ant-form-item-label {
+  font-weight: 500;
+}
+
+.base-form .ant-form-item-required::before {
+  color: #ff4d4f;
+}
+
+.base-form .ant-form-item-explain-error {
+  color: #ff4d4f;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .base-form .ant-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .base-form .ant-form-item-label {
+    padding-bottom: 4px;
+  }
+}

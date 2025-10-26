@@ -76,6 +76,7 @@ import { getActiveTransactionPurposes } from '../../../system/services/transacti
 import { getEvents } from '../../../event/services/eventService'; // 🆕 导入活动服务
 import { getMembers } from '../../../member/services/memberService'; // 🆕 导入会员服务
 import type { Event as EventType } from '../../../event/types'; // 🆕 导入活动类型
+import { smartFiscalYearService } from '../../services/smartFiscalYearService'; // 🆕 导入智能财年服务
 import type { Transaction, TransactionFormData, TransactionStatus, BankAccount } from '../../types';
 import './styles.css';
 
@@ -159,6 +160,7 @@ const TransactionManagementPage: React.FC = () => {
   useEffect(() => {
     loadBankAccounts();
     loadPurposeOptions(); // 🆕 加载交易用途选项
+    initializeFiscalYearService(); // 🆕 初始化智能财年服务
   }, []);
 
   // 🆕 加载交易用途选项
@@ -168,6 +170,36 @@ const TransactionManagementPage: React.FC = () => {
       setPurposeOptions(purposes);
     } catch (error) {
       console.error('加载交易用途选项失败:', error);
+    }
+  };
+
+  // 🆕 初始化智能财年服务
+  const initializeFiscalYearService = async () => {
+    try {
+      // 从本地存储加载财年配置，如果没有则使用默认配置
+      const savedConfig = localStorage.getItem('fiscalYearConfig');
+      let config;
+      
+      if (savedConfig) {
+        config = JSON.parse(savedConfig);
+      } else {
+        // 使用默认配置
+        config = {
+          id: 'jci-kl-fy',
+          name: 'JCI KL 财年',
+          startMonth: 10,
+          startDay: 1,
+          isActive: true,
+          isDefault: true,
+          description: 'JCI KL 财年从每年10月1日开始',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      smartFiscalYearService.setConfig(config);
+    } catch (error) {
+      console.error('初始化智能财年服务失败:', error);
     }
   };
 
@@ -1191,8 +1223,8 @@ const TransactionManagementPage: React.FC = () => {
     isLastChild: boolean; // 用于决定使用 ├── 还是 └──
     count: number; // 交易数量
     totalAmount: number; // 总金额
-    currentYear: number; // 当前年份金额
-    pastYear: number; // 过去年份金额
+    year2025: number; // 2025年金额
+    year2024: number; // 2024年金额
     transactions: Transaction[]; // 关联的交易数据
     category?: string; // 类别
     txAccount?: string; // 子账户
@@ -1202,28 +1234,60 @@ const TransactionManagementPage: React.FC = () => {
 
   // 🆕 计算年度统计
   const calculateYearlyStats = (transactions: Transaction[], targetYear?: string) => {
-    // 确定当前年份和过去年份
-    const currentYear = targetYear ? parseInt(targetYear) : new Date().getFullYear();
-    const pastYear = currentYear - 1;
+    // 确定目标年份
+    const selectedYear = targetYear ? parseInt(targetYear) : new Date().getFullYear();
     
     console.log('🔍 [calculateYearlyStats] Calculating stats for:', {
       transactionsCount: transactions.length,
-      currentYear,
-      pastYear,
+      selectedYear,
       targetYear,
+      treeDateRangeType,
       transactions: transactions.slice(0, 3)
     });
     
-    const stats = {
-      [currentYear]: { income: 0, expense: 0, net: 0 },
-      [pastYear]: { income: 0, expense: 0, net: 0 }
-    };
+    // 根据日期范围类型确定要统计的年份
+    let yearsToCalculate: number[] = [];
+    
+    if (treeDateRangeType === 'fiscal') {
+      // 财年模式：显示选择的财年和前一个财年
+      yearsToCalculate = [selectedYear, selectedYear - 1];
+    } else if (treeDateRangeType === 'calendar') {
+      // 自然年模式：显示选择的年份和前一年
+      yearsToCalculate = [selectedYear, selectedYear - 1];
+    } else {
+      // 全部模式：显示当前年份和过去年份
+      const currentYear = new Date().getFullYear();
+      yearsToCalculate = [currentYear, currentYear - 1];
+    }
+    
+    const stats: Record<number, { income: number; expense: number; net: number }> = {};
+    
+    // 初始化统计对象
+    yearsToCalculate.forEach(year => {
+      stats[year] = { income: 0, expense: 0, net: 0 };
+    });
     
     transactions.forEach(transaction => {
       if (transaction.isSplit === true) return; // 跳过已拆分的父交易
       
-      const transactionYear = new Date(transaction.transactionDate).getFullYear();
+      const transactionDate = dayjs(transaction.transactionDate);
       const amount = transaction.amount || 0;
+      
+      let transactionYear: number;
+      
+      if (treeDateRangeType === 'fiscal') {
+        // 财年模式：根据财年配置判断交易属于哪个财年
+        try {
+          const fiscalYear = smartFiscalYearService.detectFiscalYearPeriod(transactionDate.year());
+          transactionYear = fiscalYear.year;
+        } catch (error) {
+          console.warn('Failed to detect fiscal year for transaction:', error);
+          transactionYear = transactionDate.year();
+        }
+      } else {
+        // 自然年模式：使用交易的实际年份
+        transactionYear = transactionDate.year();
+      }
       
       console.log('🔍 [calculateYearlyStats] Processing transaction:', {
         transactionId: transaction.id,
@@ -1231,11 +1295,14 @@ const TransactionManagementPage: React.FC = () => {
         transactionYear,
         amount,
         transactionType: transaction.transactionType,
-        currentYear,
-        pastYear
+        yearsToCalculate,
+        dateRangeType: treeDateRangeType,
+        description: transaction.subDescription,
+        category: transaction.category
       });
       
-      if (transactionYear === currentYear || transactionYear === pastYear) {
+      // 检查交易是否在要统计的年份范围内
+      if (yearsToCalculate.includes(transactionYear)) {
         if (transaction.transactionType === 'income') {
           stats[transactionYear].income += amount;
           stats[transactionYear].net += amount;
@@ -1246,7 +1313,12 @@ const TransactionManagementPage: React.FC = () => {
       }
     });
     
-    console.log('🔍 [calculateYearlyStats] Final stats:', stats);
+    console.log('🔍 [calculateYearlyStats] Final stats:', {
+      yearsToCalculate,
+      stats,
+      treeDateRangeType
+    });
+    
     return stats;
   };
 
@@ -1255,6 +1327,43 @@ const TransactionManagementPage: React.FC = () => {
     // 确定当前年份和过去年份
     const currentYear = targetYear ? parseInt(targetYear) : new Date().getFullYear();
     const pastYear = currentYear - 1;
+    
+    // 辅助函数：从统计结果中获取年份数据
+    const getYearlyData = (stats: Record<number, { income: number; expense: number; net: number }>) => {
+      const statsYears = Object.keys(stats).map(Number).sort((a, b) => b - a);
+      const currentYearKey = statsYears[0] || currentYear;
+      const pastYearKey = statsYears[1] || pastYear;
+      return {
+        year2025: stats[currentYearKey]?.net || 0,
+        year2024: stats[pastYearKey]?.net || 0
+      };
+    };
+
+    // 辅助函数：为每个账户/项目创建统一的树形项目（不按年份分开）
+    const createUnifiedTreeItem = (
+      key: string,
+      name: string,
+      level: number,
+      isLastChild: boolean,
+      transactions: Transaction[],
+      additionalProps: Partial<TreeTableItem> = {}
+    ): TreeTableItem => {
+      const stats = calculateYearlyStats(transactions, targetYear);
+      const yearlyData = getYearlyData(stats);
+      const totalAmount = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      return {
+        key,
+        name,
+        level,
+        isLastChild,
+        count: transactions.length,
+        totalAmount,
+        ...yearlyData,
+        transactions,
+        ...additionalProps
+      };
+    };
     
     console.log('🔍 [buildTreeTableData] Starting with:', {
       transactionsCount: transactions.length,
@@ -1328,20 +1437,13 @@ const TransactionManagementPage: React.FC = () => {
     });
     
      if (incomeTransactions.length > 0) {
-       const incomeStats = calculateYearlyStats(incomeTransactions, targetYear);
-       console.log('🔍 [buildTreeTableData] Income stats:', incomeStats);
-       
-       tableData.push({
-         key: 'income-header',
-         name: '收入',
-         level: 0,
-         isLastChild: false,
-         count: incomeTransactions.length,
-         totalAmount: incomeStats[currentYear].net + incomeStats[pastYear].net,
-         currentYear: incomeStats[currentYear].net,
-         pastYear: incomeStats[pastYear].net,
-         transactions: incomeTransactions,
-       });
+       tableData.push(createUnifiedTreeItem(
+         'income-header',
+         '收入',
+         0,
+         false,
+         incomeTransactions
+       ));
      }
 
     // 处理收入子类别
@@ -1349,22 +1451,15 @@ const TransactionManagementPage: React.FC = () => {
       const categoryTransactions = groupedTransactions[category] || [];
       if (categoryTransactions.length === 0) return;
 
-      const categoryStats = calculateYearlyStats(categoryTransactions, targetYear);
-      const categoryTotal = categoryTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-      
       // 添加类别节点
-      tableData.push({
-        key: `income-${category}`,
-        name: `${categoryNameMap[category] || category} (${categoryTransactions.length})`,
-        level: 1,
-        isLastChild: categoryIndex === incomeCategories.length - 1,
-        count: categoryTransactions.length,
-        totalAmount: categoryTotal,
-        currentYear: categoryStats[currentYear].net,
-        pastYear: categoryStats[pastYear].net,
-        transactions: categoryTransactions,
-        category,
-      });
+      tableData.push(createUnifiedTreeItem(
+        `income-${category}`,
+        `${categoryNameMap[category] || category} (${categoryTransactions.length})`,
+        1,
+        categoryIndex === incomeCategories.length - 1,
+        categoryTransactions,
+        { category }
+      ));
 
       // 特殊处理活动财务：按负责理事分组
       if (category === 'event-finance') {
@@ -1382,7 +1477,6 @@ const TransactionManagementPage: React.FC = () => {
          const boardMemberKeys = Object.keys(boardMemberGroups);
          boardMemberKeys.forEach((boardMemberKey, boardIndex) => {
            const boardTransactions = boardMemberGroups[boardMemberKey];
-           const boardStats = calculateYearlyStats(boardTransactions, targetYear);
           
           // 计算净收入
           const incomeTotal = boardTransactions
@@ -1398,19 +1492,14 @@ const TransactionManagementPage: React.FC = () => {
           const eventCount = eventNames.length;
 
            // 添加负责理事节点
-           tableData.push({
-             key: `income-${category}-board-${boardMemberKey}`,
-             name: `${boardMemberKey === 'unassigned' ? '未设置负责理事' : boardMemberNameMap[boardMemberKey] || boardMemberKey} (${eventCount}个活动) 净收入: RM ${netTotal.toFixed(2)}`,
-             level: 2,
-             isLastChild: boardIndex === boardMemberKeys.length - 1,
-             count: boardTransactions.length,
-             totalAmount: netTotal,
-             currentYear: boardStats[currentYear].net,
-             pastYear: boardStats[pastYear].net,
-             transactions: boardTransactions,
-             category,
-             boardMember: boardMemberKey,
-           });
+           tableData.push(createUnifiedTreeItem(
+             `income-${category}-board-${boardMemberKey}`,
+             `${boardMemberKey === 'unassigned' ? '未设置负责理事' : boardMemberNameMap[boardMemberKey] || boardMemberKey} (${eventCount}个活动) 净收入: RM ${netTotal.toFixed(2)}`,
+             2,
+             boardIndex === boardMemberKeys.length - 1,
+             boardTransactions,
+             { category, boardMember: boardMemberKey }
+           ));
 
           // 为每个活动创建子节点
           eventNames.forEach((eventName, eventIndex) => {
@@ -1433,23 +1522,15 @@ const TransactionManagementPage: React.FC = () => {
               }
             }
 
-             const eventStats = calculateYearlyStats(eventItems, targetYear);
-             
              // 添加活动节点
-             tableData.push({
-               key: `income-${category}-board-${boardMemberKey}-event-${eventName}`,
-               name: `${eventName} (${eventDate}) 净收入: RM ${eventNetTotal.toFixed(2)}`,
-               level: 3,
-               isLastChild: eventIndex === eventNames.length - 1,
-               count: eventItems.length,
-               totalAmount: eventNetTotal,
-               currentYear: eventStats[currentYear].net,
-               pastYear: eventStats[pastYear].net,
-               transactions: eventItems,
-               category,
-               boardMember: boardMemberKey,
-               eventName,
-             });
+             tableData.push(createUnifiedTreeItem(
+               `income-${category}-board-${boardMemberKey}-event-${eventName}`,
+               `${eventName} (${eventDate}) 净收入: RM ${eventNetTotal.toFixed(2)}`,
+               3,
+               eventIndex === eventNames.length - 1,
+               eventItems,
+               { category, boardMember: boardMemberKey, eventName }
+             ));
           });
         });
       } else {
@@ -1466,7 +1547,6 @@ const TransactionManagementPage: React.FC = () => {
         const subGroupKeys = Object.keys(subGroups);
         subGroupKeys.forEach((txAccount, subIndex) => {
           const items = subGroups[txAccount];
-          const subStats = calculateYearlyStats(items, targetYear);
           const subTotal = items.reduce((sum, t) => sum + (t.amount || 0), 0);
           
           // 格式化显示名称
@@ -1502,19 +1582,14 @@ const TransactionManagementPage: React.FC = () => {
           }
           
            // 添加子账户节点
-           tableData.push({
-             key: `income-${category}-${txAccount}`,
-             name: `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
-             level: 2,
-             isLastChild: subIndex === subGroupKeys.length - 1,
-             count: items.length,
-             totalAmount: subTotal,
-             currentYear: subStats[currentYear].net,
-             pastYear: subStats[pastYear].net,
-             transactions: items,
-             category,
-             txAccount,
-           });
+           tableData.push(createUnifiedTreeItem(
+             `income-${category}-${txAccount}`,
+             `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
+             2,
+             subIndex === subGroupKeys.length - 1,
+             items,
+             { category, txAccount }
+           ));
         });
       }
     });
@@ -1522,18 +1597,13 @@ const TransactionManagementPage: React.FC = () => {
     // 添加支出标题
     const expenseTransactions = expenseCategories.flatMap(cat => groupedTransactions[cat] || []);
     if (expenseTransactions.length > 0) {
-      const expenseStats = calculateYearlyStats(expenseTransactions, targetYear);
-      tableData.push({
-        key: 'expense-header',
-        name: '支出',
-        level: 0,
-        isLastChild: false,
-        count: expenseTransactions.length,
-        totalAmount: expenseStats[currentYear].net + expenseStats[pastYear].net,
-        currentYear: expenseStats[currentYear].net,
-        pastYear: expenseStats[pastYear].net,
-        transactions: expenseTransactions,
-      });
+      tableData.push(createUnifiedTreeItem(
+        'expense-header',
+        '支出',
+        0,
+        false,
+        expenseTransactions
+      ));
     }
 
     // 处理支出子类别
@@ -1541,22 +1611,15 @@ const TransactionManagementPage: React.FC = () => {
       const categoryTransactions = groupedTransactions[category] || [];
       if (categoryTransactions.length === 0) return;
 
-      const categoryStats = calculateYearlyStats(categoryTransactions, targetYear);
-      const categoryTotal = categoryTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-      
       // 添加类别节点
-      tableData.push({
-        key: `expense-${category}`,
-        name: `${categoryNameMap[category] || category} (${categoryTransactions.length})`,
-        level: 1,
-        isLastChild: categoryIndex === expenseCategories.length - 1,
-        count: categoryTransactions.length,
-        totalAmount: categoryTotal,
-        currentYear: categoryStats[currentYear].net,
-        pastYear: categoryStats[pastYear].net,
-        transactions: categoryTransactions,
-        category,
-      });
+      tableData.push(createUnifiedTreeItem(
+        `expense-${category}`,
+        `${categoryNameMap[category] || category} (${categoryTransactions.length})`,
+        1,
+        categoryIndex === expenseCategories.length - 1,
+        categoryTransactions,
+        { category }
+      ));
 
       // 按子账户分组
       const subGroups = categoryTransactions.reduce((acc, transaction) => {
@@ -1571,7 +1634,6 @@ const TransactionManagementPage: React.FC = () => {
       const subGroupKeys = Object.keys(subGroups);
       subGroupKeys.forEach((txAccount, subIndex) => {
         const items = subGroups[txAccount];
-        const subStats = calculateYearlyStats(items, targetYear);
         const subTotal = items.reduce((sum, t) => sum + (t.amount || 0), 0);
         
         // 格式化显示名称
@@ -1600,19 +1662,14 @@ const TransactionManagementPage: React.FC = () => {
         }
         
         // 添加子账户节点
-        tableData.push({
-          key: `expense-${category}-${txAccount}`,
-          name: `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
-          level: 2,
-          isLastChild: subIndex === subGroupKeys.length - 1,
-          count: items.length,
-          totalAmount: subTotal,
-          currentYear: subStats[currentYear].net,
-          pastYear: subStats[pastYear].net,
-          transactions: items,
-          category,
-          txAccount,
-        });
+        tableData.push(createUnifiedTreeItem(
+          `expense-${category}-${txAccount}`,
+          `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
+          2,
+          subIndex === subGroupKeys.length - 1,
+          items,
+          { category, txAccount }
+        ));
       });
     });
 
@@ -1624,8 +1681,8 @@ const TransactionManagementPage: React.FC = () => {
         key: item.key,
         name: item.name,
         level: item.level,
-        currentYear: item.currentYear,
-        pastYear: item.pastYear,
+        year2025: item.year2025,
+        year2024: item.year2024,
         count: item.count
       }))
     });
@@ -1679,14 +1736,19 @@ const TransactionManagementPage: React.FC = () => {
         const txMonth = txDate.getMonth() + 1; // 1-12
         
         if (treeDateRangeType === 'fiscal') {
-          // 财年：10月1日 至 次年9月30日
-          // 例如：FY2024 = 2024-10-01 至 2025-09-30
-          if (txMonth >= 10) {
-            // 10-12月属于当前财年
-            return txYear === year;
-          } else {
-            // 1-9月属于上一财年
-            return txYear === year + 1;
+          // 使用智能财年服务计算财年范围
+          try {
+            const fiscalPeriod = smartFiscalYearService.detectFiscalYearPeriod(year);
+            const txDateStr = transaction.transactionDate.split('T')[0]; // 获取日期部分
+            return txDateStr >= fiscalPeriod.startDate && txDateStr <= fiscalPeriod.endDate;
+          } catch (error) {
+            console.warn('Failed to detect fiscal year period:', error);
+            // 回退到默认逻辑（10月1日-9月30日）
+            if (txMonth >= 10) {
+              return txYear === year;
+            } else {
+              return txYear === year + 1;
+            }
           }
         } else if (treeDateRangeType === 'calendar') {
           // 自然年：1月1日 至 12月31日
@@ -2217,8 +2279,8 @@ const TransactionManagementPage: React.FC = () => {
     },
     {
       title: `${treeSelectedYear} (RM)`,
-      dataIndex: 'currentYear',
-      key: 'currentYear',
+      dataIndex: 'year2025',
+      key: 'year2025',
       align: 'right',
       width: 120,
       render: (amount: number) => (
@@ -2232,8 +2294,8 @@ const TransactionManagementPage: React.FC = () => {
     },
     {
       title: `${parseInt(treeSelectedYear) - 1} (RM)`,
-      dataIndex: 'pastYear',
-      key: 'pastYear',
+      dataIndex: 'year2024',
+      key: 'year2024',
       align: 'right',
       width: 120,
       render: (amount: number) => (
@@ -2817,7 +2879,7 @@ const TransactionManagementPage: React.FC = () => {
                           buttonStyle="solid"
                         >
                           <Radio.Button value="all">全部</Radio.Button>
-                          <Radio.Button value="fiscal">财年 (10月-9月)</Radio.Button>
+                          <Radio.Button value="fiscal">财年 (基于配置)</Radio.Button>
                           <Radio.Button value="calendar">自然年 (1月-12月)</Radio.Button>
                         </Radio.Group>
                         
@@ -2840,7 +2902,14 @@ const TransactionManagementPage: React.FC = () => {
                             
                             <Text type="secondary" style={{ fontSize: 12 }}>
                               {treeDateRangeType === 'fiscal' 
-                                ? `${treeSelectedYear}-10-01 至 ${parseInt(treeSelectedYear) + 1}-09-30`
+                                ? (() => {
+                                    try {
+                                      const fiscalPeriod = smartFiscalYearService.detectFiscalYearPeriod(parseInt(treeSelectedYear));
+                                      return `${fiscalPeriod.startDate} 至 ${fiscalPeriod.endDate}`;
+                                    } catch (error) {
+                                      return `${treeSelectedYear}-10-01 至 ${parseInt(treeSelectedYear) + 1}-09-30`;
+                                    }
+                                  })()
                                 : `${treeSelectedYear}-01-01 至 ${treeSelectedYear}-12-31`
                               }
                             </Text>

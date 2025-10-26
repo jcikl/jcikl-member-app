@@ -18,6 +18,14 @@ export type { PermissionGuardProps } from './common/PermissionGuard/types';
 
 // Form Components
 export * from './form';
+export { BaseForm } from './form/BaseForm';
+export type { BaseFormField, BaseFormProps } from './form/BaseForm/types';
+export { BaseSelector, MemberSelector, EventSelector, YearSelector } from './form/BaseSelector';
+export type { BaseSelectorProps, MemberSelectorProps, EventSelectorProps, YearSelectorProps } from './form/BaseSelector/types';
+export { BaseDatePicker, BaseDateRangePicker, FiscalYearDatePicker, EventDatePicker } from './form/BaseDatePicker';
+export type { BaseDatePickerProps, BaseDateRangePickerProps, FiscalYearDatePickerProps, EventDatePickerProps } from './form/BaseDatePicker/types';
+export { FormBuilder } from './form/FormBuilder';
+export type { FormField } from './form/FormBuilder';
 export { DynamicFormBuilder } from './form/DynamicFormBuilder';
 export type { FormSchema, FormFieldConfig, DynamicFormBuilderProps } from './form/DynamicFormBuilder/types';
 export { FiscalYearPicker } from './form/FiscalYearPicker';
@@ -25,10 +33,18 @@ export type { FiscalYearPickerProps } from './form/FiscalYearPicker/types';
 export { FileUploadZone } from './form/FileUploadZone';
 export type { UploadedFile, FileUploadZoneProps } from './form/FileUploadZone/types';
 
-// Card Components
-export { StatCard } from './cards/StatCard';
+// Statistics Components
+export { BaseStatistics, FinancialStatistics, MemberStatistics, EventStatistics } from './statistics/BaseStatistics';
+export type { 
+  BaseStatisticsProps, 
+  StatisticItem,
+  FinancialStatisticsProps,
+  MemberStatisticsProps,
+  EventStatisticsProps 
+} from './statistics/BaseStatistics/types';
+
 export { MetricCard } from './cards/MetricCard';
-export type { MetricCardProps, ChartDataPoint, TrendDirection } from './cards/MetricCard/types';
+export type { MetricCardProps } from './cards/MetricCard/types';
 
 export { PricingTierCard } from './cards/PricingTierCard';
 export type { PricingTier, PricingTierCardProps } from './cards/PricingTierCard/types';
@@ -37,6 +53,8 @@ export { MemberProfileCard } from './cards/MemberProfileCard';
 export type { MemberProfile, MemberProfileCardProps } from './cards/MemberProfileCard/types';
 
 // Table Components
+export { BaseTable } from './table/BaseTable';
+export type { BaseTableProps } from './table/BaseTable/types';
 export { DataTable } from './table/DataTable';
 export { DataGrid } from './table/DataGrid';
 export type { DataGridColumn, DataGridProps } from './table/DataGrid/types';
@@ -44,6 +62,14 @@ export type { DataGridColumn, DataGridProps } from './table/DataGrid/types';
 // Business Components
 export { FilterPanel } from './business/FilterPanel';
 export type { FilterField, FilterOption, FilterPreset, FilterPanelProps } from './business/FilterPanel/types';
+export { BaseSearchFilter, TransactionSearchFilter, MemberSearchFilter } from './business/BaseSearchFilter';
+export type { 
+  BaseSearchFilterProps, 
+  SearchFilterField,
+  SearchFilterPreset,
+  TransactionSearchFilterProps,
+  MemberSearchFilterProps 
+} from './business/BaseSearchFilter/types';
 
 export { DetailDrawer } from './business/DetailDrawer';
 export type { TabConfig, ActionButton, DetailDrawerProps } from './business/DetailDrawer/types';

@@ -1,0 +1,31 @@
+/* BaseDatePicker Styles */
+.base-date-picker,
+.base-date-range-picker {
+  /* 基础日期选择器样式 */
+}
+
+.base-date-picker .ant-picker-input > input,
+.base-date-range-picker .ant-picker-input > input {
+  font-weight: 500;
+}
+
+.base-date-picker .ant-picker-placeholder,
+.base-date-range-picker .ant-picker-placeholder {
+  color: #bfbfbf;
+}
+
+.fiscal-year-date-picker {
+  /* 财年日期选择器样式 */
+}
+
+.event-date-picker {
+  /* 活动日期选择器样式 */
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .base-date-picker,
+  .base-date-range-picker {
+    width: 100% !important;
+  }
+}

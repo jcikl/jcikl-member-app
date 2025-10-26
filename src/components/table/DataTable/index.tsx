@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
-import { Table, Input, Button, Space } from 'antd';
-import { ExportOutlined, ReloadOutlined } from '@ant-design/icons';
+import React from 'react';
 import type { TableProps, ColumnType } from 'antd/es/table';
-import { globalComponentService } from '@/config';
+import { BaseTable } from '../BaseTable';
 import './styles.css';
 
 interface DataTableProps<T> extends Omit<TableProps<T>, 'columns'> {
@@ -18,7 +16,9 @@ interface DataTableProps<T> extends Omit<TableProps<T>, 'columns'> {
 
 /**
  * Data Table Component
- * 增强型数据表格组件
+ * 数据表格组件（基于BaseTable）
+ * 
+ * @description 简化的数据表格组件，提供基础的搜索、导出、刷新功能
  */
 export function DataTable<T extends object>({
   columns,
@@ -34,61 +34,21 @@ export function DataTable<T extends object>({
   toolbarExtra,
   ...restProps
 }: DataTableProps<T>) {
-  const [searchValue, setSearchValue] = useState('');
-  const tableConfig = globalComponentService.getTableConfig();
-
-  const handleSearch = (value: string) => {
-    setSearchValue(value);
-    onSearch?.(value);
-  };
-
   return (
-    <div className="data-table-wrapper">
-      {/* Toolbar */}
-      {(searchable || exportable || refreshable || toolbarExtra) && (
-        <div className="data-table-toolbar">
-          <Space>
-            {searchable && (
-              <Input.Search
-                placeholder="搜索..."
-                value={searchValue}
-                onChange={e => setSearchValue(e.target.value)}
-                onSearch={handleSearch}
-                style={{ width: 300 }}
-                allowClear
-              />
-            )}
-          </Space>
-
-          <Space>
-            {toolbarExtra}
-            
-            {refreshable && onRefresh && (
-              <Button icon={<ReloadOutlined />} onClick={onRefresh}>
-                刷新
-              </Button>
-            )}
-            
-            {exportable && onExport && (
-              <Button icon={<ExportOutlined />} onClick={onExport}>
-                导出
-              </Button>
-            )}
-          </Space>
-        </div>
-      )}
-
-      {/* Table */}
-      <Table
-        {...tableConfig}
-        columns={columns}
-        dataSource={dataSource}
-        loading={loading}
-        pagination={pagination}
-        rowKey="id"
-        {...restProps}
-      />
-    </div>
+    <BaseTable
+      columns={columns}
+      dataSource={dataSource}
+      loading={loading}
+      pagination={pagination}
+      searchable={searchable}
+      exportable={exportable}
+      refreshable={refreshable}
+      onSearch={onSearch}
+      onExport={onExport}
+      onRefresh={onRefresh}
+      toolbarExtra={toolbarExtra}
+      {...restProps}
+    />
   );
 }
 

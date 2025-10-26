@@ -1,0 +1,33 @@
+/* BaseModal Styles */
+.base-modal {
+  /* 统一弹窗样式 */
+}
+
+.base-modal .ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 24px;
+}
+
+.base-modal .ant-modal-body {
+  padding: 24px;
+}
+
+.base-modal .ant-modal-footer {
+  border-top: 1px solid #f0f0f0;
+  padding: 10px 16px;
+  text-align: right;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .base-modal .ant-modal {
+    margin: 0;
+    max-width: 100%;
+    top: 0;
+    padding-bottom: 0;
+  }
+  
+  .base-modal .ant-modal-body {
+    padding: 16px;
+  }
+}

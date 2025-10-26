@@ -7,7 +7,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   Form,
   Input,
   Select,
@@ -19,6 +18,7 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd';
 import dayjs from 'dayjs';
+import { BaseModal } from '@/components/common/BaseModal';
 import { getMembers } from '@/modules/member/services/memberService';
 import { getEvents } from '@/modules/event/services/eventService';
 import { getActiveTransactionPurposes } from '@/modules/system/services/transactionPurposeService';
@@ -148,8 +148,11 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       }
       
       await onOk();
+      // 成功消息由BaseModal的onSuccess回调处理
     } catch (error) {
       console.error('❌ [EditTransactionModal] 表单验证失败:', error);
+      // 错误消息由BaseModal的onError回调处理
+      throw error; // 重新抛出错误，让BaseModal处理
     } finally {
       setLoading(false);
     }
@@ -170,15 +173,25 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   };
 
   return (
-    <Modal
+    <BaseModal
+      visible={visible}
       title={transaction ? '编辑交易' : '创建新交易'}
-      open={visible}
       onOk={handleOk}
       onCancel={handleCancel}
       width={700}
       confirmLoading={loading}
       okText={transaction ? '保存' : '创建'}
       cancelText="取消"
+      onSuccess={() => {
+        message.success(transaction ? '交易更新成功' : '交易创建成功');
+        form.resetFields();
+        setSelectedCategory('');
+        setPayerPayeeMode('manual');
+        setManualPayerPayee('');
+      }}
+      onError={(error) => {
+        message.error(error.message || (transaction ? '交易更新失败' : '交易创建失败'));
+      }}
     >
       <Form form={form} layout="vertical">
         {/* 银行账户 */}
@@ -417,7 +430,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
           <TextArea rows={3} placeholder="可选的额外备注" />
         </Form.Item>
       </Form>
-    </Modal>
+    </BaseModal>
   );
 };
 

@@ -29,9 +29,9 @@ import {
 import { 
   FiscalYearPeriod, 
   FiscalYearStatistics 
-} from '../types/fiscalYear';
-import { smartFiscalYearService } from '../services/smartFiscalYearService';
-import { Transaction } from '../types';
+} from '@/modules/finance/types/fiscalYear';
+import { smartFiscalYearService } from '@/modules/finance/services/smartFiscalYearService';
+import { Transaction } from '@/modules/finance/types';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;

@@ -1,0 +1,41 @@
+/* BaseSearchFilter Styles */
+.base-search-filter {
+  /* 基础搜索筛选组件样式 */
+}
+
+.base-search-filter .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.base-search-filter .ant-card-body {
+  padding: 16px;
+}
+
+.search-filter-field {
+  /* 搜索筛选字段样式 */
+}
+
+.search-filter-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.search-filter-field .ant-input,
+.search-filter-field .ant-select,
+.search-filter-field .ant-picker {
+  width: 100%;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .base-search-filter .ant-card-body {
+    padding: 12px;
+  }
+  
+  .search-filter-field {
+    margin-bottom: 16px;
+  }
+}

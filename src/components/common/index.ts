@@ -16,5 +16,6 @@ export { QuickCreateModal } from './QuickCreateModal';
 export { NotificationCenter } from './NotificationCenter';
 export { ExportModal } from './ExportModal';
 export { PermissionGuard } from './PermissionGuard';
+export { BaseModal } from './BaseModal';
 
 

@@ -7,7 +7,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   Select,
   message,
   Alert,
@@ -17,6 +16,7 @@ import {
   Table,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { BaseModal } from '@/components/common/BaseModal';
 import { getMembers } from '@/modules/member/services/memberService';
 import { getEvents } from '@/modules/event/services/eventService';
 import { generateYearOptions } from '@/utils/dateHelpers';
@@ -211,10 +211,10 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       });
       
       await onOk(data);
-      message.success(`已为 ${selectedCount} 条交易设置类别`);
-      resetForm();
+      // 成功消息由BaseModal的onSuccess回调处理
     } catch (error: any) {
-      message.error(error.message || '批量设置类别失败');
+      // 错误消息由BaseModal的onError回调处理
+      throw error; // 重新抛出错误，让BaseModal处理
     } finally {
       setLoading(false);
     }
@@ -492,9 +492,9 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   ];
 
   return (
-    <Modal
+    <BaseModal
+      visible={visible}
       title={`批量设置类别 - 已选择 ${selectedCount} 条交易`}
-      open={visible}
       onOk={handleOk}
       onCancel={handleCancel}
       width={selectedCategory ? 900 : 500}
@@ -502,6 +502,13 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
       okText="确认设置"
       cancelText="取消"
       okButtonProps={{ disabled: !selectedCategory }}
+      onSuccess={() => {
+        message.success(`已为 ${selectedCount} 条交易设置类别`);
+        resetForm();
+      }}
+      onError={(error) => {
+        message.error(error.message || '批量设置类别失败');
+      }}
     >
       <Alert
         message="注意"
@@ -727,7 +734,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
           />
         </>
       )}
-    </Modal>
+    </BaseModal>
   );
 };
 

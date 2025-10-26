@@ -13,6 +13,7 @@ import {
   FISCAL_YEAR_DISPLAY_FORMATS
 } from '../types/fiscalYear';
 import { Transaction } from '../types';
+import { getTransactions } from './transactionService';
 import dayjs from 'dayjs';
 
 export class SmartFiscalYearService {
@@ -195,17 +196,25 @@ export class SmartFiscalYearService {
   /**
    * 获取财年选项列表（用于下拉选择）
    */
-  public getFiscalYearOptions(count: number = 10): Array<{ label: string; value: string; period: FiscalYearPeriod }> {
+  public getFiscalYearOptions(
+    count: number = 10, 
+    minYear?: number, 
+    maxYear?: number
+  ): Array<{ label: string; value: string; period: FiscalYearPeriod }> {
     if (!this.config) {
       return [];
     }
 
     const now = dayjs();
     const currentYear = now.year();
+    
+    // 确定年份范围
+    const startYear = maxYear || currentYear;
+    const endYear = minYear || Math.max(currentYear - count + 1, 2020); // 最早不早于2020年
+    
     const options: Array<{ label: string; value: string; period: FiscalYearPeriod }> = [];
 
-    for (let i = 0; i < count; i++) {
-      const year = currentYear - i;
+    for (let year = startYear; year >= endYear; year--) {
       const period = this.detectFiscalYearPeriod(year);
       
       options.push({
@@ -216,6 +225,76 @@ export class SmartFiscalYearService {
     }
 
     return options;
+  }
+
+  /**
+   * 获取实际有交易数据的年份范围
+   */
+  public async getTransactionYearRange(): Promise<{ minYear: number; maxYear: number }> {
+    try {
+      // 从交易服务获取实际的年份范围
+      const result = await getTransactions({
+        limit: 10000, // 获取足够多的交易来统计年份范围
+        sortBy: 'transactionDate',
+        sortOrder: 'asc'
+      });
+
+      if (result.data.length === 0) {
+        // 如果没有交易数据，返回默认范围
+        const now = dayjs();
+        return {
+          minYear: now.year(),
+          maxYear: now.year()
+        };
+      }
+
+      // 从交易数据中提取年份范围
+      const years = result.data
+        .map(transaction => {
+          if (transaction.transactionDate) {
+            return dayjs(transaction.transactionDate).year();
+          }
+          return null;
+        })
+        .filter(year => year !== null) as number[];
+
+      if (years.length === 0) {
+        const now = dayjs();
+        return {
+          minYear: now.year(),
+          maxYear: now.year()
+        };
+      }
+
+      const minYear = Math.min(...years);
+      const maxYear = Math.max(...years);
+
+      return {
+        minYear,
+        maxYear
+      };
+    } catch (error) {
+      console.error('Failed to get transaction year range:', error);
+      const now = dayjs();
+      return {
+        minYear: now.year() - 1, // 默认最近2年
+        maxYear: now.year()
+      };
+    }
+  }
+
+  /**
+   * 获取智能财年选项列表（基于实际数据范围）
+   */
+  public async getSmartFiscalYearOptions(): Promise<Array<{ label: string; value: string; period: FiscalYearPeriod }>> {
+    try {
+      const { minYear, maxYear } = await this.getTransactionYearRange();
+      return this.getFiscalYearOptions(10, minYear, maxYear);
+    } catch (error) {
+      console.error('Failed to get smart fiscal year options:', error);
+      // 回退到默认选项
+      return this.getFiscalYearOptions(5); // 只显示最近5年
+    }
   }
 
   /**

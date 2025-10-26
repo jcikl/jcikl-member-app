@@ -42,9 +42,11 @@ import { getAllFinanceEvents, createFinanceEvent, updateFinanceEvent } from '../
 import { getAllActiveMembers, getMembers, getMemberById } from '../../../member/services/memberService';
 import { getEvents } from '../../../event/services/eventService';
 import { generateYearOptions } from '@/utils/dateHelpers';
+import { smartFiscalYearService } from '../../services/smartFiscalYearService';
 import type { Transaction, FinanceEvent } from '../../types';
 import type { Member } from '../../../member/types';
 import type { Event } from '../../../event/types';
+import type { FiscalYearPeriod } from '../../types/fiscalYear';
 import './styles.css';
 
 const { Option } = Select;
@@ -79,6 +81,7 @@ const EventFinancialPage: React.FC = () => {
 
   // 🆕 筛选状态管理
   const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [fiscalYearOptions, setFiscalYearOptions] = useState<Array<{ label: string; value: string; period: FiscalYearPeriod }>>([]);
   const [selectedBoardMember, setSelectedBoardMember] = useState<string>('all');
   const [selectedEventStatus, setSelectedEventStatus] = useState<string>('all');
   const [selectedEventType, setSelectedEventType] = useState<string>('all');
@@ -141,6 +144,7 @@ const EventFinancialPage: React.FC = () => {
     loadEventFinancials();
     loadFinanceEvents();
     loadActiveMembers(); // 🆕 加载活跃会员列表
+    loadFiscalYearOptions(); // 🆕 加载财年选项
   }, [filter, selectedYear, selectedBoardMember, selectedEventStatus, selectedEventType, searchText]);
   
   useEffect(() => {
@@ -431,6 +435,16 @@ const EventFinancialPage: React.FC = () => {
     } catch (error: any) {
       message.error('加载会员列表失败');
       globalSystemService.log('error', 'Failed to load active members', 'EventFinancialPage', { error });
+    }
+  };
+
+  // 🆕 加载财年选项
+  const loadFiscalYearOptions = async () => {
+    try {
+      const options = await smartFiscalYearService.getSmartFiscalYearOptions();
+      setFiscalYearOptions(options);
+    } catch (error: any) {
+      console.error('加载财年选项失败:', error);
     }
   };
   
@@ -1125,9 +1139,11 @@ const EventFinancialPage: React.FC = () => {
                   placeholder="选择年份"
                 >
                   <Option value="all">所有年份</Option>
-                  <Option value="FY2025">2025财年</Option>
-                  <Option value="FY2024">2024财年</Option>
-                  <Option value="FY2023">2023财年</Option>
+                  {fiscalYearOptions.map(option => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
                 </Select>
         </div>
 

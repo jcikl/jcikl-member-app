@@ -49,9 +49,11 @@ import {
 } from '../../services/memberFeeService';
 import { getCurrentFiscalYear } from '../../services/fiscalYearService';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
+import { smartFiscalYearService } from '../../services/smartFiscalYearService';
 import { getMembers, getMemberById } from '@/modules/member/services/memberService';
 import type { MemberFee, MemberFeeStatus, Transaction } from '../../types';
 import type { MemberCategoryType } from '@/modules/member/types';
+import type { FiscalYearPeriod } from '../../types/fiscalYear';
 import { MEMBER_CATEGORY_OPTIONS } from '@/modules/member/types';
 import './styles.css';
 
@@ -69,6 +71,7 @@ const MemberFeeManagementPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<MemberFeeStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState<MemberCategoryType | 'all'>('all');
   const [selectedYear, setSelectedYear] = useState<string>('');
+  const [fiscalYearOptions, setFiscalYearOptions] = useState<Array<{ label: string; value: string; period: FiscalYearPeriod }>>([]);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedFee, setSelectedFee] = useState<MemberFee | null>(null);
   
@@ -108,6 +111,7 @@ const MemberFeeManagementPage: React.FC = () => {
 
   useEffect(() => {
     initializeData();
+    loadFiscalYearOptions();
   }, []);
 
   useEffect(() => {
@@ -133,6 +137,16 @@ const MemberFeeManagementPage: React.FC = () => {
       }
     } catch (error: any) {
       message.error('初始化失败');
+    }
+  };
+
+  // 🆕 加载财年选项
+  const loadFiscalYearOptions = async () => {
+    try {
+      const options = await smartFiscalYearService.getSmartFiscalYearOptions();
+      setFiscalYearOptions(options);
+    } catch (error: any) {
+      console.error('加载财年选项失败:', error);
     }
   };
 
@@ -800,9 +814,11 @@ const MemberFeeManagementPage: React.FC = () => {
                     setTransactionPage(1);
                   }}
                 >
-                  <Option value="FY2025">2025</Option>
-                  <Option value="FY2024">2024</Option>
-                  <Option value="FY2023">2023</Option>
+                  {fiscalYearOptions.map(option => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
                 </Select>
               </div>
               

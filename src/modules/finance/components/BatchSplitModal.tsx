@@ -7,7 +7,6 @@
 
 import React, { useState } from 'react';
 import {
-  Modal,
   Form,
   InputNumber,
   Button,
@@ -21,6 +20,7 @@ import {
   PlusOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
+import { BaseModal } from '@/components/common/BaseModal';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -110,11 +110,10 @@ const BatchSplitModal: React.FC<BatchSplitModalProps> = ({
 
       setLoading(true);
       await onOk({ categoryAmounts: rules });
-      message.success(`批量拆分成功，共处理 ${selectedCount} 条交易`);
-      setRules([{ category: '', amount: 0, notes: undefined }]);
-      form.resetFields();
+      // 成功消息由BaseModal的onSuccess回调处理
     } catch (error: any) {
-      message.error(error.message || '批量拆分失败');
+      // 错误消息由BaseModal的onError回调处理
+      throw error; // 重新抛出错误，让BaseModal处理
     } finally {
       setLoading(false);
     }
@@ -127,9 +126,9 @@ const BatchSplitModal: React.FC<BatchSplitModalProps> = ({
   };
 
   return (
-    <Modal
+    <BaseModal
+      visible={visible}
       title={`批量拆分 - 已选择 ${selectedCount} 条交易`}
-      open={visible}
       onOk={handleOk}
       onCancel={handleCancel}
       width={700}
@@ -137,6 +136,14 @@ const BatchSplitModal: React.FC<BatchSplitModalProps> = ({
       okText="确认批量拆分"
       cancelText="取消"
       okButtonProps={{ disabled: !isValid }}
+      onSuccess={() => {
+        message.success(`批量拆分成功，共处理 ${selectedCount} 条交易`);
+        setRules([{ category: '', amount: 0, notes: undefined }]);
+        form.resetFields();
+      }}
+      onError={(error) => {
+        message.error(error.message || '批量拆分失败');
+      }}
     >
       {/* 统计信息 */}
       <div
@@ -255,7 +262,7 @@ const BatchSplitModal: React.FC<BatchSplitModalProps> = ({
         showIcon
         style={{ marginTop: 16, fontSize: 12 }}
       />
-    </Modal>
+    </BaseModal>
   );
 };
 

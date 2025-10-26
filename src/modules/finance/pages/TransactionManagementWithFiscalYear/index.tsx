@@ -20,11 +20,11 @@ import {
   CalendarOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
-import SmartFiscalYearSelector from '../components/SmartFiscalYearSelector';
+import SmartFiscalYearSelector from '@/modules/finance/components/SmartFiscalYearSelector';
 import { 
   FiscalYearPeriod 
-} from '../types/fiscalYear';
-import { smartFiscalYearService } from '../services/smartFiscalYearService';
+} from '@/modules/finance/types/fiscalYear';
+import { smartFiscalYearService } from '@/modules/finance/services/smartFiscalYearService';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;

@@ -29,12 +29,12 @@ import {
   SettingOutlined,
   BulbOutlined
 } from '@ant-design/icons';
-import { 
+import {
   FiscalYearConfig, 
   FiscalYearPeriod, 
   FiscalYearStatus
-} from '../types/fiscalYear';
-import { smartFiscalYearService } from '../services/smartFiscalYearService';
+} from '@/modules/finance/types/fiscalYear';
+import { smartFiscalYearService } from '@/modules/finance/services/smartFiscalYearService';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -68,14 +68,12 @@ const FiscalYearManagementPage: React.FC = () => {
           isDefault: true,
           description: 'JCI KL 财年从每年10月1日开始',
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          createdBy: 'system',
-          updatedBy: 'system'
+          updatedAt: new Date().toISOString()
         };
       }
 
       smartFiscalYearService.setConfig(config);
-      form.setFieldsValue({
+    form.setFieldsValue({
         startMonth: config.startMonth,
         startDay: config.startDay,
         name: config.name,
@@ -108,9 +106,7 @@ const FiscalYearManagementPage: React.FC = () => {
         isDefault: true,
         description: values.description || `财年从每年${values.startMonth}月${values.startDay}日开始`,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: 'system',
-        updatedBy: 'system'
+        updatedAt: new Date().toISOString()
       };
 
       const validation = smartFiscalYearService.validateConfig(config);
@@ -167,7 +163,7 @@ const FiscalYearManagementPage: React.FC = () => {
     return 'default';
   };
 
-  return (
+        return (
     <div style={{ padding: '24px' }}>
       <Title level={2}>
         <SettingOutlined style={{ marginRight: 8 }} />
@@ -196,20 +192,20 @@ const FiscalYearManagementPage: React.FC = () => {
             >
               <Row gutter={16}>
                 <Col span={12}>
-                  <Form.Item
+            <Form.Item
                     name="name"
-                    label="财年名称"
-                    rules={[{ required: true, message: '请输入财年名称' }]}
-                  >
+              label="财年名称"
+              rules={[{ required: true, message: '请输入财年名称' }]}
+            >
                     <Input
                       style={{ width: '100%' }}
                       placeholder="如：JCI KL 财年"
                       disabled
                     />
-                  </Form.Item>
+            </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item
+            <Form.Item
                     name="description"
                     label="描述"
                   >
@@ -218,13 +214,13 @@ const FiscalYearManagementPage: React.FC = () => {
                       placeholder="财年描述信息"
                       disabled
                     />
-                  </Form.Item>
+            </Form.Item>
                 </Col>
               </Row>
 
               <Row gutter={16}>
                 <Col span={12}>
-                  <Form.Item
+            <Form.Item
                     name="startMonth"
                     label="起始月份"
                     rules={[{ required: true, message: '请选择起始月份' }]}
@@ -236,10 +232,10 @@ const FiscalYearManagementPage: React.FC = () => {
                       placeholder="月份"
                       addonAfter="月"
                     />
-                  </Form.Item>
+            </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item
+            <Form.Item
                     name="startDay"
                     label="起始日期"
                     rules={[{ required: true, message: '请选择起始日期' }]}
@@ -251,7 +247,7 @@ const FiscalYearManagementPage: React.FC = () => {
                       placeholder="日期"
                       addonAfter="日"
                     />
-                  </Form.Item>
+            </Form.Item>
                 </Col>
               </Row>
 
@@ -273,8 +269,8 @@ const FiscalYearManagementPage: React.FC = () => {
                     重置
                   </Button>
                 </Space>
-              </Form.Item>
-            </Form>
+            </Form.Item>
+          </Form>
           </Card>
         </Col>
 
@@ -342,7 +338,7 @@ const FiscalYearManagementPage: React.FC = () => {
       {fiscalYearStatus?.suggestions && fiscalYearStatus.suggestions.length > 0 && (
         <Card title="智能建议" style={{ marginBottom: 24 }}>
           <Space direction="vertical" style={{ width: '100%' }}>
-            {fiscalYearStatus.suggestions.map((suggestion, index) => (
+            {fiscalYearStatus.suggestions.map((suggestion: any, index: number) => (
               <Alert
                 key={index}
                 message={suggestion.reason}
@@ -392,7 +388,7 @@ const FiscalYearManagementPage: React.FC = () => {
           )}
         />
       </Card>
-    </div>
+      </div>
   );
 };
 

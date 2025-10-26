@@ -36,9 +36,10 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
 import { getMembers, getMemberById } from '../../../member/services/memberService';
-import { generateFiscalYearOptions } from '@/utils/dateHelpers';
+import { smartFiscalYearService } from '../../services/smartFiscalYearService';
 import { getActiveTransactionPurposes } from '../../../system/services/transactionPurposeService';
 import type { Transaction } from '../../types';
+import type { FiscalYearPeriod } from '../../types/fiscalYear';
 import './styles.css';
 
 const { Option } = Select;
@@ -48,6 +49,7 @@ const GeneralAccountsPage: React.FC = () => {
   
   // 筛选状态管理
   const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [fiscalYearOptions, setFiscalYearOptions] = useState<Array<{ label: string; value: string; period: FiscalYearPeriod }>>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all'); // 收入/支出分类
   const [searchText, setSearchText] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'list' | 'transactions'>('list');
@@ -92,6 +94,7 @@ const GeneralAccountsPage: React.FC = () => {
   useEffect(() => {
     loadTransactions();
     loadPurposeOptions(); // 🆕 加载交易用途选项
+    loadFiscalYearOptions(); // 🆕 加载财年选项
   }, [transactionPage, transactionPageSize, txAccountFilter, selectedYear, selectedCategory, searchText]);
 
   // 🆕 加载交易用途选项
@@ -101,6 +104,16 @@ const GeneralAccountsPage: React.FC = () => {
       setPurposeOptions(purposes);
     } catch (error) {
       console.error('加载交易用途选项失败:', error);
+    }
+  };
+
+  // 🆕 加载财年选项
+  const loadFiscalYearOptions = async () => {
+    try {
+      const options = await smartFiscalYearService.getSmartFiscalYearOptions();
+      setFiscalYearOptions(options);
+    } catch (error) {
+      console.error('加载财年选项失败:', error);
     }
   };
 
@@ -569,10 +582,11 @@ const GeneralAccountsPage: React.FC = () => {
                   showSearch
                 >
                   <Option value="all">所有年份</Option>
-                  {generateFiscalYearOptions().map(fy => {
-                    const year = fy.replace('FY', '');
-                    return <Option key={fy} value={fy}>{year}财年</Option>;
-                  })}
+                  {fiscalYearOptions.map(option => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
                 </Select>
               </div>
               

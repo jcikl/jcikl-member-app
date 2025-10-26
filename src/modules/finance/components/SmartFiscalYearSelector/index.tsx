@@ -11,17 +11,10 @@ import {
   Alert,
   Space,
   Typography,
-  Button,
-  Tooltip,
-  Tag,
-  Row,
-  Col,
-  Statistic,
   Progress
 } from 'antd';
 import {
   CalendarOutlined,
-  InfoCircleOutlined,
   BulbOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -31,11 +24,11 @@ import {
   FiscalYearPeriod, 
   FiscalYearStatus,
   FiscalYearSuggestion 
-} from '../types/fiscalYear';
-import { smartFiscalYearService } from '../services/smartFiscalYearService';
+} from '@/modules/finance/types/fiscalYear';
+import { smartFiscalYearService } from '@/modules/finance/services/smartFiscalYearService';
 import dayjs from 'dayjs';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 interface SmartFiscalYearSelectorProps {
@@ -82,8 +75,8 @@ const SmartFiscalYearSelector: React.FC<SmartFiscalYearSelectorProps> = ({
       const status = smartFiscalYearService.detectCurrentFiscalYearStatus();
       setFiscalYearStatus(status);
       
-      // 获取财年选项
-      const options = smartFiscalYearService.getFiscalYearOptions(10);
+      // 获取智能财年选项（基于实际数据范围）
+      const options = await smartFiscalYearService.getSmartFiscalYearOptions();
       setFiscalYearOptions(options);
       
       // 设置默认选择
@@ -216,7 +209,7 @@ const SmartFiscalYearSelector: React.FC<SmartFiscalYearSelectorProps> = ({
             style={{ marginTop: 8 }}
           >
             <Radio value="calendar">自然年 (1月1日-12月31日)</Radio>
-            <Radio value="fiscal">财年 (10月1日-9月30日)</Radio>
+            <Radio value="fiscal">财年 (基于配置)</Radio>
           </Radio.Group>
         </div>
 
