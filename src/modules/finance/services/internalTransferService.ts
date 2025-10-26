@@ -64,28 +64,65 @@ export const detectPotentialPairs = async (
     
     console.log(`📊 [detectPotentialPairs] 获取到 ${allTransactions.length} 条总记录，过滤后 ${transactions.length} 条有效记录`);
     
-    // 按日期和金额分组
+    // 按日期和金额分组（兼容时区问题：允许同一金额在同一天的不同UTC时间）
     const groups = new Map<string, Transaction[]>();
+    
     transactions.forEach(tx => {
-      const date = tx.transactionDate.slice(0, 10); // YYYY-MM-DD
+      const fullDate = tx.transactionDate.slice(0, 10); // YYYY-MM-DD
       const amount = tx.amount;
-      const key = `${date}_${amount}`;
       
-      if (!groups.has(key)) {
-        groups.set(key, []);
+      // 🆕 处理时区问题：计算3天的可能日期（前1天、当天、后1天）
+      const dateObj = new Date(tx.transactionDate);
+      const dates = [
+        new Date(dateObj.getTime() - 86400000).toISOString().slice(0, 10), // 前1天
+        fullDate,
+        new Date(dateObj.getTime() + 86400000).toISOString().slice(0, 10), // 后1天
+      ];
+      
+      // 🔍 调试特定金额的记录
+      if (amount === 7498.52) {
+        console.log('🔍 [detectPotentialPairs] RM 7498.52 记录:', {
+          id: tx.id,
+          transactionDate: tx.transactionDate,
+          fullDate: fullDate,
+          possibleDates: dates,
+          transactionType: tx.transactionType,
+        });
       }
-      groups.get(key)!.push(tx);
+      
+      // 🆕 将交易添加到所有可能的日期分组中
+      dates.forEach(date => {
+        const key = `${date}_${amount}`;
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key)!.push(tx);
+      });
     });
     
     // 查找配对
     const pairs: InternalTransferPair[] = [];
+    const pairedExpenseIds = new Set<string>(); // 🆕 记录已配对的支出ID
+    const pairedIncomeIds = new Set<string>(); // 🆕 记录已配对的收入ID
     
     groups.forEach((group, key) => {
       const expenses = group.filter(t => t.transactionType === 'expense');
       const incomes = group.filter(t => t.transactionType === 'income');
       
+      if (expenses.length > 0 || incomes.length > 0) {
+        console.log(`🔍 [detectPotentialPairs] 分组 ${key}: 支出 ${expenses.length}条, 收入 ${incomes.length}条`);
+      }
+      
+      // 🆕 标记已使用的收入记录，避免重复配对
+      const usedIncomes = new Set<string>();
+      
       expenses.forEach(exp => {
+        // 🆕 跳过已配对的支出记录
+        if (pairedExpenseIds.has(exp.id)) return;
+        
         const match = incomes.find(inc => 
+          !usedIncomes.has(inc.id) && // 🆕 确保收入未被使用
+          !pairedIncomeIds.has(inc.id) && // 🆕 确保收入未被其他组配对
           inc.amount === exp.amount &&
           inc.bankAccountId !== exp.bankAccountId &&
           inc.id !== exp.id
@@ -93,6 +130,15 @@ export const detectPotentialPairs = async (
         
         if (match) {
           const [date, amount] = key.split('_');
+          
+          console.log(`✅ [detectPotentialPairs] 找到配对: ${exp.id} (${exp.transactionType}) <-> ${match.id} (${match.transactionType})`);
+          
+          // 🆕 标记该收入已被使用
+          usedIncomes.add(match.id);
+          
+          // 🆕 标记支出和收入都已被配对
+          pairedExpenseIds.add(exp.id);
+          pairedIncomeIds.add(match.id);
           
           // 计算配对置信度
           let confidence = 1.0;

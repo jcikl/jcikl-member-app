@@ -116,12 +116,30 @@ const InternalTransferPairingPage: React.FC = () => {
       });
       
       console.log('🔍 [InternalTransferPairingPage] 所有内部转账记录数:', allInternalTransfers.data.length);
-      console.log('🔍 [InternalTransferPairingPage] 所有记录ID:', allInternalTransfers.data.map(t => t.id));
+      console.log('🔍 [InternalTransferPairingPage] 收支分解:', {
+        收入记录: allInternalTransfers.data.filter(t => t.transactionType === 'income').length,
+        支出记录: allInternalTransfers.data.filter(t => t.transactionType === 'expense').length,
+        收入金额: allInternalTransfers.data.filter(t => t.transactionType === 'income').reduce((sum, t) => sum + (t.amount || 0), 0),
+        支出金额: allInternalTransfers.data.filter(t => t.transactionType === 'expense').reduce((sum, t) => sum + (t.amount || 0), 0),
+      });
       
       const unpaired = {
         income: allInternalTransfers.data.filter(t => !pairedIds.has(t.id) && t.transactionType === 'income'),
         expense: allInternalTransfers.data.filter(t => !pairedIds.has(t.id) && t.transactionType === 'expense'),
       };
+      
+      // 🆕 按日期排序（新到旧）
+      unpaired.income.sort((a, b) => {
+        const dateA = new Date(a.transactionDate).getTime();
+        const dateB = new Date(b.transactionDate).getTime();
+        return dateB - dateA; // 降序（新到旧）
+      });
+      
+      unpaired.expense.sort((a, b) => {
+        const dateA = new Date(a.transactionDate).getTime();
+        const dateB = new Date(b.transactionDate).getTime();
+        return dateB - dateA; // 降序（新到旧）
+      });
       
       console.log('🔍 [InternalTransferPairingPage] 未配对记录统计:', {
         总收入记录: unpaired.income.length,
@@ -452,7 +470,13 @@ const InternalTransferPairingPage: React.FC = () => {
                         dataSource={unpairedRecords.expense}
                         rowKey="id"
                         columns={[
-                          { title: '日期', dataIndex: 'transactionDate', render: (date) => globalDateService.formatDate(new Date(date), 'display') },
+                          { 
+                            title: '日期', 
+                            dataIndex: 'transactionDate', 
+                            sorter: (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
+                            defaultSortOrder: 'descend',
+                            render: (date) => globalDateService.formatDate(new Date(date), 'display') 
+                          },
                           { title: '描述', dataIndex: 'mainDescription' },
                           { title: '金额', dataIndex: 'amount', align: 'right', render: (amt) => `RM ${amt.toFixed(2)}` },
                           { title: '账户', dataIndex: 'bankAccountId' },
@@ -472,7 +496,13 @@ const InternalTransferPairingPage: React.FC = () => {
                         dataSource={unpairedRecords.income}
                         rowKey="id"
                         columns={[
-                          { title: '日期', dataIndex: 'transactionDate', render: (date) => globalDateService.formatDate(new Date(date), 'display') },
+                          { 
+                            title: '日期', 
+                            dataIndex: 'transactionDate', 
+                            sorter: (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
+                            defaultSortOrder: 'descend',
+                            render: (date) => globalDateService.formatDate(new Date(date), 'display') 
+                          },
                           { title: '描述', dataIndex: 'mainDescription' },
                           { title: '金额', dataIndex: 'amount', align: 'right', render: (amt) => `RM ${amt.toFixed(2)}` },
                           { title: '账户', dataIndex: 'bankAccountId' },
