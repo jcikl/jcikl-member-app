@@ -36,7 +36,6 @@ import EventFinancialPage from '@/modules/finance/pages/EventFinancialPage';
 import GeneralAccountsPage from '@/modules/finance/pages/GeneralAccountsPage';
 import BankAccountManagementPage from '@/modules/finance/pages/BankAccountManagementPage';
 import TransactionManagementPage from '@/modules/finance/pages/TransactionManagementPage';
-import FinancialRecordsPage from '@/modules/finance/pages/FinancialRecordsPage';
 import InternalTransferPairingPage from '@/modules/finance/pages/InternalTransferPairingPage';
 
 /**
@@ -208,10 +207,6 @@ export const router = createBrowserRouter(
           {
             path: 'fiscal-year-statistics',
             element: <FiscalYearStatisticsPage />,
-          },
-          {
-            path: 'records',
-            element: <FinancialRecordsPage />,
           },
           {
             path: 'internal-transfer-pairing',
