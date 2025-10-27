@@ -477,9 +477,32 @@ const InternalTransferPairingPage: React.FC = () => {
                             defaultSortOrder: 'descend',
                             render: (date) => globalDateService.formatDate(new Date(date), 'display') 
                           },
-                          { title: '描述', dataIndex: 'mainDescription' },
+                          { 
+                            title: '描述', 
+                            dataIndex: 'secondaryDescription',
+                            render: (desc, record) => (
+                              <div>
+                                <div>{desc || record.mainDescription}</div>
+                                {record.txAccount && (
+                                  <div style={{ fontSize: '12px', color: '#1890ff', marginTop: 2 }}>
+                                    分类: {record.txAccount}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          },
                           { title: '金额', dataIndex: 'amount', align: 'right', render: (amt) => `RM ${amt.toFixed(2)}` },
-                          { title: '账户', dataIndex: 'bankAccountId' },
+                          { 
+                            title: '账户', 
+                            dataIndex: 'bankAccountId',
+                            render: (accountId, record) => {
+                              const account = bankAccountsMap.get(accountId);
+                              if (account) {
+                                return `${account.bankName} - ${account.accountName} (${account.accountNumber})`;
+                              }
+                              return accountId;
+                            }
+                          },
                         ]}
                         pagination={{
                           showSizeChanger: true,
@@ -503,9 +526,32 @@ const InternalTransferPairingPage: React.FC = () => {
                             defaultSortOrder: 'descend',
                             render: (date) => globalDateService.formatDate(new Date(date), 'display') 
                           },
-                          { title: '描述', dataIndex: 'mainDescription' },
+                          { 
+                            title: '描述', 
+                            dataIndex: 'secondaryDescription',
+                            render: (desc, record) => (
+                              <div>
+                                <div>{desc || record.mainDescription}</div>
+                                {record.txAccount && (
+                                  <div style={{ fontSize: '12px', color: '#1890ff', marginTop: 2 }}>
+                                    分类: {record.txAccount}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          },
                           { title: '金额', dataIndex: 'amount', align: 'right', render: (amt) => `RM ${amt.toFixed(2)}` },
-                          { title: '账户', dataIndex: 'bankAccountId' },
+                          { 
+                            title: '账户', 
+                            dataIndex: 'bankAccountId',
+                            render: (accountId, record) => {
+                              const account = bankAccountsMap.get(accountId);
+                              if (account) {
+                                return `${account.bankName} - ${account.accountName} (${account.accountNumber})`;
+                              }
+                              return accountId;
+                            }
+                          },
                         ]}
                         pagination={{
                           showSizeChanger: true,

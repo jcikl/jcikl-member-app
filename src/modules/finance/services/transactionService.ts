@@ -1631,11 +1631,12 @@ export const splitTransaction = async (
       updatedAt: now,
     };
     
-    // 🔑 清除类别字段（使用 Firestore deleteField）
+    // 🔑 清除类别和二次分类字段（使用 Firestore deleteField）
     const { deleteField } = await import('firebase/firestore');
     const updateData = {
       ...parentUpdates,
       category: deleteField(), // 从 Firestore 中删除该字段
+      txAccount: deleteField(), // 🆕 清除二次分类
     };
     
     await updateDoc(parentRef, updateData);

@@ -167,6 +167,11 @@ const TransactionManagementPage: React.FC = () => {
     initializeFiscalYearService(); // 🆕 初始化智能财年服务
   }, []);
 
+  // 🆕 调试：监控 splitModalVisible 变化
+  useEffect(() => {
+    console.log('📊 [State] splitModalVisible 变化:', splitModalVisible, 'splittingTransaction:', splittingTransaction?.id);
+  }, [splitModalVisible, splittingTransaction]);
+
   // 🆕 加载交易用途选项
   const loadPurposeOptions = async () => {
     try {
@@ -655,8 +660,16 @@ const TransactionManagementPage: React.FC = () => {
   };
 
   const handleSplit = (record: Transaction) => {
+    console.log('🎯 [handleSplit] 开始拆分流程, 交易ID:', record.id);
+    console.log('🎯 [handleSplit] 交易信息:', {
+      id: record.id,
+      amount: record.amount,
+      mainDescription: record.mainDescription,
+      isSplit: record.isSplit
+    });
     setSplittingTransaction(record);
     setSplitModalVisible(true);
+    console.log('✅ [handleSplit] 设置完成, splitModalVisible 将变为 true');
   };
 
   const handleSplitOk = async (splits: Array<{
@@ -1646,7 +1659,22 @@ const TransactionManagementPage: React.FC = () => {
         }, {} as Record<string, Transaction[]>);
 
         const subGroupKeys = Object.keys(subGroups);
-        subGroupKeys.forEach((txAccount, subIndex) => {
+        
+        // 🆕 日常账户按名称字母排序
+        const sortedSubGroupKeys = subGroupKeys.sort((key1, key2) => {
+          if (category === 'general-accounts') {
+            // 获取显示名称
+            const purpose1 = purposeOptions.find(p => p.value === key1);
+            const purpose2 = purposeOptions.find(p => p.value === key2);
+            const displayName1 = purpose1?.label || key1;
+            const displayName2 = purpose2?.label || key2;
+            // 按字母排序
+            return displayName1.localeCompare(displayName2, 'zh-CN');
+          }
+          return 0;
+        });
+        
+        sortedSubGroupKeys.forEach((txAccount, subIndex) => {
           const items = subGroups[txAccount];
           const subTotal = items.reduce((sum, t) => sum + (t.amount || 0), 0);
           
@@ -1662,23 +1690,13 @@ const TransactionManagementPage: React.FC = () => {
               displayName = `${year}年${categoryName}`;
             }
           } else if (category === 'general-accounts') {
-            // 日常账户：将代码映射为名称
-            const generalAccountNameMap: Record<string, string> = {
-              'TXGA-0001': 'Cukai',
-              'TXGA-0002': 'Secretariat Management Fees',
-              'TXGA-0003': 'Merchandise Pink Shirt',
-              'TXGA-0004': 'Merchandise Blue Jacket',
-              'TXGA-0005': 'FD Interest',
-              'TXGA-0006': 'Incentive',
-              'TXGA-0007': 'Internal Transfer',
-              'TXGA-0008': 'Miscellaneous',
-              'TXGA-0009': 'Indah Water',
-              'TXGA-0010': 'TNB',
-              'TXGA-0011': 'Professional Fees',
-            };
-            
-            if (generalAccountNameMap[txAccount]) {
-              displayName = generalAccountNameMap[txAccount];
+            // 🆕 日常账户：从 purposeOptions 动态查找名称
+            const purpose = purposeOptions.find(p => p.value === txAccount);
+            if (purpose) {
+              displayName = purpose.label;
+            } else {
+              // 如果找不到，使用完整的 code (例如 TXGA-0017)
+              displayName = txAccount;
             }
           }
           
@@ -1687,7 +1705,7 @@ const TransactionManagementPage: React.FC = () => {
              `income-${category}-${txAccount}`,
              `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
              2,
-             subIndex === subGroupKeys.length - 1,
+             subIndex === sortedSubGroupKeys.length - 1,
              items,
              { category, txAccount }
            ));
@@ -1748,7 +1766,22 @@ const TransactionManagementPage: React.FC = () => {
       }, {} as Record<string, Transaction[]>);
 
       const subGroupKeys = Object.keys(subGroups);
-      subGroupKeys.forEach((txAccount, subIndex) => {
+      
+      // 🆕 日常账户按名称字母排序
+      const sortedSubGroupKeys = subGroupKeys.sort((key1, key2) => {
+        if (category === 'general-accounts') {
+          // 获取显示名称
+          const purpose1 = purposeOptions.find(p => p.value === key1);
+          const purpose2 = purposeOptions.find(p => p.value === key2);
+          const displayName1 = purpose1?.label || key1;
+          const displayName2 = purpose2?.label || key2;
+          // 按字母排序
+          return displayName1.localeCompare(displayName2, 'zh-CN');
+        }
+        return 0;
+      });
+      
+      sortedSubGroupKeys.forEach((txAccount, subIndex) => {
         const items = subGroups[txAccount];
         const subTotal = items.reduce((sum, t) => sum + (t.amount || 0), 0);
         
@@ -1757,23 +1790,13 @@ const TransactionManagementPage: React.FC = () => {
         if (txAccount === 'uncategorized') {
           displayName = '未分类';
         } else if (category === 'general-accounts') {
-          // 日常账户：将代码映射为名称
-          const generalAccountNameMap: Record<string, string> = {
-            'TXGA-0001': 'Cukai',
-            'TXGA-0002': 'Secretariat Management Fees',
-            'TXGA-0003': 'Merchandise Pink Shirt',
-            'TXGA-0004': 'Merchandise Blue Jacket',
-            'TXGA-0005': 'FD Interest',
-            'TXGA-0006': 'Incentive',
-            'TXGA-0007': 'Internal Transfer',
-            'TXGA-0008': 'Miscellaneous',
-            'TXGA-0009': 'Indah Water',
-            'TXGA-0010': 'TNB',
-            'TXGA-0011': 'Professional Fees',
-          };
-          
-          if (generalAccountNameMap[txAccount]) {
-            displayName = generalAccountNameMap[txAccount];
+          // 🆕 日常账户：从 purposeOptions 动态查找名称
+          const purpose = purposeOptions.find(p => p.value === txAccount);
+          if (purpose) {
+            displayName = purpose.label;
+          } else {
+            // 如果找不到，使用完整的 code (例如 TXGA-0017)
+            displayName = txAccount;
           }
         }
         
@@ -1782,7 +1805,7 @@ const TransactionManagementPage: React.FC = () => {
           `expense-${category}-${txAccount}`,
           `${displayName} (${items.length}) RM ${subTotal.toFixed(2)}`,
           2,
-          subIndex === subGroupKeys.length - 1,
+          subIndex === sortedSubGroupKeys.length - 1,
           items,
           { category, txAccount }
         ));
@@ -2111,23 +2134,13 @@ const TransactionManagementPage: React.FC = () => {
               displayName = `${year}年${categoryName}`;
             }
           } else if (category === 'general-accounts') {
-            // 日常账户：将代码映射为名称
-            const generalAccountNameMap: Record<string, string> = {
-              'TXGA-0001': 'Cukai',
-              'TXGA-0002': 'Secretariat Management Fees',
-              'TXGA-0003': 'Merchandise Pink Shirt',
-              'TXGA-0004': 'Merchandise Blue Jacket',
-              'TXGA-0005': 'FD Interest',
-              'TXGA-0006': 'Incentive',
-              'TXGA-0007': 'Internal Transfer',
-              'TXGA-0008': 'Miscellaneous',
-              'TXGA-0009': 'Indah Water',
-              'TXGA-0010': 'TNB',
-              'TXGA-0011': 'Professional Fees',
-            };
-            
-            if (generalAccountNameMap[txAccount]) {
-              displayName = generalAccountNameMap[txAccount];
+            // 🆕 日常账户：从 purposeOptions 动态查找名称
+            const purpose = purposeOptions.find(p => p.value === txAccount);
+            if (purpose) {
+              displayName = purpose.label;
+            } else {
+              // 如果找不到，使用完整的 code (例如 TXGA-0017)
+              displayName = txAccount;
             }
           }
           
@@ -2197,23 +2210,13 @@ const TransactionManagementPage: React.FC = () => {
             displayName = `${year}年${categoryName}`;
           }
         } else if (category === 'general-accounts') {
-          // 日常账户：将代码映射为名称
-          const generalAccountNameMap: Record<string, string> = {
-            'TXGA-0001': 'Cukai',
-            'TXGA-0002': 'Secretariat Management Fees',
-            'TXGA-0003': 'Merchandise Pink Shirt',
-            'TXGA-0004': 'Merchandise Blue Jacket',
-            'TXGA-0005': 'FD Interest',
-            'TXGA-0006': 'Incentive',
-            'TXGA-0007': 'Internal Transfer',
-            'TXGA-0008': 'Miscellaneous',
-            'TXGA-0009': 'Indah Water',
-            'TXGA-0010': 'TNB',
-            'TXGA-0011': 'Professional Fees',
-          };
-          
-          if (generalAccountNameMap[txAccount]) {
-            displayName = generalAccountNameMap[txAccount];
+          // 🆕 日常账户：从 purposeOptions 动态查找名称
+          const purpose = purposeOptions.find(p => p.value === txAccount);
+          if (purpose) {
+            displayName = purpose.label;
+          } else {
+            // 如果找不到，使用完整的 code (例如 TXGA-0017)
+            displayName = txAccount;
           }
         }
         

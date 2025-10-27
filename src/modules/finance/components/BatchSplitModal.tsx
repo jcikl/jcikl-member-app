@@ -125,6 +125,19 @@ const BatchSplitModal: React.FC<BatchSplitModalProps> = ({
     onCancel();
   };
 
+  // 🆕 快速拆分预设
+  const quickSplitTemplate: CategoryAmount[] = [
+    { category: 'member-fees', amount: 350, notes: '会员费' },
+    { category: 'general-accounts', amount: 75, notes: '日常财务 (TXGA-0004)' },
+    { category: 'general-accounts', amount: 75, notes: '日常财务 (TXGA-0003)' },
+  ];
+
+  // 🆕 应用快速拆分
+  const handleQuickSplit = () => {
+    setRules(quickSplitTemplate);
+    message.success('已应用快速拆分规则');
+  };
+
   return (
     <BaseModal
       visible={visible}
@@ -244,6 +257,21 @@ const BatchSplitModal: React.FC<BatchSplitModalProps> = ({
             </div>
           </div>
         ))}
+
+        {/* 🆕 快速拆分按钮 */}
+        <div style={{ marginBottom: 12 }}>
+          <Button
+            type="primary"
+            onClick={handleQuickSplit}
+            block
+            style={{
+              background: '#1890ff',
+              borderColor: '#1890ff',
+            }}
+          >
+            ⚡ 快速拆分 (RM 350 会员费 + RM 150 日常财务)
+          </Button>
+        </div>
 
         <Button
           type="dashed"

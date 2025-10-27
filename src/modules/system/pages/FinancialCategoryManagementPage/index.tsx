@@ -247,6 +247,8 @@ const FinancialCategoryManagementPage: React.FC = () => {
       title: '用途代码',
       dataIndex: 'value',
       width: 200,
+      sorter: (a, b) => a.value.localeCompare(b.value),
+      defaultSortOrder: 'ascend' as const,
       render: (value: string) => (
         <Tag color="purple" style={{ fontFamily: 'monospace', fontSize: '12px' }}>
           {value}

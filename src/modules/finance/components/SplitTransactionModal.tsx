@@ -53,6 +53,8 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
   onCancel,
   onUnsplit,
 }) => {
+  console.log('🎯 [SplitTransactionModal] 组件初始化, visible:', visible, 'transaction:', transaction?.id);
+  
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [loadingExistingSplits, setLoadingExistingSplits] = useState(false);
@@ -119,9 +121,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
     loadExistingSplits();
   }, [visible, transaction, form]);
 
-  if (!transaction) return null;
-
-  const parentAmount = transaction.amount || 0;
+  const parentAmount = transaction?.amount || 0;
   const totalSplitAmount = splits.reduce((sum, split) => sum + (split.amount || 0), 0);
   const unallocatedAmount = parentAmount - totalSplitAmount;
   const isValid = totalSplitAmount <= parentAmount && totalSplitAmount > 0;
@@ -197,6 +197,42 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
     onCancel();
   };
 
+  // 🆕 快速拆分预设
+  const quickSplitTemplate: SplitItem[] = [
+    { amount: 350, category: 'member-fees', notes: '会员费' },
+    { amount: 75, category: 'general-accounts', notes: '日常财务 (TXGA-0004)' },
+    { amount: 75, category: 'general-accounts', notes: '日常财务 (TXGA-0003)' },
+  ];
+
+  // 🆕 应用快速拆分
+  const handleQuickSplit = () => {
+    console.log('🔍 [SplitTransactionModal.handleQuickSplit] =====快速拆分按钮被点击=====');
+    console.log('🔍 [SplitTransactionModal] quickSplitTemplate:', JSON.stringify(quickSplitTemplate, null, 2));
+    console.log('🔍 [SplitTransactionModal] current parentAmount:', parentAmount);
+    console.log('🔍 [SplitTransactionModal] current splits:', splits.length, 'items');
+    
+    const total = quickSplitTemplate.reduce((sum, item) => sum + item.amount, 0);
+    console.log('🔍 [SplitTransactionModal] 总金额:', total);
+    
+    if (total > parentAmount) {
+      console.warn('⚠️ 快速拆分金额总和超过原交易金额');
+      message.warning(`快速拆分金额总和 (RM ${total.toFixed(2)}) 超过原交易金额 (RM ${parentAmount.toFixed(2)})`);
+      return;
+    }
+
+    console.log('✅ [SplitTransactionModal] 应用快速拆分规则, 设置 splits:', JSON.stringify(quickSplitTemplate, null, 2));
+    setSplits(quickSplitTemplate);
+    message.success('已应用快速拆分规则');
+    console.log('✅ [SplitTransactionModal] 快速拆分规则已应用');
+  };
+
+  // 🆕 调试：组件渲染状态
+  useEffect(() => {
+    console.log('🔄 [SplitTransactionModal] 组件渲染, loadingExistingSplits:', loadingExistingSplits);
+    console.log('🔄 [SplitTransactionModal] splits 数量:', splits.length);
+    console.log('🔄 [SplitTransactionModal] parentAmount:', parentAmount);
+  }, [loadingExistingSplits, splits.length, parentAmount]);
+
   // 🆕 处理撤销拆分
   const handleUnsplit = async () => {
     if (!transaction || !onUnsplit) return;
@@ -225,19 +261,19 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
   return (
     <BaseModal
       visible={visible}
-      title={`${transaction.isSplit ? '重新拆分交易' : '拆分交易'} - RM ${parentAmount.toFixed(2)}`}
+      title={`${transaction?.isSplit ? '重新拆分交易' : '拆分交易'} - RM ${parentAmount.toFixed(2)}`}
       onOk={handleOk}
       onCancel={handleCancel}
       width={800}
       confirmLoading={loading}
-      okText={transaction.isSplit ? "确认重新拆分" : "确认拆分"}
+      okText={transaction?.isSplit ? "确认重新拆分" : "确认拆分"}
       cancelText="取消"
       okButtonProps={{ disabled: !isValid || loadingExistingSplits }}
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {/* 左侧：撤销拆分按钮（仅在已拆分时显示） */}
           <div>
-            {transaction.isSplit && onUnsplit && (
+            {transaction?.isSplit && onUnsplit && (
               <Button 
                 danger 
                 onClick={handleUnsplit}
@@ -259,7 +295,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
               loading={loading}
               disabled={!isValid || loadingExistingSplits}
             >
-              {transaction.isSplit ? "确认重新拆分" : "确认拆分"}
+              {transaction?.isSplit ? "确认重新拆分" : "确认拆分"}
             </Button>
           </Space>
         </div>
@@ -273,6 +309,14 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
         message.error(error.message || '拆分失败');
       }}
     >
+      {!transaction && (
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <Alert message="交易信息缺失" type="warning" />
+        </div>
+      )}
+      
+      {transaction && (
+        <>
       {/* 🆕 加载状态 */}
       {loadingExistingSplits && (
         <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -283,7 +327,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       {!loadingExistingSplits && (
           <>
             {/* 🆕 已拆分提示 */}
-            {transaction.isSplit && (
+            {transaction?.isSplit && (
               <Alert
                 message="此交易已拆分过"
                 description="已自动加载现有拆分数据。修改后将删除现有的所有子交易，并创建新的拆分记录。"
@@ -445,6 +489,24 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
           </div>
         ))}
 
+        {/* 🆕 快速拆分按钮 */}
+        <div style={{ marginBottom: 12 }}>
+          <Button
+            type="primary"
+            onClick={() => {
+              console.log('🖱️ [SplitTransactionModal] 按钮被点击！！！');
+              handleQuickSplit();
+            }}
+            block
+            style={{
+              background: '#1890ff',
+              borderColor: '#1890ff',
+            }}
+          >
+            ⚡ 快速拆分 (RM 350 会员费 + RM 150 日常财务)
+          </Button>
+        </div>
+
         <Button
           type="dashed"
           onClick={handleAddSplit}
@@ -454,6 +516,8 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
           添加拆分项
         </Button>
       </Form>
+        </>
+      )}
         </>
       )}
     </BaseModal>
