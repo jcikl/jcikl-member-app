@@ -188,34 +188,6 @@ const FiscalYearStatisticsPage: React.FC = () => {
           )}
         </Col>
       </Row>
-
-      {/* 使用说明 */}
-      <Card title="使用说明" style={{ marginTop: 24 }}>
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Text strong>财年统计功能说明：</Text>
-          <ol>
-            <li>
-              <Text>选择统计类型：财年统计或自然年统计</Text>
-            </li>
-            <li>
-              <Text>选择具体的财年或年份</Text>
-            </li>
-            <li>
-              <Text>系统将自动显示该期间的财务统计信息</Text>
-            </li>
-            <li>
-              <Text>可以导出报告或打印统计结果</Text>
-            </li>
-          </ol>
-          
-          <Alert
-            message="注意"
-            description="财年统计基于财年配置页面设置的起始月份和日期进行计算。"
-            type="info"
-            showIcon
-          />
-        </Space>
-      </Card>
     </div>
   );
 };
