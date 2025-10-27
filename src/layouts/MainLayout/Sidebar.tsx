@@ -81,10 +81,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           label: '财年管理',
         },
         {
-          key: '/finance/fiscal-year-statistics',
-          label: '财年统计',
-        },
-        {
           key: '/finance/internal-transfer-pairing',
           label: '内部转账配对',
         },

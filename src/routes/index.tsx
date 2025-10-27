@@ -31,7 +31,6 @@ import EventAccountManagementPage from '@/modules/event/pages/EventAccountManage
 import FinanceOverviewPage from '@/modules/finance/pages/FinanceOverviewPage';
 import MemberFeeManagementPage from '@/modules/finance/pages/MemberFeeManagementPage';
 import FiscalYearManagementPage from '@/modules/finance/pages/FiscalYearManagementPage';
-import FiscalYearStatisticsPage from '@/modules/finance/pages/FiscalYearStatisticsPage';
 import EventFinancialPage from '@/modules/finance/pages/EventFinancialPage';
 import GeneralAccountsPage from '@/modules/finance/pages/GeneralAccountsPage';
 import BankAccountManagementPage from '@/modules/finance/pages/BankAccountManagementPage';
@@ -203,10 +202,6 @@ export const router = createBrowserRouter(
           {
             path: 'fiscal-years',
             element: <FiscalYearManagementPage />,
-          },
-          {
-            path: 'fiscal-year-statistics',
-            element: <FiscalYearStatisticsPage />,
           },
           {
             path: 'internal-transfer-pairing',
