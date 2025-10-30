@@ -198,6 +198,10 @@ const buildQuery = (params: MemberSearchParams): Query<DocumentData> => {
  */
 export const getMemberById = async (memberId: string): Promise<Member | null> => {
   try {
+    if (!memberId || typeof memberId !== 'string') {
+      console.warn('⚠️ [getMemberById] Invalid memberId, skip fetch:', memberId);
+      return null;
+    }
     const memberDoc = await retryWithBackoff(
       () => getDoc(doc(db, GLOBAL_COLLECTIONS.MEMBERS, memberId))
     );

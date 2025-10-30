@@ -349,7 +349,7 @@ export const updateTransaction = async (
       const finalMetadata = updates.metadata ?? existingData.metadata;
     const linkedMemberId = finalMetadata?.memberId;
 
-      if (finalCategory === 'member-fees' && linkedMemberId) {
+    if (finalCategory === 'member-fees' && typeof linkedMemberId === 'string' && linkedMemberId.trim()) {
       console.log('🔗 [updateTransaction] Member fee transaction detected, auto-syncing...', {
         transactionId,
         memberId: linkedMemberId,
@@ -424,7 +424,7 @@ export const updateTransaction = async (
         let memberName: string | undefined;
         let memberEmail: string | undefined;
         const linkedMemberId = finalMetadata?.memberId;
-        if (linkedMemberId) {
+        if (typeof linkedMemberId === 'string' && linkedMemberId.trim()) {
           try {
             const member = await getMemberById(linkedMemberId);
             memberName = member?.name;
@@ -490,7 +490,7 @@ export const updateTransaction = async (
         let memberName: string | undefined;
         let memberEmail: string | undefined;
         const linkedMemberId = finalMetadata?.memberId;
-        if (linkedMemberId) {
+        if (typeof linkedMemberId === 'string' && linkedMemberId.trim()) {
           try {
             const member = await getMemberById(linkedMemberId);
             memberName = member?.name;

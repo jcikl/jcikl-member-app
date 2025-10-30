@@ -49,6 +49,7 @@ import {
 } from '../../services/memberFeeService';
 import { getCurrentFiscalYear } from '../../services/fiscalYearService';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
+import { deleteField } from 'firebase/firestore';
 import { smartFiscalYearService } from '../../services/smartFiscalYearService';
 import { getMembers, getMemberById, getAllActiveMembers } from '@/modules/member/services/memberService';
 import type { MemberFee, MemberFeeStatus, Transaction } from '../../types';
@@ -121,11 +122,14 @@ const MemberFeeManagementPage: React.FC = () => {
     currentTxAccount?: string;
     suggestedTxAccount?: string;
     suggestedMemberId?: string;
-    suggestedMemberName?: string;
+    suggestedMemberName?: string; // display name for fallback
+    suggestedMemberFull?: string; // fullNameNric for display
+    suggestedMemberDisplayName?: string; // profile.name/displayName
+    currentMemberId?: string;
     score: number;
   }>>([]);
   const [autoSelectedKeys, setAutoSelectedKeys] = useState<string[]>([]);
-  const [previewMemberOptions, setPreviewMemberOptions] = useState<Record<string, { value: string; label: string }[]>>({});
+  const [previewMemberOptions, setPreviewMemberOptions] = useState<Record<string, { value: string; label: React.ReactNode }[]>>({});
   const [previewMemberLoading, setPreviewMemberLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -419,28 +423,26 @@ const MemberFeeManagementPage: React.FC = () => {
     }
     
     // 🆕 预填会员信息并加载会员选项
-    const existingMemberId = (transaction as any)?.metadata?.memberId as string | undefined;
+    const rawMemberId = (transaction as any)?.metadata?.memberId as any;
+    const existingMemberId = typeof rawMemberId === 'string' ? rawMemberId : '';
     if (existingMemberId) {
       setModalSelectedMemberId(existingMemberId);
       // 加载该会员的信息以显示名字
       try {
         const member = await getMemberById(existingMemberId);
         if (member) {
+          const display = [member.name, member.email || member.phone || member.memberId]
+            .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+            .join(' ');
           setMemberSearchOptions([
-            { value: member.id, label: `${member.name} (${member.email || member.phone || member.memberId || ''})` }
+            { value: member.id, label: display }
           ]);
         } else {
-          // 如果没有找到，显示ID作为占位符
-          setMemberSearchOptions([
-            { value: existingMemberId, label: `会员ID: ${existingMemberId}` }
-          ]);
+          setMemberSearchOptions([]);
         }
       } catch (error) {
         console.error('Failed to load member info:', error);
-        // 如果加载失败，显示ID作为占位符
-        setMemberSearchOptions([
-          { value: existingMemberId, label: `会员ID: ${existingMemberId}` }
-        ]);
+        setMemberSearchOptions([]);
       }
     } else {
       setModalSelectedMemberId('');
@@ -521,17 +523,31 @@ const MemberFeeManagementPage: React.FC = () => {
         return hits >= 2 ? 12 : hits === 1 ? 6 : 0;
       };
 
-      const rows = await Promise.all(transactions.map(async (t) => {
+      // 已经“分类且已有关联会员”的记录不再参与自动匹配
+      const candidates = transactions.filter((t) => {
+        const linkedMemberId = (t as any)?.metadata?.memberId;
+        const hasLinkedMember = typeof linkedMemberId === 'string' && linkedMemberId.trim().length > 0;
+        return !(t.txAccount && hasLinkedMember);
+      });
+
+      const rows = await Promise.all(candidates.map(async (t) => {
         const { txAccount, score } = buildSuggestion(t);
         const combined = normalize(`${t.mainDescription || ''} ${t.subDescription || ''}`);
-        let best: { id: string; name: string; s: number } | undefined;
+        // 为 fullNameNric 赋更高优先级：在匹配分数上加权
+        let best: { id: string; displayName: string; full: string; s: number; sFull: number; sName: number } | undefined;
         for (const m of activeMembers) {
           const nm = (m as any).profile?.name || m.name || '';
           const full = (m as any).profile?.fullNameNric || '';
-          const s1 = scoreName(combined, nm);
-          const s2 = scoreName(combined, full);
-          const s = Math.max(s1, s2);
-          if (s > (best?.s || 0)) best = { id: m.id, name: nm || full, s };
+          const sName = scoreName(combined, nm);
+          const sFull = scoreName(combined, full);
+          // 提升 fullNameNric 的优先度：在综合分数中对 sFull 加偏置
+          const s = Math.max(sFull + 5, sName);
+          if (
+            s > (best?.s || 0) ||
+            (s === (best?.s || 0) && sFull > (best?.sFull || 0)) // 分数相同优先 full 命中高者
+          ) {
+            best = { id: m.id, displayName: nm, full, s, sFull, sName };
+          }
         }
         const matched = best && best.s >= 12 ? best : undefined;
         return {
@@ -543,7 +559,10 @@ const MemberFeeManagementPage: React.FC = () => {
           currentTxAccount: t.txAccount,
           suggestedTxAccount: txAccount,
           suggestedMemberId: matched?.id,
-          suggestedMemberName: matched?.name,
+          suggestedMemberName: matched ? (matched.full || matched.displayName) : undefined,
+          suggestedMemberFull: matched?.full,
+          suggestedMemberDisplayName: matched?.displayName,
+          currentMemberId: typeof (t as any)?.metadata?.memberId === 'string' ? (t as any).metadata.memberId : undefined,
           score: score + (matched ? 15 : 0),
         };
       }));
@@ -556,6 +575,27 @@ const MemberFeeManagementPage: React.FC = () => {
         return db - da;
       });
       setAutoPreviewRows(rows);
+      // 预填每行的下拉选项，保证不搜索时也显示两行格式
+      const initialOptions: Record<string, { value: string; label: React.ReactNode }[]> = {} as any;
+      const asText = (v: any) => (typeof v === 'string' ? v : '');
+      rows.forEach(r => {
+        if (r.suggestedMemberId) {
+          const full = asText(r.suggestedMemberFull);
+          const displayName = asText(r.suggestedMemberDisplayName || r.suggestedMemberName);
+          initialOptions[r.id] = [{
+            value: r.suggestedMemberId,
+            label: (
+              <div style={{ lineHeight: 1.2 }}>
+                <div>{full || displayName}</div>
+                {(full && displayName) ? (
+                  <div style={{ color: '#999', fontSize: 12 }}>{displayName}</div>
+                ) : null}
+              </div>
+            )
+          }];
+        }
+      });
+      setPreviewMemberOptions(initialOptions);
       setAutoSelectedKeys(rows.filter(r => (r.score || 0) >= 70 && r.suggestedTxAccount).map(r => r.id));
     } finally {
       setAutoPreviewLoading(false);
@@ -573,10 +613,18 @@ const MemberFeeManagementPage: React.FC = () => {
     }
     try {
       setAutoPreviewLoading(true);
-      await Promise.all(targets.map(r => updateTransaction(r.id, { 
-        txAccount: r.suggestedTxAccount!, 
-        metadata: r.suggestedMemberId ? { memberId: r.suggestedMemberId } : undefined,
-      }, user.id)));
+      console.log('[autoPreview][apply] targets', targets);
+      await Promise.all(targets.map(r => {
+        const updates: any = { txAccount: r.suggestedTxAccount! };
+        if (r.suggestedMemberId) {
+          updates.metadata = { memberId: r.suggestedMemberId };
+        } else if (!r.suggestedMemberId && r.currentMemberId) {
+          // 用户清除了关联会员，需要从 metadata 中删除原有 memberId
+          updates.metadata = { memberId: deleteField() };
+        }
+        console.log('[autoPreview][apply] updating', { transactionId: r.id, updates, currentMemberId: r.currentMemberId, suggestedMemberId: r.suggestedMemberId });
+        return updateTransaction(r.id, updates, user.id);
+      }));
       message.success(`已应用 ${targets.length} 条匹配结果`);
       setAutoPreviewVisible(false);
       setAutoSelectedKeys([]);
@@ -1314,9 +1362,14 @@ const MemberFeeManagementPage: React.FC = () => {
               onSearch={async (value) => {
                 setMemberSearchLoading(true);
                 try {
-                  const res = await getMembers({ page: 1, limit: 10, search: value });
+                    const res = await getMembers({ page: 1, limit: 10, search: value });
                   setMemberSearchOptions(
-                    res.data.map((m: any) => ({ value: m.id, label: `${m.name} (${m.email || m.phone || m.memberId || ''})` }))
+                    res.data.map((m: any) => {
+                      const asText = (v: any) => (typeof v === 'string' ? v : '');
+                      const primary = asText(m.name);
+                      const secondary = asText(m.email) || asText(m.phone) || asText(m.memberId);
+                      return { value: m.id, label: [primary, secondary].filter(Boolean).join(' ') };
+                    })
                   );
                 } finally {
                   setMemberSearchLoading(false);
@@ -1547,15 +1600,23 @@ const MemberFeeManagementPage: React.FC = () => {
             { title: '金额', dataIndex: 'amount', width: 100, align: 'right', render: (v: number) => `RM ${Number(v||0).toFixed(2)}` },
             { title: '当前二次分类', dataIndex: 'currentTxAccount', width: 160, render: (v: string) => v ? <Tag color="purple">{v}</Tag> : <Tag>未分类</Tag> },
             { title: '推荐分类', dataIndex: 'suggestedTxAccount', width: 160, render: (v: string) => v ? <Tag color="blue">{v}</Tag> : <Tag>无法判断</Tag> },
-            { title: '关联会员(可调整)', dataIndex: 'suggestedMemberId', width: 160, render: (_: any, r: any) => (
+            { title: '关联会员(可调整)', dataIndex: 'suggestedMemberId', width: 200, render: (_: any, r: any) => (
               <Select
                 showSearch
                 allowClear
-                placeholder={r.suggestedMemberName || '搜索会员姓名/邮箱'}
+                placeholder={(() => {
+                  const asText = (v: any) => (typeof v === 'string' ? v : '');
+                  const full = asText(r.suggestedMemberFull);
+                  const displayName = asText(r.suggestedMemberDisplayName || r.suggestedMemberName);
+                  if (full || displayName) {
+                    return `${full || ''}${full && displayName ? ' ' : ''}${displayName || ''}`;
+                  }
+                  return '搜索会员姓名/邮箱';
+                })()}
                 size="small"
                 value={r.suggestedMemberId}
-                style={{ width: 140, height: 45 }}
-                options={previewMemberOptions[r.id] || (r.suggestedMemberId && r.suggestedMemberName ? [{ value: r.suggestedMemberId, label: r.suggestedMemberName }] : [])}
+                style={{ width: 180, height: 45 }}
+                options={previewMemberOptions[r.id] || []}
                 notFoundContent={previewMemberLoading[r.id] ? '加载中...' : '暂无数据'}
                 filterOption={false}
                 onSearch={async (q) => {
@@ -1563,10 +1624,11 @@ const MemberFeeManagementPage: React.FC = () => {
                   setPreviewMemberLoading(prev => ({ ...prev, [r.id]: true }));
                   try {
                     const res = await getMembers({ page: 1, limit: 10, search: q });
-                    const opts = (res.data || []).map((m: any) => {
+                     const opts = (res.data || []).map((m: any) => {
+                      const asText = (v: any) => (typeof v === 'string' ? v : '');
                       const prof = (m as any).profile || {};
-                      const full = prof.fullNameNric || '';
-                      const displayName = prof.name || m.name || '';
+                      const full = asText(prof.fullNameNric);
+                      const displayName = asText(prof.name || m.name);
                       const labelNode = (
                         <div style={{ lineHeight: 1.2 }}>
                           <div>{full || displayName}</div>
@@ -1583,8 +1645,10 @@ const MemberFeeManagementPage: React.FC = () => {
                   }
                 }}
                 onChange={(val, option) => {
-                  const name = ((option as any)?.metaFull as string) || ((option as any)?.metaName as string) || ((option as any)?.label as string) || undefined;
-                  setAutoPreviewRows(prev => prev.map(row => row.id === r.id ? { ...row, suggestedMemberId: val as (string|undefined), suggestedMemberName: name } : row));
+                  const metaFull = typeof (option as any)?.metaFull === 'string' ? (option as any)?.metaFull : undefined;
+                  const metaName = typeof (option as any)?.metaName === 'string' ? (option as any)?.metaName : undefined;
+                  const safeName = metaFull || metaName;
+                  setAutoPreviewRows(prev => prev.map(row => row.id === r.id ? { ...row, suggestedMemberId: val as (string|undefined), suggestedMemberName: safeName, suggestedMemberFull: metaFull, suggestedMemberDisplayName: metaName } : row));
                 }}
               />
             ) },
