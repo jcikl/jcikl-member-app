@@ -547,8 +547,8 @@ const MemberFeeManagementPage: React.FC = () => {
             (s === (best?.s || 0) && sFull > (best?.sFull || 0)) // 分数相同优先 full 命中高者
           ) {
             best = { id: m.id, displayName: nm, full, s, sFull, sName };
+            }
           }
-        }
         const matched = best && best.s >= 12 ? best : undefined;
         return {
           id: t.id,
@@ -1362,7 +1362,7 @@ const MemberFeeManagementPage: React.FC = () => {
               onSearch={async (value) => {
                 setMemberSearchLoading(true);
                 try {
-                    const res = await getMembers({ page: 1, limit: 10, search: value });
+                  const res = await getMembers({ page: 1, limit: 10, search: value });
                   setMemberSearchOptions(
                     res.data.map((m: any) => {
                       const asText = (v: any) => (typeof v === 'string' ? v : '');

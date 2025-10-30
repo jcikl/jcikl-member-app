@@ -291,10 +291,10 @@ const DashboardPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 会员信息列表 */}
+      {/* 会员信息列表：四卡片同排显示 */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         {/* 会员生日列表 */}
-        <Col xs={24} lg={8}>
+        <Col xs={24} lg={6}>
           <Card 
             title={
               <span>
@@ -386,7 +386,7 @@ const DashboardPage: React.FC = () => {
         </Col>
 
         {/* 会员行业分布 */}
-        <Col xs={24} lg={8}>
+        <Col xs={24} lg={6}>
           <Card 
             title={
               <span>
@@ -452,7 +452,7 @@ const DashboardPage: React.FC = () => {
         </Col>
 
         {/* 会员兴趣分布 */}
-        <Col xs={24} lg={8}>
+        <Col xs={24} lg={6}>
           <Card 
             title={
               <span>
@@ -516,11 +516,8 @@ const DashboardPage: React.FC = () => {
             />
           </Card>
         </Col>
-      </Row>
-
       {/* 🆕 会员列表卡片 */}
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24}>
+        <Col xs={24} lg={6}>
           <Card 
             title={
               <span>
@@ -577,41 +574,58 @@ const DashboardPage: React.FC = () => {
               loading={membersLoading}
               dataSource={filteredMembers.slice(0, 20)} // 只显示前20个
               locale={{ emptyText: '暂无会员数据' }}
-              grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4, xl: 5, xxl: 6 }}
+              itemLayout="horizontal"
               renderItem={member => (
-                <List.Item>
-                  <Card
-                    size="small"
-                    hoverable
-                    style={{
-                      backgroundColor: selectedMemberId === member.id ? '#fff7e6' : '#fafafa',
-                      border: selectedMemberId === member.id ? '2px solid #faad14' : '1px solid #d9d9d9',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s',
-                    }}
-                    onClick={() => handleMemberClick(member)}
-                    bodyStyle={{ padding: '12px' }}
-                  >
-                    <div style={{ textAlign: 'center' }}>
+                <List.Item
+                  style={{
+                    padding: '8px 4px',
+                    cursor: 'pointer',
+                    backgroundColor: selectedMemberId === member.id ? '#fff7e6' : 'transparent',
+                    borderRadius: selectedMemberId === member.id ? 4 : 0,
+                    transition: 'background-color 0.2s ease',
+                  }}
+                  onClick={() => handleMemberClick(member)}
+                >
+                  <List.Item.Meta
+                    avatar={
                       <Avatar 
                         src={member.profile?.avatar} 
                         icon={<UserOutlined />}
-                        size={48}
-                        style={{ marginBottom: 8 }}
+                        size={40}
                       />
-                      <div style={{ 
-                        fontSize: '13px', 
-                        fontWeight: 600, 
-                        color: '#262626',
-                        marginBottom: 4,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {member.name}
+                    }
+                    title={
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
+                        <span style={{
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: '#262626',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          paddingRight: 8,
+                        }}>
+                          {member.name}
+                        </span>
+                        <span>
+                          {member.category && (
+                            <Tag 
+                              color={
+                                member.category === 'Official Member' ? 'blue' :
+                                member.category === 'Associate Member' ? 'green' :
+                                member.category === 'Alumni' ? 'orange' : 'default'
+                              }
+                              style={{ fontSize: '10px', lineHeight: '16px', height: 18 }}
+                            >
+                              {member.category}
+                            </Tag>
+                          )}
+                        </span>
                       </div>
-                      <div style={{ 
-                        fontSize: '11px', 
+                    }
+                    description={
+                      <div style={{
+                        fontSize: '11px',
                         color: '#8c8c8c',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -619,20 +633,8 @@ const DashboardPage: React.FC = () => {
                       }}>
                         {member.profile?.ownIndustry?.[0] || '未设置行业'}
                       </div>
-                      {member.category && (
-                        <Tag 
-                          color={
-                            member.category === 'Official Member' ? 'blue' :
-                            member.category === 'Associate Member' ? 'green' :
-                            member.category === 'Alumni' ? 'orange' : 'default'
-                          }
-                          style={{ marginTop: 8, fontSize: '10px' }}
-                        >
-                          {member.category}
-                        </Tag>
-                      )}
-                    </div>
-                  </Card>
+                    }
+                  />
                 </List.Item>
               )}
             />

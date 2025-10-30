@@ -314,7 +314,7 @@ export const getMembers = async (
         (member.phone || '').includes(search) ||
         (!!member.memberId && normalize(member.memberId).includes(searchLower)) ||
         (fullNameNric.includes(searchLower))
-      );
+    );
     });
     
     // Apply additional client-side filters
