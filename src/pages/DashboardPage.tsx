@@ -294,7 +294,7 @@ const DashboardPage: React.FC = () => {
       {/* 会员信息列表：四卡片同排显示 */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         {/* 会员生日列表 */}
-        <Col xs={24} lg={6}>
+        <Col xs={6} sm={6} md={6} lg={6}>
           <Card 
             title={
               <span>
@@ -386,7 +386,7 @@ const DashboardPage: React.FC = () => {
         </Col>
 
         {/* 会员行业分布 */}
-        <Col xs={24} lg={6}>
+        <Col xs={6} sm={6} md={6} lg={6}>
           <Card 
             title={
               <span>
@@ -452,7 +452,7 @@ const DashboardPage: React.FC = () => {
         </Col>
 
         {/* 会员兴趣分布 */}
-        <Col xs={24} lg={6}>
+        <Col xs={6} sm={6} md={6} lg={6}>
           <Card 
             title={
               <span>
@@ -517,7 +517,7 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
       {/* 🆕 会员列表卡片 */}
-        <Col xs={24} lg={6}>
+        <Col xs={6} sm={6} md={6} lg={6}>
           <Card 
             title={
               <span>
