@@ -341,11 +341,11 @@ export const getMemberFees = async (
           updatedAt: safeTimestampToISO(data.updatedAt) || new Date().toISOString(),
         };
         
-        // 保留所有记录（不再按财年筛选）
+        // 保留所有记录(不再按财年筛选)
         feesByMemberId.set(fee.memberId, fee);
       });
     
-    // 3. 为每个会员创建会员费记录（如果不存在则创建占位记录）
+    // 3. 为每个会员创建会员费记录(如果不存在则创建占位记录)
     let fees: MemberFee[] = membersSnapshot.docs.map(memberDoc => {
       const memberData = memberDoc.data();
       const memberId = memberDoc.id;
@@ -361,7 +361,7 @@ export const getMemberFees = async (
         }
         return existingFee;
       } else {
-        // 创建占位记录（显示会员但没有费用记录）
+        // 创建占位记录(显示会员但没有费用记录)
         const placeholder: any = {
           id: `placeholder-${memberId}`,
           memberId: memberId,
@@ -416,7 +416,7 @@ export const getMemberFees = async (
       );
     }
     
-    // 5. 关联交易以补充付款日期和二次分类（会员费交易记录二次分类）
+    // 5. 关联交易以补充付款日期和二次分类(会员费交易记录二次分类)
     try {
       const txnSnap = await getDocs(collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS));
       const latestPaidByMember: Record<string, { date: string; txAccount?: string }> = {};
@@ -757,7 +757,7 @@ export const upsertMemberFeeFromTransaction = async (params: {
     const now = new Date().toISOString();
     const due = params.dueDate || now;
 
-    // 🆕 Step 1: 先按 transactionId 查找（优先级最高 - 这个交易可能已经有关联的会费记录）
+    // 🆕 Step 1: 先按 transactionId 查找(优先级最高 - 这个交易可能已经有关联的会费记录)
     const snapshot = await getDocs(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
     const allFees = snapshot.docs
       .filter(d => d.data().type === 'memberFee')
@@ -774,7 +774,7 @@ export const upsertMemberFeeFromTransaction = async (params: {
     });
 
     if (existingByTransaction) {
-      // 情况 1: 这个交易已经有关联的会费记录 -> 更新关联会员（memberId 可能变了）
+      // 情况 1: 这个交易已经有关联的会费记录 -> 更新关联会员(memberId 可能变了)
       console.log('✏️ [upsertMemberFeeFromTransaction] Updating existing fee record linked to this transaction');
       const feeRef = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS, existingByTransaction.id);
       

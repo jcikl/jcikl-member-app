@@ -28,14 +28,15 @@ export const GLOBAL_COLLECTIONS = {
   BUDGET_CATEGORIES: 'budgetCategories',
   PROJECT_ACCOUNTS: 'projectAccounts',
   FISCAL_YEARS: 'fiscalYears',
-  FINANCE_EVENTS: 'fin_projects', // 重命名: financeEvents → fin_projects（活动管理/用于活动财务分类）
+  FINANCE_EVENTS: 'fin_projects', // 重命名: financeEvents → fin_projects(活动管理/用于活动财务分类)
 
   // ========== Event Domain (活动域) ==========
   EVENTS: 'projects', // 重命名: events → projects
   EVENT_REGISTRATIONS: 'eventRegistrations',
   EVENT_PARTICIPANTS: 'eventParticipants',
-  EVENT_ACCOUNTS: 'projectAccounts', // 重命名: eventAccounts → projectAccounts（活动专用财务账户）
+  EVENT_ACCOUNTS: 'projectAccounts', // 重命名: eventAccounts → projectAccounts(活动专用财务账户)
   EVENT_ACCOUNT_PLANS: 'eventAccountPlans', // 活动财务计划
+  EVENT_ACCOUNT_TRANSACTIONS: 'eventAccountTransactions', // 活动账目记录
 
   // ========== Permission Domain (权限域 - RBAC) ==========
   RBAC_PERMISSIONS: 'rbacPermissions',
@@ -70,7 +71,7 @@ export const GLOBAL_COLLECTIONS = {
   ONLINE_USERS_STATS: 'onlineUsersStats',
   PAGE_VIEWS: 'pageViews',
   PAGE_VIEWS_STATS: 'pageViewsStats',
-  FINANCIAL_CATEGORIES: 'fin_txCat', // 重命名: financialCategories → fin_txCat（财务类别管理）
+  FINANCIAL_CATEGORIES: 'fin_txCat', // 重命名: financialCategories → fin_txCat(财务类别管理)
 
   // ========== Organizational Hierarchy (组织架构) ==========
   WORLD_REGIONS: 'worldRegions',

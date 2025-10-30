@@ -10,7 +10,7 @@ import './styles.css';
 
 /**
  * StatisticsChart Component
- * 统计图表组件（简化版，未集成 recharts）
+ * 统计图表组件(简化版，未集成 recharts)
  */
 export const StatisticsChart: React.FC<StatisticsChartProps> = ({
   type,
@@ -70,7 +70,7 @@ export const StatisticsChart: React.FC<StatisticsChartProps> = ({
       <div className="statistics-chart__container" style={{ height }}>
         {/* 这里应该集成 recharts，暂时使用占位符 */}
         <div className="statistics-chart__placeholder">
-          <p>图表区域（需要集成 recharts 库）</p>
+          <p>图表区域(需要集成 recharts 库)</p>
           <p>类型: {chartType}</p>
           <p>数据点: {data.length}</p>
         </div>

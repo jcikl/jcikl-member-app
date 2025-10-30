@@ -241,7 +241,7 @@ export const ApprovalFlow: React.FC<ApprovalFlowProps> = ({
       >
         <TextArea
           rows={4}
-          placeholder="请输入审批意见（可选）"
+          placeholder="请输入审批意见(可选)"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
         />

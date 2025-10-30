@@ -30,7 +30,7 @@ const SystemSettings: React.FC = () => {
         <Form layout="vertical">
           <Row gutter={16}>
             <Col span={6}>
-              <Form.Item label="缓存时长（秒）" style={{ marginBottom: 12 }}>
+              <Form.Item label="缓存时长(秒)" style={{ marginBottom: 12 }}>
                 <InputNumber
                   defaultValue={GLOBAL_SYSTEM_CONFIG.CACHE_DURATION / 1000}
                   min={60}
@@ -43,7 +43,7 @@ const SystemSettings: React.FC = () => {
             </Col>
 
             <Col span={6}>
-              <Form.Item label="会话超时时间（分钟）" style={{ marginBottom: 12 }}>
+              <Form.Item label="会话超时时间(分钟)" style={{ marginBottom: 12 }}>
                 <InputNumber
                   defaultValue={GLOBAL_SYSTEM_CONFIG.SESSION.TIMEOUT / 60000}
                   min={5}
@@ -56,7 +56,7 @@ const SystemSettings: React.FC = () => {
             </Col>
 
             <Col span={6}>
-              <Form.Item label="最大文件上传大小（MB）" style={{ marginBottom: 12 }}>
+              <Form.Item label="最大文件上传大小(MB)" style={{ marginBottom: 12 }}>
                 <InputNumber
                   defaultValue={GLOBAL_SYSTEM_CONFIG.MAX_FILE_SIZE / 1024 / 1024}
                   min={1}
@@ -69,7 +69,7 @@ const SystemSettings: React.FC = () => {
             </Col>
 
             <Col span={6}>
-              <Form.Item label="最大图片上传大小（MB）" style={{ marginBottom: 12 }}>
+              <Form.Item label="最大图片上传大小(MB)" style={{ marginBottom: 12 }}>
                 <InputNumber
                   defaultValue={GLOBAL_SYSTEM_CONFIG.MAX_IMAGE_SIZE / 1024 / 1024}
                   min={1}

@@ -101,7 +101,22 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         },
       ],
     },
-    
+    {
+      key: 'tools-menu',
+      icon: <SettingOutlined />,
+      label: '工具',
+      children: [
+        {
+          key: '/settings/data-fix',
+          label: '数据修复',
+        },
+        {
+          key: '/settings/transaction-date-format-fix',
+          label: '财务交易日期格式修复',
+        },
+        
+      ],
+    },
   ];
 
   const handleMenuClick = ({ key }: { key: string }) => {

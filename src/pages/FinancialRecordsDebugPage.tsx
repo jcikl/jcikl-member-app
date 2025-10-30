@@ -259,7 +259,7 @@ export const FinancialRecordsDebugPage: React.FC = () => {
             </div>
           );
         } else if (record.type === 'eventFinancialRecord' || record.type === 'generalFinancialRecord') {
-          // 活动财务/日常账户记录：显示会员名字或付款人 + 邮箱（如果有）
+          // 活动财务/日常账户记录：显示会员名字或付款人 + 邮箱(如果有)
            const payerPayee = (record as any).payerPayee;
            const memberName = (record as any).memberName;
            const memberEmail = (record as any).memberEmail;
@@ -290,7 +290,7 @@ export const FinancialRecordsDebugPage: React.FC = () => {
         let expense = 0;
         
         if (record.type === 'memberFee') {
-          // 会员费：显示剩余未付金额（应收 - 实收）
+          // 会员费：显示剩余未付金额(应收 - 实收)
           const expected = (record as any).expectedAmount || 0;
           const paid = (record as any).paidAmount || 0;
           const remaining = expected - paid;
@@ -311,7 +311,7 @@ export const FinancialRecordsDebugPage: React.FC = () => {
               </span>
             );
           } else {
-            // 超额支付（异常情况）
+            // 超额支付(异常情况)
             return (
               <span style={{ color: '#faad14', fontWeight: 500 }}>
                 RM {Math.abs(remaining).toFixed(2)}
@@ -324,7 +324,7 @@ export const FinancialRecordsDebugPage: React.FC = () => {
           expense = (record as any).totalExpense || 0;
         }
         
-        // 参考银行对账单：收入显示正数（绿色），支出显示负数（红色）
+        // 参考银行对账单：收入显示正数(绿色)，支出显示负数(红色)
         const netAmount = income - expense;
         const displayAmount = Math.abs(netAmount);
         const isIncome = netAmount >= 0;

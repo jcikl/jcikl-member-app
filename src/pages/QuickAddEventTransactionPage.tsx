@@ -77,14 +77,14 @@ const QuickAddEventTransactionPage: React.FC = () => {
         status: 'completed' as const,
         
         // 🔗 完整的活动关联字段设置
-        // 1. 项目账户关联（旧系统，兼容）
+        // 1. 项目账户关联(旧系统，兼容)
         projectAccountId: selectedEvent?.financialAccount || undefined,
         
         // 2. 分类系统
         category: 'event-financial',
         txAccount: selectedEvent?.name || '',
         
-        // 3. 活动关联（新系统 - 方案C）
+        // 3. 活动关联(新系统 - 方案C)
         relatedEventId: values.eventId,
         relatedEventName: selectedEvent?.name || '',
       };
@@ -118,7 +118,7 @@ const QuickAddEventTransactionPage: React.FC = () => {
   return (
     <div style={{ padding: '24px' }}>
       <PageHeader
-        title="快速添加活动交易（测试）"
+        title="快速添加活动交易(测试)"
         breadcrumbs={[
           { title: '首页', path: '/' },
           { title: '测试工具' },

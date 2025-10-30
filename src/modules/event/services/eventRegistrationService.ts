@@ -35,7 +35,7 @@ export const createEventRegistration = async (
     participantType: ParticipantType;
     pricePaid: number;
     isMember: boolean;            // 是否为会员
-    memberId?: string;            // 会员ID（如果是会员）
+    memberId?: string;            // 会员ID(如果是会员)
     dietaryRequirements?: string;
     specialNeeds?: string;
     emergencyContact?: {

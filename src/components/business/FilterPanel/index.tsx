@@ -22,7 +22,7 @@ import {
   FolderOpenOutlined,
 } from '@ant-design/icons';
 
-// 全局配置（优先导入）
+// 全局配置(优先导入)
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
 
@@ -171,7 +171,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
 
 
   /**
-   * 应用筛选（自动触发）
+   * 应用筛选(自动触发)
    */
   const handleApplyFilter = async (values?: any) => {
     try {
@@ -419,7 +419,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           </Row>
         </div>
 
-        {/* 预设操作栏（仅在启用预设时显示）*/}
+        {/* 预设操作栏(仅在启用预设时显示)*/}
         {showPresets && (
           <div className="filter-panel__actions">
             <Space className="filter-panel__presets">

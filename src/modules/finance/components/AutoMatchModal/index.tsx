@@ -57,9 +57,9 @@ type FilterType = 'all' | 'high' | 'medium' | 'noMatch';
 // 🆕 自定义编辑数据
 interface CustomEditData {
   category?: string; // 主分类
-  eventName?: string; // 活动名称（二次分类）
+  eventName?: string; // 活动名称(二次分类)
   memberId?: string; // 会员ID
-  payerPayee?: string; // 付款人/收款人（可以是会员名或非会员）
+  payerPayee?: string; // 付款人/收款人(可以是会员名或非会员)
 }
 
 export const AutoMatchModal: React.FC<Props> = ({
@@ -320,7 +320,7 @@ export const AutoMatchModal: React.FC<Props> = ({
               </div>
               <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
                 {statistics.highConfidence > 0 && (
-                  <div>• <strong>全选高置信度</strong>：一键选中 {statistics.highConfidence} 条高置信度匹配（推荐）</div>
+                  <div>• <strong>全选高置信度</strong>：一键选中 {statistics.highConfidence} 条高置信度匹配(推荐)</div>
                 )}
                 {statistics.mediumConfidence > 0 && (
                   <div>• <strong>全选有匹配</strong>：选中所有 {statistics.hasMatch} 条有匹配的记录</div>
@@ -512,7 +512,7 @@ export const AutoMatchModal: React.FC<Props> = ({
                                     }}
                                     showSearch
                                     allowClear
-                                    placeholder="选择会员（可选）"
+                                    placeholder="选择会员(可选)"
                                     optionFilterProp="children"
                                     filterOption={(input, option) =>
                                       (option?.children?.toString() || '').toLowerCase().includes(input.toLowerCase())
@@ -590,7 +590,7 @@ export const AutoMatchModal: React.FC<Props> = ({
                       </>
                     ) : item.topAttempt ? (
                       <>
-                        <div className="section-title">⚠️ 最佳尝试匹配（需手动确认）</div>
+                        <div className="section-title">⚠️ 最佳尝试匹配(需手动确认)</div>
                         <Alert
                           message={
                             (() => {
@@ -600,9 +600,9 @@ export const AutoMatchModal: React.FC<Props> = ({
                               const transactionTypeText = item.transaction.transactionType === 'expense' ? '支出交易' : '收入交易';
                               
                               if (item.topAttempt.daysDifference <= 30) {
-                                return `未达到${transactionTypeText}自动分类阈值（${threshold}分），但找到时间最接近的活动（相差${item.topAttempt.daysDifference}天，得分：${item.topAttempt.totalScore}/${maxScore}）`;
+                                return `未达到${transactionTypeText}自动分类阈值(${threshold}分)，但找到时间最接近的活动(相差${item.topAttempt.daysDifference}天，得分：${item.topAttempt.totalScore}/${maxScore})`;
                               } else {
-                                return `未达到${transactionTypeText}自动分类阈值（${threshold}分），但找到以下活动（得分：${item.topAttempt.totalScore}/${maxScore}）`;
+                                return `未达到${transactionTypeText}自动分类阈值(${threshold}分)，但找到以下活动(得分：${item.topAttempt.totalScore}/${maxScore})`;
                               }
                             })()
                           }

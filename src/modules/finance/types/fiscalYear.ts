@@ -14,7 +14,7 @@ export interface FiscalYearConfig extends BaseEntity {
   isActive: boolean;      // 是否启用
   isDefault: boolean;     // 是否为默认配置
   description?: string;   // 描述
-  organizationId?: string; // 组织ID（支持多组织）
+  organizationId?: string; // 组织ID(支持多组织)
 }
 
 // ========== Fiscal Year Period ==========
@@ -52,7 +52,7 @@ export interface FiscalYearSuggestion {
 // ========== Fiscal Year Calculation Options ==========
 export interface FiscalYearCalculationOptions {
   config: FiscalYearConfig;
-  targetYear?: number;    // 目标年份（可选）
+  targetYear?: number;    // 目标年份(可选)
   includeProgress?: boolean; // 是否包含进度信息
   includeSuggestions?: boolean; // 是否包含建议
 }

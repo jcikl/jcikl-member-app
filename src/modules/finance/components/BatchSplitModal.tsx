@@ -2,7 +2,7 @@
  * Batch Split Modal
  * 批量拆分弹窗
  * 
- * 为多条交易应用相同的拆分规则（按百分比）
+ * 为多条交易应用相同的拆分规则(按百分比)
  */
 
 import React, { useState } from 'react';
@@ -185,7 +185,7 @@ const BatchSplitModal: React.FC<BatchSplitModalProps> = ({
         </div>
       </div>
 
-      <Divider style={{ margin: '16px 0' }}>拆分规则（按固定金额）</Divider>
+      <Divider style={{ margin: '16px 0' }}>拆分规则(按固定金额)</Divider>
 
       <Form form={form} layout="vertical">
         {rules.map((rule, index) => (

@@ -132,7 +132,7 @@ const buildQuery = (params: MemberSearchParams): Query<DocumentData> => {
 
 /**
  * Get member by ID with retry mechanism
- * 根据ID获取会员（带重试机制）
+ * 根据ID获取会员(带重试机制)
  */
 export const getMemberById = async (memberId: string): Promise<Member | null> => {
   try {
@@ -156,7 +156,7 @@ export const getMemberById = async (memberId: string): Promise<Member | null> =>
 
 /**
  * Get all members with pagination and filters
- * 获取所有会员（分页和过滤）
+ * 获取所有会员(分页和过滤)
  */
 export const getMembers = async (
   params: PaginationParams & MemberSearchParams
@@ -386,7 +386,7 @@ const computeAutoCategory = async (memberId: string, profile?: any): Promise<str
   } catch {}
 
   if (hasPaidFee) {
-    // 2) 有会费付款记录：先设为 Probation Member（试用/观察会员）
+    // 2) 有会费付款记录：先设为 Probation Member(试用/观察会员)
     nextCategory = 'Probation Member' as any;
 
     const birth = profile?.birthDate;
@@ -421,7 +421,7 @@ export const updateMember = async (
     }
     
     // Prepare update data
-    // 业务规则：自动计算类别（不再人工设置）
+    // 业务规则：自动计算类别(不再人工设置)
     const baseProfile = {
       ...memberDoc.data()?.profile,
       ...(data.birthDate !== undefined ? { birthDate: data.birthDate } : {}),
@@ -480,7 +480,7 @@ export const updateMember = async (
 
 /**
  * Delete member with retry
- * 删除会员（带重试）
+ * 删除会员(带重试)
  */
 export const deleteMember = async (memberId: string): Promise<void> => {
   try {
@@ -626,7 +626,7 @@ export const checkPhoneExists = async (phone: string, excludeMemberId?: string):
 
 /**
  * Get members with upcoming birthdays (next 30 days)
- * 获取即将过生日的会员（未来30天）
+ * 获取即将过生日的会员(未来30天)
  */
 export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
   id: string;
@@ -927,7 +927,7 @@ export const getInterestDistribution = async (): Promise<Array<{
 
 /**
  * Get all active members (for dropdown selections)
- * 获取所有活跃会员（用于下拉选择）
+ * 获取所有活跃会员(用于下拉选择)
  */
 export const getAllActiveMembers = async (): Promise<Member[]> => {
   try {

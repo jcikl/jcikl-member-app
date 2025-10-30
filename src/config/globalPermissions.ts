@@ -1,6 +1,6 @@
 /**
  * Global Permission Configuration
- * 全局权限配置（占位文件）
+ * 全局权限配置(占位文件)
  */
 
 export const globalPermissionService = {

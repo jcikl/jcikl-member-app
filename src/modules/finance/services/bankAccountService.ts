@@ -336,7 +336,7 @@ const unsetDefaultBankAccount = async (): Promise<void> => {
 
 /**
  * Reconcile Bank Account
- * 记录对账日期（不再更新balance字段）
+ * 记录对账日期(不再更新balance字段)
  */
 export const reconcileBankAccount = async (
   accountId: string,
@@ -369,7 +369,7 @@ export const reconcileBankAccount = async (
 
 /**
  * Get Total Balance Across All Accounts
- * 获取所有账户的总余额（通过实时计算）
+ * 获取所有账户的总余额(通过实时计算)
  * 
  * 计算逻辑：
  * 总余额 = Σ(每个账户的initialBalance + 该账户所有交易的净额)
@@ -399,7 +399,7 @@ export const getTotalBalance = async (): Promise<number> => {
     transactionsSnapshot.docs.forEach(txnDoc => {
       const txn = txnDoc.data();
       
-      // 跳过虚拟交易（子交易）
+      // 跳过虚拟交易(子交易)
       if (txn.isVirtual || txn.parentTransactionId) {
         return;
       }
@@ -413,7 +413,7 @@ export const getTotalBalance = async (): Promise<number> => {
         // 新结构
         netAmount = txn.transactionType === 'income' ? txn.amount : -txn.amount;
       } else if (txn.income !== undefined && txn.expense !== undefined) {
-        // 旧结构（向后兼容）
+        // 旧结构(向后兼容)
         netAmount = txn.income - txn.expense;
       }
       
@@ -509,7 +509,7 @@ export const getBankAccountMonthlyData = async (
         return txDate >= monthStart && txDate <= monthEnd;
       });
       
-      // 计算月初余额（上月月末余额）
+      // 计算月初余额(上月月末余额)
       let openingBalance = 0;
       if (month === 1) {
         // 1月的月初余额 = 账户初始余额 + 去年12月之前的交易
@@ -537,12 +537,12 @@ export const getBankAccountMonthlyData = async (
       }
       
       // 计算当月收入和支出
-      // 🆕 只统计父交易记录（排除子交易，避免重复计算）
+      // 🆕 只统计父交易记录(排除子交易，避免重复计算)
       let totalIncome = 0;
       let totalExpense = 0;
       
       monthTransactions.forEach(tx => {
-        // 只统计父交易（没有parentTransactionId的交易）
+        // 只统计父交易(没有parentTransactionId的交易)
         if (!tx.parentTransactionId) {
           if (tx.transactionType === 'income') {
             totalIncome += tx.amount;
@@ -618,7 +618,7 @@ export const getAllBankAccountsMonthlyData = async (
         return txDate >= monthStart && txDate <= monthEnd;
       });
       
-      // 计算月初余额（上月月末余额）
+      // 计算月初余额(上月月末余额)
       let openingBalance = 0;
       if (month === 1) {
         // 1月的月初余额 = 所有账户初始余额 + 去年12月之前的交易
@@ -646,12 +646,12 @@ export const getAllBankAccountsMonthlyData = async (
       }
       
       // 计算当月收入和支出
-      // 🆕 只统计父交易记录（排除子交易，避免重复计算）
+      // 🆕 只统计父交易记录(排除子交易，避免重复计算)
       let totalIncome = 0;
       let totalExpense = 0;
       
       monthTransactions.forEach(tx => {
-        // 只统计父交易（没有parentTransactionId的交易）
+        // 只统计父交易(没有parentTransactionId的交易)
         if (!tx.parentTransactionId) {
           if (tx.transactionType === 'income') {
             totalIncome += tx.amount;

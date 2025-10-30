@@ -29,7 +29,7 @@ export const getEventAccountPlans = async (accountId: string): Promise<Financial
     const q = query(
       collection(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNT_PLANS),
       where('accountId', '==', accountId),
-      orderBy('expectedDate', 'asc')
+      orderBy('createdAt', 'asc')
     );
 
     const snapshot = await getDocs(q);
@@ -123,6 +123,33 @@ export const deleteEventAccountPlan = async (planId: string, userId: string): Pr
     });
   } catch (error: any) {
     globalSystemService.log('error', 'Failed to delete event account plan', 'eventAccountPlanService', { error });
+    throw error;
+  }
+};
+
+/**
+ * 批量删除财务计划项目
+ * 使用 Firestore batch 操作，提高性能
+ */
+export const batchDeleteEventAccountPlans = async (planIds: string[], userId: string): Promise<void> => {
+  try {
+    if (planIds.length === 0) return;
+
+    const batch = writeBatch(db);
+    
+    planIds.forEach(planId => {
+      const docRef = doc(db, GLOBAL_COLLECTIONS.EVENT_ACCOUNT_PLANS, planId);
+      batch.delete(docRef);
+    });
+
+    await batch.commit();
+
+    globalSystemService.log('info', 'Event account plans batch deleted', 'eventAccountPlanService', {
+      count: planIds.length,
+      userId,
+    });
+  } catch (error: any) {
+    globalSystemService.log('error', 'Failed to batch delete event account plans', 'eventAccountPlanService', { error });
     throw error;
   }
 };

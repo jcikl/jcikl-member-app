@@ -17,6 +17,7 @@ import {
   where,
   orderBy,
   limit,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
@@ -419,7 +420,7 @@ export const updateTransaction = async (
         const finalTxAccount = updates.txAccount ?? existingData.txAccount;
         const finalPayerPayee = updates.payerPayee ?? existingData.payerPayee;
 
-        // 🆕 获取会员信息（如果有 memberId）
+        // 🆕 获取会员信息(如果有 memberId)
         let memberName: string | undefined;
         let memberEmail: string | undefined;
         const linkedMemberId = finalMetadata?.memberId;
@@ -485,7 +486,7 @@ export const updateTransaction = async (
         const finalTxAccount = updates.txAccount ?? existingData.txAccount;
         const finalPayerPayee = updates.payerPayee ?? existingData.payerPayee;
 
-        // 🆕 获取会员信息（如果有 memberId）
+        // 🆕 获取会员信息(如果有 memberId)
         let memberName: string | undefined;
         let memberEmail: string | undefined;
         const linkedMemberId = finalMetadata?.memberId;
@@ -630,12 +631,12 @@ export const getTransactionById = async (
 
 /**
  * Get All Parent Transactions (for balance calculation)
- * 获取所有父交易（用于余额计算）
+ * 获取所有父交易(用于余额计算)
  * 
  * @param bankAccountId - 银行账户ID
  * @param sortBy - 排序字段
  * @param sortOrder - 排序顺序
- * @returns 所有父交易列表（已排序）
+ * @returns 所有父交易列表(已排序)
  */
 export const getAllParentTransactions = async (
   bankAccountId: string,
@@ -705,7 +706,7 @@ export const getTransactions = async (
       paymentMethod,
       sortBy = 'transactionDate',
       sortOrder = 'desc',
-      includeVirtual = true, // 默认包含虚拟交易（向后兼容）
+      includeVirtual = true, // 默认包含虚拟交易(向后兼容)
       parentTransactionId,
     } = params;
     
@@ -723,7 +724,7 @@ export const getTransactions = async (
       approvedAt: doc.data().approvedAt ? safeTimestampToISO(doc.data().approvedAt) : undefined,
     } as Transaction));
     
-    // 🔍 Debug: 原始查询结果（生产环境可注释）
+    // 🔍 Debug: 原始查询结果(生产环境可注释)
     // console.log('🔍 [getTransactions] 原始查询结果:', {
     //   总交易数: transactions.length,
     //   子交易数: transactions.filter(t => t.isVirtual === true).length,
@@ -742,20 +743,20 @@ export const getTransactions = async (
     }
     if (category) {
       if (category === 'uncategorized') {
-        // 🆕 筛选未分类的交易（排除已拆分的父交易）
+        // 🆕 筛选未分类的交易(排除已拆分的父交易)
         transactions = transactions.filter(t => 
           (!t.txAccount || t.txAccount.trim() === '') && 
           t.isSplit !== true
         );
       } else {
-        // 🆕 筛选指定类别的交易（排除已拆分的父交易）
+        // 🆕 筛选指定类别的交易(排除已拆分的父交易)
         transactions = transactions.filter(t => 
           t.category === category && 
           t.isSplit !== true
         );
       }
     }
-    // 🔑 二次分类过滤（排除已拆分的父交易）
+    // 🔑 二次分类过滤(排除已拆分的父交易)
     if (params.txAccount) {
       transactions = transactions.filter(t => 
         t.txAccount === params.txAccount && 
@@ -780,13 +781,13 @@ export const getTransactions = async (
       transactions = transactions.filter(t => t.parentTransactionId === parentTransactionId);
     }
     if (search) {
-      // 🔍 增强型Fuzzy搜索（包含父子交易关系处理）
+      // 🔍 增强型Fuzzy搜索(包含父子交易关系处理)
       const searchLower = search.toLowerCase().trim();
       const searchTerms = searchLower.split(/\s+/); // 支持多关键词搜索
       
       // Step 1: 先找出所有直接匹配的交易
       const directMatches = transactions.filter(t => {
-        // 构建可搜索文本（包含所有可能的字段）
+        // 构建可搜索文本(包含所有可能的字段)
         const searchableText = [
           t.mainDescription || '',
           t.subDescription || '',
@@ -799,7 +800,7 @@ export const getTransactions = async (
           t.receiptNumber || '', // 🆕 添加收据号搜索
           t.invoiceNumber || '', // 🆕 添加发票号搜索
           t.inputByName || '', // 🆕 添加录入人搜索
-          t.transactionType || '', // 🆕 添加交易类型搜索（收入/支出）
+          t.transactionType || '', // 🆕 添加交易类型搜索(收入/支出)
           t.status || '', // 🆕 添加状态搜索
           t.paymentMethod || '', // 🆕 添加付款方式搜索
         ].join(' ').toLowerCase();
@@ -818,7 +819,7 @@ export const getTransactions = async (
       directMatches.forEach(matched => {
         // 如果是父交易，检查是否已拆分
         if (!matched.parentTransactionId) {
-          // 🚫 跳过已拆分的父交易（isSplit为true）
+          // 🚫 跳过已拆分的父交易(isSplit为true)
           if (matched.isSplit === true) {
             // 只添加子交易，不添加父交易本身
             const children = transactions.filter(t => t.parentTransactionId === matched.id);
@@ -849,14 +850,14 @@ export const getTransactions = async (
           // 如果是子交易，添加父交易和所有兄弟子交易
           const parentId = matched.parentTransactionId;
           
-          // 🔑 查找并添加父交易（如果父交易未拆分）
+          // 🔑 查找并添加父交易(如果父交易未拆分)
           const parent = transactions.find(t => t.id === parentId);
           if (parent && !matchedIds.has(parent.id) && parent.isSplit !== true) {
             matchedIds.add(parent.id);
             resultTransactions.push(parent);
           }
           
-          // 🔑 查找并添加该父交易的所有子交易（包括自己）
+          // 🔑 查找并添加该父交易的所有子交易(包括自己)
           const siblings = transactions.filter(t => t.parentTransactionId === parentId);
           siblings.forEach(sibling => {
             if (!matchedIds.has(sibling.id)) {
@@ -918,7 +919,7 @@ export const getTransactions = async (
       children.forEach(child => includedChildIds.add(child.id));
     });
     
-    // 🆕 Step 5: 添加"孤儿"子交易（父交易被过滤掉，但子交易符合条件）
+    // 🆕 Step 5: 添加"孤儿"子交易(父交易被过滤掉，但子交易符合条件)
     const orphanChildren = childTransactions.filter(child => !includedChildIds.has(child.id));
     if (orphanChildren.length > 0) {
       // 将孤儿子交易作为独立交易添加到结果中
@@ -950,7 +951,7 @@ export const getTransactions = async (
           // 子交易且属于当前父交易：加入当前组
           currentGroup.push(transaction);
         } else {
-          // 孤儿子交易（父交易被过滤掉）：作为独立组
+          // 孤儿子交易(父交易被过滤掉)：作为独立组
           if (currentGroup.length > 0) {
             groups.push(currentGroup);
           }
@@ -1126,9 +1127,9 @@ const updateBankAccountLastTransaction = async (
 
 /**
  * Get cumulative balance before a specific date for running balance calculation
- * 获取指定日期之前的累计余额（用于累计余额计算）
+ * 获取指定日期之前的累计余额(用于累计余额计算)
  * @param bankAccountId - 银行账户ID
- * @param beforeDate - 截止日期（不包含当天）
+ * @param beforeDate - 截止日期(不包含当天)
  * @returns 该日期之前的累计余额
  */
 export const getBalanceBeforeDate = async (
@@ -1160,13 +1161,13 @@ export const getBalanceBeforeDate = async (
     console.log(`   账户名称: ${account.accountName}`);
     console.log(`   初始余额: RM ${initialBalance.toFixed(2)}`);
     
-    // Step 2: 查询该账户的所有交易（不使用status条件）
+    // Step 2: 查询该账户的所有交易(不使用status条件)
     // 原因：数据库中 status 字段为 undefined，查询 status=='completed' 会返回0笔
     console.log('📌 Step 2: 查询该账户所有交易');
     console.log(`   Collection: ${GLOBAL_COLLECTIONS.TRANSACTIONS}`);
     console.log(`   查询条件:`);
     console.log(`     bankAccountId = "${bankAccountId}"`);
-    console.log(`   ⚠️  注意: 不使用status条件（因为数据库中status为undefined）`);
+    console.log(`   ⚠️  注意: 不使用status条件(因为数据库中status为undefined)`);
     
     const q = query(
       collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
@@ -1184,7 +1185,7 @@ export const getBalanceBeforeDate = async (
       return initialBalance;
     }
     
-    // 显示前3笔交易的日期格式（用于调试）
+    // 显示前3笔交易的日期格式(用于调试)
     console.log('   📋 显示前3笔交易的日期格式:');
     snapshot.docs.slice(0, 3).forEach((doc, idx) => {
       const data = doc.data() as any;
@@ -1199,18 +1200,18 @@ export const getBalanceBeforeDate = async (
     
     console.log('📌 Step 3: 在内存中过滤日期和虚拟交易');
     console.log(`   过滤条件: transactionDate < "${beforeDate}" AND isVirtual != true`);
-    console.log(`   说明: 虚拟交易（子交易）不影响余额计算`);
+    console.log(`   说明: 虚拟交易(子交易)不影响余额计算`);
     
-    // 过滤出 beforeDate 之前的交易（强制规范到 YYYY-MM-DD 再比较，避免字典序误判）
-    // 同时排除虚拟交易（isVirtual === true）
+    // 过滤出 beforeDate 之前的交易(强制规范到 YYYY-MM-DD 再比较，避免字典序误判)
+    // 同时排除虚拟交易(isVirtual === true)
     const normalizeToISODate = (input: string): string | null => {
       if (!input) return null;
-      // 1) 直接构造 Date（可兼容 ISO 与 "01-Jul-2024" 等常见格式）
+      // 1) 直接构造 Date(可兼容 ISO 与 "01-Jul-2024" 等常见格式)
       const tryDate = new Date(input);
       if (!Number.isNaN(tryDate.getTime())) {
         return tryDate.toISOString().split('T')[0];
       }
-      // 2) 兼容 "dd-MMM-yyyy"（例如 01-Jul-2024）
+      // 2) 兼容 "dd-MMM-yyyy"(例如 01-Jul-2024)
       const m = input.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})$/);
       if (m) {
         const [, dd, mon, yyyy] = m;
@@ -1228,11 +1229,11 @@ export const getBalanceBeforeDate = async (
       if (!beforeISO || !txISO) {
         return false; // 无法解析则不计入
       }
-      // 排除虚拟交易（子交易不影响余额）
+      // 排除虚拟交易(子交易不影响余额)
       if (tx.isVirtual === true) {
         return false;
       }
-      // 严格小于 beforeDate（同日不计入）
+      // 严格小于 beforeDate(同日不计入)
       return txISO < beforeISO;
     });
     
@@ -1255,7 +1256,7 @@ export const getBalanceBeforeDate = async (
       console.log(`     ... 还有 ${transactions.length - 3} 笔`);
     }
     
-    // Step 4: 按交易日期排序（从早到晚）
+    // Step 4: 按交易日期排序(从早到晚)
     transactions.sort((a: any, b: any) => {
       const dateA = new Date(a.transactionDate).getTime();
       const dateB = new Date(b.transactionDate).getTime();
@@ -1373,10 +1374,10 @@ export const getTransactionStatistics = async (
       // Check status
       if (data.status !== 'completed') return;
       
-      // 🆕 排除虚拟交易（子交易不影响统计）
+      // 🆕 排除虚拟交易(子交易不影响统计)
       if (data.isVirtual === true) return;
       
-      // 🆕 排除内部转账（Internal Transfer）
+      // 🆕 排除内部转账(Internal Transfer)
       if (data.isInternalTransfer === true) return;
       
       // Check date range
@@ -1392,7 +1393,7 @@ export const getTransactionStatistics = async (
           totalExpense += data.amount;
         }
       } else {
-        // 旧结构（向后兼容）
+        // 旧结构(向后兼容)
         totalIncome += data.income || 0;
         totalExpense += data.expense || 0;
       }
@@ -1434,7 +1435,7 @@ export const getTransactionStatistics = async (
 
 /**
  * Split Transaction (拆分交易)
- * 将一笔交易拆分为多笔子交易（仅作参考，不影响银行余额）
+ * 将一笔交易拆分为多笔子交易(仅作参考，不影响银行余额)
  */
 export const splitTransaction = async (
   transactionId: string,
@@ -1468,10 +1469,10 @@ export const splitTransaction = async (
     
     // Step 2: 验证
     if (parentData.isVirtual) {
-      throw new Error('虚拟交易（子交易）不能再次拆分');
+      throw new Error('虚拟交易(子交易)不能再次拆分');
     }
     
-    // 🆕 Step 2.1: 如果已拆分，先删除所有现有子交易（更新拆分记录）
+    // 🆕 Step 2.1: 如果已拆分，先删除所有现有子交易(更新拆分记录)
     if (parentData.isSplit) {
       console.log('🔄 [splitTransaction] 交易已拆分，删除现有子交易并重新拆分');
       
@@ -1557,7 +1558,7 @@ export const splitTransaction = async (
       
       const cleanData = cleanUndefinedValues(childData);
       
-      // 🔍 Debug: 子交易数据（生产环境可注释）
+      // 🔍 Debug: 子交易数据(生产环境可注释)
       // console.log('🔍 [splitTransaction] 子交易数据:', {
       //   category: split.category,
       //   amount: split.amount,
@@ -1622,7 +1623,7 @@ export const splitTransaction = async (
       childTransactions.push(unallocatedTransaction);
     }
     
-    // Step 5: 更新父交易（拆分后清除类别，避免混淆）
+    // Step 5: 更新父交易(拆分后清除类别，避免混淆)
     const parentUpdates = {
       isSplit: true,
       splitCount: childTransactions.length,
@@ -1631,7 +1632,7 @@ export const splitTransaction = async (
       updatedAt: now,
     };
     
-    // 🔑 清除类别和二次分类字段（使用 Firestore deleteField）
+    // 🔑 清除类别和二次分类字段(使用 Firestore deleteField)
     const { deleteField } = await import('firebase/firestore');
     const updateData = {
       ...parentUpdates,
@@ -1733,7 +1734,7 @@ export const unsplitTransaction = async (
       await deleteDoc(childDoc.ref);
     }
     
-    // Step 3: 恢复父交易状态（不恢复类别，需用户手动重新分类）
+    // Step 3: 恢复父交易状态(不恢复类别，需用户手动重新分类)
     const parentUpdates = cleanUndefinedValues({
       isSplit: false,
       splitCount: null,
@@ -1774,7 +1775,7 @@ export const unsplitTransaction = async (
 
 /**
  * Batch Split Transactions (批量拆分交易)
- * 为多条交易应用相同的拆分规则（按固定金额）
+ * 为多条交易应用相同的拆分规则(按固定金额)
  */
 export const batchSplitTransactions = async (
   transactionIds: string[],
@@ -1912,9 +1913,9 @@ export const batchSetCategory = async (
 
       const data = transactionDoc.data();
 
-      // 不允许修改虚拟交易（子交易）
+      // 不允许修改虚拟交易(子交易)
       if (data.isVirtual) {
-        throw new Error('虚拟交易（子交易）的类别由拆分操作管理，不能单独修改');
+        throw new Error('虚拟交易(子交易)的类别由拆分操作管理，不能单独修改');
       }
 
       // 🔧 允许覆盖已分类的交易：直接更新分类
@@ -1975,7 +1976,7 @@ export const batchSetCategory = async (
 };
 
 /**
- * 通过项目账户ID获取交易记录（用于活动财务）
+ * 通过项目账户ID获取交易记录(用于活动财务)
  */
 export const getTransactionsByProjectAccountId = async (
   projectAccountId: string
@@ -2035,14 +2036,9 @@ export const getTransactionsByProjectAccountId = async (
 };
 
 /**
- * 获取关联到特定活动的交易记录（方案C）
+ * 获取关联到特定活动的交易记录(方案C)
  */
 export const getTransactionsByEventId = async (eventId: string): Promise<Transaction[]> => {
-  console.log('🔍 [getTransactionsByEventId] Starting query...', { 
-    eventId,
-    collection: GLOBAL_COLLECTIONS.TRANSACTIONS,
-  });
-  
   try {
     const q = query(
       collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
@@ -2050,22 +2046,10 @@ export const getTransactionsByEventId = async (eventId: string): Promise<Transac
       orderBy('transactionDate', 'desc')
     );
 
-    console.log('📡 [getTransactionsByEventId] Executing Firestore query...');
     const snapshot = await getDocs(q);
-    console.log('✅ [getTransactionsByEventId] Query completed', {
-      totalDocs: snapshot.size,
-      isEmpty: snapshot.empty,
-    });
 
     const transactions = snapshot.docs.map(doc => {
       const data = doc.data();
-      console.log('📄 [getTransactionsByEventId] Document data:', {
-        id: doc.id,
-        transactionNumber: data.transactionNumber,
-        relatedEventId: data.relatedEventId,
-        mainDescription: data.mainDescription,
-        amount: data.amount,
-      });
       
       return {
         id: doc.id,
@@ -2077,14 +2061,6 @@ export const getTransactionsByEventId = async (eventId: string): Promise<Transac
       } as Transaction;
     });
 
-    console.log('✅ [getTransactionsByEventId] Returning transactions:', {
-      count: transactions.length,
-      firstTransaction: transactions[0] ? {
-        id: transactions[0].id,
-        number: transactions[0].transactionNumber,
-      } : null,
-    });
-
     return transactions;
   } catch (error: any) {
     console.error('❌ [getTransactionsByEventId] Query failed:', error);
@@ -2092,6 +2068,153 @@ export const getTransactionsByEventId = async (eventId: string): Promise<Transac
       error, 
       eventId 
     });
+    throw error;
+  }
+};
+
+/**
+ * Update Transaction Reconciliation
+ * 更新交易核对状态
+ */
+export const updateTransactionReconciliation = async (
+  transactionId: string,
+  bankTransactionId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const transactionRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, transactionId);
+    
+    const updates = cleanUndefinedValues({
+      reconciledBankTransactionId: bankTransactionId,
+      status: 'completed' as TransactionStatus,
+      approvedBy: userId,
+      approvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    
+    await updateDoc(transactionRef, updates);
+    
+    // 🆕 双向同步：检查bankTransaction是否被活动账目记录核对
+    // 如果bankTransaction有reconciledEventAccountTransactionId，也更新活动账目记录
+    try {
+      const bankTransactionRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, bankTransactionId);
+      const bankTransactionDoc = await getDoc(bankTransactionRef);
+      
+      if (bankTransactionDoc.exists()) {
+        const bankTxData = bankTransactionDoc.data();
+        
+        // 同步bankTransaction的状态
+        await updateDoc(bankTransactionRef, cleanUndefinedValues({
+          status: 'completed' as TransactionStatus,
+          reconciledBankTransactionId: transactionId, // 双向引用
+          updatedAt: new Date().toISOString(),
+        }));
+        console.log('✅ [updateTransactionReconciliation] Bank transaction synchronized:', bankTransactionId);
+        
+        // 🆕 如果bankTransaction关联了活动账目记录，也更新它
+        if (bankTxData.reconciledEventAccountTransactionId) {
+          try {
+            const { updateEventAccountTransaction } = await import('@/modules/event/services/eventAccountService');
+            await updateEventAccountTransaction(bankTxData.reconciledEventAccountTransactionId, {
+              status: 'completed' as any,
+            }, userId);
+            console.log('✅ [updateTransactionReconciliation] Event account transaction synchronized');
+          } catch (error: any) {
+            console.error('⚠️ [updateTransactionReconciliation] Failed to sync event account transaction:', error);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('⚠️ [updateTransactionReconciliation] Failed to sync bank transaction:', error);
+      // 不抛出错误，允许继续执行
+    }
+    
+    globalSystemService.log(
+      'info',
+      'Transaction reconciled',
+      'transactionService.updateTransactionReconciliation',
+      { transactionId, bankTransactionId, userId }
+    );
+  } catch (error: any) {
+    globalSystemService.log(
+      'error',
+      'Failed to reconcile transaction',
+      'transactionService.updateTransactionReconciliation',
+      { error: error.message, transactionId, bankTransactionId, userId }
+    );
+    throw error;
+  }
+};
+
+/**
+ * Clear Transaction Reconciliation
+ * 清除交易核对状态
+ */
+export const clearTransactionReconciliation = async (
+  transactionId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const transactionRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, transactionId);
+    
+    // 🆕 先读取当前的reconciledBankTransactionId，用于双向同步
+    const currentDoc = await getDoc(transactionRef);
+    const currentData = currentDoc.data();
+    const bankTransactionId = currentData?.reconciledBankTransactionId;
+    
+    await updateDoc(transactionRef, {
+      reconciledBankTransactionId: deleteField(),
+      status: 'pending' as TransactionStatus,
+      updatedAt: new Date().toISOString(),
+    });
+    
+    // 🆕 双向同步：清除对应的bankTransaction的核对状态
+    if (bankTransactionId) {
+      try {
+        const bankTransactionRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, bankTransactionId);
+        const bankTransactionDoc = await getDoc(bankTransactionRef);
+        
+        if (bankTransactionDoc.exists()) {
+          const bankTxData = bankTransactionDoc.data();
+          
+          // 清除bankTransaction的核对状态
+          await updateDoc(bankTransactionRef, {
+            status: 'pending' as TransactionStatus,
+            reconciledBankTransactionId: deleteField(),
+            updatedAt: new Date().toISOString(),
+          });
+          console.log('✅ [clearTransactionReconciliation] Bank transaction synchronized:', bankTransactionId);
+          
+          // 🆕 如果bankTransaction关联了活动账目记录，也清除它的核对状态
+          if (bankTxData.reconciledEventAccountTransactionId) {
+            try {
+              const { clearEventAccountTransactionReconciliation } = await import('@/modules/event/services/eventAccountService');
+              await clearEventAccountTransactionReconciliation(bankTxData.reconciledEventAccountTransactionId, userId);
+              console.log('✅ [clearTransactionReconciliation] Event account transaction synchronized');
+            } catch (error: any) {
+              console.error('⚠️ [clearTransactionReconciliation] Failed to sync event account transaction:', error);
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('⚠️ [clearTransactionReconciliation] Failed to sync bank transaction:', error);
+        // 不抛出错误，允许继续执行
+      }
+    }
+    
+    globalSystemService.log(
+      'info',
+      'Transaction reconciliation cleared',
+      'transactionService.clearTransactionReconciliation',
+      { transactionId, userId }
+    );
+  } catch (error: any) {
+    globalSystemService.log(
+      'error',
+      'Failed to clear transaction reconciliation',
+      'transactionService.clearTransactionReconciliation',
+      { error: error.message, transactionId, userId }
+    );
     throw error;
   }
 };

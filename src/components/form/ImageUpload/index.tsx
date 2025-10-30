@@ -15,7 +15,7 @@ interface ImageUploadProps {
 
 /**
  * Image Upload Component
- * 图片上传组件（集成Cloudinary）
+ * 图片上传组件(集成Cloudinary)
  */
 export const ImageUpload: React.FC<ImageUploadProps> = ({
   value,

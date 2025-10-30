@@ -205,7 +205,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
   };
 
 
-  // 🆕 定义表格列（日常财务）
+  // 🆕 定义表格列(日常财务)
   const generalAccountsColumns: ColumnsType<Transaction> = [
     {
       title: '日期',
@@ -298,7 +298,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     },
   ];
 
-  // 🆕 定义表格列（活动财务）
+  // 🆕 定义表格列(活动财务)
   const eventFinanceColumns: ColumnsType<Transaction> = [
     {
       title: '日期',
@@ -391,7 +391,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     },
   ];
 
-  // 🆕 定义表格列（会员费）
+  // 🆕 定义表格列(会员费)
   const memberFeesColumns: ColumnsType<Transaction> = [
     {
       title: '日期',
@@ -483,7 +483,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
     >
       <Alert
         message="注意"
-        description="此操作将覆盖所有选中交易的类别。虚拟交易（子交易）将被自动跳过。您可以为每条交易独立设置相关信息。"
+        description="此操作将覆盖所有选中交易的类别。虚拟交易(子交易)将被自动跳过。您可以为每条交易独立设置相关信息。"
         type="warning"
         showIcon
         style={{ marginBottom: 16 }}
@@ -546,7 +546,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
           
           {/* 二次分类 - 可选 */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>二次分类（可选）</div>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>二次分类(可选)</div>
             <Select
               style={{ width: '100%' }}
               value={selectedTxAccount}
@@ -582,7 +582,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
           {/* 年份筛选 */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
-              年份（可选，用于筛选活动）
+              年份(可选，用于筛选活动)
               {events.length > 0 && (
                 <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>
                   共有 {events.length} 个活动
@@ -593,7 +593,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
               style={{ width: '100%' }}
               value={selectedYear}
               onChange={setSelectedYear}
-              placeholder="选择年份（不选择则显示所有活动）"
+              placeholder="选择年份(不选择则显示所有活动)"
               allowClear
               showSearch
             >
@@ -608,7 +608,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
             )}
             {!selectedYear && events.length > 0 && (
               <p style={{ fontSize: '12px', color: '#52c41a', marginTop: 8 }}>
-                ✅ 显示所有年份的活动（共 {events.length} 个）
+                ✅ 显示所有年份的活动(共 {events.length} 个)
               </p>
             )}
             {events.length === 0 && !loadingData && (
@@ -620,7 +620,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
 
           {/* 🆕 统一的活动选择 */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>关联活动（统一设置）</div>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>关联活动(统一设置)</div>
             <Select
               style={{ width: '100%' }}
               value={selectedEventId}
@@ -667,7 +667,7 @@ const BatchSetCategoryModal: React.FC<BatchSetCategoryModalProps> = ({
           
           {/* 二次分类 */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>二次分类（可选）</div>
+            <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>二次分类(可选)</div>
             <Select
               style={{ width: '100%' }}
               value={selectedTxAccount}

@@ -27,6 +27,7 @@ import {
   Typography,
   Row,
   Col,
+  List,
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import {
@@ -97,7 +98,7 @@ const TransactionManagementPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all'); // 🆕 二次分类筛选
   const [availableSubCategories, setAvailableSubCategories] = useState<string[]>([]); // 🆕 可用的二次分类列表
-  const [activeTabKey, setActiveTabKey] = useState<string>('all'); // 当前选中的标签页（银行账户ID）
+  const [activeTabKey, setActiveTabKey] = useState<string>('all'); // 当前选中的标签页(银行账户ID)
   const [viewMode, setViewMode] = useState<'table' | 'tree'>('table'); // 🆕 视图模式：表格或树形
   const [treeData, setTreeData] = useState<DataNode[]>([]); // 🆕 树形数据
   const [treeTableData, setTreeTableData] = useState<TreeTableItem[]>([]); // 🆕 树形表格数据
@@ -119,7 +120,7 @@ const TransactionManagementPage: React.FC = () => {
   const [batchSplitModalVisible, setBatchSplitModalVisible] = useState(false);
   const [batchCategoryModalVisible, setBatchCategoryModalVisible] = useState(false);
   
-  // 🆕 交易用途选项（从财务类别管理加载）
+  // 🆕 交易用途选项(从财务类别管理加载)
   const [purposeOptions, setPurposeOptions] = useState<{ label: string; value: string }[]>([]);
   
   // 🎯 累计余额相关状态
@@ -135,7 +136,7 @@ const TransactionManagementPage: React.FC = () => {
   // 🆕 未分类检测
   const [hasUncategorized, setHasUncategorized] = useState(false);
   
-  // 💰 存储各账户的当前余额（实时计算）
+  // 💰 存储各账户的当前余额(实时计算)
   const [accountBalances, setAccountBalances] = useState<Record<string, number>>({});
   
   // 🆕 批量粘贴导入
@@ -160,6 +161,7 @@ const TransactionManagementPage: React.FC = () => {
   const [autoMatchLoading, setAutoMatchLoading] = useState(false);
   const [allEventsForAutoMatch, setAllEventsForAutoMatch] = useState<Array<{ id: string; eventName: string; eventDate: string }>>([]);
   const [allMembersForAutoMatch, setAllMembersForAutoMatch] = useState<Array<{ id: string; name: string; email?: string; phone?: string }>>([]);
+  
 
   useEffect(() => {
     loadBankAccounts();
@@ -299,7 +301,7 @@ const TransactionManagementPage: React.FC = () => {
         category: categoryFilter !== 'all' ? categoryFilter : undefined,
         sortBy: 'transactionDate',
         sortOrder: 'desc',
-        includeVirtual: true, // 🔑 显示子交易（虚拟交易）
+        includeVirtual: true, // 🔑 显示子交易(虚拟交易)
       });
 
       // 🆕 应用二次分类筛选
@@ -342,7 +344,7 @@ const TransactionManagementPage: React.FC = () => {
         setAvailableSubCategories([]);
       }
       
-      // 🎯 计算累计余额（仅针对单个账户）
+      // 🎯 计算累计余额(仅针对单个账户)
       if (activeTabKey !== 'all' && result.data.length > 0) {
         await calculateRunningBalances(result.data, activeTabKey);
       } else {
@@ -363,8 +365,8 @@ const TransactionManagementPage: React.FC = () => {
    * 🎯 计算累计余额 - 完全基于UI列表顺序
    * 
    * 核心逻辑：
-   * 1. 从下到上（数组末尾→开头）
-   * 2. 从后往前（最旧页→最新页）
+   * 1. 从下到上(数组末尾→开头)
+   * 2. 从后往前(最旧页→最新页)
    * 3. 不依赖任何固定字段，只依赖当前排序顺序
    * 
    * @param currentPageTransactions - 当前页的交易列表
@@ -388,7 +390,7 @@ const TransactionManagementPage: React.FC = () => {
       
       const initialBalance = account.initialBalance || 0;
       
-      // Step 2: 🚀 获取全局所有交易（使用缓存优化）
+      // Step 2: 🚀 获取全局所有交易(使用缓存优化)
       const currentCacheKey = `${bankAccountId}-${sortBy}-${sortOrder}`;
       let allTransactions: Transaction[];
       
@@ -420,7 +422,7 @@ const TransactionManagementPage: React.FC = () => {
         return;
       }
       
-      // Step 3: 定位当前页在全局中的位置（UI底部 = 最旧交易）
+      // Step 3: 定位当前页在全局中的位置(UI底部 = 最旧交易)
       const lastTxnOnPage = currentPageTransactions[currentPageTransactions.length - 1];
       const globalEndIndex = allTransactions.findIndex(t => t.id === lastTxnOnPage?.id);
       
@@ -431,7 +433,7 @@ const TransactionManagementPage: React.FC = () => {
         return;
       }
       
-      // Step 4: 计算起始余额（累加当前页之后的所有交易）
+      // Step 4: 计算起始余额(累加当前页之后的所有交易)
       let startingBalance = initialBalance;
       
       for (let i = allTransactions.length - 1; i > globalEndIndex; i--) {
@@ -442,7 +444,7 @@ const TransactionManagementPage: React.FC = () => {
         startingBalance += netAmount;
       }
       
-      // Step 5: 计算当前页余额（从下到上）
+      // Step 5: 计算当前页余额(从下到上)
       let runningBalance = startingBalance;
       const newBalanceMap = new Map<string, number>();
       
@@ -457,13 +459,13 @@ const TransactionManagementPage: React.FC = () => {
       
       setBalanceMap(newBalanceMap);
       
-      // 💰 更新该账户的当前余额（用于标签显示）
+      // 💰 更新该账户的当前余额(用于标签显示)
       setAccountBalances(prev => ({
         ...prev,
         [bankAccountId]: runningBalance
       }));
       
-      // 简洁日志（仅生产环境需要时可完全移除）
+      // 简洁日志(仅生产环境需要时可完全移除)
       console.log(`✅ [Balance] 第${currentPage}页: 起始RM${startingBalance.toFixed(2)} → 结束RM${runningBalance.toFixed(2)}`);
       
     } catch (error: any) {
@@ -476,7 +478,7 @@ const TransactionManagementPage: React.FC = () => {
   };
   
   /**
-   * 清空缓存（在交易变更后调用）
+   * 清空缓存(在交易变更后调用)
    */
   const clearBalanceCache = () => {
     setCacheKey('');
@@ -488,7 +490,7 @@ const TransactionManagementPage: React.FC = () => {
   /**
    * 获取账户的显示余额
    * @param accountId - 账户ID
-   * @param initialBalance - 初始余额（作为后备值）
+   * @param initialBalance - 初始余额(作为后备值)
    */
   const getAccountDisplayBalance = (accountId: string, initialBalance: number): number => {
     // 如果已计算过该账户的余额，返回计算值
@@ -586,7 +588,7 @@ const TransactionManagementPage: React.FC = () => {
       
       // 🆕 如果是活动财务类别，设置根级别的 relatedEventId 和活动名称
       if (formData.category === 'event-finance' && values.txAccount) {
-        // values.txAccount 已经是 financialAccount（因为 Option 的 value 使用了 financialAccount）
+        // values.txAccount 已经是 financialAccount(因为 Option 的 value 使用了 financialAccount)
         (formData as any).relatedEventId = values.txAccount;
         
         // 🔧 查找活动名称并保存到 txAccount
@@ -645,15 +647,16 @@ const TransactionManagementPage: React.FC = () => {
     });
   };
 
+
+  // 🆕 保留原有的handleApprove用于兼容
   const handleApprove = async (id: string) => {
     if (!user) return;
-
     try {
       await approveTransaction(id, user.id);
       message.success('交易已批准');
-      clearBalanceCache(); // 清空余额缓存
+      clearBalanceCache();
       await loadTransactions();
-      await updateAccountTransactionCounts(); // 刷新标签页计数
+      await updateAccountTransactionCounts();
     } catch (error: any) {
       message.error('批准失败');
     }
@@ -707,7 +710,7 @@ const TransactionManagementPage: React.FC = () => {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          // 逐个删除（包含余额回退）
+          // 逐个删除(包含余额回退)
           for (const id of ids) {
             await deleteTransaction(id, user.id);
           }
@@ -820,7 +823,7 @@ const TransactionManagementPage: React.FC = () => {
           }
         }
         
-        // 如果需要会员名称（活动财务或日常财务），加载会员数据
+        // 如果需要会员名称(活动财务或日常财务)，加载会员数据
         if (data.individualData && (data.category === 'event-finance' || data.category === 'general-accounts')) {
           const memberIds: string[] = [];
           
@@ -893,10 +896,10 @@ const TransactionManagementPage: React.FC = () => {
             const updates: Partial<Transaction> = {};
             const metadata: Record<string, any> = {};
 
-            // 🆕 使用已经组合好的 txAccount（从 batchSetCategory 的结果）
+            // 🆕 使用已经组合好的 txAccount(从 batchSetCategory 的结果)
             // 不再重新构建，避免覆盖 batchSetCategory 的结果
 
-            // 根据类别设置不同的字段（只处理会员费的特殊字段）
+            // 根据类别设置不同的字段(只处理会员费的特殊字段)
             if (data.category === 'member-fees') {
               // 会员费：关联会员
               if (individualItem.memberId) {
@@ -931,11 +934,11 @@ const TransactionManagementPage: React.FC = () => {
                 }
               }
               
-              // 🆕 使用统一的活动ID，并保存活动名称到txAccount（二次分类）
+              // 🆕 使用统一的活动ID，并保存活动名称到txAccount(二次分类)
               if (data.eventId && eventName) {
                 updates.txAccount = eventName; // ✅ 活动名称保存到txAccount
                 metadata.eventId = data.eventId; // ✅ 活动ID保存到metadata
-                metadata.eventName = eventName; // ✅ 活动名称也保存到metadata（可选）
+                metadata.eventName = eventName; // ✅ 活动名称也保存到metadata(可选)
               }
             }
 
@@ -975,7 +978,7 @@ const TransactionManagementPage: React.FC = () => {
     const defaultBankAccount = bankAccounts[0]?.id || '';
     setSelectedBankAccountId(defaultBankAccount);
     
-    // 自动添加第一行（不包含银行账户）
+    // 自动添加第一行(不包含银行账户)
     setBulkImportData([{
       key: `bulk-${Date.now()}`,
       transactionType: 'income',
@@ -1049,9 +1052,9 @@ const TransactionManagementPage: React.FC = () => {
           // 🆕 使用用户自定义的主分类
           const finalCategory = item.customData?.category || 'event-finance';
           
-          // 🆕 使用用户自定义的活动名称（如果有修改）
+          // 🆕 使用用户自定义的活动名称(如果有修改)
           const finalEventName = item.customData?.eventName || item.matchResult.eventName;
-          // 🆕 查找对应的活动ID（如果活动名称被修改了）
+          // 🆕 查找对应的活动ID(如果活动名称被修改了)
           const matchedEvent = allEventsForAutoMatch.find(e => e.eventName === finalEventName);
           const finalEventId = matchedEvent?.id || item.matchResult.eventId;
           
@@ -1070,8 +1073,12 @@ const TransactionManagementPage: React.FC = () => {
           // 🆕 如果主分类是活动财务，添加活动相关信息
           if (finalCategory === 'event-finance') {
             updates.txAccount = finalEventName; // 使用活动名称作为二次分类
-            updates.metadata.relatedEventId = finalEventId;
-            updates.metadata.relatedEventName = finalEventName;
+            // ✅ 使用根级别字段
+            updates.relatedEventId = finalEventId;
+            updates.relatedEventName = finalEventName;
+            // ✅ metadata 字段用于兼容旧系统
+            updates.metadata.eventId = finalEventId;
+            updates.metadata.eventName = finalEventName;
           }
           
           // 🆕 处理会员信息
@@ -1133,7 +1140,7 @@ const TransactionManagementPage: React.FC = () => {
       const expenseStr = parts[3] || '0';
       const incomeStr = parts[4] || '0';
       
-      // 解析金额（支出或收入）
+      // 解析金额(支出或收入)
       const expense = parseFloat(expenseStr) || 0;
       const income = parseFloat(incomeStr) || 0;
       const amount = expense > 0 ? expense : income;
@@ -1216,7 +1223,7 @@ const TransactionManagementPage: React.FC = () => {
       );
       
       if (invalidRows.length > 0) {
-        message.error(`有 ${invalidRows.length} 行数据不完整（主描述、金额必填，且金额需大于0）`);
+        message.error(`有 ${invalidRows.length} 行数据不完整(主描述、金额必填，且金额需大于0)`);
         return;
       }
       
@@ -1378,7 +1385,7 @@ const TransactionManagementPage: React.FC = () => {
       };
     };
 
-    // 辅助函数：为每个账户/项目创建统一的树形项目（不按年份分开）
+    // 辅助函数：为每个账户/项目创建统一的树形项目(不按年份分开)
     const createUnifiedTreeItem = (
       key: string,
       name: string,
@@ -1423,17 +1430,17 @@ const TransactionManagementPage: React.FC = () => {
 
     // 负责理事名称映射
     const boardMemberNameMap: Record<string, string> = {
-      'president': 'President（会长）',
-      'vp-community': 'VP Community（社区发展）',
-      'vp-membership': 'VP Membership（会员发展）',
-      'vp-business': 'VP Business（商业发展）',
-      'secretary': 'Secretary（秘书）',
-      'treasurer': 'Treasurer（财政）',
-      'immediate-past-president': 'Immediate Past President（前任会长）',
-      'director-public-relations': 'Director Public Relations（公关理事）',
-      'director-creative': 'Director Creative（创意理事）',
-      'director-training': 'Director Training（培训理事）',
-      'director-sports': 'Director Sports（体育理事）',
+      'president': 'President(会长)',
+      'vp-community': 'VP Community(社区发展)',
+      'vp-membership': 'VP Membership(会员发展)',
+      'vp-business': 'VP Business(商业发展)',
+      'secretary': 'Secretary(秘书)',
+      'treasurer': 'Treasurer(财政)',
+      'immediate-past-president': 'Immediate Past President(前任会长)',
+      'director-public-relations': 'Director Public Relations(公关理事)',
+      'director-creative': 'Director Creative(创意理事)',
+      'director-training': 'Director Training(培训理事)',
+      'director-sports': 'Director Sports(体育理事)',
     };
 
     // 类别名称映射
@@ -1536,7 +1543,7 @@ const TransactionManagementPage: React.FC = () => {
           // 尝试精确匹配
           let event = eventsMap.get(txAccount);
           
-          // 如果精确匹配失败，尝试模糊匹配（去掉前后空格）
+          // 如果精确匹配失败，尝试模糊匹配(去掉前后空格)
           if (!event && txAccount) {
             for (const [eventName, eventData] of eventsMap.entries()) {
               if (eventName.trim() === txAccount) {
@@ -1593,12 +1600,12 @@ const TransactionManagementPage: React.FC = () => {
             const date1 = event1?.startDate ? new Date(event1.startDate).getTime() : 0;
             const date2 = event2?.startDate ? new Date(event2.startDate).getTime() : 0;
             
-            // 先按日期排序（从旧到新）
+            // 先按日期排序(从旧到新)
             if (date1 !== date2) {
               return date1 - date2;
             }
             
-            // 如果日期相同，按名称字母排序（从A到Z）
+            // 如果日期相同，按名称字母排序(从A到Z)
             return name1.localeCompare(name2, 'zh-CN');
           });
           
@@ -1828,11 +1835,11 @@ const TransactionManagementPage: React.FC = () => {
         return;
       }
       
-      // 🆕 获取所有活动数据（包含负责理事信息）
+      // 🆕 获取所有活动数据(包含负责理事信息)
       const eventsResult = await getEvents({ page: 1, limit: 10000 });
       const eventsMap = new Map(eventsResult.data.map(event => [event.name, event]));
       
-      // 过滤掉虚拟子交易（只显示真实交易）
+      // 过滤掉虚拟子交易(只显示真实交易)
       let realTransactions = allTransactions.filter(t => !t.isVirtual);
     
     // 🆕 根据日期范围类型过滤交易
@@ -1863,7 +1870,7 @@ const TransactionManagementPage: React.FC = () => {
             return inCurrentFiscal || inPreviousFiscal;
           } catch (error) {
             console.warn('Failed to detect fiscal year period:', error);
-            // 回退到默认逻辑（10月1日-9月30日）
+            // 回退到默认逻辑(10月1日-9月30日)
             const inCurrentFiscal = (txMonth >= 10 && txYear === year) || (txMonth < 10 && txYear === year + 1);
             const inPreviousFiscal = (txMonth >= 10 && txYear === previousYear) || (txMonth < 10 && txYear === previousYear + 1);
             return inCurrentFiscal || inPreviousFiscal;
@@ -1898,17 +1905,17 @@ const TransactionManagementPage: React.FC = () => {
     
     // 🆕 负责理事名称映射
     const boardMemberNameMap: Record<string, string> = {
-      'president': 'President（会长）',
-      'secretary': 'Secretary（秘书）',
-      'honorary-treasurer': 'Honorary Treasurer（名誉司库）',
-      'general-legal-council': 'General Legal Council（法律顾问）',
-      'executive-vp': 'Executive Vice President（执行副会长）',
-      'vp-individual': 'VP Individual（个人发展副会长）',
-      'vp-community': 'VP Community（社区发展副会长）',
-      'vp-business': 'VP Business（商业发展副会长）',
-      'vp-international': 'VP International（国际事务副会长）',
-      'vp-lom': 'VP LOM（地方组织副会长）',
-      'immediate-past-president': 'Immediate Past President（卸任会长）',
+      'president': 'President(会长)',
+      'secretary': 'Secretary(秘书)',
+      'honorary-treasurer': 'Honorary Treasurer(名誉司库)',
+      'general-legal-council': 'General Legal Council(法律顾问)',
+      'executive-vp': 'Executive Vice President(执行副会长)',
+      'vp-individual': 'VP Individual(个人发展副会长)',
+      'vp-community': 'VP Community(社区发展副会长)',
+      'vp-business': 'VP Business(商业发展副会长)',
+      'vp-international': 'VP International(国际事务副会长)',
+      'vp-lom': 'VP LOM(地方组织副会长)',
+      'immediate-past-president': 'Immediate Past President(卸任会长)',
     };
 
     // 🆕 分组数据结构 - 活动财务按负责理事分组
@@ -1922,13 +1929,13 @@ const TransactionManagementPage: React.FC = () => {
       const isIncome = transaction.transactionType === 'income';
       const amount = transaction.amount || 0;
       
-      // 🆕 跳过已拆分的父交易（只计算子交易）
+      // 🆕 跳过已拆分的父交易(只计算子交易)
       const isSplitParent = transaction.isSplit === true;
 
       if (isIncome) {
         // 收入：所有收入交易
         if (!isSplitParent) {
-          totalIncome += amount; // 🆕 累计收入（排除已拆分的父交易）
+          totalIncome += amount; // 🆕 累计收入(排除已拆分的父交易)
         }
         
         if (!incomeGroups[category]) incomeGroups[category] = {};
@@ -1937,9 +1944,9 @@ const TransactionManagementPage: React.FC = () => {
       } else {
         // 支出：只有非活动财务的支出交易
         if (category === 'event-finance') {
-          // 活动财务支出：合并到对应的活动收入中（净收入计算）
+          // 活动财务支出：合并到对应的活动收入中(净收入计算)
           if (!isSplitParent) {
-            totalIncome -= amount; // 🆕 活动支出减少总收入（净收入，排除已拆分的父交易）
+            totalIncome -= amount; // 🆕 活动支出减少总收入(净收入，排除已拆分的父交易)
           }
           
           if (!incomeGroups[category]) incomeGroups[category] = {};
@@ -1948,7 +1955,7 @@ const TransactionManagementPage: React.FC = () => {
         } else {
           // 其他类别支出：正常归类到支出
           if (!isSplitParent) {
-            totalExpense += amount; // 🆕 累计支出（排除已拆分的父交易）
+            totalExpense += amount; // 🆕 累计支出(排除已拆分的父交易)
           }
           
           if (!expenseGroups[category]) expenseGroups[category] = {};
@@ -1970,7 +1977,7 @@ const TransactionManagementPage: React.FC = () => {
     Object.entries(incomeGroups).forEach(([category, subGroups]) => {
       if (Object.keys(subGroups).length === 0) return;
 
-      // 🆕 对于活动财务，计算净收入（收入 - 支出）
+      // 🆕 对于活动财务，计算净收入(收入 - 支出)
       let categoryTotal = 0;
       let categoryCount = 0;
 
@@ -1987,7 +1994,7 @@ const TransactionManagementPage: React.FC = () => {
           if (transaction.transactionType === 'income') {
             categoryTotal += transaction.amount || 0;  // 收入为正数
           } else {
-            categoryTotal -= transaction.amount || 0;  // 支出为负数（减少净收入）
+            categoryTotal -= transaction.amount || 0;  // 支出为负数(减少净收入)
           }
         });
       } else {
@@ -2239,7 +2246,7 @@ const TransactionManagementPage: React.FC = () => {
       expenseNode.children!.push(categoryNode);
     });
 
-    // 🆕 收集所有节点的 key 用于默认展开（包括所有层级）
+    // 🆕 收集所有节点的 key 用于默认展开(包括所有层级)
     const allKeys: React.Key[] = ['income-root', 'expense-root'];
     
     incomeNode.children?.forEach(categoryNode => {
@@ -2311,7 +2318,7 @@ const TransactionManagementPage: React.FC = () => {
     }
   }, [treeDateRangeType, treeSelectedYear, viewMode]);
 
-  // 🆕 树形表格列配置（使用 useMemo 确保依赖变化时更新）
+  // 🆕 树形表格列配置(使用 useMemo 确保依赖变化时更新)
   const treeTableColumns: ColumnsType<TreeTableItem> = useMemo(() => [
     {
       title: '账户/项目名称',
@@ -2340,7 +2347,7 @@ const TransactionManagementPage: React.FC = () => {
     },
     {
       title: (() => {
-        // 动态生成第2列标题（当前选择的年份）
+        // 动态生成第2列标题(当前选择的年份)
         if (treeDateRangeType === 'fiscal') {
           return `FY${treeSelectedYear} (RM)`;
         } else if (treeDateRangeType === 'calendar') {
@@ -2364,7 +2371,7 @@ const TransactionManagementPage: React.FC = () => {
     },
     {
       title: (() => {
-        // 🔧 动态生成第3列标题（前一年，根据日期范围类型）
+        // 🔧 动态生成第3列标题(前一年，根据日期范围类型)
         const selectedYear = parseInt(treeSelectedYear);
         const previousYear = selectedYear - 1;
         
@@ -2404,7 +2411,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '描述',
       dataIndex: 'mainDescription',
       key: 'mainDescription',
-      width: 150,
+      width: 200,
       ellipsis: true,
       render: (text: string, record: Transaction) => {
         const isChild = record.parentTransactionId;
@@ -2463,7 +2470,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      width: 80,
+      width: 90,
       align: 'right',
       render: (amount: number, record: Transaction) => {
         // Safe guard against undefined values
@@ -2481,12 +2488,12 @@ const TransactionManagementPage: React.FC = () => {
     {
       title: '累计余额',
       key: 'runningBalance',
-      width: 110,
+      width: 100,
       align: 'right',
       render: (_: any, record: Transaction) => {
         const balance = balanceMap.get(record.id);
         
-        // 只在单个账户tab显示余额（不支持"所有账户"）
+        // 只在单个账户tab显示余额(不支持"所有账户")
         if (activeTabKey === 'all' || balance === undefined) {
           return <span style={{ color: '#bbb', fontSize: '12px' }}>-</span>;
         }
@@ -2499,8 +2506,8 @@ const TransactionManagementPage: React.FC = () => {
         const balanceClass = balance >= 0 ? 'text-success' : 'text-danger';
         
         return (
-          <Tooltip title="截至该笔交易的累计余额（含初始余额）">
-            <span className={balanceClass} style={{ fontWeight: 600, fontSize: '13px' }}>
+          <Tooltip title="截至该笔交易的累计余额(含初始余额)">
+            <span className={balanceClass} >
               RM {balance.toFixed(2)}
             </span>
           </Tooltip>
@@ -2511,7 +2518,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '类别',
       dataIndex: 'category',
       key: 'category',
-      width: 90,
+      width: 60,
       render: (cat: string) => {
         const categoryConfig: Record<string, { color: string; text: string }> = {
           'member-fees': { color: 'blue', text: '会员费' },
@@ -2527,7 +2534,7 @@ const TransactionManagementPage: React.FC = () => {
       title: '二次分类',
       dataIndex: 'txAccount',
       key: 'txAccount',
-      width: 150,
+      width: 130,
       render: (subCat: string, record: Transaction) => {
         if (!subCat) {
           return <Tag color="default">未分类</Tag>;
@@ -2535,7 +2542,7 @@ const TransactionManagementPage: React.FC = () => {
         
         // 会员费二次分类显示逻辑
         if (record.category === 'member-fees') {
-          // 检查是否是新的格式（年份+分类）
+          // 检查是否是新的格式(年份+分类)
           const yearMatch = subCat.match(/^(\d{4})(.+)$/);
           if (yearMatch) {
             const [, year, category] = yearMatch;
@@ -2602,13 +2609,11 @@ const TransactionManagementPage: React.FC = () => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 50,
+      width: 60,
       render: (status: TransactionStatus) => {
         const statusConfig: Record<TransactionStatus, { color: string; text: string }> = {
-          completed: { color: 'success', text: '已完成' },
-          pending: { color: 'warning', text: '待审核' },
-          cancelled: { color: 'default', text: '已取消' },
-          rejected: { color: 'error', text: '已拒绝' },
+          pending: { color: 'warning', text: '待核对' },
+          completed: { color: 'success', text: '已核对' },
         };
         
         // Safe guard against undefined or invalid status
@@ -2619,7 +2624,7 @@ const TransactionManagementPage: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 100,
+      width: 110,
       fixed: 'right',
       render: (_, record) => {
         const isChild = record.parentTransactionId;
@@ -2628,16 +2633,6 @@ const TransactionManagementPage: React.FC = () => {
         
         return (
           <Space size="small">
-            {record.status === 'pending' && !isChild && (
-              <Tooltip title="批准">
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<CheckCircleOutlined />}
-                  onClick={() => handleApprove(record.id)}
-                />
-              </Tooltip>
-            )}
             {!isChild && !isVirtual && (
               <Tooltip title={isParent ? "重新拆分 / 撤销拆分" : "拆分交易"}>
                 <Button
@@ -2753,7 +2748,7 @@ const TransactionManagementPage: React.FC = () => {
             </Space>
             <div style={{ fontSize: '11px', color: '#666' }}>
               <Space size={8}>
-                <Tooltip title={isCalculated ? '实时计算余额' : '初始余额（未计算）'}>
+                <Tooltip title={isCalculated ? '实时计算余额' : '初始余额(未计算)'}>
                   <span style={{ color: isCalculated ? '#000' : '#999' }}>
                     余额: RM {displayBalance.toFixed(2)}
                   </span>
@@ -2944,7 +2939,7 @@ const TransactionManagementPage: React.FC = () => {
           totalCount={transactions.filter(t => t.isVirtual !== true).length}
           actions={bulkActions}
           onSelectAll={() => {
-            // 只选择非虚拟交易（排除子交易）
+            // 只选择非虚拟交易(排除子交易)
             const selectableIds = transactions
               .filter(t => t.isVirtual !== true)
               .map(t => t.id);
@@ -3140,7 +3135,7 @@ const TransactionManagementPage: React.FC = () => {
               </div>
               
               <div style={{ color: '#666', fontSize: '12px' }}>
-                💡 提示：可直接粘贴Excel表格数据（格式：描述 ｜ 付款人/收款人 ｜ 金额 ｜ 日期），或手动添加行
+                💡 提示：可直接粘贴Excel表格数据(格式：描述 ｜ 付款人/收款人 ｜ 金额 ｜ 日期)，或手动添加行
               </div>
               <Input.TextArea
                 placeholder="在此粘贴表格数据..."
@@ -3334,6 +3329,7 @@ const TransactionManagementPage: React.FC = () => {
             setAutoMatchPreviewItems([]);
           }}
         />
+
       </div>
     </ErrorBoundary>
   );

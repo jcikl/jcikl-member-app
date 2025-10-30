@@ -212,7 +212,7 @@ const MemberListPage: React.FC = () => {
   };
 
   /**
-   * 处理筛选变化（自动触发）
+   * 处理筛选变化(自动触发)
    */
   const handleFilterChangeAuto = (values: Record<string, any>) => {
     const newParams: MemberSearchParams = {};
@@ -1258,7 +1258,7 @@ const MemberListPage: React.FC = () => {
 
       {/* 批量设置分类 */}
       <Modal
-        title={`批量设置分类（已选 ${selectedRowKeys.length} 人）`}
+        title={`批量设置分类(已选 ${selectedRowKeys.length} 人)`}
         open={bulkCategoryVisible}
         onCancel={() => setBulkCategoryVisible(false)}
         onOk={() => {
@@ -1281,7 +1281,7 @@ const MemberListPage: React.FC = () => {
 
       {/* 批量设置级别 */}
       <Modal
-        title={`批量设置级别（已选 ${selectedRowKeys.length} 人）`}
+        title={`批量设置级别(已选 ${selectedRowKeys.length} 人)`}
         open={bulkLevelVisible}
         onCancel={() => setBulkLevelVisible(false)}
         onOk={() => {
@@ -1304,7 +1304,7 @@ const MemberListPage: React.FC = () => {
 
       {/* 批量设置状态 */}
       <Modal
-        title={`批量设置状态（已选 ${selectedRowKeys.length} 人）`}
+        title={`批量设置状态(已选 ${selectedRowKeys.length} 人)`}
         open={bulkStatusVisible}
         onCancel={() => setBulkStatusVisible(false)}
         onOk={() => {

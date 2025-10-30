@@ -37,7 +37,7 @@ export const detectPotentialPairs = async (
   try {
     console.log('🔍 [detectPotentialPairs] 开始检测内部转账配对');
     
-    // 🆕 只获取标记为内部转账的记录（txAccount='TXGA-0007'）
+    // 🆕 只获取标记为内部转账的记录(txAccount='TXGA-0007')
     let transactionsQuery = query(
       collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
       where('txAccount', '==', 'TXGA-0007')
@@ -59,19 +59,19 @@ export const detectPotentialPairs = async (
       transactionDate: safeTimestampToISO(doc.data().transactionDate) || '',
     } as Transaction));
     
-    // 过滤掉虚拟交易（子交易）
+    // 过滤掉虚拟交易(子交易)
     const transactions = allTransactions.filter(tx => !tx.isVirtual && !tx.parentTransactionId);
     
     console.log(`📊 [detectPotentialPairs] 获取到 ${allTransactions.length} 条总记录，过滤后 ${transactions.length} 条有效记录`);
     
-    // 按日期和金额分组（兼容时区问题：允许同一金额在同一天的不同UTC时间）
+    // 按日期和金额分组(兼容时区问题：允许同一金额在同一天的不同UTC时间)
     const groups = new Map<string, Transaction[]>();
     
     transactions.forEach(tx => {
       const fullDate = tx.transactionDate.slice(0, 10); // YYYY-MM-DD
       const amount = tx.amount;
       
-      // 🆕 处理时区问题：计算3天的可能日期（前1天、当天、后1天）
+      // 🆕 处理时区问题：计算3天的可能日期(前1天、当天、后1天)
       const dateObj = new Date(tx.transactionDate);
       const dates = [
         new Date(dateObj.getTime() - 86400000).toISOString().slice(0, 10), // 前1天

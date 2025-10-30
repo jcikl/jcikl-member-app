@@ -55,9 +55,9 @@ interface EventFinancialSummary {
   eventId: string;
   eventName: string;
   eventDate: string;
-  boardMember?: string; // 🆕 负责理事（从projects读取）
-  eventChair?: string; // 🆕 活动主席（从projects读取）
-  eventTreasurer?: string; // 🆕 活动财政（从projects读取）
+  boardMember?: string; // 🆕 负责理事(从projects读取)
+  eventChair?: string; // 🆕 活动主席(从projects读取)
+  eventTreasurer?: string; // 🆕 活动财政(从projects读取)
   totalRevenue: number;
   totalExpense: number;
   netIncome: number;
@@ -134,7 +134,7 @@ const EventFinancialPage: React.FC = () => {
   const [editEventTreasurer, setEditEventTreasurer] = useState('');
   const [editEventStatus, setEditEventStatus] = useState<'planned' | 'active' | 'completed' | 'cancelled'>('planned');
   
-  // 🆕 会员信息缓存（用于显示描述栏中的会员信息）
+  // 🆕 会员信息缓存(用于显示描述栏中的会员信息)
   const [memberInfoCache, setMemberInfoCache] = useState<Record<string, { name: string; email?: string; phone?: string }>>({});
   
   // 🆕 未分类检测
@@ -162,7 +162,7 @@ const EventFinancialPage: React.FC = () => {
       // 🆕 从 financeEvents 加载实际活动数据并转换为财务汇总格式
       const financeEventsList = await getAllFinanceEvents();
       
-      // 🆕 从 projects collection 加载活动详细信息（取消状态限制）
+      // 🆕 从 projects collection 加载活动详细信息(取消状态限制)
       const projectsResult = await getEvents({
         page: 1,
         limit: 1000,
@@ -212,7 +212,7 @@ const EventFinancialPage: React.FC = () => {
             // 从startDate读取活动日期
             eventDate = projectInfo.startDate;
             
-            // 🆕 从projects读取负责理事（优先使用projects的数据）
+            // 🆕 从projects读取负责理事(优先使用projects的数据)
             if (projectInfo.boardMember) {
               boardMember = projectInfo.boardMember as string;
             } else if (event.boardMember) {
@@ -244,7 +244,7 @@ const EventFinancialPage: React.FC = () => {
             eventId: event.id,
             eventName: event.eventName,
             eventDate, // ✅ 从projects读取
-            boardMember, // 🆕 从projects读取（优先）
+            boardMember, // 🆕 从projects读取(优先)
             eventChair, // ✅ 从projects读取
             eventTreasurer, // ✅ 从projects读取
             totalRevenue, // ✅ 从交易记录统计
@@ -281,7 +281,7 @@ const EventFinancialPage: React.FC = () => {
         filteredEvents = filteredEvents.filter(event => event.status === selectedEventStatus);
       }
 
-      // 活动类型筛选（基于活动名称关键词）
+      // 活动类型筛选(基于活动名称关键词)
       if (selectedEventType !== 'all') {
         filteredEvents = filteredEvents.filter(event => {
           const eventName = event.eventName.toLowerCase();
@@ -320,7 +320,7 @@ const EventFinancialPage: React.FC = () => {
         });
       }
 
-      // 搜索文本筛选（扩展到金额和状态）
+      // 搜索文本筛选(扩展到金额和状态)
       if (searchText.trim()) {
         const searchLower = searchText.toLowerCase().trim();
         filteredEvents = filteredEvents.filter(event => {
@@ -331,7 +331,7 @@ const EventFinancialPage: React.FC = () => {
             event.eventDate.includes(searchLower)
           );
           
-          // 🆕 金额搜索（转换为字符串进行匹配）
+          // 🆕 金额搜索(转换为字符串进行匹配)
           const matchesAmount = (
             event.totalRevenue.toString().includes(searchLower) ||
             event.totalExpense.toString().includes(searchLower) ||
@@ -361,7 +361,7 @@ const EventFinancialPage: React.FC = () => {
       
       setStatistics(stats);
       
-      // 🆕 按负责理事分组（使用筛选后的事件）
+      // 🆕 按负责理事分组(使用筛选后的事件)
       const grouped = filteredEvents.reduce((acc, event) => {
         const boardMember = event.boardMember || '未设置';
         if (!acc[boardMember]) {
@@ -456,13 +456,13 @@ const EventFinancialPage: React.FC = () => {
     if (!event) return;
     
     setEditEventName(event.eventName);
-    // 🆕 从 selectedEventDetail 中获取活动日期（这是从 projects collection 的 startDate 读取的）
+    // 🆕 从 selectedEventDetail 中获取活动日期(这是从 projects collection 的 startDate 读取的)
     const dateToUse = selectedEventDetail.eventDate || event.eventDate || '';
     setEditEventDate(dateToUse ? new Date(dateToUse).toISOString().split('T')[0] : '');
     setEditEventDescription(event.description || '');
-    // 🆕 从 selectedEventDetail 中获取负责理事（这是从 projects collection 的 boardMember 读取的）
+    // 🆕 从 selectedEventDetail 中获取负责理事(这是从 projects collection 的 boardMember 读取的)
     setEditEventBoardMember(selectedEventDetail.boardMember || '');
-    // 🆕 从 selectedEventDetail 中获取活动主席和活动财政（这些是从 projects collection 读取的）
+    // 🆕 从 selectedEventDetail 中获取活动主席和活动财政(这些是从 projects collection 读取的)
     setEditEventChair(selectedEventDetail.eventChair || '');
     setEditEventTreasurer(selectedEventDetail.eventTreasurer || '');
     setEditEventStatus(event.status);
@@ -567,7 +567,7 @@ const EventFinancialPage: React.FC = () => {
     try {
       setTransactionsLoading(true);
       
-      // 🆕 加载所有活动财务交易记录（不分页）
+      // 🆕 加载所有活动财务交易记录(不分页)
       const result = await getTransactions({
         page: 1,
         limit: 10000, // 🆕 加载大量数据以确保获取所有记录
@@ -576,10 +576,10 @@ const EventFinancialPage: React.FC = () => {
         txAccount: (txAccountFilter !== 'all' && txAccountFilter !== 'uncategorized') ? txAccountFilter : undefined,
         sortBy: 'transactionDate',
         sortOrder: 'desc',
-        includeVirtual: true, // 🔑 包含子交易（拆分的活动财务）
+        includeVirtual: true, // 🔑 包含子交易(拆分的活动财务)
       });
       
-      // 🆕 Step 1: 先加载会员信息缓存（用于搜索）
+      // 🆕 Step 1: 先加载会员信息缓存(用于搜索)
       const uniqueMemberIds = Array.from(
         new Set(
           result.data
@@ -613,7 +613,7 @@ const EventFinancialPage: React.FC = () => {
         setMemberInfoCache(memberCache);
       }
       
-      // 🆕 Step 2: 搜索文本筛选（扩展到描述、金额、活动分类、关联会员）
+      // 🆕 Step 2: 搜索文本筛选(扩展到描述、金额、活动分类、关联会员)
       let filteredTransactions = result.data;
       if (searchText.trim()) {
         const searchLower = searchText.toLowerCase().trim();
@@ -629,7 +629,7 @@ const EventFinancialPage: React.FC = () => {
             tx.amount?.toString().includes(searchLower)
           );
           
-          // 🆕 活动分类搜索（txAccount/subCategory）
+          // 🆕 活动分类搜索(txAccount/subCategory)
           const matchesCategory = (
             tx.txAccount?.toLowerCase().includes(searchLower) ||
             (tx as any).subCategory?.toLowerCase().includes(searchLower)
@@ -658,7 +658,7 @@ const EventFinancialPage: React.FC = () => {
         });
       }
       
-      // 🆕 Step 3: 二次分类筛选（txAccount）
+      // 🆕 Step 3: 二次分类筛选(txAccount)
       if (txAccountFilter !== 'all') {
         if (txAccountFilter === 'uncategorized') {
           // 筛选未分类的交易
@@ -750,7 +750,7 @@ const EventFinancialPage: React.FC = () => {
         }
       }
       
-      // 设置 payerPayee（如果有值）
+      // 设置 payerPayee(如果有值)
       if (finalPayerPayee) {
         updateData.payerPayee = finalPayerPayee;
       }
@@ -761,7 +761,7 @@ const EventFinancialPage: React.FC = () => {
           eventId: selectedEvent.id,
           eventName: selectedEvent.eventName,
           eventDate: selectedEvent.eventDate,
-          // 🆕 添加会员ID（如果选择了会员）
+          // 🆕 添加会员ID(如果选择了会员)
           ...(modalSelectedMemberId && { memberId: modalSelectedMemberId }),
         };
       }
@@ -1157,17 +1157,17 @@ const EventFinancialPage: React.FC = () => {
                   placeholder="选择负责理事"
                 >
                   <Option value="all">所有理事</Option>
-                  <Option value="president">President（会长）</Option>
-                  <Option value="secretary">Secretary（秘书）</Option>
-                  <Option value="honorary-treasurer">Honorary Treasurer（名誉司库）</Option>
-                  <Option value="general-legal-council">General Legal Council（法律顾问）</Option>
-                  <Option value="executive-vp">Executive Vice President（执行副会长）</Option>
-                  <Option value="vp-individual">VP Individual（个人发展副会长）</Option>
-                  <Option value="vp-community">VP Community（社区发展副会长）</Option>
-                  <Option value="vp-business">VP Business（商业发展副会长）</Option>
-                  <Option value="vp-international">VP International（国际事务副会长）</Option>
-                  <Option value="vp-lom">VP LOM（地方组织副会长）</Option>
-                  <Option value="immediate-past-president">Immediate Past President（卸任会长）</Option>
+                  <Option value="president">President(会长)</Option>
+                  <Option value="secretary">Secretary(秘书)</Option>
+                  <Option value="honorary-treasurer">Honorary Treasurer(名誉司库)</Option>
+                  <Option value="general-legal-council">General Legal Council(法律顾问)</Option>
+                  <Option value="executive-vp">Executive Vice President(执行副会长)</Option>
+                  <Option value="vp-individual">VP Individual(个人发展副会长)</Option>
+                  <Option value="vp-community">VP Community(社区发展副会长)</Option>
+                  <Option value="vp-business">VP Business(商业发展副会长)</Option>
+                  <Option value="vp-international">VP International(国际事务副会长)</Option>
+                  <Option value="vp-lom">VP LOM(地方组织副会长)</Option>
+                  <Option value="immediate-past-president">Immediate Past President(卸任会长)</Option>
                 </Select>
               </div>
               
@@ -1223,7 +1223,7 @@ const EventFinancialPage: React.FC = () => {
                 </Select>
               </div>
               
-              {/* 交易账户筛选（仅交易记录标签页显示） */}
+              {/* 交易账户筛选(仅交易记录标签页显示) */}
               {activeTab === 'transactions' && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>🏦 交易账户</div>
@@ -1248,7 +1248,7 @@ const EventFinancialPage: React.FC = () => {
               
               {/* 快速筛选按钮 */}
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-                {/* 🆕 未分类快速筛选（仅交易记录标签页显示） */}
+                {/* 🆕 未分类快速筛选(仅交易记录标签页显示) */}
                 {activeTab === 'transactions' && (
                   <Button 
                     block
@@ -1385,7 +1385,7 @@ const EventFinancialPage: React.FC = () => {
               },
               {
                 key: 'transactions',
-                label: '活动财务交易记录（二次分类）',
+                label: '活动财务交易记录(二次分类)',
                 children: (
                     <Card 
                       title="活动财务交易记录"
@@ -1500,7 +1500,7 @@ const EventFinancialPage: React.FC = () => {
                   </div>
                   
                   <div>
-                    <p style={{ marginBottom: 8, fontWeight: 500 }}>或手动填写（非会员）：</p>
+                    <p style={{ marginBottom: 8, fontWeight: 500 }}>或手动填写(非会员)：</p>
                     <Input
                       placeholder="例如：某某公司、某某个人"
                       value={modalPayerPayee}
@@ -1608,7 +1608,7 @@ const EventFinancialPage: React.FC = () => {
 
         {/* 批量分类模态框 */}
         <Modal
-          title={`批量分类（已选 ${selectedRowKeys.length} 笔交易）`}
+          title={`批量分类(已选 ${selectedRowKeys.length} 笔交易)`}
           open={batchClassifyModalVisible}
           onCancel={() => {
             setBatchClassifyModalVisible(false);
@@ -1732,17 +1732,17 @@ const EventFinancialPage: React.FC = () => {
                 value={newEventBoardMember || undefined}
                 onChange={(value) => setNewEventBoardMember(value)}
               >
-                <Option value="president">President（会长）</Option>
-                <Option value="secretary">Secretary（秘书）</Option>
-                <Option value="honorary-treasurer">Honorary Treasurer（名誉司库）</Option>
-                <Option value="general-legal-council">General Legal Council（法律顾问）</Option>
-                <Option value="executive-vp">Executive Vice President（执行副会长）</Option>
-                <Option value="vp-individual">VP Individual（个人发展副会长）</Option>
-                <Option value="vp-community">VP Community（社区发展副会长）</Option>
-                <Option value="vp-business">VP Business（商业发展副会长）</Option>
-                <Option value="vp-international">VP International（国际事务副会长）</Option>
-                <Option value="vp-lom">VP LOM（地方组织副会长）</Option>
-                <Option value="immediate-past-president">Immediate Past President（卸任会长）</Option>
+                <Option value="president">President(会长)</Option>
+                <Option value="secretary">Secretary(秘书)</Option>
+                <Option value="honorary-treasurer">Honorary Treasurer(名誉司库)</Option>
+                <Option value="general-legal-council">General Legal Council(法律顾问)</Option>
+                <Option value="executive-vp">Executive Vice President(执行副会长)</Option>
+                <Option value="vp-individual">VP Individual(个人发展副会长)</Option>
+                <Option value="vp-community">VP Community(社区发展副会长)</Option>
+                <Option value="vp-business">VP Business(商业发展副会长)</Option>
+                <Option value="vp-international">VP International(国际事务副会长)</Option>
+                <Option value="vp-lom">VP LOM(地方组织副会长)</Option>
+                <Option value="immediate-past-president">Immediate Past President(卸任会长)</Option>
               </Select>
             </div>
 
@@ -1895,17 +1895,17 @@ const EventFinancialPage: React.FC = () => {
                         value={editEventBoardMember}
                         onChange={(value) => setEditEventBoardMember(value)}
                       >
-                        <Option value="president">President（会长）</Option>
-                        <Option value="secretary">Secretary（秘书）</Option>
-                        <Option value="honorary-treasurer">Honorary Treasurer（名誉司库）</Option>
-                        <Option value="general-legal-council">General Legal Council（法律顾问）</Option>
-                        <Option value="executive-vp">Executive Vice President（执行副会长）</Option>
-                        <Option value="vp-individual">VP Individual（个人发展副会长）</Option>
-                        <Option value="vp-community">VP Community（社区发展副会长）</Option>
-                        <Option value="vp-business">VP Business（商业发展副会长）</Option>
-                        <Option value="vp-international">VP International（国际事务副会长）</Option>
-                        <Option value="vp-lom">VP LOM（地方组织副会长）</Option>
-                        <Option value="immediate-past-president">Immediate Past President（卸任会长）</Option>
+                        <Option value="president">President(会长)</Option>
+                        <Option value="secretary">Secretary(秘书)</Option>
+                        <Option value="honorary-treasurer">Honorary Treasurer(名誉司库)</Option>
+                        <Option value="general-legal-council">General Legal Council(法律顾问)</Option>
+                        <Option value="executive-vp">Executive Vice President(执行副会长)</Option>
+                        <Option value="vp-individual">VP Individual(个人发展副会长)</Option>
+                        <Option value="vp-community">VP Community(社区发展副会长)</Option>
+                        <Option value="vp-business">VP Business(商业发展副会长)</Option>
+                        <Option value="vp-international">VP International(国际事务副会长)</Option>
+                        <Option value="vp-lom">VP LOM(地方组织副会长)</Option>
+                        <Option value="immediate-past-president">Immediate Past President(卸任会长)</Option>
                       </Select>
                     </div>
 
@@ -2086,7 +2086,7 @@ const EventFinancialPage: React.FC = () => {
 
               {/* 交易记录 */}
               <Card 
-                title={`交易记录（共 ${eventTransactions.length} 笔）`} 
+                title={`交易记录(共 ${eventTransactions.length} 笔)`} 
                 size="small"
               >
                 <Table
@@ -2102,7 +2102,7 @@ const EventFinancialPage: React.FC = () => {
                         const dateB = new Date(b.transactionDate).getTime();
                         return dateA - dateB;
                       },
-                      defaultSortOrder: 'descend', // 默认降序（最新的在前）
+                      defaultSortOrder: 'descend', // 默认降序(最新的在前)
                       render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
                     },
                     {

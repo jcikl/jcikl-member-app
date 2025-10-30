@@ -118,7 +118,7 @@
   }
 }
 
-/* 深色模式（手动控制） */
+/* 深色模式(手动控制) */
 .dark .metric-card {
   background: #1f1f1f;
 }

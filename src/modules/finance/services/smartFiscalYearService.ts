@@ -110,7 +110,7 @@ export class SmartFiscalYearService {
   }
 
   /**
-   * 计算财年范围（用于查询）
+   * 计算财年范围(用于查询)
    */
   public calculateFiscalYearRange(year: number): { startDate: string; endDate: string } {
     const period = this.detectFiscalYearPeriod(year);
@@ -145,7 +145,7 @@ export class SmartFiscalYearService {
       suggestions.push({
         type: 'next',
         period: next,
-        reason: `当前财年即将结束（${current.progressPercentage}%），建议准备下一财年数据`,
+        reason: `当前财年即将结束(${current.progressPercentage}%)，建议准备下一财年数据`,
         priority: 'medium'
       });
     }
@@ -194,7 +194,7 @@ export class SmartFiscalYearService {
   }
 
   /**
-   * 获取财年选项列表（用于下拉选择）
+   * 获取财年选项列表(用于下拉选择)
    */
   public getFiscalYearOptions(
     count: number = 10, 
@@ -284,7 +284,7 @@ export class SmartFiscalYearService {
   }
 
   /**
-   * 获取智能财年选项列表（基于实际数据范围）
+   * 获取智能财年选项列表(基于实际数据范围)
    */
   public async getSmartFiscalYearOptions(): Promise<Array<{ label: string; value: string; period: FiscalYearPeriod }>> {
     try {

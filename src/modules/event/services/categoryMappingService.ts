@@ -1,6 +1,6 @@
 /**
  * Category Mapping Service
- * 类别映射服务（方案4：自动匹配 + 人工确认）
+ * 类别映射服务(方案4：自动匹配 + 人工确认)
  */
 
 import { globalSystemService } from '@/config/globalSystemSettings';
@@ -34,7 +34,7 @@ export interface CategoryMatchResult {
 }
 
 /**
- * 自动匹配类别（关键词匹配）
+ * 自动匹配类别(关键词匹配)
  */
 export const autoMatchCategory = (
   description: string,
@@ -103,7 +103,7 @@ export const batchAutoMatchCategories = (
 };
 
 /**
- * 获取类别建议（给用户审核界面使用）
+ * 获取类别建议(给用户审核界面使用)
  */
 export const getCategorySuggestions = (
   description: string,
@@ -136,7 +136,7 @@ export const getCategorySuggestions = (
 };
 
 /**
- * 添加自定义关键词映射（可扩展功能）
+ * 添加自定义关键词映射(可扩展功能)
  */
 export const addCustomKeyword = (
   type: 'income' | 'expense',

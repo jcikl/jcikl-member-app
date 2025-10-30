@@ -281,7 +281,7 @@ const BankAccountManagementPage: React.FC = () => {
       width: 150,
       align: 'right',
       render: (balance: number) => (
-        <Tooltip title="开户时的初始余额（当前余额需在交易管理页面查看）">
+        <Tooltip title="开户时的初始余额(当前余额需在交易管理页面查看)">
           <span style={{ color: '#666' }}>
             RM {balance.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
           </span>

@@ -66,7 +66,7 @@ const TrendIndicator: React.FC<{
 };
 
 /**
- * 迷你图表组件（简化版 SVG）
+ * 迷你图表组件(简化版 SVG)
  */
 const MiniChart: React.FC<{
   data: ChartDataPoint[];

@@ -10,7 +10,7 @@ interface PhoneInputProps {
 
 /**
  * Phone Input Component
- * 电话号码输入组件（支持多国）
+ * 电话号码输入组件(支持多国)
  */
 export const PhoneInput: React.FC<PhoneInputProps> = ({
   value = { country: 'MY', number: '' },

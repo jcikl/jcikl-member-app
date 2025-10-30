@@ -6,7 +6,7 @@ import {
   SafetyCertificateOutlined,
   CalendarOutlined,
   SettingOutlined,
-  // DatabaseOutlined, // 已删除（DataInitializer 组件已移除）
+  // DatabaseOutlined, // 已删除(DataInitializer 组件已移除)
   UserOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '@/components';
@@ -185,7 +185,7 @@ const GlobalSettingsPage: React.FC = () => {
       ),
       children: <SystemSettings />,
     },
-    // 数据初始化标签页已移除（DataInitializer 组件已删除）
+    // 数据初始化标签页已移除(DataInitializer 组件已删除)
     // {
     //   key: 'database',
     //   label: (

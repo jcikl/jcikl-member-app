@@ -189,7 +189,7 @@ const FinancialCategoryManagementPage: React.FC = () => {
       } else {
         // 处理收入/支出类别
         if (editingCategory) {
-          // 更新：使用文档ID（value）
+          // 更新：使用文档ID(value)
           await updateFinancialCategory(editingCategory.value, values, user.id);
           message.success('更新成功');
         } else {
@@ -581,7 +581,7 @@ const FinancialCategoryManagementPage: React.FC = () => {
                 extra={
                   editingCategory ? (
                     <span style={{ color: '#ff4d4f' }}>
-                      ⚠️ 类别代码不可修改（它是文档ID）
+                      ⚠️ 类别代码不可修改(它是文档ID)
                     </span>
                   ) : (
                     <span style={{ color: '#52c41a' }}>

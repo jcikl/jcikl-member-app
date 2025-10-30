@@ -11,6 +11,8 @@ import QuickAddEventTransactionPage from '@/pages/QuickAddEventTransactionPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
 import DataFixPage from '@/pages/DataFixPage';
+import TransactionDateFormatFixPage from '@/pages/TransactionDateFormatFixPage';
+ 
 // import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage'; // 已删除
 
 // Member Module
@@ -92,6 +94,15 @@ export const router = createBrowserRouter(
             path: 'financial-categories',
             element: <FinancialCategoryManagementPage />,
           },
+          {
+            path: 'data-fix',
+            element: <DataFixPage />,
+          },
+          {
+            path: 'transaction-date-format-fix',
+            element: <TransactionDateFormatFixPage />,
+          },
+          
         ],
       },
       {
@@ -105,10 +116,6 @@ export const router = createBrowserRouter(
       {
         path: 'financial-records-debug',
         element: <FinancialRecordsDebugPage />,
-      },
-      {
-        path: 'data-fix',
-        element: <DataFixPage />,
       },
       // 已删除：UpdateFinancialRecordsPayerInfoPage 路由
       // {

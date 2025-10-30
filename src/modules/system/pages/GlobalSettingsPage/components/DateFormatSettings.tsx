@@ -17,7 +17,7 @@ const DateFormatSettings: React.FC = () => {
         <Form layout="vertical">
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label="显示格式（Display Format）" style={{ marginBottom: 12 }}>
+              <Form.Item label="显示格式(Display Format)" style={{ marginBottom: 12 }}>
                 <Select
                   defaultValue="DD-MMM-YYYY"
                   style={{ width: '100%' }}
@@ -35,7 +35,7 @@ const DateFormatSettings: React.FC = () => {
             </Col>
 
             <Col span={12}>
-              <Form.Item label="API 格式（API Format）" style={{ marginBottom: 12 }}>
+              <Form.Item label="API 格式(API Format)" style={{ marginBottom: 12 }}>
                 <Select
                   defaultValue="YYYY-MM-DD"
                   style={{ width: '100%' }}
@@ -51,7 +51,7 @@ const DateFormatSettings: React.FC = () => {
             </Col>
 
             <Col span={12}>
-              <Form.Item label="日期时间格式（Datetime Format）" style={{ marginBottom: 12 }}>
+              <Form.Item label="日期时间格式(Datetime Format)" style={{ marginBottom: 12 }}>
                 <Select
                   defaultValue="YYYY-MM-DD HH:mm:ss"
                   style={{ width: '100%' }}
@@ -67,7 +67,7 @@ const DateFormatSettings: React.FC = () => {
             </Col>
 
             <Col span={12}>
-              <Form.Item label="时区（Timezone）" style={{ marginBottom: 12 }}>
+              <Form.Item label="时区(Timezone)" style={{ marginBottom: 12 }}>
                 <Select
                   defaultValue="Asia/Kuala_Lumpur"
                   style={{ width: '100%' }}

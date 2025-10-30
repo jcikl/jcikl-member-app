@@ -90,10 +90,10 @@ const MemberFeeManagementPage: React.FC = () => {
   const [transactionTotal, setTransactionTotal] = useState(0);
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionPageSize, setTransactionPageSize] = useState(100); // 🆕 增加默认显示数量以匹配实际数据
-  const [txAccountFilter, setTxAccountFilter] = useState<string>('all'); // 交易账户筛选（new-member-fee 等）
+  const [txAccountFilter, setTxAccountFilter] = useState<string>('all'); // 交易账户筛选(new-member-fee 等)
   const [classifyModalVisible, setClassifyModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  // 分类模态框本地状态（年份必填 + 底部操作栏）
+  // 分类模态框本地状态(年份必填 + 底部操作栏)
   const [modalSelectedCategory, setModalSelectedCategory] = useState<string>('');
   const [modalYearInput, setModalYearInput] = useState<string>('');
   const [modalSelectedMemberId, setModalSelectedMemberId] = useState<string>('');
@@ -103,7 +103,7 @@ const MemberFeeManagementPage: React.FC = () => {
   // 批量选择与分类
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [bulkClassifyModalVisible, setBulkClassifyModalVisible] = useState(false);
-  // 🆕 会员信息缓存（用于在描述栏显示会员名字）
+  // 🆕 会员信息缓存(用于在描述栏显示会员名字)
   const [memberInfoCache, setMemberInfoCache] = useState<Record<string, { name: string; email?: string; phone?: string }>>({});
   
   // 🆕 未分类检测
@@ -269,13 +269,13 @@ const MemberFeeManagementPage: React.FC = () => {
         txAccount: (txAccountFilter !== 'all' && txAccountFilter !== 'uncategorized' && !txAccountFilter.startsWith('year-')) ? txAccountFilter : undefined,
         sortBy: 'transactionDate',
         sortOrder: 'desc',
-        includeVirtual: true, // 🔑 包含子交易（拆分的会员费）
+        includeVirtual: true, // 🔑 包含子交易(拆分的会员费)
       });
       
       // 客户端筛选：年份 + 分类
       let filteredTransactions = result.data;
       const applyYear = (list: Transaction[]) => {
-        // 年份筛选逻辑（如果需要）
+        // 年份筛选逻辑(如果需要)
         if (txAccountFilter.startsWith('year-')) {
           const year = txAccountFilter.replace('year-', '');
           return list.filter(t => t.txAccount && t.txAccount.startsWith(`${year}-`));
@@ -298,7 +298,7 @@ const MemberFeeManagementPage: React.FC = () => {
       };
       filteredTransactions = applyCategory(applyYear(result.data));
       
-      // 🆕 Step 1: 先加载会员信息缓存（用于后续搜索）
+      // 🆕 Step 1: 先加载会员信息缓存(用于后续搜索)
       const memberIds = filteredTransactions
         .map(t => (t as any)?.metadata?.memberId)
         .filter((id): id is string => Boolean(id))
@@ -332,7 +332,7 @@ const MemberFeeManagementPage: React.FC = () => {
         setMemberInfoCache(tempMemberCache);
       }
       
-      // 🆕 Step 2: 搜索文本筛选（扩展到关联会员信息）
+      // 🆕 Step 2: 搜索文本筛选(扩展到关联会员信息)
       if (searchText.trim()) {
         const searchLower = searchText.toLowerCase().trim();
         filteredTransactions = filteredTransactions.filter(tx => {
@@ -362,7 +362,7 @@ const MemberFeeManagementPage: React.FC = () => {
         });
       }
       
-      // 🆕 Step 3: 客户端排序：按交易日期降序（最新的在前）
+      // 🆕 Step 3: 客户端排序：按交易日期降序(最新的在前)
       filteredTransactions.sort((a, b) => {
         const dateA = new Date(a.transactionDate).getTime();
         const dateB = new Date(b.transactionDate).getTime();
@@ -604,7 +604,7 @@ const MemberFeeManagementPage: React.FC = () => {
         const dateB = new Date(b.transactionDate).getTime();
         return dateA - dateB;
       },
-      defaultSortOrder: 'descend', // 默认降序（最新的在前）
+      defaultSortOrder: 'descend', // 默认降序(最新的在前)
       render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
     },
     {
@@ -678,11 +678,11 @@ const MemberFeeManagementPage: React.FC = () => {
           'visiting-member-fee': { color: 'orange', text: '拜访会员' },
         };
         
-        // 处理带年份的分类（年份在前）
+        // 处理带年份的分类(年份在前)
         const getCategoryDisplay = (subCat: string) => {
           if (!subCat) return { color: 'default', text: '未分类' };
           
-          // 检查是否包含年份（前端）: 2024-new-member-fee
+          // 检查是否包含年份(前端): 2024-new-member-fee
           const parts = subCat.split('-');
           if (parts.length >= 2 && /^\d{4}$/.test(parts[0])) {
             const year = parts[0];
@@ -862,7 +862,7 @@ const MemberFeeManagementPage: React.FC = () => {
                 </Select>
               </div>
               
-              {/* 交易账户筛选（仅影响交易记录标签页） */}
+              {/* 交易账户筛选(仅影响交易记录标签页) */}
               {activeTab === 'transactions' && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 14 }}>🏦 交易账户</div>
@@ -905,7 +905,7 @@ const MemberFeeManagementPage: React.FC = () => {
                 
                 {/* 快捷操作 */}
                 <div style={{ marginTop: 16 }}>
-                  {/* 🆕 未分类快速筛选（仅交易记录标签页显示） */}
+                  {/* 🆕 未分类快速筛选(仅交易记录标签页显示) */}
                   {activeTab === 'transactions' && (
                     <Button 
                       block
@@ -1139,7 +1139,7 @@ const MemberFeeManagementPage: React.FC = () => {
 
       {/* 批量分类模态框 */}
       <Modal
-        title={`批量分类（已选 ${selectedTransactionIds.length} 条）`}
+        title={`批量分类(已选 ${selectedTransactionIds.length} 条)`}
         open={bulkClassifyModalVisible}
         onCancel={() => setBulkClassifyModalVisible(false)}
         footer={null}
@@ -1147,7 +1147,7 @@ const MemberFeeManagementPage: React.FC = () => {
       >
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ fontWeight: 'bold', marginBottom: 4 }}>年份（必填）：</p>
+            <p style={{ fontWeight: 'bold', marginBottom: 4 }}>年份(必填)：</p>
             <Input
               placeholder="输入年份，如：2024"
               maxLength={4}
@@ -1157,7 +1157,7 @@ const MemberFeeManagementPage: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 320 }}>
-            <p style={{ fontWeight: 'bold', marginBottom: 4 }}>关联会员（可选）：</p>
+            <p style={{ fontWeight: 'bold', marginBottom: 4 }}>关联会员(可选)：</p>
             <Select
               showSearch
               allowClear
@@ -1262,7 +1262,7 @@ const MemberFeeManagementPage: React.FC = () => {
                 {/* 顶部：年份 + 关联会员 并排 */}
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <p style={{ fontWeight: 'bold', marginBottom: 4 }}>年份（必填）：</p>
+                    <p style={{ fontWeight: 'bold', marginBottom: 4 }}>年份(必填)：</p>
                     <Input
                       placeholder="输入年份，如：2024"
                       maxLength={4}
@@ -1332,7 +1332,7 @@ const MemberFeeManagementPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 底部操作栏（仅操作按钮） */}
+                {/* 底部操作栏(仅操作按钮) */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
                   <Button onClick={() => {
                     setClassifyModalVisible(false);

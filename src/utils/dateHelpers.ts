@@ -18,7 +18,7 @@ export const safeTimestampToISO = (timestamp: any): string | undefined => {
     return timestamp.toDate().toISOString();
   }
   
-  // Handle Firestore Timestamp - 直接通过 seconds 构造（用于序列化的 Timestamp 对象）
+  // Handle Firestore Timestamp - 直接通过 seconds 构造(用于序列化的 Timestamp 对象)
   if (timestamp && typeof timestamp === 'object' && 
       'seconds' in timestamp && 'nanoseconds' in timestamp) {
     const date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
@@ -209,7 +209,7 @@ export const formatDuration = (seconds: number): string => {
 
 /**
  * Generate year options for dropdowns
- * 生成年份选项（用于下拉框）
+ * 生成年份选项(用于下拉框)
  * 
  * @param startYear - Starting year (default: 2020)
  * @param futureYears - Number of future years to include (default: 2)
@@ -229,7 +229,7 @@ export const generateYearOptions = (startYear: number = 2020, futureYears: numbe
 
 /**
  * Generate fiscal year options for dropdowns
- * 生成财年选项（用于下拉框）
+ * 生成财年选项(用于下拉框)
  * 
  * @param startYear - Starting year (default: 2020)
  * @param futureYears - Number of future years to include (default: 2)

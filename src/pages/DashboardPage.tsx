@@ -187,7 +187,7 @@ const DashboardPage: React.FC = () => {
       );
     }
 
-    // 按会员ID筛选（反向筛选）
+    // 按会员ID筛选(反向筛选)
     if (selectedMemberId) {
       filtered = filtered.filter(m => m.id === selectedMemberId);
     }
@@ -217,7 +217,7 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  // 🆕 处理会员点击（反向筛选）
+  // 🆕 处理会员点击(反向筛选)
   const handleMemberClick = (member: Member) => {
     if (selectedMemberId === member.id) {
       setSelectedMemberId(null);

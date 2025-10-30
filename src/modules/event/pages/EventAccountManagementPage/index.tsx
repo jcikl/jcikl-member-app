@@ -5,7 +5,7 @@
  * 支持活动财务追踪、收入支出管理、财务预测
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Button,
@@ -22,6 +22,10 @@ import {
   InputNumber,
   Alert,
   Input,
+  Tabs,
+  Tag,
+  List,
+  Divider,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -30,6 +34,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { globalSystemService } from '@/config/globalSystemSettings';
+import { globalDateService } from '@/config/globalDateSettings';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
 import { useAuthStore } from '@/stores/authStore';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -42,13 +47,22 @@ import {
   getOrCreateEventAccount,
   addEventAccountTransaction,
   updateEventAccountBudget,
+  getEventAccountTransactions,
+  deleteEventAccountTransaction,
+  updateEventAccountTransaction,
+  clearEventAccountTransactionReconciliation,
+  getAllUnreconciledEventAccountTransactions,
 } from '../../services/eventAccountService';
+
+// 创建service对象以访问方法
+import * as eventAccountService from '../../services/eventAccountService';
 import { getEvents } from '../../services/eventService';
 import { 
   getEventAccountPlans, 
   addEventAccountPlan,
   updateEventAccountPlan,
   deleteEventAccountPlan,
+  batchDeleteEventAccountPlans,
 } from '../../services/eventAccountPlanService';
 import { getTransactionsByEventId } from '@/modules/finance/services/transactionService';
 import { getAllBankAccounts } from '@/modules/finance/services/bankAccountService';
@@ -56,6 +70,7 @@ import type { BankAccount } from '@/modules/finance/types';
 import type {
   EventAccount,
   Event,
+  EventAccountTransaction,
 } from '../../types';
 import {
   EVENT_INCOME_CATEGORIES,
@@ -82,10 +97,60 @@ const EventAccountManagementPage: React.FC = () => {
   
   // 新增：财务计划相关状态
   const [planItems, setPlanItems] = useState<FinancialPlanItem[]>([]);
+  const [eventTransactions, setEventTransactions] = useState<EventAccountTransaction[]>([]);
+  const [allUnreconciledEventTransactions, setAllUnreconciledEventTransactions] = useState<EventAccountTransaction[]>([]);
   const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
   const [consolidationData, setConsolidationData] = useState<ConsolidationData | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  // 🆕 对账状态与操作
+  const [reconciliationMap, setReconciliationMap] = useState<Record<string, 'matched' | 'unmatched'>>({});
+  const [reconcileModalVisible, setReconcileModalVisible] = useState(false);
+  const [selectedTxId, setSelectedTxId] = useState<string>('');
+  const [availableBankTxns, setAvailableBankTxns] = useState<BankTransaction[]>([]);
+  const [activeInnerTab, setActiveInnerTab] = useState<string>('financial-plan');
+  
+  // 🆕 新增筛选状态
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedBoardMember, setSelectedBoardMember] = useState<string>('all');
+  
+  // 🆕 动态获取负责理事列表
+  const boardMembers = React.useMemo(() => {
+    const members = new Set<string>();
+    events.forEach(event => {
+      if (event.boardMember) {
+        members.add(event.boardMember);
+      }
+      if (event.responsibleOfficer?.name) {
+        members.add(event.responsibleOfficer.name);
+      }
+    });
+    return Array.from(members).sort();
+  }, [events]);
+  
+  // 🆕 过滤后的活动列表
+  const filteredEvents = React.useMemo(() => {
+    return events.filter(event => {
+      // 年份筛选
+      if (selectedYear !== 'all') {
+        const eventYear = new Date(event.startDate).getFullYear().toString();
+        if (eventYear !== selectedYear) {
+          return false;
+        }
+      }
+      
+      // 负责理事筛选
+      if (selectedBoardMember !== 'all') {
+        const matchBoardMember = event.boardMember === selectedBoardMember;
+        const matchResponsibleOfficer = event.responsibleOfficer?.name === selectedBoardMember;
+        if (!matchBoardMember && !matchResponsibleOfficer) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [events, selectedYear, selectedBoardMember]);
 
   useEffect(() => {
     loadEvents();
@@ -101,6 +166,19 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
+  // 🆕 加载所有未核对的活动账目记录
+  const loadAllUnreconciledEventTransactions = async () => {
+    try {
+      console.log('🔄 [loadAllUnreconciledEventTransactions] Loading pending event transactions across all accounts...');
+      const txns = await getAllUnreconciledEventAccountTransactions();
+      console.log('✅ [loadAllUnreconciledEventTransactions] Loaded:', txns.length);
+      setAllUnreconciledEventTransactions(txns);
+    } catch (error) {
+      message.error('加载总活动账目记录失败');
+      console.error('❌ [loadAllUnreconciledEventTransactions] Error:', error);
+    }
+  };
+
   useEffect(() => {
     if (selectedEventId) {
       loadEventAccount();
@@ -109,21 +187,10 @@ const EventAccountManagementPage: React.FC = () => {
 
   // 加载财务计划和交易记录
   useEffect(() => {
-    console.log('🔍 [useEffect] Triggered for plans and transactions', {
-      hasAccount: !!account,
-      accountId: account?.id,
-      selectedEventId,
-    });
-    
     if (account && selectedEventId) {
-      console.log('✅ [useEffect] Conditions met, loading data...');
       loadPlans();
+      loadEventTransactions();
       loadBankTransactions();
-    } else {
-      console.log('⚠️ [useEffect] Conditions not met', {
-        hasAccount: !!account,
-        hasSelectedEventId: !!selectedEventId,
-      });
     }
   }, [account, selectedEventId]);
 
@@ -141,7 +208,6 @@ const EventAccountManagementPage: React.FC = () => {
         limit: 1000,
         // Remove default sorting to avoid index issues
       });
-      console.log('✅ Loaded events:', result.data.length);
       
       const activeEvents = result.data.filter((e: Event) => e.status !== 'Cancelled');
       setEvents(activeEvents);
@@ -212,8 +278,6 @@ const EventAccountManagementPage: React.FC = () => {
           payerPayee: values.payerPayee,
           paymentMethod: values.paymentMethod,
           notes: values.notes,
-          isForecast: values.isForecast || false,
-          forecastConfidence: values.forecastConfidence,
         },
         user.id
       );
@@ -267,105 +331,192 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
+  // 加载活动账目记录
+  const loadEventTransactions = async () => {
+    if (!account) return;
+    
+    try {
+      console.log('🔄 [loadEventTransactions] Loading event transactions...', { accountId: account.id });
+      setPlanLoading(true);
+      const transactions = await getEventAccountTransactions(account.id);
+      console.log('✅ [loadEventTransactions] Loaded transactions:', {
+        count: transactions.length,
+        transactions: transactions.map(tx => ({
+          id: tx.id,
+          description: tx.description,
+          reconciledBankTransactionId: tx.reconciledBankTransactionId,
+          transactionDate: tx.transactionDate,
+          amount: tx.amount,
+          status: tx.status
+        }))
+      });
+      
+      // 🆕 详细记录每个事务的reconciledBankTransactionId
+      const reconciledCount = transactions.filter(tx => tx.reconciledBankTransactionId).length;
+      console.log(`📊 [loadEventTransactions] Found ${reconciledCount} reconciled transactions out of ${transactions.length} total`);
+      
+      console.log('💾 [loadEventTransactions] Setting eventTransactions state...');
+      setEventTransactions(transactions);
+      console.log('✅ [loadEventTransactions] State updated');
+      
+      // 🆕 等待一个tick后再检查状态
+      setTimeout(() => {
+        console.log('🔍 [loadEventTransactions] Checking if state was updated...');
+      }, 100);
+    } catch (error) {
+      message.error('加载活动账目记录失败');
+      console.error('❌ [loadEventTransactions] Error:', error);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  // 🆕 将 EventAccountTransaction 转换为 FinancialPlanItem (带status)
+  const convertedEventTransactions = useMemo(() => {
+    // 按 状态 > 日期 > 描述 排序
+    const statusOrder: Record<string, number> = { pending: 0, completed: 1, cancelled: 2 };
+    const sorted = [...eventTransactions].sort((a, b) => {
+      const sa = statusOrder[a.status as string] ?? 99;
+      const sb = statusOrder[b.status as string] ?? 99;
+      if (sa !== sb) return sa - sb;
+      const da = (a.transactionDate || '');
+      const db = (b.transactionDate || '');
+      if (da !== db) return db.localeCompare(da); // 日期：新 → 旧
+      const ta = (a.description || '');
+      const tb = (b.description || '');
+      return ta.localeCompare(tb, 'zh-CN');
+    });
+
+    return sorted.map(txn => ({
+      id: txn.id,
+      type: txn.transactionType === 'income' ? 'income' as const : 'expense' as const,
+      category: txn.category,
+      description: txn.description,
+      remark: txn.notes,
+      amount: txn.amount,
+      status: txn.status, // 🆕 传递status字段
+      transactionDate: txn.transactionDate, // 🆕 传递transactionDate字段
+      createdAt: txn.createdAt,
+      updatedAt: txn.updatedAt,
+      createdBy: txn.createdBy,
+      updatedBy: undefined,
+    }));
+  }, [eventTransactions]);
+
+  // 🆕 转换：全部未核对的活动账目记录 → FinancialPlanItem
+  const convertedAllUnreconciledEventTransactions = useMemo(() => {
+    const sorted = [...allUnreconciledEventTransactions].sort((a, b) => {
+      const da = (a.transactionDate || '');
+      const db = (b.transactionDate || '');
+      if (da !== db) return db.localeCompare(da);
+      const ta = (a.description || '');
+      const tb = (b.description || '');
+      return ta.localeCompare(tb, 'zh-CN');
+    });
+    return sorted.map(txn => ({
+      id: txn.id,
+      type: txn.transactionType === 'income' ? 'income' as const : 'expense' as const,
+      category: txn.category,
+      description: txn.description,
+      remark: txn.notes,
+      amount: txn.amount,
+      status: txn.status,
+      transactionDate: txn.transactionDate,
+      createdAt: txn.createdAt,
+      updatedAt: txn.updatedAt,
+      createdBy: txn.createdBy,
+      updatedBy: undefined,
+    }));
+  }, [allUnreconciledEventTransactions]);
+
+  // 🆕 匹配的银行交易记录映射(用于显示已核对的银行交易详情)
+  const matchedBankTransactions = useMemo(() => {
+    if (!eventTransactions || !bankTransactions) return {};
+    
+    const map: Record<string, {
+      id: string;
+      transactionDate: string;
+      description: string;
+      amount: number;
+      bankAccount?: string;
+      bankAccountName?: string;
+    }> = {};
+    
+    eventTransactions.forEach(tx => {
+      if (tx.reconciledBankTransactionId) {
+        // 查找匹配的银行交易
+        const matchedBankTx = bankTransactions.find(bt => bt.id === tx.reconciledBankTransactionId);
+        if (matchedBankTx) {
+          map[tx.id] = {
+            id: matchedBankTx.id,
+            transactionDate: matchedBankTx.transactionDate,
+            description: matchedBankTx.description,
+            amount: matchedBankTx.amount,
+            bankAccount: matchedBankTx.bankAccount,
+            bankAccountName: matchedBankTx.bankAccountName,
+          };
+        }
+      }
+    });
+    
+    console.log('✅ [matchedBankTransactions] Computed mapping:', {
+      totalEventTxs: eventTransactions.length,
+      totalBankTxs: bankTransactions.length,
+      matchedCount: Object.keys(map).length,
+    });
+    
+    return map;
+  }, [eventTransactions, bankTransactions]);
+
   // 加载银行交易记录
   const loadBankTransactions = async () => {
-    console.log('========================================');
-    console.log('🔍 [loadBankTransactions] Starting...', { selectedEventId });
-    console.log('📋 [DEBUG] Total events loaded:', events.length);
-    
     if (!selectedEventId) {
-      console.log('⚠️ [loadBankTransactions] No selectedEventId, skipping');
       return;
     }
     
     try {
-      // 🔄 正确的查询逻辑：
-      // 1. 读取 projects collection 的 financialAccount 字段
-      // 2. 使用 financialAccount 匹配 fin_transactions 的 relatedEventId
       const selectedEvent = events.find(e => e.id === selectedEventId);
-      
-      console.log('📋 [DEBUG] Selected event:', {
-        eventId: selectedEventId,
-        eventName: selectedEvent?.name,
-        eventStatus: selectedEvent?.status,
-        financialAccount: selectedEvent?.financialAccount,
-        financialAccountName: selectedEvent?.financialAccountName,
-      });
-      
-      // 🆕 调试：列出所有活动的 financialAccount
-      console.log('📋 [DEBUG] All events and their financialAccounts:');
-      events.forEach(e => {
-        console.log(`  - ${e.name}: financialAccount="${e.financialAccount}"`);
-      });
-      
       const financialAccountId = selectedEvent?.financialAccount;
       
-      console.log('🔍 [loadBankTransactions] Event financial account:', {
-        eventId: selectedEventId,
-        eventName: selectedEvent?.name,
-        financialAccount: financialAccountId,
-      });
-      
       if (!financialAccountId) {
-        console.log('⚠️ [loadBankTransactions] Event has no financialAccount!');
-        console.log('💡 [DEBUG] Event details:', selectedEvent);
         setBankTransactions([]);
         return;
       }
       
-      // 🆕 调试：输出将要查询的值
-      console.log('🔍 [DEBUG] About to query with:', {
-        collection: GLOBAL_COLLECTIONS.TRANSACTIONS,
-        queryField: 'relatedEventId',
-        queryValue: financialAccountId,
-      });
-      
-      // 使用 financialAccount 查询 relatedEventId
       const transactions = await getTransactionsByEventId(financialAccountId);
-      console.log('✅ [loadBankTransactions] Loaded transactions:', {
-        count: transactions.length,
-        queryField: 'relatedEventId',
-        queryValue: financialAccountId,
-      });
-      
-      // 🆕 调试：输出交易详情
-      if (transactions.length > 0) {
-        console.log('📋 [DEBUG] Transaction details (first 3):');
-        transactions.slice(0, 3).forEach((txn, index) => {
-          console.log(`  Transaction ${index + 1}:`, {
-            id: txn.id,
-            transactionNumber: txn.transactionNumber,
-            relatedEventId: txn.relatedEventId,
-            amount: txn.amount,
-            description: txn.mainDescription,
-          });
-        });
-      }
       
       if (transactions.length === 0) {
-        console.log('ℹ️ [loadBankTransactions] No transactions found for financialAccount:', financialAccountId);
         setBankTransactions([]);
         return;
       }
       
-      // 转换为 BankTransaction 格式
+      // 基于已加载的活动账目记录构建：bankTxId -> eventCategory 的映射
+      const bankIdToEventCategory = new Map<string, string>();
+      eventTransactions.forEach(etx => {
+        if (etx.reconciledBankTransactionId) {
+          bankIdToEventCategory.set(etx.reconciledBankTransactionId, etx.category);
+        }
+      });
+      
+      // 转换为 BankTransaction 格式，并按照活动账目记录的类别进行归类
       const bankTxns: BankTransaction[] = transactions.map(txn => {
-        // 查找银行账户详细信息
         const bankAccount = bankAccounts.find(acc => acc.id === txn.bankAccountId);
+        const reconciledCategory = bankIdToEventCategory.get(txn.id);
+        const resolvedCategory = reconciledCategory || txn.confirmedCategory || txn.autoMatchedCategory || txn.category;
         
         return {
           id: txn.id,
           transactionDate: txn.transactionDate,
           transactionNumber: txn.transactionNumber,
           transactionType: txn.transactionType as 'income' | 'expense',
-          description: txn.mainDescription,
+          description: txn.subDescription ? `${txn.mainDescription} ${txn.subDescription}` : txn.mainDescription,
           amount: txn.amount,
           bankAccount: txn.bankAccountId,
           bankAccountName: bankAccount?.accountName,
           bankName: bankAccount?.bankName,
           accountNumber: bankAccount?.accountNumber,
           status: txn.status === 'completed' ? 'verified' : 'pending',
-          category: txn.confirmedCategory || txn.autoMatchedCategory || txn.category,
+          category: resolvedCategory,
           payerPayee: txn.payerPayee,
           paymentMethod: txn.paymentMethod,
           receiptNumber: txn.receiptNumber,
@@ -374,17 +525,82 @@ const EventAccountManagementPage: React.FC = () => {
         };
       });
       
-      console.log('🔄 [loadBankTransactions] Converted to BankTransaction format:', {
-        count: bankTxns.length,
-      });
-      
       setBankTransactions(bankTxns);
-      console.log('✅ [loadBankTransactions] State updated');
     } catch (error) {
       console.error('❌ [loadBankTransactions] Failed to load bank transactions:', error);
       setBankTransactions([]);
     }
   };
+
+  // 🆕 计算对账映射：根据金额与日期的近似匹配(同日，金额相等)
+  useEffect(() => {
+    console.log('🔍 [ReconciliationMap useEffect] ===== START CALCULATION =====');
+    console.log(`📊 [ReconciliationMap useEffect] eventTransactions.length = ${eventTransactions?.length || 0}`);
+    console.log(`📊 [ReconciliationMap useEffect] bankTransactions.length = ${bankTransactions?.length || 0}`);
+    
+    if (!eventTransactions || eventTransactions.length === 0) {
+      console.log('⚠️ [ReconciliationMap useEffect] No event transactions, clearing map');
+      setReconciliationMap({});
+      console.log('🔍 [ReconciliationMap useEffect] ===== END CALCULATION (EMPTY) =====');
+      return;
+    }
+    const map: Record<string, 'matched' | 'unmatched'> = {};
+    
+    // 🆕 首先检查是否已经有reconciledBankTransactionId
+    let hasReconciledTransactions = 0;
+    eventTransactions.forEach(tx => {
+      if (tx.reconciledBankTransactionId) {
+        console.log('✅ [ReconciliationMap useEffect] Found reconciled transaction:', { 
+          txId: tx.id, 
+          bankTxId: tx.reconciledBankTransactionId,
+          description: tx.description
+        });
+        map[tx.id] = 'matched';
+        hasReconciledTransactions++;
+      }
+    });
+    console.log(`📊 [ReconciliationMap useEffect] Found ${hasReconciledTransactions} already-reconciled transactions`);
+    
+    // 将银行记录按日期+金额建立索引
+    const bankIndex = new Map<string, BankTransaction[]>();
+    bankTransactions.forEach(bt => {
+      const dateKey = (bt.transactionDate || '').slice(0, 10);
+      const amtKey = bt.amount.toFixed(2);
+      const key = `${dateKey}|${amtKey}|${bt.transactionType}`;
+      const arr = bankIndex.get(key) || [];
+      arr.push(bt);
+      bankIndex.set(key, arr);
+    });
+    
+    // 遍历活动账目记录，尝试匹配(跳过已核对的记录)
+    eventTransactions.forEach(tx => {
+      // 🆕 如果已经手动核对过，跳过自动匹配
+      if (tx.reconciledBankTransactionId) {
+        return;
+      }
+      
+      const dateKey = (tx.transactionDate || '').slice(0, 10);
+      const amtKey = tx.amount.toFixed(2);
+      const typeKey = tx.transactionType; // income/expense
+      const key = `${dateKey}|${amtKey}|${typeKey}`;
+      const candidates = bankIndex.get(key);
+      if (candidates && candidates.length > 0) {
+        console.log('🎯 [ReconciliationMap useEffect] Auto-matched transaction:', { txId: tx.id, key });
+        map[tx.id] = 'matched';
+      } else {
+        map[tx.id] = 'unmatched';
+      }
+    });
+    
+    const matchedCount = Object.values(map).filter(v => v === 'matched').length;
+    const unmatchedCount = Object.values(map).filter(v => v === 'unmatched').length;
+    console.log(`✅ [ReconciliationMap useEffect] Reconciliation map updated: ${matchedCount} matched, ${unmatchedCount} unmatched`);
+    console.log('📋 [ReconciliationMap useEffect] Full map:', map);
+    
+    console.log('💾 [ReconciliationMap useEffect] Calling setReconciliationMap...');
+    setReconciliationMap(map);
+    console.log('🔍 [ReconciliationMap useEffect] ===== END CALCULATION =====');
+  }, [eventTransactions, bankTransactions]);
 
   // 计算对比数据
   const calculateConsolidation = () => {
@@ -408,27 +624,56 @@ const EventAccountManagementPage: React.FC = () => {
       .filter(p => p.type === 'income')
       .reduce((sum, item) => sum + item.amount, 0);
     
-    const totalIncomeActual = bankTransactions
+    // 🆕 统计：银行交易合计与笔数(收入)
+    const bankIncomeTotal = bankTransactions
       .filter(t => t.transactionType === 'income')
       .reduce((sum, txn) => sum + txn.amount, 0);
+    const bankIncomeCount = bankTransactions.filter(t => t.transactionType === 'income').length;
     
     const totalExpenseForecast = planItems
       .filter(p => p.type === 'expense')
       .reduce((sum, item) => sum + item.amount, 0);
     
-    const totalExpenseActual = bankTransactions
+    // 🆕 统计：银行交易合计与笔数(支出)
+    const bankExpenseTotal = bankTransactions
       .filter(t => t.transactionType === 'expense')
       .reduce((sum, txn) => sum + txn.amount, 0);
+    const bankExpenseCount = bankTransactions.filter(t => t.transactionType === 'expense').length;
+
+    // 🆕 统计：活动账目记录实际(pending/completed)，区分收入/支出
+    const validEventTx = eventTransactions.filter(t => t.status === 'pending' || t.status === 'completed');
+    const eventIncomeTotal = validEventTx.filter(t => t.transactionType === 'income').reduce((s, t) => s + (t.amount || 0), 0);
+    const eventExpenseTotal = validEventTx.filter(t => t.transactionType === 'expense').reduce((s, t) => s + (t.amount || 0), 0);
+    // 🆕 未核对(无 reconciledBankTransactionId)统计
+    const unreconciledEventTx = validEventTx.filter(t => !t.reconciledBankTransactionId);
+    const eventIncomeUnreconciledTotal = unreconciledEventTx
+      .filter(t => t.transactionType === 'income')
+      .reduce((s, t) => s + (t.amount || 0), 0);
+    const eventExpenseUnreconciledTotal = unreconciledEventTx
+      .filter(t => t.transactionType === 'expense')
+      .reduce((s, t) => s + (t.amount || 0), 0);
+    const eventIncomeUnreconciledCount = unreconciledEventTx.filter(t => t.transactionType === 'income').length;
+    const eventExpenseUnreconciledCount = unreconciledEventTx.filter(t => t.transactionType === 'expense').length;
     
     setConsolidationData({
       incomeComparison,
       expenseComparison,
       totalIncomeForecast,
-      totalIncomeActual,
+      totalIncomeActual: eventIncomeTotal,
       totalExpenseForecast,
-      totalExpenseActual,
+      totalExpenseActual: eventExpenseTotal,
       profitForecast: totalIncomeForecast - totalExpenseForecast,
-      profitActual: totalIncomeActual - totalExpenseActual,
+      profitActual: eventIncomeTotal - eventExpenseTotal,
+      bankIncomeTotal,
+      bankExpenseTotal,
+      bankIncomeCount,
+      bankExpenseCount,
+      eventIncomeTotal,
+      eventExpenseTotal,
+      eventIncomeUnreconciledTotal,
+      eventExpenseUnreconciledTotal,
+      eventIncomeUnreconciledCount,
+      eventExpenseUnreconciledCount,
     });
   };
 
@@ -486,16 +731,315 @@ const EventAccountManagementPage: React.FC = () => {
     await loadPlans();
   };
 
+  // 🆕 CRUD Handlers for Event Account Transactions
+  const handleAddEventTransaction = async (item: Omit<FinancialPlanItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
+    if (!account || !user) return;
+    
+    // 转换 FinancialPlanItem 为 EventAccountTransaction 格式
+    await addEventAccountTransaction(
+      account.id,
+      {
+        transactionDate: item.transactionDate, // 🆕 允许undefined(不填日期)
+        transactionType: item.type === 'income' ? 'income' : 'expense',
+        category: item.category,
+        description: item.description,
+        amount: item.amount,
+        notes: item.remark,
+      },
+      user.id
+    );
+    await loadEventTransactions();
+  };
+
   const handleUpdatePlan = async (id: string, updates: Partial<FinancialPlanItem>) => {
     if (!user) return;
     await updateEventAccountPlan(id, updates, user.id);
     await loadPlans();
   };
 
-  const handleDeletePlan = async (id: string) => {
+  const handleDeletePlan = async (id: string | string[]) => {
     if (!user) return;
-    await deleteEventAccountPlan(id, user.id);
-    await loadPlans();
+    
+    try {
+      if (Array.isArray(id)) {
+        // 🚀 批量删除 - 使用优化的批量删除服务
+        if (id.length === 0) return;
+        await batchDeleteEventAccountPlans(id, user.id);
+        message.success(`已批量删除 ${id.length} 个计划项目`);
+      } else {
+        // 单个删除
+        await deleteEventAccountPlan(id, user.id);
+      }
+      await loadPlans();
+    } catch (error) {
+      message.error('删除失败');
+      console.error(error);
+    }
+  };
+
+  // 🆕 Event Account Transaction handlers
+  const handleUpdateEventTransaction = async (id: string, updates: Partial<FinancialPlanItem>) => {
+    // TODO: 实现更新活动账目记录的逻辑
+    message.info('更新功能开发中...');
+    await loadEventTransactions();
+  };
+
+  // 🆕 打开核对弹窗
+  const handleOpenReconcile = (txId: string) => {
+    setSelectedTxId(txId);
+    const tx = eventTransactions.find(t => t.id === txId);
+    if (tx) {
+      // 🆕 收集所有已核对的银行交易ID
+      const reconciledBankTxIds = new Set(
+        eventTransactions
+          .filter(t => t.reconciledBankTransactionId)
+          .map(t => t.reconciledBankTransactionId!)
+      );
+      
+      console.log('🔍 [handleOpenReconcile] Reconciled bank transaction IDs:', Array.from(reconciledBankTxIds));
+      
+      // 查找可匹配的银行交易(同类型 + 金额匹配 + 未被任何记录核对 + 未出现在当前页面已核对集合)
+      const candidates = bankTransactions.filter(bt => {
+        const isSameType = bt.transactionType === tx.transactionType;
+        const isNotReconciledInPage = !reconciledBankTxIds.has(bt.id);
+        // 约定：交易管理页 status 映射到这里为 'verified' 表示已核对(completed)
+        const isGloballyPending = bt.status !== 'verified';
+        // 金额匹配(两位小数比对)
+        const isAmountMatch = Number((bt.amount ?? 0).toFixed(2)) === Number((tx.amount ?? 0).toFixed(2));
+        
+        const isCandidate = isSameType && isAmountMatch && isNotReconciledInPage && isGloballyPending;
+        
+        console.log('🎯 [handleOpenReconcile] Bank transaction:', {
+          id: bt.id,
+          type: bt.transactionType,
+          isSameType,
+          isAmountMatch,
+          isNotReconciledInPage,
+          isGloballyPending,
+          isCandidate
+        });
+        
+        return isCandidate;
+      });
+      
+      console.log(`✅ [handleOpenReconcile] Found ${candidates.length} available bank transactions out of ${bankTransactions.length} total`);
+      setAvailableBankTxns(candidates);
+    }
+    setReconcileModalVisible(true);
+  };
+
+  // 🆕 确认核对
+  const handleConfirmReconcile = async (bankTxId: string) => {
+    if (!user || !selectedTxId) {
+      console.log('❌ [handleConfirmReconcile] Missing user or selectedTxId', { user: !!user, selectedTxId: !!selectedTxId });
+      return;
+    }
+    
+    try {
+      console.log('🔧 [handleConfirmReconcile] Starting manual reconciliation...', { 
+        txId: selectedTxId, 
+        bankTxId 
+      });
+      
+      // 🆕 调用service更新reconciledBankTransactionId和status
+      await eventAccountService.updateEventAccountTransaction(
+        selectedTxId,
+        { reconciledBankTransactionId: bankTxId, status: 'completed' },
+        user.id
+      );
+      
+      console.log('✅ [handleConfirmReconcile] Manual reconciliation successful');
+      message.success('核对成功');
+      setReconcileModalVisible(false);
+      setSelectedTxId('');
+      
+      console.log('🔄 [handleConfirmReconcile] Reloading event transactions and bank transactions...');
+      await loadEventTransactions(); // 🔄 刷新活动账目记录(影响按钮状态)
+      await loadBankTransactions();  // 🔄 刷新银行交易(按钮状态依赖matchedBankTransactions)
+      console.log('✅ [handleConfirmReconcile] Reload completed');
+    } catch (error) {
+      console.error('❌ [handleConfirmReconcile] Manual reconciliation failed:', error);
+      message.error('核对失败');
+    }
+  };
+
+  // 🆕 取消核对
+  const handleCancelReconcile = async (txId: string) => {
+    if (!user) {
+      console.log('❌ [handleCancelReconcile] Missing user');
+      return;
+    }
+    
+    try {
+      console.log('🔧 [handleCancelReconcile] Starting cancel reconciliation...', { txId });
+      
+      // 🆕 调用service清除reconciledBankTransactionId (使用 deleteField)
+      await clearEventAccountTransactionReconciliation(txId, user.id);
+      
+      console.log('✅ [handleCancelReconcile] Cancel reconciliation successful');
+      message.info('已取消核对');
+      
+      console.log('🔄 [handleCancelReconcile] Reloading event transactions and bank transactions...');
+      await loadEventTransactions(); // 🔄 刷新活动账目记录(影响按钮状态)
+      await loadBankTransactions();  // 🔄 刷新银行交易(按钮状态依赖matchedBankTransactions)
+      console.log('✅ [handleCancelReconcile] Reload completed');
+      
+      // 🆕 reconciliationMap 会自动通过 useEffect 重新计算(依赖 eventTransactions)
+      // useEffect 会检测到 eventTransactions 变化，自动重新计算 reconciliationMap
+      // 添加一个短暂延迟确保UI更新
+      setTimeout(() => {
+        console.log('✅ [handleCancelReconcile] UI refresh triggered');
+      }, 100);
+    } catch (error) {
+      console.error('❌ [handleCancelReconcile] Cancel reconciliation failed:', error);
+      message.error('取消核对失败');
+    }
+  };
+
+  // 🆕 自动核对功能
+  const handleAutoReconcile = async () => {
+    if (!account || !user) {
+      console.log('❌ [handleAutoReconcile] account or user not available', { account: !!account, user: !!user });
+      return;
+    }
+    
+    try {
+      console.log('🔄 [handleAutoReconcile] Starting auto-reconciliation...');
+      console.log('📊 [handleAutoReconcile] Total event transactions:', eventTransactions.length);
+      console.log('💰 [handleAutoReconcile] Total bank transactions:', bankTransactions.length);
+      
+      let successCount = 0;
+      let failCount = 0;
+      const updatePromises: Promise<void>[] = [];
+
+      // 🆕 已被核对的银行交易ID集合(禁止重复占用)
+      const usedBankTxIds = new Set<string>(
+        eventTransactions
+          .filter(t => !!t.reconciledBankTransactionId)
+          .map(t => t.reconciledBankTransactionId!)
+      );
+      
+      // 遍历所有未核对的记录
+      for (const tx of eventTransactions) {
+        if (tx.reconciledBankTransactionId) {
+          console.log('⏭️ [handleAutoReconcile] Skipping already reconciled transaction:', tx.id);
+          continue; // 已核对，跳过
+        }
+        
+        console.log('🔍 [handleAutoReconcile] Checking transaction:', {
+          id: tx.id,
+          date: tx.transactionDate,
+          amount: tx.amount,
+          type: tx.transactionType
+        });
+        
+        // 查找匹配的银行交易
+        const matchedBankTx = bankTransactions.find(bt => {
+          const txDate = tx.transactionDate?.slice(0, 10);
+          const btDate = bt.transactionDate?.slice(0, 10);
+          const amountMatch = tx.amount.toFixed(2) === bt.amount.toFixed(2);
+          const typeMatch = tx.transactionType === bt.transactionType;
+          
+          // 🆕 文本模糊匹配：基于关键词重叠(中英文与数字)，提升准确度
+          const normalize = (s?: string) => (s || '').toLowerCase();
+          const splitWords = (s: string) => s
+            .replace(/[^a-z0-9\u4e00-\u9fa5]+/gi, ' ')
+            .split(' ')
+            .map(w => w.trim())
+            .filter(w => w.length >= 2);
+          const hasKeywordOverlap = (a?: string, b?: string) => {
+            const wa = new Set(splitWords(normalize(a)));
+            const wb = new Set(splitWords(normalize(b)));
+            for (const w of wa) {
+              if (wb.has(w)) return true;
+            }
+            return false;
+          };
+          const textMatch = hasKeywordOverlap(tx.description, bt.description);
+          
+          console.log('🎯 [handleAutoReconcile] Matching attempt:', {
+            txDate,
+            btDate,
+            dateMatch: txDate === btDate,
+            txAmount: tx.amount.toFixed(2),
+            btAmount: bt.amount.toFixed(2),
+            amountMatch,
+            typeMatch,
+            textMatch,
+          });
+          
+          // 🆕 限制：一个银行交易只能被一个活动账目记录核对
+          const notUsed = !usedBankTxIds.has(bt.id);
+          // 最终条件：日期 + 金额 + 类型 + 文本(至少有关键词重叠)
+          return txDate === btDate && amountMatch && typeMatch && textMatch && notUsed;
+        });
+        
+        if (matchedBankTx) {
+          console.log('✅ [handleAutoReconcile] Match found!', {
+            txId: tx.id,
+            bankTxId: matchedBankTx.id
+          });
+          
+          // 调用service更新reconciledBankTransactionId和status
+          const updatePromise = eventAccountService.updateEventAccountTransaction(
+            tx.id,
+            { reconciledBankTransactionId: matchedBankTx.id, status: 'completed' },
+            user.id
+          );
+          
+          updatePromises.push(updatePromise);
+          usedBankTxIds.add(matchedBankTx.id); // 🆕 立即占用，避免后续重复匹配
+          successCount++;
+        } else {
+          console.log('❌ [handleAutoReconcile] No match found for transaction:', tx.id);
+          failCount++;
+        }
+      }
+      
+      console.log('💾 [handleAutoReconcile] Applying updates...');
+      console.log(`📝 [handleAutoReconcile] Total update promises: ${updatePromises.length}`);
+      
+      await Promise.all(updatePromises);
+      
+      console.log('✅ [handleAutoReconcile] All update promises resolved');
+      console.log('✅ [handleAutoReconcile] Auto-reconciliation completed:', { successCount, failCount });
+      
+      message.success(`自动核对完成：成功 ${successCount} 条，未匹配 ${failCount} 条`);
+      
+      console.log('🔄 [handleAutoReconcile] Reloading event transactions and bank transactions...');
+      console.log(`⏱️ [handleAutoReconcile] Before reload, eventTransactions.length = ${eventTransactions.length}`);
+      
+      await loadEventTransactions(); // 🔄 刷新活动账目记录
+      await loadBankTransactions();  // 🔄 刷新银行交易(按钮状态依赖matchedBankTransactions)
+      
+      console.log('✅ [handleAutoReconcile] Reload completed');
+      console.log(`⏱️ [handleAutoReconcile] After reload, eventTransactions should be updated`);
+    } catch (error) {
+      console.error('❌ [handleAutoReconcile] Error during auto-reconciliation:', error);
+      message.error('自动核对失败');
+    }
+  };
+
+  const handleDeleteEventTransaction = async (id: string | string[]) => {
+    if (!user) return;
+    
+    try {
+      if (Array.isArray(id)) {
+        // 批量删除
+        for (const transactionId of id) {
+          await deleteEventAccountTransaction(transactionId, user.id);
+        }
+        message.success(`已删除 ${id.length} 条活动账目记录`);
+      } else {
+        // 单个删除
+        await deleteEventAccountTransaction(id, user.id);
+        message.success('活动账目记录已删除');
+      }
+      await loadEventTransactions();
+    } catch (error) {
+      message.error('删除失败');
+      console.error(error);
+    }
   };
 
 
@@ -516,7 +1060,7 @@ const EventAccountManagementPage: React.FC = () => {
     );
   }
 
-  // 旧的进度计算已移除（统计卡片已删除）
+  // 旧的进度计算已移除(统计卡片已删除)
 
   return (
     <ErrorBoundary>
@@ -532,14 +1076,43 @@ const EventAccountManagementPage: React.FC = () => {
           extra={
             <Space>
               <Select
-                style={{ width: 250 }}
+                style={{ width: 200 }}
                 value={selectedEventId}
                 onChange={setSelectedEventId}
                 placeholder="选择活动"
+                showSearch
+                filterOption={(input, option) =>
+                  String(option?.label || option?.children).toLowerCase().includes(input.toLowerCase())
+                }
               >
-                {events.map(event => (
+                {filteredEvents.map(event => (
                   <Option key={event.id} value={event.id}>
                     {event.name}
+                  </Option>
+                ))}
+              </Select>
+              <Select
+                style={{ width: 120 }}
+                value={selectedYear}
+                onChange={setSelectedYear}
+                placeholder="年份"
+              >
+                <Option value="all">全部年份</Option>
+                <Option value="2025">2025</Option>
+                <Option value="2024">2024</Option>
+                <Option value="2023">2023</Option>
+                <Option value="2022">2022</Option>
+              </Select>
+              <Select
+                style={{ width: 150 }}
+                value={selectedBoardMember}
+                onChange={setSelectedBoardMember}
+                placeholder="负责理事"
+              >
+                <Option value="all">全部理事</Option>
+                {boardMembers.map(member => (
+                  <Option key={member} value={member}>
+                    {member}
                   </Option>
                 ))}
               </Select>
@@ -580,6 +1153,14 @@ const EventAccountManagementPage: React.FC = () => {
                       RM {(consolidationData.totalIncomeActual - consolidationData.totalIncomeForecast).toFixed(2)}
                       ({((consolidationData.totalIncomeActual / consolidationData.totalIncomeForecast) * 100).toFixed(1)}%)
                     </div>
+                    <Divider style={{ margin: '8px 0' }} />
+                    <div style={{ color: '#8c8c8c' }}>
+                      银行交易: RM {(consolidationData.bankIncomeTotal ?? 0).toFixed(2)} ({consolidationData.bankIncomeCount ?? 0} 笔)
+                    </div>
+                    <div style={{ color: '#fa8c16', fontWeight: 500 }}>
+                      未核对: RM {(consolidationData.eventIncomeUnreconciledTotal ?? 0).toFixed(2)}({consolidationData.eventIncomeUnreconciledCount ?? 0} 笔)
+                    </div>
+                    
                   </div>
                 </Card>
               </Col>
@@ -606,6 +1187,14 @@ const EventAccountManagementPage: React.FC = () => {
                       RM {Math.abs(consolidationData.totalExpenseActual - consolidationData.totalExpenseForecast).toFixed(2)}
                       ({((consolidationData.totalExpenseActual / consolidationData.totalExpenseForecast) * 100).toFixed(1)}%)
                     </div>
+                    <Divider style={{ margin: '8px 0' }} />
+                    <div style={{ color: '#8c8c8c' }}>
+                      银行交易: RM {(consolidationData.bankExpenseTotal ?? 0).toFixed(2)} ({consolidationData.bankExpenseCount ?? 0} 笔)
+                    </div>
+                    <div style={{ color: '#fa8c16', fontWeight: 500 }}>
+                      未核对: RM {(consolidationData.eventExpenseUnreconciledTotal ?? 0).toFixed(2)} ({consolidationData.eventExpenseUnreconciledCount ?? 0} 笔)
+                    </div>
+                    
                   </div>
                 </Card>
               </Col>
@@ -633,48 +1222,129 @@ const EventAccountManagementPage: React.FC = () => {
                       差异: {consolidationData.profitActual >= consolidationData.profitForecast ? '+' : ''}
                       RM {(consolidationData.profitActual - consolidationData.profitForecast).toFixed(2)}
                     </div>
+                    <Divider style={{ margin: '8px 0' }} />
+                    <div style={{ color: '#8c8c8c' }}>
+                      银行净额: RM {((consolidationData.bankIncomeTotal ?? 0) - (consolidationData.bankExpenseTotal ?? 0)).toFixed(2)}
+                      (收入 {consolidationData.bankIncomeCount ?? 0} 笔 / 支出 {consolidationData.bankExpenseCount ?? 0} 笔)
+                    </div>
+                    {(consolidationData.eventIncomeUnreconciledTotal !== undefined && consolidationData.eventExpenseUnreconciledTotal !== undefined) && (
+                      <div style={{ color: '#fa8c16', fontWeight: 500 }}>
+                        未核对净额: RM {((consolidationData.eventIncomeUnreconciledTotal ?? 0) - (consolidationData.eventExpenseUnreconciledTotal ?? 0)).toFixed(2)}
+                      </div>
+                    )}
+                    
+                    
                   </div>
                 </Card>
               </Col>
             </Row>
           )}
           
-          {/* 财务计划与银行交易记录并排显示 */}
-          <Row gutter={16}>
-            <Col xs={24} lg={12}>
-              {/* 1. 活动财务计划 */}
-              <ActivityFinancialPlan
-                accountId={account?.id || ''}
-                items={planItems}
-                loading={planLoading}
-                onAdd={handleAddPlan}
-                onUpdate={handleUpdatePlan}
-                onDelete={handleDeletePlan}
-                onRefresh={loadPlans}
-              />
-            </Col>
-            
-            <Col xs={24} lg={12}>
-              {/* 2. 银行交易记录 */}
-              <BankTransactionList
-                accountId={account?.id || ''}
-                transactions={bankTransactions}
-                loading={loading}
-                onRefresh={loadBankTransactions}
-                onExport={() => message.info('导出功能开发中...')}
-              />
-            </Col>
-          </Row>
-          
-          {/* 3. 户口核对 */}
-          {consolidationData && (
-            <AccountConsolidation
-              data={consolidationData}
-              loading={loading}
-              onExport={() => message.info('导出功能开发中...')}
-              onGenerateReport={() => message.info('报表生成功能开发中...')}
-            />
-          )}
+          {/* 财务计划与银行交易记录使用标签页显示 */}
+          <Tabs
+            defaultActiveKey="financial-plan"
+            onChange={(key) => {
+              setActiveInnerTab(key as string);
+              if (key === 'all-event-transactions') {
+                loadAllUnreconciledEventTransactions();
+              }
+            }}
+            items={[
+              {
+                key: 'financial-plan',
+                label: '📋 活动财务预算(Project Budget)',
+                children: (
+                  <ActivityFinancialPlan
+                    accountId={account?.id || ''}
+                    items={planItems}
+                    loading={planLoading}
+                    onAdd={handleAddPlan}
+                    onUpdate={handleUpdatePlan}
+                    onDelete={handleDeletePlan}
+                    onRefresh={loadPlans}
+                  />
+                ),
+              },
+              {
+                key: 'event-transactions',
+                label: '📊 活动账目记录(Event Transactions)',
+                children: (
+                  <ActivityFinancialPlan
+                    accountId={account?.id || ''}
+                    items={convertedEventTransactions}
+                    additionalItems={planItems} // 🆕 继承活动财务预算的类别
+                    reconciliationMap={reconciliationMap} // 🆕 对账状态
+                    matchedBankTransactions={matchedBankTransactions} // 🆕 匹配的银行交易记录
+                    onReconcile={handleOpenReconcile} // 🆕 手动核对
+                    onCancelReconcile={handleCancelReconcile} // 🆕 取消核对
+                    onAutoReconcile={handleAutoReconcile} // 🆕 自动核对
+                    loading={planLoading}
+                    onAdd={handleAddEventTransaction}
+                    onUpdate={handleUpdateEventTransaction}
+                    onDelete={handleDeleteEventTransaction}
+                    onRefresh={loadEventTransactions}
+                  />
+                ),
+              },
+              {
+                key: 'all-event-transactions',
+                label: '📊 总活动账目记录(All Event Transactions)',
+                children: (
+                  <ActivityFinancialPlan
+                    accountId={account?.id || ''}
+                    items={convertedAllUnreconciledEventTransactions}
+                    readOnly={true}
+                    additionalItems={planItems}
+                    reconciliationMap={{}}
+                    matchedBankTransactions={{}}
+                    onReconcile={handleOpenReconcile}
+                    onCancelReconcile={handleCancelReconcile}
+                    onAutoReconcile={handleAutoReconcile}
+                    loading={planLoading}
+                    onAdd={handleAddEventTransaction}
+                    onUpdate={handleUpdateEventTransaction}
+                    onDelete={handleDeleteEventTransaction}
+                    onRefresh={loadAllUnreconciledEventTransactions}
+                  />
+                ),
+              },
+              {
+                key: 'bank-transactions',
+                label: '💰 银行交易记录(Bank Transaction Records)',
+                children: (
+                  <BankTransactionList
+                    accountId={account?.id || ''}
+                    transactions={bankTransactions}
+                    loading={loading}
+                    onRefresh={loadBankTransactions}
+                    onExport={() => message.info('导出功能开发中...')}
+                  />
+                ),
+              },
+              {
+                key: 'account-consolidation',
+                label: '🔄 户口核对(Account Consolidation)',
+                children: consolidationData ? (
+                  <AccountConsolidation
+                    data={consolidationData}
+                    loading={loading}
+                    onExport={() => message.info('导出功能开发中...')}
+                    onGenerateReport={() => message.info('报表生成功能开发中...')}
+                  />
+                ) : (
+                  <Card>
+                    <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+                      <h3 style={{ marginBottom: '8px' }}>暂无数据</h3>
+                      <p style={{ color: '#8c8c8c' }}>
+                        请先选择活动并加载数据
+                      </p>
+                    </div>
+                  </Card>
+                ),
+              },
+            ]}
+          />
         </Space>
 
         {/* Add Transaction Modal */}
@@ -867,6 +1537,51 @@ const EventAccountManagementPage: React.FC = () => {
               <Input.TextArea rows={3} placeholder="备注信息" />
             </Form.Item>
           </Form>
+        </Modal>
+
+        {/* 🆕 核对弹窗 */}
+        <Modal
+          title="核对银行交易记录"
+          open={reconcileModalVisible}
+          onCancel={() => setReconcileModalVisible(false)}
+          footer={null}
+          width={800}
+        >
+          <List
+            size="small"
+            dataSource={availableBankTxns}
+            renderItem={(bankTx) => (
+              <List.Item
+                actions={[
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => handleConfirmReconcile(bankTx.id)}
+                  >
+                    选择
+                  </Button>
+                ]}
+              >
+                <List.Item.Meta
+                  title={
+                    <Space>
+                      <span>{bankTx.description}</span>
+                      <Tag color={bankTx.transactionType === 'income' ? 'green' : 'red'}>
+                        {bankTx.transactionType === 'income' ? '收入' : '支出'}
+                      </Tag>
+                    </Space>
+                  }
+                  description={
+                    <Space>
+                      <span>{globalDateService.formatDate(bankTx.transactionDate, 'display')}</span>
+                      <span>金额: RM {bankTx.amount.toFixed(2)}</span>
+                      {bankTx.bankAccountName && <span>账户: {bankTx.bankAccountName}</span>}
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
         </Modal>
       </div>
     </ErrorBoundary>

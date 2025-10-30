@@ -22,7 +22,7 @@ interface CategoryTemplate {
 }
 
 /**
- * 收入类别模板（12个）
+ * 收入类别模板(12个)
  */
 const INCOME_CATEGORIES: CategoryTemplate[] = [
   {
@@ -60,7 +60,7 @@ const INCOME_CATEGORIES: CategoryTemplate[] = [
     label: '大型活动门票',
     labelEn: 'Major Event Ticketing',
     type: 'income',
-    description: '全国/区域/国际级别活动门票（NATCON, ASPAC, ACC, IAB）',
+    description: '全国/区域/国际级别活动门票(NATCON, ASPAC, ACC, IAB)',
     keywords: ['NATCON', 'ASPAC', 'ACC', 'IAB', 'Area Level'],
     sortOrder: 4,
     status: 'active',
@@ -70,7 +70,7 @@ const INCOME_CATEGORIES: CategoryTemplate[] = [
     label: '企业赞助',
     labelEn: 'Corporate Sponsorship',
     type: 'income',
-    description: '企业提供的现金赞助（金级、银级、铜级等）',
+    description: '企业提供的现金赞助(金级、银级、铜级等)',
     keywords: ['Gold Sponsor', 'Silver Sponsor', 'Bronze Sponsor', 'IA Sponsor', 'Area Sponsor'],
     sortOrder: 5,
     status: 'active',
@@ -148,7 +148,7 @@ const INCOME_CATEGORIES: CategoryTemplate[] = [
 ];
 
 /**
- * 支出类别模板（25个）
+ * 支出类别模板(25个)
  */
 const EXPENSE_CATEGORIES: CategoryTemplate[] = [
   {
@@ -156,7 +156,7 @@ const EXPENSE_CATEGORIES: CategoryTemplate[] = [
     label: '场地租金',
     labelEn: 'Venue Rental',
     type: 'expense',
-    description: '活动场地租金（不含押金）',
+    description: '活动场地租金(不含押金)',
     keywords: ['Venue Fee', 'Hall Rental', 'Venue', 'Rental'],
     sortOrder: 1,
     status: 'active',
@@ -166,7 +166,7 @@ const EXPENSE_CATEGORIES: CategoryTemplate[] = [
     label: '场地押金',
     labelEn: 'Venue Deposit',
     type: 'expense',
-    description: '场地押金（通常会退还）',
+    description: '场地押金(通常会退还)',
     keywords: ['Venue Deposit', 'Hall Deposit', 'Deposit'],
     sortOrder: 2,
     status: 'active',
@@ -256,14 +256,14 @@ const EXPENSE_CATEGORIES: CategoryTemplate[] = [
     label: '活动制服',
     labelEn: 'Event Uniform',
     type: 'expense',
-    description: '活动委员会制服（非销售）',
+    description: '活动委员会制服(非销售)',
     keywords: ['T-shirt', 'PoloT', 'Polo', 'Committee Uniform'],
     sortOrder: 11,
     status: 'active',
   },
   {
     value: 'TXEXP-0012',
-    label: '会服采购（销售成本）',
+    label: '会服采购(销售成本)',
     labelEn: 'Merchandise COGS',
     type: 'expense',
     description: '用于销售的会服采购成本',
@@ -507,7 +507,7 @@ export const initializeFinancialCategories = async (
 };
 
 /**
- * 批量创建核心类别（阶段1）
+ * 批量创建核心类别(阶段1)
  */
 export const initializeCoreCategories = async (
   userId: string = 'system-init'
@@ -519,7 +519,7 @@ export const initializeCoreCategories = async (
 }> => {
   console.log('🚀 Starting CORE financial categories initialization...');
   
-  // 核心收入类别（6个）
+  // 核心收入类别(6个)
   const coreIncome = [
     INCOME_CATEGORIES[0], // 活动门票-会员
     INCOME_CATEGORIES[1], // 活动门票-非会员
@@ -529,7 +529,7 @@ export const initializeCoreCategories = async (
     INCOME_CATEGORIES[8], // 续会费
   ];
   
-  // 核心支出类别（9个）
+  // 核心支出类别(9个)
   const coreExpense = [
     EXPENSE_CATEGORIES[0],  // 场地租金
     EXPENSE_CATEGORIES[2],  // 餐饮费用
@@ -579,7 +579,7 @@ export const initializeCoreCategories = async (
 };
 
 /**
- * 导出所有类别模板（用于文档生成）
+ * 导出所有类别模板(用于文档生成)
  */
 export const getAllCategoryTemplates = () => ({
   income: INCOME_CATEGORIES,

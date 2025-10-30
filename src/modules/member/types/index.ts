@@ -91,7 +91,7 @@ export interface MemberProfile {
     instagram?: string;
     wechat?: string;
   };
-  linkedin?: string;              // 🆕 LinkedIn链接（简化访问）
+  linkedin?: string;              // 🆕 LinkedIn链接(简化访问)
   
   // Career & Business
   company?: string;
@@ -191,7 +191,7 @@ export interface Member extends BaseEntity {
   level: MemberLevel;
   accountType?: string;
   category?: MemberCategoryType;
-  membershipCategory?: string;   // 🆕 会员类别（补充字段）
+  membershipCategory?: string;   // 🆕 会员类别(补充字段)
   
   // Category Management
   categoryAssignedBy?: string;   // 🆕 类别分配者

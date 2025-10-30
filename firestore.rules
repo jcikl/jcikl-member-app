@@ -199,6 +199,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
+    match /eventAccountTransactions/{transactionId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated() && (isAdmin() || isActive());
+    }
+    
     // ====================================
     // Permission Collections (RBAC)
     // 权限集合
