@@ -55,38 +55,100 @@ const getMembersRef = () => collection(db, GLOBAL_COLLECTIONS.MEMBERS);
  * 转换 Firestore 文档为会员对象
  */
 const convertToMember = (docId: string, data: DocumentData): Member => {
-  return {
-    id: docId,
-    email: data.email || '',
-    name: data.name || '',
-    phone: data.phone || '',
-    memberId: data.memberId || '',
-    status: data.status || 'pending',
-    level: data.level || 'bronze',
-    accountType: data.accountType ?? null,
-    category: data.category ?? null,
-    
-    // Organization
-    worldRegion: data.worldRegion ?? null,
-    country: data.country ?? null,
-    countryRegion: data.countryRegion ?? null,
-    chapter: data.chapter ?? null,
-    chapterId: data.chapterId ?? null,
-    
-    // Profile
-    profile: data.profile || {},
-    
-    // Dates
-    joinDate: safeTimestampToISO(data.joinDate) || new Date().toISOString(),
-    renewalDate: data.renewalDate ? safeTimestampToISO(data.renewalDate) : undefined,
-    expiryDate: data.expiryDate ? safeTimestampToISO(data.expiryDate) : undefined,
-    
-    // Timestamps
-    createdAt: safeTimestampToISO(data.createdAt) || new Date().toISOString(),
-    updatedAt: safeTimestampToISO(data.updatedAt) || new Date().toISOString(),
-    createdBy: data.createdBy ?? null,
-    updatedBy: data.updatedBy ?? null,
+  const profileRaw = (data.profile ?? {}) as Record<string, any>;
+  const business = (data.business ?? {}) as Record<string, any>;
+  const jci = (data.jciCareer ?? {}) as Record<string, any>;
+
+  // Merge namespaced fields back into profile view for UI compatibility
+  const mergedProfile: Record<string, any> = {
+    ...profileRaw,
+    // Identity surfaced in profile for migrated schema
+    name: profileRaw.name ?? data.name,
+    // Career & Business from business.*
+    company: profileRaw.company ?? business.company,
+    companyWebsite: profileRaw.companyWebsite ?? business.companyWebsite,
+    departmentAndPosition: profileRaw.departmentAndPosition ?? business.departmentAndPosition,
+    ownIndustry: profileRaw.ownIndustry ?? business.ownIndustry,
+    industryDetail: profileRaw.industryDetail ?? business.industryDetail,
+    companyIntro: profileRaw.companyIntro ?? business.companyIntro,
+    interestedIndustries: profileRaw.interestedIndustries ?? business.interestedIndustries,
+    businessCategories: profileRaw.businessCategories ?? business.businessCategories,
+    acceptInternationalBusiness: profileRaw.acceptInternationalBusiness ?? business.acceptInternationalBusiness,
+
+    // JCI-specific from jciCareer.*
+    senatorId: profileRaw.senatorId ?? jci.senatorId,
+    senatorScore: profileRaw.senatorScore ?? jci.senatorScore,
+    senatorVerified: profileRaw.senatorVerified ?? jci.senatorVerified,
+    jciEventInterests: profileRaw.jciEventInterests ?? jci.jciEventInterests,
+    jciBenefitsExpectation: profileRaw.jciBenefitsExpectation ?? jci.jciBenefitsExpectation,
+    fiveYearsVision: profileRaw.fiveYearsVision ?? jci.fiveYearsVision,
+    activeMemberHow: profileRaw.activeMemberHow ?? jci.activeMemberHow,
+    paymentDate: profileRaw.paymentDate ?? jci.paymentDate,
+    paymentSlipUrl: profileRaw.paymentSlipUrl ?? jci.paymentSlipUrl,
+    paymentVerifiedDate: profileRaw.paymentVerifiedDate ?? jci.paymentVerifiedDate,
+    joinedDate: profileRaw.joinedDate ?? jci.joinedDate,
+    endorsementDate: profileRaw.endorsementDate ?? jci.endorsementDate,
+    hasSpecialPermissions: profileRaw.hasSpecialPermissions ?? jci.hasSpecialPermissions,
+    specialPermissions: profileRaw.specialPermissions ?? jci.specialPermissions,
+    permissionNotes: profileRaw.permissionNotes ?? jci.permissionNotes,
+    effectivePermissions: profileRaw.effectivePermissions ?? jci.effectivePermissions,
+    roleBindings: profileRaw.roleBindings ?? jci.roleBindings,
+    taskCompletions: profileRaw.taskCompletions ?? jci.taskCompletions,
+    activityParticipation: profileRaw.activityParticipation ?? jci.activityParticipation,
+    whatsappGroup: profileRaw.whatsappGroup ?? jci.whatsappGroup,
   };
+
+  const pickIso = (v: any): string | undefined => {
+    if (v == null) return undefined;
+    if (typeof v === 'string') return v;
+    return safeTimestampToISO(v) || undefined;
+  };
+
+  const joinDateRaw = data.joinDate ?? jci.joinDate;
+  const renewalDateRaw = data.renewalDate ?? jci.renewalDate;
+  const expiryDateRaw = data.expiryDate ?? jci.expiryDate;
+
+  const createdAtRaw = data.createdAt ?? profileRaw.createdAt ?? jci.createdAt;
+  const updatedAtRaw = data.updatedAt ?? profileRaw.updatedAt ?? jci.updatedAt;
+
+  const memberObj = {
+    id: docId,
+    email: (mergedProfile.email ?? data.email) || '',
+    name: (mergedProfile.name ?? data.name) || '',
+    phone: (mergedProfile.phone ?? data.phone) || '',
+    memberId: (mergedProfile.memberId ?? data.memberId) || '',
+    status: (mergedProfile.status ?? data.status) || 'pending',
+    level: (mergedProfile.level ?? data.level) || 'bronze',
+    accountType: data.accountType ?? null,
+    category: jci.category ?? data.category ?? null,
+
+    // Organization (could also be in jciCareer after migration)
+    worldRegion: data.worldRegion ?? jci.worldRegion ?? null,
+    country: data.country ?? jci.country ?? null,
+    countryRegion: data.countryRegion ?? jci.countryRegion ?? null,
+    chapter: data.chapter ?? jci.chapter ?? null,
+    chapterId: data.chapterId ?? jci.chapterId ?? null,
+
+    // Profile (merged view)
+    profile: mergedProfile,
+
+    // Dates
+    joinDate: pickIso(joinDateRaw) || new Date().toISOString(),
+    renewalDate: pickIso(renewalDateRaw),
+    expiryDate: pickIso(expiryDateRaw),
+
+    // Timestamps
+    createdAt: pickIso(createdAtRaw) || new Date().toISOString(),
+    updatedAt: pickIso(updatedAtRaw) || new Date().toISOString(),
+    createdBy: data.createdBy ?? jci.createdBy ?? profileRaw.createdBy ?? null,
+    updatedBy: data.updatedBy ?? jci.updatedBy ?? profileRaw.updatedBy ?? null,
+  } as Member;
+
+  // Attach raw namespaces for UI compatibility after migration
+  (memberObj as any).business = Object.keys(business).length ? business : undefined;
+  (memberObj as any).jciCareer = Object.keys(jci).length ? jci : undefined;
+
+  return memberObj;
 };
 
 /**
@@ -98,22 +160,22 @@ const buildQuery = (params: MemberSearchParams): Query<DocumentData> => {
   
   // Status filter
   if (params.status) {
-    q = query(q, where('status', '==', params.status));
+    q = query(q, where('profile.status', '==', params.status));
   }
   
   // Category filter
   if (params.category) {
-    q = query(q, where('category', '==', params.category));
+    q = query(q, where('jciCareer.category', '==', params.category));
   }
   
   // Level filter
   if (params.level) {
-    q = query(q, where('level', '==', params.level));
+    q = query(q, where('profile.level', '==', params.level));
   }
   
   // Chapter filter
   if (params.chapter) {
-    q = query(q, where('chapter', '==', params.chapter));
+    q = query(q, where('jciCareer.chapter', '==', params.chapter));
   }
   
   // New this month filter (will be handled client-side)
@@ -122,8 +184,8 @@ const buildQuery = (params: MemberSearchParams): Query<DocumentData> => {
   // Expiring this month filter (will be handled client-side)
   // This requires date comparison which is complex in Firestore
   
-  // Default ordering by creation date
-  q = query(q, orderBy('createdAt', 'desc'));
+  // Default ordering by creation date (migrated to profile.createdAt)
+  q = query(q, orderBy('profile.createdAt', 'desc'));
   
   return q;
 };
@@ -237,14 +299,19 @@ export const getMembers = async (
     // Convert all documents to Member objects
     let allMembers = searchSnapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
     
-    // Apply search filter
+    // Apply search filter (expanded to include fullNameNric)
     const searchLower = search.toLowerCase();
-    allMembers = allMembers.filter(member => 
-      member.name.toLowerCase().includes(searchLower) ||
-      member.email.toLowerCase().includes(searchLower) ||
-      member.phone.includes(search) ||
-      (member.memberId && member.memberId.toLowerCase().includes(searchLower))
-    );
+    const normalize = (s?: string) => (s || '').toLowerCase();
+    allMembers = allMembers.filter(member => {
+      const fullNameNric = normalize(member.profile?.fullNameNric);
+      return (
+        normalize(member.name).includes(searchLower) ||
+        normalize(member.email).includes(searchLower) ||
+        (member.phone || '').includes(search) ||
+        (!!member.memberId && normalize(member.memberId).includes(searchLower)) ||
+        (fullNameNric.includes(searchLower))
+      );
+    });
     
     // Apply additional client-side filters
     if (searchParams.newThisMonth) {
@@ -531,26 +598,26 @@ export const getMemberStats = async (): Promise<MemberStats> => {
     
     members.forEach(member => {
       // Count by status
-      if (member.status === 'active') stats.active++;
-      else if (member.status === 'inactive') stats.inactive++;
-      else if (member.status === 'suspended') stats.suspended++;
-      else if (member.status === 'pending') stats.pending++;
+      if (member?.profile?.status === 'active') stats.active++;
+      else if (member?.profile?.status === 'inactive') stats.inactive++;
+      else if (member?.profile?.status === 'suspended') stats.suspended++;
+      else if (member?.profile?.status === 'pending') stats.pending++;
       
       // Count by category
-      if (member.category) {
-        const cat = member.category as keyof typeof stats.byCategory;
+      if (member?.jciCareer?.category) {
+        const cat = member.jciCareer.category as keyof typeof stats.byCategory;
         stats.byCategory[cat] = (stats.byCategory[cat] || 0) + 1;
       }
       
       // Count by level
-      if (member.level) {
-        const lvl = member.level as keyof typeof stats.byLevel;
+      if (member?.profile?.level) {
+        const lvl = member.profile.level as keyof typeof stats.byLevel;
         stats.byLevel[lvl] = (stats.byLevel[lvl] || 0) + 1;
       }
       
       // Count new members this month
-      if (member.createdAt) {
-        const createdDate = new Date(member.createdAt);
+      if (member?.profile?.createdAt) {
+        const createdDate = new Date(member.profile.createdAt);
         if (createdDate.getMonth() === currentMonth && 
             createdDate.getFullYear() === currentYear) {
           stats.newThisMonth++;
@@ -933,8 +1000,8 @@ export const getAllActiveMembers = async (): Promise<Member[]> => {
   try {
     const q = query(
       getMembersRef(),
-      where('status', '==', 'active'),
-      orderBy('name', 'asc')
+      where('profile.status', '==', 'active'),
+      orderBy('profile.name', 'asc')
     );
 
     const snapshot = await getDocs(q);

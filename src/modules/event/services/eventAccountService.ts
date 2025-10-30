@@ -142,7 +142,7 @@ export const addEventAccountTransaction = async (
     const accountData = accountDoc.data() as EventAccount;
     const now = new Date().toISOString();
     
-    // 🆕 转换日期(如果提供)，允许为空
+    // 🆕 转换日期(如果提供），允许为空
     let transactionDate = '';
     if (data.transactionDate) {
       transactionDate = typeof data.transactionDate === 'string'
@@ -451,7 +451,7 @@ export const getEventAccountTransactions = async (
 
 /**
  * Get ALL unreconciled Event Account Transactions
- * 获取所有未核对(pending)的活动账目记录(跨所有活动账户)
+ * 获取所有未核对(pending）的活动账目记录(跨所有活动账户）
  */
 export const getAllUnreconciledEventAccountTransactions = async (): Promise<EventAccountTransaction[]> => {
   try {

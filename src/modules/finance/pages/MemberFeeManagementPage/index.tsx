@@ -50,7 +50,7 @@ import {
 import { getCurrentFiscalYear } from '../../services/fiscalYearService';
 import { getTransactions, updateTransaction } from '../../services/transactionService';
 import { smartFiscalYearService } from '../../services/smartFiscalYearService';
-import { getMembers, getMemberById } from '@/modules/member/services/memberService';
+import { getMembers, getMemberById, getAllActiveMembers } from '@/modules/member/services/memberService';
 import type { MemberFee, MemberFeeStatus, Transaction } from '../../types';
 import type { MemberCategoryType } from '@/modules/member/types';
 import type { FiscalYearPeriod } from '../../types/fiscalYear';
@@ -108,6 +108,25 @@ const MemberFeeManagementPage: React.FC = () => {
   
   // 🆕 未分类检测
   const [hasUncategorized, setHasUncategorized] = useState(false);
+
+  // 🆕 自动匹配预览状态
+  const [autoPreviewVisible, setAutoPreviewVisible] = useState(false);
+  const [autoPreviewLoading, setAutoPreviewLoading] = useState(false);
+  const [autoPreviewRows, setAutoPreviewRows] = useState<Array<{
+    id: string;
+    date: string;
+    mainDescription: string;
+    subDescription?: string;
+    amount: number;
+    currentTxAccount?: string;
+    suggestedTxAccount?: string;
+    suggestedMemberId?: string;
+    suggestedMemberName?: string;
+    score: number;
+  }>>([]);
+  const [autoSelectedKeys, setAutoSelectedKeys] = useState<string[]>([]);
+  const [previewMemberOptions, setPreviewMemberOptions] = useState<Record<string, { value: string; label: string }[]>>({});
+  const [previewMemberLoading, setPreviewMemberLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     initializeData();
@@ -301,7 +320,7 @@ const MemberFeeManagementPage: React.FC = () => {
       // 🆕 Step 1: 先加载会员信息缓存(用于后续搜索)
       const memberIds = filteredTransactions
         .map(t => (t as any)?.metadata?.memberId)
-        .filter((id): id is string => Boolean(id))
+        .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
         .filter((id, index, array) => array.indexOf(id) === index); // 去重
       
       // 批量加载会员信息
@@ -452,6 +471,125 @@ const MemberFeeManagementPage: React.FC = () => {
     }
   };
 
+  // ========= 自动匹配预览 =========
+  const keywordRules: Array<{ regex: RegExp; category: string }> = [
+    { regex: /(新|加入|注册|new)/i, category: 'new-member-fee' },
+    { regex: /(续|renew|renewal)/i, category: 'renewal-fee' },
+    { regex: /(校友|alumni)/i, category: 'alumni-fee' },
+    { regex: /(拜访|visiting)/i, category: 'visiting-member-fee' },
+  ];
+
+  const buildSuggestion = (t: Transaction): { txAccount?: string; score: number } => {
+    const text = `${t.mainDescription || ''} ${t.subDescription || ''}`.toLowerCase();
+    const year = new Date(t.transactionDate).getFullYear().toString();
+    const amt = Number(t.amount || 0);
+    const near = (v: number, target: number, tol = 0.6) => Math.abs(v - target) <= tol; // 金额容差±0.6
+
+    // 1) 金额优先规则（更高置信度）
+    if (near(amt, 300)) {
+      return { txAccount: `${year}-renewal-fee`, score: 95 };
+    }
+    if (near(amt, 350)) {
+      return { txAccount: `${year}-new-member-fee`, score: 95 };
+    }
+
+    // 2) 关键词规则
+    for (const r of keywordRules) {
+      if (r.regex.test(text)) {
+        return { txAccount: `${year}-${r.category}`, score: 80 };
+      }
+    }
+    return { txAccount: undefined, score: 0 };
+  };
+
+  const openAutoPreview = async () => {
+    setAutoPreviewVisible(true);
+    setAutoPreviewLoading(true);
+    try {
+      // 一次性载入活跃会员用于模糊匹配
+      const activeMembers = await getAllActiveMembers();
+      const normalize = (s: string) => (s || '').toLowerCase().trim();
+      const includesLoose = (text: string, s: string) => text.replace(/\s+/g, '').includes((s || '').toLowerCase().replace(/\s+/g, ''));
+      const scoreName = (text: string, name?: string): number => {
+        if (!name) return 0;
+        const n = normalize(name);
+        if (!n) return 0;
+        if (includesLoose(text, n)) return Math.min(30, Math.max(12, Math.floor(n.length * 1.2)));
+        const tokens = n.split(/\s+/).filter(Boolean);
+        let hits = 0;
+        for (const tk of tokens) { if (tk.length >= 2 && text.includes(tk)) hits++; }
+        return hits >= 2 ? 12 : hits === 1 ? 6 : 0;
+      };
+
+      const rows = await Promise.all(transactions.map(async (t) => {
+        const { txAccount, score } = buildSuggestion(t);
+        const combined = normalize(`${t.mainDescription || ''} ${t.subDescription || ''}`);
+        let best: { id: string; name: string; s: number } | undefined;
+        for (const m of activeMembers) {
+          const nm = (m as any).profile?.name || m.name || '';
+          const full = (m as any).profile?.fullNameNric || '';
+          const s1 = scoreName(combined, nm);
+          const s2 = scoreName(combined, full);
+          const s = Math.max(s1, s2);
+          if (s > (best?.s || 0)) best = { id: m.id, name: nm || full, s };
+        }
+        const matched = best && best.s >= 12 ? best : undefined;
+        return {
+          id: t.id,
+          date: t.transactionDate,
+          mainDescription: t.mainDescription,
+          subDescription: t.subDescription,
+          amount: t.amount,
+          currentTxAccount: t.txAccount,
+          suggestedTxAccount: txAccount,
+          suggestedMemberId: matched?.id,
+          suggestedMemberName: matched?.name,
+          score: score + (matched ? 15 : 0),
+        };
+      }));
+      // 排序：先按金额(高到低)，再按日期(新到旧)
+      rows.sort((a, b) => {
+        const amtDiff = Number(b.amount || 0) - Number(a.amount || 0);
+        if (amtDiff !== 0) return amtDiff;
+        const da = new Date(a.date).getTime();
+        const db = new Date(b.date).getTime();
+        return db - da;
+      });
+      setAutoPreviewRows(rows);
+      setAutoSelectedKeys(rows.filter(r => (r.score || 0) >= 70 && r.suggestedTxAccount).map(r => r.id));
+    } finally {
+      setAutoPreviewLoading(false);
+    }
+  };
+
+  const applyAutoPreview = async (onlyHighConfidence: boolean) => {
+    if (!user) return;
+    const targets = autoPreviewRows.filter(r =>
+      (!!r.suggestedTxAccount) && (onlyHighConfidence ? (r.score >= 70) : autoSelectedKeys.includes(r.id))
+    );
+    if (targets.length === 0) {
+      message.info('没有可应用的匹配结果');
+      return;
+    }
+    try {
+      setAutoPreviewLoading(true);
+      await Promise.all(targets.map(r => updateTransaction(r.id, { 
+        txAccount: r.suggestedTxAccount!, 
+        metadata: r.suggestedMemberId ? { memberId: r.suggestedMemberId } : undefined,
+      }, user.id)));
+      message.success(`已应用 ${targets.length} 条匹配结果`);
+      setAutoPreviewVisible(false);
+      setAutoSelectedKeys([]);
+      loadTransactions();
+    } catch (e) {
+      message.error('应用失败');
+    } finally {
+      setAutoPreviewLoading(false);
+    }
+  };
+
+  // 移除“关联会员”预览搜索与写入逻辑
+
   const handleSendBulkReminders = () => {
     message.info('批量发送提醒功能开发中...');
   };
@@ -598,7 +736,7 @@ const MemberFeeManagementPage: React.FC = () => {
       title: '日期',
       dataIndex: 'transactionDate',
       key: 'transactionDate',
-      width: 80,
+      width: '18%',
       sorter: (a: Transaction, b: Transaction) => {
         const dateA = new Date(a.transactionDate).getTime();
         const dateB = new Date(b.transactionDate).getTime();
@@ -611,7 +749,7 @@ const MemberFeeManagementPage: React.FC = () => {
       title: '描述',
       dataIndex: 'mainDescription',
       key: 'mainDescription',
-      width: 200,
+      width: '50%',
       ellipsis: true,
       render: (description: string, record: Transaction) => {
         const memberId = (record as any)?.metadata?.memberId;
@@ -620,7 +758,18 @@ const MemberFeeManagementPage: React.FC = () => {
         return (
           <div>
             <div style={{ marginBottom: (record.subDescription || memberInfo) ? 4 : 0 }}>
-              {description}
+              <span
+                style={{
+                  display: 'inline-block',
+                  maxWidth: '100%',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  verticalAlign: 'middle',
+                }}
+              >
+                {description}
+              </span>
             </div>
             {record.subDescription && (
               <div style={{ 
@@ -652,7 +801,7 @@ const MemberFeeManagementPage: React.FC = () => {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      width: 80,
+      width: '18%',
       align: 'right',
       render: (amount: number, record: Transaction) => {
         const safeAmount = amount ?? 0;
@@ -669,7 +818,7 @@ const MemberFeeManagementPage: React.FC = () => {
       title: '二次分类',
       dataIndex: 'txAccount',
       key: 'txAccount',
-      width: 50,
+      width: '18%',
       render: (subCat: string) => {
         const txAccountConfig: Record<string, { color: string; text: string }> = {
           'new-member-fee': { color: 'blue', text: '新会员费' },
@@ -713,7 +862,7 @@ const MemberFeeManagementPage: React.FC = () => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 50,
+      width: '10%',
       render: (status: string) => {
         const statusConfig: Record<string, { color: string; text: string }> = {
           completed: { color: 'success', text: '已完成' },
@@ -728,8 +877,7 @@ const MemberFeeManagementPage: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 50,
-      fixed: 'right',
+      width: '18%',
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -738,9 +886,6 @@ const MemberFeeManagementPage: React.FC = () => {
             onClick={() => handleClassify(record)}
           >
             {record.txAccount ? '重新分类' : '分类'}
-          </Button>
-          <Button type="link" size="small">
-            查看
           </Button>
         </Space>
       ),
@@ -1002,7 +1147,6 @@ const MemberFeeManagementPage: React.FC = () => {
                           showSizeChanger: true,
                           showTotal: (total) => `共 ${total} 条记录`,
                         }}
-                        scroll={undefined}
                       />
                     </Card>
                 ),
@@ -1030,11 +1174,13 @@ const MemberFeeManagementPage: React.FC = () => {
                           >
                             批量分类
                             </Button>
+                          <Button onClick={openAutoPreview}>自动匹配预览</Button>
                           </Space>
                       }
                     >
                       <Table
                         {...tableConfig}
+                        tableLayout="fixed"
                         columns={transactionColumns}
                         dataSource={transactions}
                         rowKey="id"
@@ -1054,7 +1200,6 @@ const MemberFeeManagementPage: React.FC = () => {
                           showSizeChanger: true,
                           showTotal: (total) => `共 ${total} 条交易`,
                         }}
-                          scroll={{ x: 1500 }}
                       />
                     </Card>
                   </>
@@ -1362,6 +1507,91 @@ const MemberFeeManagementPage: React.FC = () => {
             </>
           )}
         </Modal>
+
+      {/* 🆕 自动匹配预览弹窗 */}
+      <Modal
+        title="自动匹配预览"
+        open={autoPreviewVisible}
+        onCancel={() => setAutoPreviewVisible(false)}
+        footer={
+          <Space>
+            <Button onClick={() => setAutoPreviewVisible(false)}>关闭</Button>
+            <Button loading={autoPreviewLoading} onClick={() => applyAutoPreview(true)} type="default">仅应用高置信</Button>
+            <Button loading={autoPreviewLoading} onClick={() => applyAutoPreview(false)} type="primary">应用选中</Button>
+          </Space>
+        }
+        width={1100}
+      >
+        <Table
+          size="small"
+          rowKey="id"
+          loading={autoPreviewLoading}
+          dataSource={autoPreviewRows}
+          rowSelection={{ selectedRowKeys: autoSelectedKeys, onChange: (k) => setAutoSelectedKeys(k as string[]) }}
+          pagination={false}
+          columns={[
+            { title: '日期', dataIndex: 'date', width: 120, render: (d: string) => globalDateService.formatDate(new Date(d), 'display') },
+            { 
+              title: '描述', 
+              dataIndex: 'mainDescription', 
+              ellipsis: true,
+              render: (_: any, r: any) => (
+                <div style={{ maxWidth: 320 }}>
+                  <div>{r.mainDescription || '-'}</div>
+                  {r.subDescription && (
+                    <div style={{ color: '#999' }}>{r.subDescription}</div>
+                  )}
+                </div>
+              )
+            },
+            { title: '金额', dataIndex: 'amount', width: 100, align: 'right', render: (v: number) => `RM ${Number(v||0).toFixed(2)}` },
+            { title: '当前二次分类', dataIndex: 'currentTxAccount', width: 160, render: (v: string) => v ? <Tag color="purple">{v}</Tag> : <Tag>未分类</Tag> },
+            { title: '推荐分类', dataIndex: 'suggestedTxAccount', width: 160, render: (v: string) => v ? <Tag color="blue">{v}</Tag> : <Tag>无法判断</Tag> },
+            { title: '关联会员(可调整)', dataIndex: 'suggestedMemberId', width: 160, render: (_: any, r: any) => (
+              <Select
+                showSearch
+                allowClear
+                placeholder={r.suggestedMemberName || '搜索会员姓名/邮箱'}
+                size="small"
+                value={r.suggestedMemberId}
+                style={{ width: 140, height: 45 }}
+                options={previewMemberOptions[r.id] || (r.suggestedMemberId && r.suggestedMemberName ? [{ value: r.suggestedMemberId, label: r.suggestedMemberName }] : [])}
+                notFoundContent={previewMemberLoading[r.id] ? '加载中...' : '暂无数据'}
+                filterOption={false}
+                onSearch={async (q) => {
+                  if (!q || q.length < 2) return;
+                  setPreviewMemberLoading(prev => ({ ...prev, [r.id]: true }));
+                  try {
+                    const res = await getMembers({ page: 1, limit: 10, search: q });
+                    const opts = (res.data || []).map((m: any) => {
+                      const prof = (m as any).profile || {};
+                      const full = prof.fullNameNric || '';
+                      const displayName = prof.name || m.name || '';
+                      const labelNode = (
+                        <div style={{ lineHeight: 1.2 }}>
+                          <div>{full || displayName}</div>
+                          {full && displayName ? (
+                            <div style={{ color: '#999', fontSize: 12 }}>{displayName}</div>
+                          ) : null}
+                        </div>
+                      );
+                      return { value: m.id, label: labelNode, metaFull: full, metaName: displayName } as any;
+                    });
+                    setPreviewMemberOptions(prev => ({ ...prev, [r.id]: opts }));
+                  } finally {
+                    setPreviewMemberLoading(prev => ({ ...prev, [r.id]: false }));
+                  }
+                }}
+                onChange={(val, option) => {
+                  const name = ((option as any)?.metaFull as string) || ((option as any)?.metaName as string) || ((option as any)?.label as string) || undefined;
+                  setAutoPreviewRows(prev => prev.map(row => row.id === r.id ? { ...row, suggestedMemberId: val as (string|undefined), suggestedMemberName: name } : row));
+                }}
+              />
+            ) },
+            { title: '置信度', dataIndex: 'score', width: 100, render: (s: number) => <Tag color={s>=70?'green':s>=40?'orange':'default'}>{s||0}</Tag> },
+          ]}
+        />
+      </Modal>
       </div>
     </ErrorBoundary>
   );

@@ -46,10 +46,9 @@ import './styles.css';
 interface Props {
   visible: boolean;
   previewItems: AutoMatchPreviewItem[];
-  onConfirm: (selectedItems: Array<{ transactionId: string; matchResult: MatchResult; customData?: { category?: string; eventName?: string; memberId?: string; payerPayee?: string } }>) => Promise<void>;
+  onConfirm: (selectedItems: Array<{ transactionId: string; matchResult: MatchResult; customData?: { category?: string; eventName?: string; payerPayee?: string } }>) => Promise<void>;
   onCancel: () => void;
   allEvents?: Array<{ id: string; eventName: string; eventDate: string }>; // 🆕 所有活动列表用于下拉选择
-  allMembers?: Array<{ id: string; name: string; email?: string; phone?: string }>; // 🆕 所有会员列表用于下拉选择
 }
 
 type FilterType = 'all' | 'high' | 'medium' | 'noMatch';
@@ -58,7 +57,6 @@ type FilterType = 'all' | 'high' | 'medium' | 'noMatch';
 interface CustomEditData {
   category?: string; // 主分类
   eventName?: string; // 活动名称(二次分类)
-  memberId?: string; // 会员ID
   payerPayee?: string; // 付款人/收款人(可以是会员名或非会员)
 }
 
@@ -68,7 +66,6 @@ export const AutoMatchModal: React.FC<Props> = ({
   onConfirm,
   onCancel,
   allEvents = [],
-  allMembers = [],
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -499,37 +496,12 @@ export const AutoMatchModal: React.FC<Props> = ({
                                   {item.transaction.transactionType === 'income' ? '付款人:' : '收款人:'}
                                 </span>
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  <Select
-                                    style={{ width: '100%' }}
-                                    value={customEdits[item.transaction.id]?.memberId || (item.bestMatch.matchedMember?.memberId)}
-                                    onChange={(value) => {
-                                      updateCustomEdit(item.transaction.id, 'memberId', value);
-                                      // 自动填充会员名称
-                                      const selectedMember = allMembers.find(m => m.id === value);
-                                      if (selectedMember) {
-                                        updateCustomEdit(item.transaction.id, 'payerPayee', selectedMember.name);
-                                      }
-                                    }}
-                                    showSearch
-                                    allowClear
-                                    placeholder="选择会员(可选)"
-                                    optionFilterProp="children"
-                                    filterOption={(input, option) =>
-                                      (option?.children?.toString() || '').toLowerCase().includes(input.toLowerCase())
-                                    }
-                                  >
-                                    {allMembers.map(member => (
-                                      <Select.Option key={member.id} value={member.id}>
-                                        {member.name} {member.email && `(${member.email})`}
-                                      </Select.Option>
-                                    ))}
-                                  </Select>
                                   <Input
                                     style={{ width: '100%' }}
                                     value={customEdits[item.transaction.id]?.payerPayee || item.bestMatch.matchedMember?.memberName || ''}
                                     onChange={(e) => updateCustomEdit(item.transaction.id, 'payerPayee', e.target.value)}
                                     placeholder="或手动输入非会员姓名/公司"
-                                    disabled={!!customEdits[item.transaction.id]?.memberId && !customEdits[item.transaction.id]?.payerPayee}
+                                    disabled={false}
                                     suffix={
                                       item.bestMatch.matchedMember && (
                                         <Tag color="default" style={{ border: 'none', marginRight: -8, fontSize: '11px' }}>

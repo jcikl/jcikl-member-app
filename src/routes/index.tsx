@@ -7,6 +7,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import GlobalSettingsPage from '@/modules/system/pages/GlobalSettingsPage';
 import FinancialCategoryManagementPage from '@/modules/system/pages/FinancialCategoryManagementPage';
+import MemberDataMigrationPage from '@/modules/system/pages/MemberDataMigrationPage';
 import QuickAddEventTransactionPage from '@/pages/QuickAddEventTransactionPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
@@ -97,6 +98,10 @@ export const router = createBrowserRouter(
           {
             path: 'data-fix',
             element: <DataFixPage />,
+          },
+          {
+            path: 'member-data-migration',
+            element: <MemberDataMigrationPage />,
           },
           {
             path: 'transaction-date-format-fix',

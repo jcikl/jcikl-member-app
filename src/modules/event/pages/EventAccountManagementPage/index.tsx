@@ -429,7 +429,7 @@ const EventAccountManagementPage: React.FC = () => {
     }));
   }, [allUnreconciledEventTransactions]);
 
-  // 🆕 匹配的银行交易记录映射(用于显示已核对的银行交易详情)
+  // 🆕 匹配的银行交易记录映射（用于显示已核对的银行交易详情）
   const matchedBankTransactions = useMemo(() => {
     if (!eventTransactions || !bankTransactions) return {};
     
@@ -532,7 +532,7 @@ const EventAccountManagementPage: React.FC = () => {
     }
   };
 
-  // 🆕 计算对账映射：根据金额与日期的近似匹配(同日，金额相等)
+  // 🆕 计算对账映射：根据金额与日期的近似匹配（同日，金额相等）
   useEffect(() => {
     console.log('🔍 [ReconciliationMap useEffect] ===== START CALCULATION =====');
     console.log(`📊 [ReconciliationMap useEffect] eventTransactions.length = ${eventTransactions?.length || 0}`);
@@ -572,7 +572,7 @@ const EventAccountManagementPage: React.FC = () => {
       bankIndex.set(key, arr);
     });
     
-    // 遍历活动账目记录，尝试匹配(跳过已核对的记录)
+    // 遍历活动账目记录，尝试匹配（跳过已核对的记录）
     eventTransactions.forEach(tx => {
       // 🆕 如果已经手动核对过，跳过自动匹配
       if (tx.reconciledBankTransactionId) {
@@ -624,7 +624,7 @@ const EventAccountManagementPage: React.FC = () => {
       .filter(p => p.type === 'income')
       .reduce((sum, item) => sum + item.amount, 0);
     
-    // 🆕 统计：银行交易合计与笔数(收入)
+    // 🆕 统计：银行交易合计与笔数（收入）
     const bankIncomeTotal = bankTransactions
       .filter(t => t.transactionType === 'income')
       .reduce((sum, txn) => sum + txn.amount, 0);
@@ -634,17 +634,17 @@ const EventAccountManagementPage: React.FC = () => {
       .filter(p => p.type === 'expense')
       .reduce((sum, item) => sum + item.amount, 0);
     
-    // 🆕 统计：银行交易合计与笔数(支出)
+    // 🆕 统计：银行交易合计与笔数（支出）
     const bankExpenseTotal = bankTransactions
       .filter(t => t.transactionType === 'expense')
       .reduce((sum, txn) => sum + txn.amount, 0);
     const bankExpenseCount = bankTransactions.filter(t => t.transactionType === 'expense').length;
 
-    // 🆕 统计：活动账目记录实际(pending/completed)，区分收入/支出
+    // 🆕 统计：活动账目记录实际（pending/completed），区分收入/支出
     const validEventTx = eventTransactions.filter(t => t.status === 'pending' || t.status === 'completed');
     const eventIncomeTotal = validEventTx.filter(t => t.transactionType === 'income').reduce((s, t) => s + (t.amount || 0), 0);
     const eventExpenseTotal = validEventTx.filter(t => t.transactionType === 'expense').reduce((s, t) => s + (t.amount || 0), 0);
-    // 🆕 未核对(无 reconciledBankTransactionId)统计
+    // 🆕 未核对（无 reconciledBankTransactionId）统计
     const unreconciledEventTx = validEventTx.filter(t => !t.reconciledBankTransactionId);
     const eventIncomeUnreconciledTotal = unreconciledEventTx
       .filter(t => t.transactionType === 'income')
@@ -739,7 +739,7 @@ const EventAccountManagementPage: React.FC = () => {
     await addEventAccountTransaction(
       account.id,
       {
-        transactionDate: item.transactionDate, // 🆕 允许undefined(不填日期)
+        transactionDate: item.transactionDate, // 🆕 允许undefined（不填日期）
         transactionType: item.type === 'income' ? 'income' : 'expense',
         category: item.category,
         description: item.description,
@@ -798,13 +798,13 @@ const EventAccountManagementPage: React.FC = () => {
       
       console.log('🔍 [handleOpenReconcile] Reconciled bank transaction IDs:', Array.from(reconciledBankTxIds));
       
-      // 查找可匹配的银行交易(同类型 + 金额匹配 + 未被任何记录核对 + 未出现在当前页面已核对集合)
+      // 查找可匹配的银行交易（同类型 + 金额匹配 + 未被任何记录核对 + 未出现在当前页面已核对集合）
       const candidates = bankTransactions.filter(bt => {
         const isSameType = bt.transactionType === tx.transactionType;
         const isNotReconciledInPage = !reconciledBankTxIds.has(bt.id);
-        // 约定：交易管理页 status 映射到这里为 'verified' 表示已核对(completed)
+        // 约定：交易管理页 status 映射到这里为 'verified' 表示已核对（completed）
         const isGloballyPending = bt.status !== 'verified';
-        // 金额匹配(两位小数比对)
+        // 金额匹配（两位小数比对）
         const isAmountMatch = Number((bt.amount ?? 0).toFixed(2)) === Number((tx.amount ?? 0).toFixed(2));
         
         const isCandidate = isSameType && isAmountMatch && isNotReconciledInPage && isGloballyPending;
@@ -854,8 +854,8 @@ const EventAccountManagementPage: React.FC = () => {
       setSelectedTxId('');
       
       console.log('🔄 [handleConfirmReconcile] Reloading event transactions and bank transactions...');
-      await loadEventTransactions(); // 🔄 刷新活动账目记录(影响按钮状态)
-      await loadBankTransactions();  // 🔄 刷新银行交易(按钮状态依赖matchedBankTransactions)
+      await loadEventTransactions(); // 🔄 刷新活动账目记录（影响按钮状态）
+      await loadBankTransactions();  // 🔄 刷新银行交易（按钮状态依赖matchedBankTransactions）
       console.log('✅ [handleConfirmReconcile] Reload completed');
     } catch (error) {
       console.error('❌ [handleConfirmReconcile] Manual reconciliation failed:', error);
@@ -880,11 +880,11 @@ const EventAccountManagementPage: React.FC = () => {
       message.info('已取消核对');
       
       console.log('🔄 [handleCancelReconcile] Reloading event transactions and bank transactions...');
-      await loadEventTransactions(); // 🔄 刷新活动账目记录(影响按钮状态)
-      await loadBankTransactions();  // 🔄 刷新银行交易(按钮状态依赖matchedBankTransactions)
+      await loadEventTransactions(); // 🔄 刷新活动账目记录（影响按钮状态）
+      await loadBankTransactions();  // 🔄 刷新银行交易（按钮状态依赖matchedBankTransactions）
       console.log('✅ [handleCancelReconcile] Reload completed');
       
-      // 🆕 reconciliationMap 会自动通过 useEffect 重新计算(依赖 eventTransactions)
+      // 🆕 reconciliationMap 会自动通过 useEffect 重新计算（依赖 eventTransactions）
       // useEffect 会检测到 eventTransactions 变化，自动重新计算 reconciliationMap
       // 添加一个短暂延迟确保UI更新
       setTimeout(() => {
@@ -912,7 +912,7 @@ const EventAccountManagementPage: React.FC = () => {
       let failCount = 0;
       const updatePromises: Promise<void>[] = [];
 
-      // 🆕 已被核对的银行交易ID集合(禁止重复占用)
+      // 🆕 已被核对的银行交易ID集合（禁止重复占用）
       const usedBankTxIds = new Set<string>(
         eventTransactions
           .filter(t => !!t.reconciledBankTransactionId)
@@ -940,7 +940,7 @@ const EventAccountManagementPage: React.FC = () => {
           const amountMatch = tx.amount.toFixed(2) === bt.amount.toFixed(2);
           const typeMatch = tx.transactionType === bt.transactionType;
           
-          // 🆕 文本模糊匹配：基于关键词重叠(中英文与数字)，提升准确度
+          // 🆕 文本模糊匹配：基于关键词重叠（中英文与数字），提升准确度
           const normalize = (s?: string) => (s || '').toLowerCase();
           const splitWords = (s: string) => s
             .replace(/[^a-z0-9\u4e00-\u9fa5]+/gi, ' ')
@@ -970,7 +970,7 @@ const EventAccountManagementPage: React.FC = () => {
           
           // 🆕 限制：一个银行交易只能被一个活动账目记录核对
           const notUsed = !usedBankTxIds.has(bt.id);
-          // 最终条件：日期 + 金额 + 类型 + 文本(至少有关键词重叠)
+          // 最终条件：日期 + 金额 + 类型 + 文本（至少有关键词重叠）
           return txDate === btDate && amountMatch && typeMatch && textMatch && notUsed;
         });
         
@@ -1010,7 +1010,7 @@ const EventAccountManagementPage: React.FC = () => {
       console.log(`⏱️ [handleAutoReconcile] Before reload, eventTransactions.length = ${eventTransactions.length}`);
       
       await loadEventTransactions(); // 🔄 刷新活动账目记录
-      await loadBankTransactions();  // 🔄 刷新银行交易(按钮状态依赖matchedBankTransactions)
+      await loadBankTransactions();  // 🔄 刷新银行交易（按钮状态依赖matchedBankTransactions）
       
       console.log('✅ [handleAutoReconcile] Reload completed');
       console.log(`⏱️ [handleAutoReconcile] After reload, eventTransactions should be updated`);
@@ -1060,7 +1060,7 @@ const EventAccountManagementPage: React.FC = () => {
     );
   }
 
-  // 旧的进度计算已移除(统计卡片已删除)
+  // 旧的进度计算已移除（统计卡片已删除）
 
   return (
     <ErrorBoundary>
@@ -1141,26 +1141,27 @@ const EventAccountManagementPage: React.FC = () => {
                     valueStyle={{ color: '#52c41a', fontSize: '20px' }}
                     suffix="RM"
                   />
-                  <div style={{ marginTop: 12, fontSize: '13px' }}>
-                    <div style={{ color: '#8c8c8c' }}>
-                      预测: RM {consolidationData.totalIncomeForecast.toFixed(2)}
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                      <span style={{ minWidth: 72 }}>预测</span>
+                      <span>RM {consolidationData.totalIncomeForecast.toFixed(2)}</span>
                     </div>
-                    <div style={{ 
-                      color: consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '#52c41a' : '#ff4d4f',
-                      fontWeight: 600
-                    }}>
-                      差异: {consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '+' : ''}
-                      RM {(consolidationData.totalIncomeActual - consolidationData.totalIncomeForecast).toFixed(2)}
-                      ({((consolidationData.totalIncomeActual / consolidationData.totalIncomeForecast) * 100).toFixed(1)}%)
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                      <span style={{ minWidth: 72 }}>差异</span>
+                      <span>
+                        {consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '+' : ''}RM {(consolidationData.totalIncomeActual - consolidationData.totalIncomeForecast).toFixed(2)} {' '}
+                        ({(consolidationData.totalIncomeForecast > 0 ? ((consolidationData.totalIncomeActual / consolidationData.totalIncomeForecast) * 100).toFixed(1) : '0.0')}%)
+                      </span>
                     </div>
                     <Divider style={{ margin: '8px 0' }} />
-                    <div style={{ color: '#8c8c8c' }}>
-                      银行交易: RM {(consolidationData.bankIncomeTotal ?? 0).toFixed(2)} ({consolidationData.bankIncomeCount ?? 0} 笔)
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                      <span style={{ minWidth: 72 }}>银行交易</span>
+                      <span>RM {(consolidationData.bankIncomeTotal ?? 0).toFixed(2)} （{consolidationData.bankIncomeCount ?? 0} 笔）</span>
                     </div>
-                    <div style={{ color: '#fa8c16', fontWeight: 500 }}>
-                      未核对: RM {(consolidationData.eventIncomeUnreconciledTotal ?? 0).toFixed(2)}({consolidationData.eventIncomeUnreconciledCount ?? 0} 笔)
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
+                      <span style={{ minWidth: 72 }}>未核对</span>
+                      <span>RM {(consolidationData.eventIncomeUnreconciledTotal ?? 0).toFixed(2)}（{consolidationData.eventIncomeUnreconciledCount ?? 0} 笔）</span>
                     </div>
-                    
                   </div>
                 </Card>
               </Col>
@@ -1175,24 +1176,26 @@ const EventAccountManagementPage: React.FC = () => {
                     valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
                     suffix="RM"
                   />
-                  <div style={{ marginTop: 12, fontSize: '13px' }}>
-                    <div style={{ color: '#8c8c8c' }}>
-                      预算: RM {consolidationData.totalExpenseForecast.toFixed(2)}
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                      <span style={{ minWidth: 72 }}>预算</span>
+                      <span>RM {consolidationData.totalExpenseForecast.toFixed(2)}</span>
                     </div>
-                    <div style={{ 
-                      color: consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '#52c41a' : '#ff4d4f',
-                      fontWeight: 600
-                    }}>
-                      差异: {consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '-' : '+'}
-                      RM {Math.abs(consolidationData.totalExpenseActual - consolidationData.totalExpenseForecast).toFixed(2)}
-                      ({((consolidationData.totalExpenseActual / consolidationData.totalExpenseForecast) * 100).toFixed(1)}%)
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                      <span style={{ minWidth: 72 }}>差异</span>
+                      <span>
+                        {consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '-' : '+'}RM {Math.abs(consolidationData.totalExpenseActual - consolidationData.totalExpenseForecast).toFixed(2)} {' '}
+                        ({(consolidationData.totalExpenseForecast > 0 ? ((consolidationData.totalExpenseActual / consolidationData.totalExpenseForecast) * 100).toFixed(1) : '0.0')}%)
+                      </span>
                     </div>
                     <Divider style={{ margin: '8px 0' }} />
-                    <div style={{ color: '#8c8c8c' }}>
-                      银行交易: RM {(consolidationData.bankExpenseTotal ?? 0).toFixed(2)} ({consolidationData.bankExpenseCount ?? 0} 笔)
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                      <span style={{ minWidth: 72 }}>银行交易</span>
+                      <span>RM {(consolidationData.bankExpenseTotal ?? 0).toFixed(2)} （{consolidationData.bankExpenseCount ?? 0} 笔）</span>
                     </div>
-                    <div style={{ color: '#fa8c16', fontWeight: 500 }}>
-                      未核对: RM {(consolidationData.eventExpenseUnreconciledTotal ?? 0).toFixed(2)} ({consolidationData.eventExpenseUnreconciledCount ?? 0} 笔)
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
+                      <span style={{ minWidth: 72 }}>未核对</span>
+                      <span>RM {(consolidationData.eventExpenseUnreconciledTotal ?? 0).toFixed(2)} （{consolidationData.eventExpenseUnreconciledCount ?? 0} 笔）</span>
                     </div>
                     
                   </div>
@@ -1211,25 +1214,24 @@ const EventAccountManagementPage: React.FC = () => {
                     }}
                     suffix="RM"
                   />
-                  <div style={{ marginTop: 12, fontSize: '13px' }}>
-                    <div style={{ color: '#8c8c8c' }}>
-                      预测: RM {consolidationData.profitForecast.toFixed(2)}
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                      <span style={{ minWidth: 72 }}>预测</span>
+                      <span>RM {consolidationData.profitForecast.toFixed(2)}</span>
                     </div>
-                    <div style={{ 
-                      color: consolidationData.profitActual >= consolidationData.profitForecast ? '#52c41a' : '#ff4d4f',
-                      fontWeight: 600
-                    }}>
-                      差异: {consolidationData.profitActual >= consolidationData.profitForecast ? '+' : ''}
-                      RM {(consolidationData.profitActual - consolidationData.profitForecast).toFixed(2)}
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.profitActual >= consolidationData.profitForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                      <span style={{ minWidth: 72 }}>差异</span>
+                      <span>{consolidationData.profitActual >= consolidationData.profitForecast ? '+' : ''}RM {(consolidationData.profitActual - consolidationData.profitForecast).toFixed(2)}</span>
                     </div>
                     <Divider style={{ margin: '8px 0' }} />
-                    <div style={{ color: '#8c8c8c' }}>
-                      银行净额: RM {((consolidationData.bankIncomeTotal ?? 0) - (consolidationData.bankExpenseTotal ?? 0)).toFixed(2)}
-                      (收入 {consolidationData.bankIncomeCount ?? 0} 笔 / 支出 {consolidationData.bankExpenseCount ?? 0} 笔)
+                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                      <span style={{ minWidth: 72 }}>银行净额</span>
+                      <span>RM {((consolidationData.bankIncomeTotal ?? 0) - (consolidationData.bankExpenseTotal ?? 0)).toFixed(2)}（收入 {consolidationData.bankIncomeCount ?? 0} 笔 / 支出 {consolidationData.bankExpenseCount ?? 0} 笔）</span>
                     </div>
                     {(consolidationData.eventIncomeUnreconciledTotal !== undefined && consolidationData.eventExpenseUnreconciledTotal !== undefined) && (
-                      <div style={{ color: '#fa8c16', fontWeight: 500 }}>
-                        未核对净额: RM {((consolidationData.eventIncomeUnreconciledTotal ?? 0) - (consolidationData.eventExpenseUnreconciledTotal ?? 0)).toFixed(2)}
+                      <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
+                        <span style={{ minWidth: 72 }}>未核对净额</span>
+                        <span>RM {((consolidationData.eventIncomeUnreconciledTotal ?? 0) - (consolidationData.eventExpenseUnreconciledTotal ?? 0)).toFixed(2)}</span>
                       </div>
                     )}
                     
@@ -1252,7 +1254,7 @@ const EventAccountManagementPage: React.FC = () => {
             items={[
               {
                 key: 'financial-plan',
-                label: '📋 活动财务预算(Project Budget)',
+                label: '📋 活动财务预算（Project Budget）',
                 children: (
                   <ActivityFinancialPlan
                     accountId={account?.id || ''}
@@ -1267,7 +1269,7 @@ const EventAccountManagementPage: React.FC = () => {
               },
               {
                 key: 'event-transactions',
-                label: '📊 活动账目记录(Event Transactions)',
+                label: '📊 活动账目记录（Event Transactions）',
                 children: (
                   <ActivityFinancialPlan
                     accountId={account?.id || ''}
@@ -1288,7 +1290,7 @@ const EventAccountManagementPage: React.FC = () => {
               },
               {
                 key: 'all-event-transactions',
-                label: '📊 总活动账目记录(All Event Transactions)',
+                label: '📊 总活动账目记录（All Event Transactions）',
                 children: (
                   <ActivityFinancialPlan
                     accountId={account?.id || ''}
@@ -1310,7 +1312,7 @@ const EventAccountManagementPage: React.FC = () => {
               },
               {
                 key: 'bank-transactions',
-                label: '💰 银行交易记录(Bank Transaction Records)',
+                label: '💰 银行交易记录（Bank Transaction Records）',
                 children: (
                   <BankTransactionList
                     accountId={account?.id || ''}
@@ -1323,7 +1325,7 @@ const EventAccountManagementPage: React.FC = () => {
               },
               {
                 key: 'account-consolidation',
-                label: '🔄 户口核对(Account Consolidation)',
+                label: '🔄 户口核对（Account Consolidation）',
                 children: consolidationData ? (
                   <AccountConsolidation
                     data={consolidationData}

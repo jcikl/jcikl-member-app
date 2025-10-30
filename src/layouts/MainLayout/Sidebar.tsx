@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Badge } from 'antd';
 import {
   DashboardOutlined,
   UserOutlined,
@@ -22,6 +22,34 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [uncategorizedCount, setUncategorizedCount] = React.useState<number>(0);
+  const [unpairedTransferCount, setUnpairedTransferCount] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    const loadUncategorizedCount = async () => {
+      try {
+        const { getTransactions } = await import('@/modules/finance/services/transactionService');
+        const res = await getTransactions({ category: 'uncategorized', limit: 10000 });
+        setUncategorizedCount(res.total ?? res.data?.length ?? 0);
+      } catch (e) {
+        // ignore errors to avoid blocking layout
+        setUncategorizedCount(0);
+      }
+    };
+    const loadUnpairedTransferCount = async () => {
+      try {
+        const { getTransactions } = await import('@/modules/finance/services/transactionService');
+        const res = await getTransactions({ limit: 10000 });
+        const list = (res.data ?? []) as any[];
+        const count = list.filter(t => t.isInternalTransfer === true && (!t.relatedTransferTransactionId || String(t.relatedTransferTransactionId).trim() === '')).length;
+        setUnpairedTransferCount(count);
+      } catch (e) {
+        setUnpairedTransferCount(0);
+      }
+    };
+    loadUncategorizedCount();
+    loadUnpairedTransferCount();
+  }, []);
 
   const menuItems = [
     {
@@ -74,7 +102,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         },
         {
           key: '/finance/transactions',
-          label: '交易记录',
+          label: (
+            <span>
+              交易记录{uncategorizedCount > 0 && (
+                <Badge count={uncategorizedCount} overflowCount={9999} style={{ marginLeft: 8 }} />
+              )}
+            </span>
+          ),
         },
         {
           key: '/finance/fiscal-years',
@@ -82,7 +116,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         },
         {
           key: '/finance/internal-transfer-pairing',
-          label: '内部转账配对',
+          label: (
+            <span>
+              内部转账配对{unpairedTransferCount > 0 && (
+                <Badge count={unpairedTransferCount} overflowCount={9999} style={{ marginLeft: 8 }} />
+              )}
+            </span>
+          ),
         },
       ],
     },
@@ -113,6 +153,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         {
           key: '/settings/transaction-date-format-fix',
           label: '财务交易日期格式修复',
+        },
+        {
+          key: '/settings/member-data-migration',
+          label: '成员数据迁移',
         },
         
       ],

@@ -160,7 +160,7 @@ const TransactionManagementPage: React.FC = () => {
   const [autoMatchPreviewItems, setAutoMatchPreviewItems] = useState<AutoMatchPreviewItem[]>([]);
   const [autoMatchLoading, setAutoMatchLoading] = useState(false);
   const [allEventsForAutoMatch, setAllEventsForAutoMatch] = useState<Array<{ id: string; eventName: string; eventDate: string }>>([]);
-  const [allMembersForAutoMatch, setAllMembersForAutoMatch] = useState<Array<{ id: string; name: string; email?: string; phone?: string }>>([]);
+  // 移除自动匹配关联会员数据源
   
 
   useEffect(() => {
@@ -1007,15 +1007,7 @@ const TransactionManagementPage: React.FC = () => {
       }));
       setAllEventsForAutoMatch(eventsList);
       
-      // 🆕 加载所有会员用于下拉选择
-      const membersResult = await getMembers({ page: 1, limit: 1000 });
-      const membersList = membersResult.data.map(m => ({
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        phone: m.phone,
-      }));
-      setAllMembersForAutoMatch(membersList);
+      // 移除加载所有会员
       
       // 执行自动匹配
       const previewItems = await autoMatchUncategorizedTransactions();
@@ -1039,7 +1031,7 @@ const TransactionManagementPage: React.FC = () => {
   };
   
   const handleAutoMatchConfirm = async (
-    selectedItems: Array<{ transactionId: string; matchResult: MatchResult; customData?: { category?: string; eventName?: string; memberId?: string; payerPayee?: string } }>
+    selectedItems: Array<{ transactionId: string; matchResult: MatchResult; customData?: { category?: string; eventName?: string; payerPayee?: string } }>
   ) => {
     if (!user) return;
     
@@ -1066,7 +1058,7 @@ const TransactionManagementPage: React.FC = () => {
               autoMatchScore: item.matchResult.totalScore,
               autoMatchConfidence: item.matchResult.confidence,
               needsReview: item.matchResult.confidence === 'medium',
-              userModified: !!(item.customData?.category || item.customData?.eventName || item.customData?.memberId || item.customData?.payerPayee), // 🆕 标记用户是否修改
+              userModified: !!(item.customData?.category || item.customData?.eventName || item.customData?.payerPayee), // 🆕 标记用户是否修改
             },
           };
           
@@ -1081,20 +1073,9 @@ const TransactionManagementPage: React.FC = () => {
             updates.metadata.eventName = finalEventName;
           }
           
-          // 🆕 处理会员信息
-          const finalMemberId = item.customData?.memberId || item.matchResult.matchedMember?.memberId;
+          // 移除自动匹配的关联会员处理，仅保留手填 payerPayee
           const finalPayerPayee = item.customData?.payerPayee || item.matchResult.matchedMember?.memberName;
-          
-          // 如果选择了会员或有付款人/收款人信息
-          if (finalMemberId) {
-            updates.payerId = finalMemberId;
-            updates.metadata.autoMatchedMember = finalPayerPayee;
-            updates.metadata.autoMatchedMemberType = item.matchResult.matchedMember?.matchType || 'manual';
-          }
-          
-          if (finalPayerPayee) {
-            updates.payerPayee = finalPayerPayee;
-          }
+          if (finalPayerPayee) updates.payerPayee = finalPayerPayee;
           
           // 更新交易记录
           await updateTransaction(
@@ -3322,7 +3303,6 @@ const TransactionManagementPage: React.FC = () => {
           visible={autoMatchModalVisible}
           previewItems={autoMatchPreviewItems}
           allEvents={allEventsForAutoMatch}
-          allMembers={allMembersForAutoMatch}
           onConfirm={handleAutoMatchConfirm}
           onCancel={() => {
             setAutoMatchModalVisible(false);

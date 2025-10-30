@@ -2,7 +2,7 @@
  * Activity Financial Plan Component
  * 活动财务计划组件
  * 
- * 允许活动筹委自主管理活动财务预测(CRUD)
+ * 允许活动筹委自主管理活动财务预测(CRUD）
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -51,8 +51,8 @@ export interface FinancialPlanItem {
   description: string;
   remark?: string;
   amount: number;
-  status?: 'pending' | 'completed' | 'cancelled'; // 🆕 可选的状态字段(用于活动账目记录)
-  transactionDate?: string; // 🆕 交易日期(用于活动账目记录)
+  status?: 'pending' | 'completed' | 'cancelled'; // 🆕 可选的状态字段(用于活动账目记录）
+  transactionDate?: string; // 🆕 交易日期(用于活动账目记录）
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -62,12 +62,12 @@ export interface FinancialPlanItem {
 interface Props {
   accountId?: string;
   items: FinancialPlanItem[];
-  additionalItems?: FinancialPlanItem[]; // 🆕 额外数据源(用于继承其他标签页的类别)
-  // 🆕 只读模式(隐藏编辑和批量粘贴等改动类控件)
+  additionalItems?: FinancialPlanItem[]; // 🆕 额外数据源(用于继承其他标签页的类别）
+  // 🆕 只读模式(隐藏编辑和批量粘贴等改动类控件）
   readOnly?: boolean;
-  // 🆕 对账状态映射(可选)：用于在列表中展示"已核对/未核对"标签
+  // 🆕 对账状态映射(可选）：用于在列表中展示"已核对/未核对"标签
   reconciliationMap?: Record<string, 'matched' | 'unmatched'>;
-  // 🆕 匹配的银行交易记录映射(可选)：显示已核对的银行交易详情
+  // 🆕 匹配的银行交易记录映射(可选）：显示已核对的银行交易详情
   matchedBankTransactions?: Record<string, {
     id: string;
     transactionDate: string;
@@ -76,7 +76,7 @@ interface Props {
     bankAccount?: string;
     bankAccountName?: string;
   }>;
-  // 🆕 核对操作函数(可选)
+  // 🆕 核对操作函数(可选）
   onReconcile?: (txId: string) => void;
   onCancelReconcile?: (txId: string) => void;
   onAutoReconcile?: () => Promise<void>; // 🆕 自动核对函数
@@ -124,7 +124,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const [globalType, setGlobalType] = useState<'income' | 'expense' | null>(null);
   const [globalCategory, setGlobalCategory] = useState<string>('');
   
-  // 🆕 从当前活动获取已存在的类别(合并当前数据和额外数据源)
+  // 🆕 从当前活动获取已存在的类别(合并当前数据和额外数据源）
   const getExistingCategories = (type: 'income' | 'expense') => {
     // 合并 items 和 additionalItems
     const allItems = [...items, ...additionalItems];
@@ -136,10 +136,10 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     return categories;
   };
   
-  // 🆕 当前可用的类别(根据选中的类型)
+  // 🆕 当前可用的类别(根据选中的类型）
   const availableCategories = globalType ? getExistingCategories(globalType) : [];
   
-  // 🆕 获取编辑模式下的可用类别(根据记录类型)
+  // 🆕 获取编辑模式下的可用类别(根据记录类型）
   const getCategoryOptions = (type: 'income' | 'expense') => {
     return getExistingCategories(type);
   };
@@ -176,7 +176,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 
   // 获取类别标签
   const getCategoryLabel = (type: 'income' | 'expense', value: string) => {
-    // 🆕 直接返回类别值(用户可自由输入类别)
+    // 🆕 直接返回类别值(用户可自由输入类别）
     return value;
   };
   
@@ -275,7 +275,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const incomeData = buildIncomeData();
   const expenseData = buildExpenseData();
   
-  // 获取编辑的值(如果有编辑过)
+  // 获取编辑的值(如果有编辑过）
   const getEditedValue = (id: string, field: keyof FinancialPlanItem) => {
     const edited = editedItems.get(id);
     return edited?.[field];
@@ -291,7 +291,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     });
   };
   
-  // 批量粘贴解析(从文本转为表格数据)
+  // 批量粘贴解析(从文本转为表格数据）
   const parseBulkPasteText = (text: string) => {
     const lines = text.trim().split('\n').filter(line => line.trim());
     
@@ -301,7 +301,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       return {
         key: `bulk-${Date.now()}-${index}`,
         type: 'income' as const,
-        category: 'Uncategorized', // 🆕 默认类别：未分类(用户可自由修改)
+        category: 'Uncategorized', // 🆕 默认类别：未分类(用户可自由修改）
         description: parts[0] || '',
           remark: parts[1] || '',
           amount: parseFloat(parts[2]) || 0,
@@ -420,7 +420,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       );
       
       if (invalidRows.length > 0) {
-        message.error(`有 ${invalidRows.length} 行数据不完整(描述和金额必填且金额需大于0)`);
+        message.error(`有 ${invalidRows.length} 行数据不完整(描述和金额必填且金额需大于0）`);
         return;
       }
       
@@ -464,9 +464,9 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   // 保存所有编辑并退出编辑模式
   const handleSaveAndExitEdit = async () => {
     try {
-      // 🆕 过滤掉虚拟的类别标题行(key包含 -cat- 或 -pending 的记录)
+      // 🆕 过滤掉虚拟的类别标题行(key包含 -cat- 或 -pending 的记录）
       const realEditedItems = Array.from(editedItems.entries()).filter(([id]) => {
-        // 真实项目的id应该是有效的Firestore文档ID(不包含 -cat- 或 -pending)
+        // 真实项目的id应该是有效的Firestore文档ID(不包含 -cat- 或 -pending）
         return id && !id.includes('-cat-') && !id.includes('-pending');
       });
       
@@ -490,7 +490,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 在类型下快速添加(仅需选择类别)
+  // 在类型下快速添加(仅需选择类别）
   const handleQuickAddInType = async (type: 'income' | 'expense', category: string) => {
     try {
       const itemData = {
@@ -510,7 +510,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 在特定类别下添加项目(从类别行的添加按钮)
+  // 在特定类别下添加项目(从类别行的添加按钮）
   const handleAddItemInCategory = async (type: 'income' | 'expense', category: string) => {
     try {
       const itemData = {
@@ -530,7 +530,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 删除整个类别及其下的所有项目(优化版 - 使用 Promise.all 并行删除)
+  // 删除整个类别及其下的所有项目(优化版 - 使用 Promise.all 并行删除）
   const handleDeleteCategory = async (type: 'income' | 'expense', category: string) => {
     const categoryItems = items.filter(item => item.type === type && item.category === category);
     
@@ -556,7 +556,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 分组表格列定义(按指定顺序：项目/类别>备注>金额>状态>已匹配银行交易)
+  // 分组表格列定义(按指定顺序：项目/类别>备注>金额>状态>已匹配银行交易）
   const columns: ColumnsType<GroupedRow> = [
     {
       title: '项目/类别',
@@ -600,7 +600,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                         // 获取该类别下的所有项目
                         const categoryItems = items.filter(i => i.type === record.type && i.category === record.category);
                         
-                        // 更新每个项目的类别(只更新真实项目，不更新虚拟的类别标题行)
+                        // 更新每个项目的类别(只更新真实项目，不更新虚拟的类别标题行）
                         categoryItems.forEach(item => {
                           handleFieldChange(item.id, 'category', newCategory);
                         });
@@ -831,7 +831,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           }
         }
         
-        // 🆕 核对操作按钮(仅当有核对函数时显示)
+        // 🆕 核对操作按钮(仅当有核对函数时显示）
         // 判断是否有手动核对：通过 matchedBankTransactions 检查
         const hasManualReconcile = matchedBankTransactions && record.id && matchedBankTransactions[record.id];
         
@@ -933,12 +933,12 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       // 活动账目记录模式：显示所有列
       return columns;
     } else {
-      // 活动财务预算模式：只显示基本列(项目/类别、备注、金额)，并调整列宽
+      // 活动财务预算模式：只显示基本列(项目/类别、备注、金额），并调整列宽
       return columns.filter(col => {
         const title = (col.title as string) || '';
         return ['项目/类别', '备注', '金额'].includes(title);
       }).map(col => {
-        // 调整活动财务预算模式的列宽(只有3列，需要更宽的布局)
+        // 调整活动财务预算模式的列宽(只有3列，需要更宽的布局）
         const title = (col.title as string) || '';
         if (title === '项目/类别') {
           return { ...col, width: '50%' }; // 主要信息，需要更多空间
@@ -954,7 +954,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 
   return (
     <Card 
-      title="🔮 活动财务预算(Project Budget)"
+      title="🔮 活动财务预算(Project Budget）"
       extra={
         <Space>
           {!editMode ? (
@@ -1370,7 +1370,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
             <div>
               <p style={{ margin: 0, marginBottom: 4, fontWeight: 600 }}>使用说明：</p>
               <ul style={{ paddingLeft: 20, margin: '4px 0', fontSize: '13px', color: '#666' }}>
-                <li>从Excel复制数据后，选中表格任意单元格按 Ctrl+V 粘贴(自动解析)</li>
+                <li>从Excel复制数据后，选中表格任意单元格按 Ctrl+V 粘贴(自动解析）</li>
                 <li>Excel格式：<code>描述 [Tab] 备注 [Tab] 金额 [Tab] 日期</code></li>
                 <li>也可手动点击"添加行"按钮逐行输入</li>
           </ul>

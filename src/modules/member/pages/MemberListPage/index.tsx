@@ -474,52 +474,52 @@ const MemberListPage: React.FC = () => {
             </h3>
             <Row gutter={[16, 16]}>
               <Col span={8}><strong>会员编号:</strong></Col>
-              <Col span={16}>{selectedMember.memberId}</Col>
+              <Col span={16}>{(selectedMember as any).profile?.memberId || '-'}</Col>
               
               <Col span={8}><strong>姓名:</strong></Col>
-              <Col span={16}>{selectedMember.name}</Col>
+              <Col span={16}>{(selectedMember as any).profile?.name || '-'}</Col>
               
               <Col span={8}><strong>性别:</strong></Col>
               <Col span={16}>
-                {selectedMember.profile?.gender ? (
-                  <Tag color={selectedMember.profile.gender === 'Male' ? 'blue' : 'pink'}>
-                    {selectedMember.profile.gender === 'Male' ? '男' : '女'}
+                {(selectedMember as any).profile?.gender ? (
+                  <Tag color={(selectedMember as any).profile.gender === 'Male' ? 'blue' : 'pink'}>
+                    {(selectedMember as any).profile.gender === 'Male' ? '男' : '女'}
                   </Tag>
                 ) : '-'}
               </Col>
               
               <Col span={8}><strong>生日:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.birthDate || '-'}</Col>
+              <Col span={16}>{(selectedMember as any).profile?.birthDate || '-'}</Col>
               
               <Col span={8}><strong>国籍:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.nationality || '-'}</Col>
+              <Col span={16}>{(selectedMember as any).profile?.nationality || '-'}</Col>
               
               <Col span={8}><strong>身份证号:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.nric || '-'}</Col>
+              <Col span={16}>{(selectedMember as any).profile?.nricOrPassport || '-'}</Col>
               
               <Col span={8}><strong>状态:</strong></Col>
               <Col span={16}>
-                <Tag color={selectedMember.status === 'active' ? 'success' : 'default'}>
-                  {MEMBER_STATUS_OPTIONS.find(o => o.value === selectedMember.status)?.label}
+                <Tag color={((selectedMember as any).profile?.status) === 'active' ? 'success' : 'default'}>
+                  {MEMBER_STATUS_OPTIONS.find(o => o.value === (selectedMember as any).profile?.status)?.label || (selectedMember as any).profile?.status || '-'}
                 </Tag>
               </Col>
               
               <Col span={8}><strong>类别:</strong></Col>
               <Col span={16}>
                 <Tag color="blue">
-                  {MEMBER_CATEGORY_OPTIONS.find(o => o.value === selectedMember.category)?.label || '-'}
+                  {MEMBER_CATEGORY_OPTIONS.find(o => o.value === (selectedMember as any).jciCareer?.category)?.label || (selectedMember as any).jciCareer?.category || '-'}
                 </Tag>
               </Col>
               
               <Col span={8}><strong>级别:</strong></Col>
               <Col span={16}>
                 <Tag color="gold">
-                  {MEMBER_LEVEL_OPTIONS.find(o => o.value === selectedMember.level)?.label}
+                  {MEMBER_LEVEL_OPTIONS.find(o => o.value === (selectedMember as any).profile?.level)?.label || (selectedMember as any).profile?.level || '-'}
                 </Tag>
               </Col>
               
               <Col span={8}><strong>入会日期:</strong></Col>
-              <Col span={16}>{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('zh-CN') : '-'}</Col>
+              <Col span={16}>{(selectedMember as any).jciCareer?.joinDate ? new Date((selectedMember as any).jciCareer.joinDate).toLocaleDateString('zh-CN') : '-'}</Col>
             </Row>
           </div>
 
@@ -530,10 +530,10 @@ const MemberListPage: React.FC = () => {
             </h3>
             <Row gutter={[16, 16]}>
               <Col span={8}><strong>邮箱:</strong></Col>
-              <Col span={16}>{selectedMember.email}</Col>
+              <Col span={16}>{(selectedMember as any).profile?.email || '-'}</Col>
               
               <Col span={8}><strong>电话:</strong></Col>
-              <Col span={16}>{selectedMember.phone}</Col>
+              <Col span={16}>{(selectedMember as any).profile?.phone || '-'}</Col>
               
               <Col span={8}><strong>备用电话:</strong></Col>
               <Col span={16}>{selectedMember.profile?.alternativePhone || '-'}</Col>
@@ -560,24 +560,24 @@ const MemberListPage: React.FC = () => {
               {typeof selectedMember.profile?.address === 'string' ? (
                 <>
                   <Col span={8}><strong>完整地址:</strong></Col>
-                  <Col span={16}>{selectedMember.profile.address}</Col>
+                  <Col span={16}>{(selectedMember as any).profile.address}</Col>
                 </>
               ) : (
                 <>
                   <Col span={8}><strong>街道地址:</strong></Col>
-                  <Col span={16}>{selectedMember.profile?.address?.street || '-'}</Col>
+                  <Col span={16}>{(selectedMember as any).profile?.address?.street || '-'}</Col>
                   
                   <Col span={8}><strong>城市:</strong></Col>
-                  <Col span={16}>{selectedMember.profile?.address?.city || '-'}</Col>
+                  <Col span={16}>{(selectedMember as any).profile?.address?.city || '-'}</Col>
                   
                   <Col span={8}><strong>州/省:</strong></Col>
-                  <Col span={16}>{selectedMember.profile?.address?.state || '-'}</Col>
+                  <Col span={16}>{(selectedMember as any).profile?.address?.state || '-'}</Col>
                   
                   <Col span={8}><strong>邮编:</strong></Col>
-                  <Col span={16}>{selectedMember.profile?.address?.postcode || '-'}</Col>
+                  <Col span={16}>{(selectedMember as any).profile?.address?.postcode || '-'}</Col>
                   
                   <Col span={8}><strong>国家:</strong></Col>
-                  <Col span={16}>{selectedMember.profile?.address?.country || '-'}</Col>
+                  <Col span={16}>{(selectedMember as any).profile?.address?.country || '-'}</Col>
                 </>
               )}
             </Row>
@@ -591,33 +591,33 @@ const MemberListPage: React.FC = () => {
             <Row gutter={[16, 16]}>
               <Col span={8}><strong>Facebook:</strong></Col>
               <Col span={16}>
-                {selectedMember.profile?.socialMedia?.facebook ? (
-                  <a href={selectedMember.profile.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
-                    {selectedMember.profile.socialMedia.facebook}
+                {(selectedMember as any).profile?.socialMedia?.facebook ? (
+                  <a href={(selectedMember as any).profile.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                    {(selectedMember as any).profile.socialMedia.facebook}
                   </a>
                 ) : '-'}
               </Col>
               
               <Col span={8}><strong>LinkedIn:</strong></Col>
               <Col span={16}>
-                {selectedMember.profile?.socialMedia?.linkedin ? (
-                  <a href={selectedMember.profile.socialMedia.linkedin} target="_blank" rel="noopener noreferrer">
-                    {selectedMember.profile.socialMedia.linkedin}
+                {(selectedMember as any).profile?.socialMedia?.linkedin ? (
+                  <a href={(selectedMember as any).profile.socialMedia.linkedin} target="_blank" rel="noopener noreferrer">
+                    {(selectedMember as any).profile.socialMedia.linkedin}
                   </a>
                 ) : '-'}
               </Col>
               
               <Col span={8}><strong>Instagram:</strong></Col>
               <Col span={16}>
-                {selectedMember.profile?.socialMedia?.instagram ? (
-                  <a href={selectedMember.profile.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
-                    {selectedMember.profile.socialMedia.instagram}
+                {(selectedMember as any).profile?.socialMedia?.instagram ? (
+                  <a href={(selectedMember as any).profile.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                    {(selectedMember as any).profile.socialMedia.instagram}
                   </a>
                 ) : '-'}
               </Col>
               
               <Col span={8}><strong>微信:</strong></Col>
-              <Col span={16}>{selectedMember.profile?.socialMedia?.wechat || '-'}</Col>
+              <Col span={16}>{(selectedMember as any).profile?.socialMedia?.wechat || '-'}</Col>
             </Row>
           </div>
         </div>
@@ -647,17 +647,17 @@ const MemberListPage: React.FC = () => {
             </Col>
             
             <Col span={8}><strong>公司名称:</strong></Col>
-            <Col span={16}>{selectedMember.profile?.company || '-'}</Col>
+            <Col span={16}>{(selectedMember as any).business?.company || '-'}</Col>
             
             <Col span={8}><strong>部门与职位:</strong></Col>
-            <Col span={16}>{selectedMember.profile?.departmentAndPosition || '-'}</Col>
+            <Col span={16}>{(selectedMember as any).business?.departmentAndPosition || '-'}</Col>
             
             <Col span={8}><strong>行业细分:</strong></Col>
-            <Col span={16}>{selectedMember.profile?.industryDetail || '-'}</Col>
+            <Col span={16}>{(selectedMember as any).business?.industryDetail || '-'}</Col>
             
             <Col span={8}><strong>公司介绍:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.companyIntro || '-'}
+              {(selectedMember as any).business?.companyIntro || '-'}
             </Col>
             
             {/* 商业信息 */}
@@ -669,9 +669,9 @@ const MemberListPage: React.FC = () => {
             
             <Col span={8}><strong>自有行业:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.ownIndustry && selectedMember.profile.ownIndustry.length > 0 ? (
+              {(selectedMember as any).business?.ownIndustry && (selectedMember as any).business.ownIndustry.length > 0 ? (
                 <Space wrap>
-                  {selectedMember.profile.ownIndustry.map((industry, idx) => (
+                  {(selectedMember as any).business.ownIndustry.map((industry: string, idx: number) => (
                     <Tag key={idx} color="blue">{industry}</Tag>
                   ))}
                 </Space>
@@ -680,9 +680,9 @@ const MemberListPage: React.FC = () => {
             
             <Col span={8}><strong>感兴趣的行业:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.interestedIndustries && selectedMember.profile.interestedIndustries.length > 0 ? (
+              {(selectedMember as any).business?.interestedIndustries && (selectedMember as any).business.interestedIndustries.length > 0 ? (
                 <Space wrap>
-                  {selectedMember.profile.interestedIndustries.map((industry, idx) => (
+                  {(selectedMember as any).business.interestedIndustries.map((industry: string, idx: number) => (
                     <Tag key={idx} color="green">{industry}</Tag>
                   ))}
                 </Space>
@@ -691,9 +691,9 @@ const MemberListPage: React.FC = () => {
             
             <Col span={8}><strong>业务类别:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.businessCategories && selectedMember.profile.businessCategories.length > 0 ? (
+              {(selectedMember as any).business?.businessCategories && (selectedMember as any).business.businessCategories.length > 0 ? (
                 <Space wrap>
-                  {selectedMember.profile.businessCategories.map((category, idx) => (
+                  {(selectedMember as any).business.businessCategories.map((category: string, idx: number) => (
                     <Tag key={idx} color="purple">{category}</Tag>
                   ))}
                 </Space>
@@ -703,11 +703,11 @@ const MemberListPage: React.FC = () => {
             <Col span={8}><strong>接受国际业务:</strong></Col>
             <Col span={16}>
               <Tag color={
-                selectedMember.profile?.acceptInternationalBusiness === 'Yes' ? 'success' :
-                selectedMember.profile?.acceptInternationalBusiness === 'Willing to explore' ? 'processing' :
+                (selectedMember as any).business?.acceptInternationalBusiness === 'Yes' ? 'success' :
+                (selectedMember as any).business?.acceptInternationalBusiness === 'Willing to explore' ? 'processing' :
                 'default'
               }>
-                {selectedMember.profile?.acceptInternationalBusiness || '-'}
+                {(selectedMember as any).business?.acceptInternationalBusiness || '-'}
               </Tag>
             </Col>
           </Row>
@@ -730,27 +730,27 @@ const MemberListPage: React.FC = () => {
             
             <Col span={8}><strong>JCI 职位:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.jciPosition ? (
-                <Tag color="gold">{selectedMember.profile.jciPosition}</Tag>
+              {(selectedMember as any).jciCareer?.jciPosition ? (
+                <Tag color="gold">{(selectedMember as any).jciCareer.jciPosition}</Tag>
               ) : '-'}
             </Col>
             
             <Col span={8}><strong>参议员编号:</strong></Col>
-            <Col span={16}>{selectedMember.profile?.senatorId || '-'}</Col>
+            <Col span={16}>{(selectedMember as any).jciCareer?.senatorId || '-'}</Col>
             
             <Col span={8}><strong>参议员积分:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.senatorScore !== undefined ? (
-                <Tag color="magenta">{selectedMember.profile.senatorScore} 分</Tag>
+              {(selectedMember as any).jciCareer?.senatorScore !== undefined ? (
+                <Tag color="magenta">{(selectedMember as any).jciCareer.senatorScore} 分</Tag>
               ) : '-'}
             </Col>
             
             <Col span={8}><strong>介绍人:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.introducerName || '-'}
-              {selectedMember.profile?.introducerId && (
+              {(selectedMember as any).jciCareer?.introducerName || '-'}
+              {(selectedMember as any).jciCareer?.introducerId && (
                 <span style={{ color: '#999', marginLeft: 8 }}>
-                  (ID: {selectedMember.profile.introducerId})
+                  (ID: {(selectedMember as any).jciCareer.introducerId})
                 </span>
               )}
             </Col>
@@ -764,12 +764,12 @@ const MemberListPage: React.FC = () => {
             
             <Col span={8}><strong>五年愿景:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.fiveYearsVision || '-'}
+              {(selectedMember as any).jciCareer?.fiveYearsVision || '-'}
             </Col>
             
             <Col span={8}><strong>如何成为活跃会员:</strong></Col>
             <Col span={16}>
-              {selectedMember.profile?.activeMemberHow || '-'}
+              {(selectedMember as any).jciCareer?.activeMemberHow || '-'}
             </Col>
           </Row>
         </div>
@@ -781,10 +781,10 @@ const MemberListPage: React.FC = () => {
       icon: <CalendarOutlined />,
       content: (
         <div style={{ padding: '16px' }}>
-          {selectedMember.profile?.activityParticipation && selectedMember.profile.activityParticipation.length > 0 ? (
+          {(selectedMember as any).jciCareer?.activityParticipation && (selectedMember as any).jciCareer.activityParticipation.length > 0 ? (
             <Table
-              dataSource={selectedMember.profile.activityParticipation}
-              rowKey={(record) => record.eventId}
+              dataSource={(selectedMember as any).jciCareer.activityParticipation as any[]}
+              rowKey={(record: any) => record.eventId}
               pagination={false}
               columns={[
                 {
@@ -820,10 +820,10 @@ const MemberListPage: React.FC = () => {
       icon: <CheckCircleOutlined />,
       content: (
         <div style={{ padding: '16px' }}>
-          {selectedMember.profile?.taskCompletions && selectedMember.profile.taskCompletions.length > 0 ? (
+          {(selectedMember as any).jciCareer?.taskCompletions && (selectedMember as any).jciCareer.taskCompletions.length > 0 ? (
             <Table
-              dataSource={selectedMember.profile.taskCompletions}
-              rowKey={(record) => record.taskId}
+              dataSource={(selectedMember as any).jciCareer.taskCompletions as any[]}
+              rowKey={(record: any) => record.taskId}
               pagination={false}
               columns={[
                 {
@@ -865,46 +865,52 @@ const MemberListPage: React.FC = () => {
   const columns: DataGridColumn<Member>[] = [
     {
       title: '会员ID',
-      dataIndex: 'memberId',
+      dataIndex: 'profileMemberId',
       key: 'memberId',
       width: 120,
       fixed: 'left',
+      render: (_, record) => (record as any).profile?.memberId || '-',
     },
     {
       title: '姓名',
-      dataIndex: 'name',
+      dataIndex: 'profileName',
       key: 'name',
       width: 150,
       fixed: 'left',
+      render: (_, record) => (record as any).profile?.name || '-',
     },
     {
       title: '邮箱',
-      dataIndex: 'email',
+      dataIndex: 'profileEmail',
       key: 'email',
       width: 200,
+      render: (_, record) => (record as any).profile?.email || '-',
     },
     {
       title: '电话',
-      dataIndex: 'phone',
+      dataIndex: 'profilePhone',
       key: 'phone',
       width: 150,
+      render: (_, record) => (record as any).profile?.phone || '-',
     },
     {
       title: '分类',
-      dataIndex: 'category',
+      dataIndex: 'jciCategory',
       key: 'category',
       width: 120,
-      render: (category: string) => {
+      render: (_: any, record) => {
+        const category = (record as any).jciCareer?.category;
         const option = MEMBER_CATEGORY_OPTIONS.find(opt => opt.value === category);
         return category ? <Tag color="blue">{option?.label || category}</Tag> : '-';
       },
     },
     {
       title: '级别',
-      dataIndex: 'level',
+      dataIndex: 'profileLevel',
       key: 'level',
       width: 100,
-      render: (level: string) => {
+      render: (_: any, record) => {
+        const level = (record as any).profile?.level as string;
         const colors: Record<string, string> = {
           bronze: 'default',
           silver: 'blue',
@@ -918,10 +924,11 @@ const MemberListPage: React.FC = () => {
     },
     {
       title: '状态',
-      dataIndex: 'status',
+      dataIndex: 'profileStatus',
       key: 'status',
       width: 100,
-      render: (status: string) => {
+      render: (_: any, record) => {
+        const status = (record as any).profile?.status as string;
         const colors: Record<string, string> = {
           active: 'success',
           inactive: 'default',
@@ -934,17 +941,20 @@ const MemberListPage: React.FC = () => {
     },
     {
       title: '分会',
-      dataIndex: 'chapter',
+      dataIndex: 'jciChapter',
       key: 'chapter',
       width: 120,
-      render: (chapter: string) => chapter || '-',
+      render: (_: any, record) => (record as any).jciCareer?.chapter || '-',
     },
     {
       title: '加入日期',
-      dataIndex: 'joinDate',
+      dataIndex: 'jciJoinDate',
       key: 'joinDate',
       width: 120,
-      render: (date: string) => date ? new Date(date).toLocaleDateString('zh-CN') : '-',
+      render: (_: any, record) => {
+        const date = (record as any).jciCareer?.joinDate as string;
+        return date ? new Date(date).toLocaleDateString('zh-CN') : '-';
+      },
     },
     {
       title: '操作',
@@ -1217,8 +1227,8 @@ const MemberListPage: React.FC = () => {
           setDrawerVisible(false);
           setSelectedMember(null);
         }}
-        title={selectedMember?.name || '会员详情'}
-        subtitle={selectedMember ? `${selectedMember.memberId} - ${MEMBER_STATUS_OPTIONS.find(o => o.value === selectedMember.status)?.label}` : ''}
+        title={(selectedMember as any)?.profile?.name || '会员详情'}
+        subtitle={selectedMember ? `${(selectedMember as any).profile?.memberId || '-'} - ${MEMBER_STATUS_OPTIONS.find(o => o.value === (selectedMember as any).profile?.status)?.label || (selectedMember as any).profile?.status || '-'}` : ''}
         tabs={detailTabs}
         actions={selectedMember ? [
           {

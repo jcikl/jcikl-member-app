@@ -155,15 +155,16 @@ export const findMatchesForTransaction = async (
         }
 
         // 转换 eventDate 为 ISO 字符串(处理 Firestore Timestamp)
-        let eventDateStr = event.startDate;
-        if (event.startDate && typeof event.startDate === 'object') {
+        const start = (event as any)?.startDate;
+        let eventDateStr: string | undefined = typeof start === 'string' ? start : undefined;
+        if (start && typeof start === 'object') {
           // 方法1: 有 toDate() 方法
-          if ('toDate' in event.startDate && typeof (event.startDate as any).toDate === 'function') {
-            eventDateStr = (event.startDate as any).toDate().toISOString();
+          if ('toDate' in start && typeof (start as any).toDate === 'function') {
+            eventDateStr = (start as any).toDate().toISOString();
           }
           // 方法2: 原始 {seconds, nanoseconds} 格式
-          else if ('seconds' in event.startDate && 'nanoseconds' in event.startDate) {
-            const milliseconds = (event.startDate as any).seconds * 1000 + (event.startDate as any).nanoseconds / 1000000;
+          else if ('seconds' in start && 'nanoseconds' in start) {
+            const milliseconds = (start as any).seconds * 1000 + (start as any).nanoseconds / 1000000;
             eventDateStr = new Date(milliseconds).toISOString();
           }
         }
@@ -659,8 +660,8 @@ const calculatePriceScore = (
  * 计算日期匹配得分
  */
 const calculateDateScore = (
-  transactionDate: string,
-  eventDate: string
+  transactionDate: any,
+  eventDate: any
 ): { score: number; reason: string; daysDifference: number } => {
   console.log('📅 [calculateDateScore] Input:', {
     transactionDate,
@@ -670,8 +671,8 @@ const calculateDateScore = (
   });
 
   // 处理可能的 Firestore Timestamp 对象
-  let txDateStr = transactionDate;
-  let evtDateStr = eventDate;
+  let txDateStr: string | undefined = typeof transactionDate === 'string' ? transactionDate : undefined;
+  let evtDateStr: string | undefined = typeof eventDate === 'string' ? eventDate : undefined;
 
   // 如果是 Firestore Timestamp 对象，转换为字符串
   // 方法1: 有 toDate() 方法的 Timestamp 对象
@@ -697,8 +698,8 @@ const calculateDateScore = (
     console.log('🔄 [Method 2] Converted event timestamp to string:', evtDateStr);
   }
 
-  const txDate = new Date(txDateStr);
-  const evtDate = new Date(evtDateStr);
+  const txDate = new Date(txDateStr || '');
+  const evtDate = new Date(evtDateStr || '');
 
   // 验证日期是否有效
   const txDateValid = !isNaN(txDate.getTime());
