@@ -326,6 +326,7 @@ const DashboardPage: React.FC = () => {
               </Select>
             }
           >
+            <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
             <List
               loading={listsLoading}
               dataSource={upcomingBirthdays.slice(0, 10)}
@@ -370,6 +371,7 @@ const DashboardPage: React.FC = () => {
                 </List.Item>
               )}
             />
+            </div>
             {upcomingBirthdays.length > 0 && (
               <div style={{ 
                 marginTop: 12, 
@@ -404,6 +406,7 @@ const DashboardPage: React.FC = () => {
               </Badge>
             }
           >
+            <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
             <List
               loading={listsLoading}
               dataSource={industryDistribution}
@@ -448,6 +451,7 @@ const DashboardPage: React.FC = () => {
                 </List.Item>
               )}
             />
+            </div>
           </Card>
         </Col>
 
@@ -470,6 +474,7 @@ const DashboardPage: React.FC = () => {
               </Badge>
             }
           >
+            <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
             <List
               loading={listsLoading}
               dataSource={interestDistribution}
@@ -514,6 +519,7 @@ const DashboardPage: React.FC = () => {
                 </List.Item>
               )}
             />
+            </div>
           </Card>
         </Col>
       {/* 🆕 会员列表卡片 */}
@@ -570,6 +576,7 @@ const DashboardPage: React.FC = () => {
               </div>
             )}
 
+            <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
             <List
               loading={membersLoading}
               dataSource={filteredMembers.slice(0, 20)} // 只显示前20个
@@ -638,6 +645,7 @@ const DashboardPage: React.FC = () => {
                 </List.Item>
               )}
             />
+            </div>
             {filteredMembers.length > 20 && (
               <div style={{ 
                 marginTop: 16, 
