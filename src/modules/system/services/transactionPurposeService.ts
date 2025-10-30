@@ -1,6 +1,6 @@
 /**
  * Transaction Purpose Service
- * 交易用途管理服务（日常账户二次分类）
+ * 交易用途管理服务(日常账户二次分类)
  */
 
 import {
@@ -20,10 +20,10 @@ import { globalSystemService } from '@/config/globalSystemSettings';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
 
 export interface TransactionPurpose {
-  id: string;                     // 文档ID（自动生成）
-  value: string;                  // 用途代码/名称（用于txAccount字段）
+  id: string;                     // 文档ID(自动生成)
+  value: string;                  // 用途代码/名称(用于txAccount字段)
   label: string;                  // 显示名称
-  category: 'general-accounts';   // 类别（固定为日常账户）
+  category: 'general-accounts';   // 类别(固定为日常账户)
   description?: string;           // 描述
   sortOrder: number;              // 排序
   status: 'active' | 'inactive';  // 状态
@@ -103,7 +103,7 @@ export const getAllTransactionPurposes = async (): Promise<TransactionPurpose[]>
 };
 
 /**
- * 获取交易用途（带过滤）
+ * 获取交易用途(带过滤)
  */
 export const getTransactionPurposes = async (
   status?: 'active' | 'inactive'

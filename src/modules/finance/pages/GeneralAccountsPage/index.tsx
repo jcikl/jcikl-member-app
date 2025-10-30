@@ -71,7 +71,7 @@ const GeneralAccountsPage: React.FC = () => {
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [bulkClassifyModalVisible, setBulkClassifyModalVisible] = useState(false);
   
-  // 🆕 交易用途选项（从财务类别管理加载）
+  // 🆕 交易用途选项(从财务类别管理加载)
   const [purposeOptions, setPurposeOptions] = useState<{ label: string; value: string }[]>([]);
   
   // 统计数据
@@ -81,7 +81,7 @@ const GeneralAccountsPage: React.FC = () => {
     netBalance: 0,
   });
   
-  // 🆕 会员信息缓存（用于显示描述栏中的会员信息）
+  // 🆕 会员信息缓存(用于显示描述栏中的会员信息)
   const [memberInfoCache, setMemberInfoCache] = useState<Record<string, { name: string; email?: string; phone?: string }>>({});
 
   useEffect(() => {
@@ -112,7 +112,7 @@ const GeneralAccountsPage: React.FC = () => {
         // txAccount: 移除服务端筛选，改为客户端筛选
         sortBy: 'transactionDate',
         sortOrder: 'desc',
-        includeVirtual: true, // 🔑 包含子交易（虚拟交易）
+        includeVirtual: true, // 🔑 包含子交易(虚拟交易)
       });
       
       // 应用客户端筛选
@@ -150,7 +150,7 @@ const GeneralAccountsPage: React.FC = () => {
       });
       setAccountGroups(grouped);
       
-      // 计算统计数据（基于筛选后的全部数据，不是分页后的）
+      // 计算统计数据(基于筛选后的全部数据，不是分页后的)
       const stats = filteredData.reduce((acc, tx) => {
         if (tx.transactionType === 'income') {
           acc.totalIncome += tx.amount || 0;
@@ -264,12 +264,12 @@ const GeneralAccountsPage: React.FC = () => {
         }
       }
       
-      // 设置 payerPayee（如果有值）
+      // 设置 payerPayee(如果有值)
       if (finalPayerPayee) {
         updateData.payerPayee = finalPayerPayee;
       }
       
-      // 🆕 设置 metadata.memberId（如果选择了会员）
+      // 🆕 设置 metadata.memberId(如果选择了会员)
       if (modalSelectedMemberId) {
         updateData.metadata = {
           ...selectedTransaction.metadata,
@@ -351,7 +351,7 @@ const GeneralAccountsPage: React.FC = () => {
         const dateB = new Date(b.transactionDate).getTime();
         return dateA - dateB;
       },
-      defaultSortOrder: 'descend', // 默认降序（最新的在前）
+      defaultSortOrder: 'descend', // 默认降序(最新的在前)
       render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),
     },
     {
@@ -620,7 +620,7 @@ const GeneralAccountsPage: React.FC = () => {
                   },
                   {
                     key: 'transactions',
-                    label: '日常账户交易记录（二次分类）',
+                    label: '日常账户交易记录(二次分类)',
                     children: (
                       <Card 
                         title="日常账户交易记录"
@@ -674,7 +674,7 @@ const GeneralAccountsPage: React.FC = () => {
 
         {/* 🆕 批量分类模态框 */}
         <Modal
-          title={`批量分类（已选 ${selectedTransactionIds.length} 条）`}
+          title={`批量分类(已选 ${selectedTransactionIds.length} 条)`}
           open={bulkClassifyModalVisible}
           onCancel={() => setBulkClassifyModalVisible(false)}
           footer={null}
@@ -709,9 +709,9 @@ const GeneralAccountsPage: React.FC = () => {
               )}
             </div>
 
-            {/* 关联会员（可选） */}
+            {/* 关联会员(可选) */}
             <div>
-              <p style={{ fontWeight: 'bold', marginBottom: 8 }}>关联会员（可选）：</p>
+              <p style={{ fontWeight: 'bold', marginBottom: 8 }}>关联会员(可选)：</p>
               <Select
                 showSearch
                 allowClear
@@ -821,7 +821,7 @@ const GeneralAccountsPage: React.FC = () => {
                   </div>
                   
                   <div>
-                    <p style={{ marginBottom: 8, fontWeight: 500 }}>或手动填写（非会员）：</p>
+                    <p style={{ marginBottom: 8, fontWeight: 500 }}>或手动填写(非会员)：</p>
                     <Input
                       placeholder="例如：某某公司、某某个人"
                       value={modalPayerPayee}

@@ -1,6 +1,43 @@
 /**
  * Finance Module Type Definitions
  * 财务模块类型定义
+ * 
+ * ========== FIELD CLEANUP & REFACTORING GUIDE ==========
+ * 
+ * 字段整理策略(方案C - 混合重构）
+ * 
+ * 【问题分析】
+ * 1. 重复字段：payer/payee, eventId/relatedEventId, accountType/txAccount
+ * 2. 废弃字段：income/expense (存在 amount + transactionType)
+ * 3. 扁平化 metadata：未结构化，难以维护
+ * 4. 命名不一致：同类字段使用不同命名
+ * 
+ * 【解决方案】
+ * 阶段1：清理重复字段(已完成）
+ * - ✅ 统一使用 payerPayee(废弃 payer, payee）
+ * - ✅ 统一使用 relatedEventId(废弃 eventId）
+ * - ✅ 统一使用 txAccount(废弃 accountType, projectAccount）
+ * - ✅ 统一使用 subDescription(废弃 paymentDescription）
+ * 
+ * 阶段2：重构 metadata 结构(进行中）
+ * - ✅ 定义 TransactionMetadata 结构化接口
+ * - 🔄 迁移 inputBy, userModified 到 metadata.input
+ * - 🔄 迁移 autoMatched* 到 metadata.autoMatch
+ * - 🔄 迁移 needsReview, reviewedBy/At 到 metadata.review
+ * 
+ * 阶段3：逐步废弃旧字段(待实施）
+ * - 标记为 deprecated，保留向后兼容
+ * - 前端统一使用新字段
+ * - 制定数据迁移脚本
+ * 
+ * 【使用规范】
+ * 1. 新代码：只使用标注为 ✅ RECOMMENDED 的字段
+ * 2. 旧代码：逐步迁移到新字段结构
+ * 3. 数据读取：兼容旧字段(自动映射到新字段）
+ * 4. 数据写入：统一使用新字段
+ * 
+ * 【迁移脚本】
+ * 参见：scripts/cleanup-transaction-fields.ts
  */
 
 import type { MemberCategoryType } from '@/modules/member/types';
@@ -8,7 +45,7 @@ import type { MemberCategoryType } from '@/modules/member/types';
 // ========== Transaction Types (交易类型) ==========
 
 export type TransactionType = 'income' | 'expense';
-export type TransactionStatus = 'pending' | 'completed' | 'cancelled' | 'rejected';
+export type TransactionStatus = 'pending' | 'completed'; // 待核对 | 已核对
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'credit_card' | 'cheque' | 'online_payment' | 'other';
 
 export interface Transaction {
@@ -25,12 +62,12 @@ export interface Transaction {
   expense?: number; // Legacy field - use amount + transactionType instead
   income?: number;  // Legacy field - use amount + transactionType instead
   
-  payerPayee?: string; // 付款人/收款人（姓名）
-  payerId?: string; // 付款人/收款人ID（如果是会员）
+  payerPayee?: string; // 付款人/收款人(姓名）
+  payerId?: string; // 付款人/收款人ID(如果是会员）
   transactionPurpose?: string; // Purpose ID
   transactionPurposeDetails?: TransactionPurpose;
   category?: string;
-  txAccount?: string; // 交易账户/交易用途（用于会员费、活动财务、日常账户的细分）
+  txAccount?: string; // 交易账户/交易用途(用于会员费、活动财务、日常账户的细分）
   paymentMethod?: PaymentMethod;
   status: TransactionStatus;
   inputBy: string; // User ID
@@ -46,12 +83,12 @@ export interface Transaction {
   metadata?: Record<string, any>;
   
   // 🆕 Split Transaction Fields (拆分交易字段)
-  isSplit?: boolean;              // 是否已拆分（父交易标记）
+  isSplit?: boolean;              // 是否已拆分(父交易标记）
   splitCount?: number;            // 子交易数量
-  parentTransactionId?: string;   // 父交易ID（子交易标记）
-  isVirtual?: boolean;            // 是否为虚拟交易（子交易不影响银行余额）
-  allocatedAmount?: number;       // 已分配金额（父交易字段）
-  unallocatedAmount?: number;     // 未分配金额（父交易字段）
+  parentTransactionId?: string;   // 父交易ID(子交易标记）
+  isVirtual?: boolean;            // 是否为虚拟交易(子交易不影响银行余额）
+  allocatedAmount?: number;       // 已分配金额(父交易字段）
+  unallocatedAmount?: number;     // 未分配金额(父交易字段）
   
   // 🆕 Internal Transfer Fields (内部转账字段)
   isInternalTransfer?: boolean;   // 是否为内部转账
@@ -69,6 +106,10 @@ export interface Transaction {
   reviewedBy?: string;            // 审核人ID
   reviewedAt?: string;            // 审核时间
   
+  // 🆕 Reconciliation Fields (核对字段)
+  reconciledBankTransactionId?: string; // 已核对的银行交易ID(用于交易管理页面的核对）
+  reconciledEventAccountTransactionId?: string; // 已核对的活动账目记录ID(用于活动账目记录的核对）
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -81,7 +122,7 @@ export interface TransactionFormData {
   subDescription?: string;
   amount: number;
   payerPayee?: string;
-  payerId?: string; // 🆕 付款人/收款人ID（如果是会员）
+  payerId?: string; // 🆕 付款人/收款人ID(如果是会员）
   transactionPurpose?: string;
   category?: string;
   txAccount?: string;
@@ -283,7 +324,7 @@ export interface MemberFee {
   notes?: string;
   remindersSent: number;
   lastReminderDate?: string;
-  txAccount?: string; // 🆕 交易账户（从关联交易继承）
+  txAccount?: string; // 🆕 交易账户(从关联交易继承）
   createdAt: string;
   updatedAt: string;
 }
@@ -298,9 +339,9 @@ export interface EventFinancialRecord {
   eventName: string;
   eventDate?: string;
   fiscalYear?: string;
-  txAccount?: string; // 交易账户（通常与 eventName 相同）
+  txAccount?: string; // 交易账户(通常与 eventName 相同）
   
-  // 🆕 付款人/收款人信息（最新一笔交易的信息）
+  // 🆕 付款人/收款人信息(最新一笔交易的信息）
   payerPayee?: string; // 付款人/收款人姓名
   memberId?: string; // 如果是会员，存储会员ID
   memberName?: string; // 如果是会员，存储会员名字
@@ -335,7 +376,7 @@ export interface GeneralFinancialRecord {
   txAccount?: string; // 交易账户
   fiscalYear?: string;
   
-  // 🆕 付款人/收款人信息（最新一笔交易的信息）
+  // 🆕 付款人/收款人信息(最新一笔交易的信息）
   payerPayee?: string; // 付款人/收款人姓名
   memberId?: string; // 如果是会员，存储会员ID
   memberName?: string; // 如果是会员，存储会员名字
@@ -532,7 +573,7 @@ export interface TransactionQueryParams {
   paymentMethod?: PaymentMethod;
   sortBy?: 'transactionDate' | 'amount' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
-  includeVirtual?: boolean; // 是否包含虚拟交易（子交易），默认 true
+  includeVirtual?: boolean; // 是否包含虚拟交易(子交易），默认 true
   parentTransactionId?: string; // 查询特定父交易的子交易
 }
 

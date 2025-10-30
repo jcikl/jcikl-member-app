@@ -95,7 +95,7 @@ const ComponentSettings: React.FC = () => {
     <div className="settings-panel">
       <Collapse defaultActiveKey={['table', 'form', 'modal']}>
         {/* Table Configuration */}
-        <Panel header="表格组件配置（Table）" key="table">
+        <Panel header="表格组件配置(Table)" key="table">
           <Form layout="inline" style={{ marginBottom: 16 }}>
             <Form.Item label="每页显示" style={{ marginBottom: 8 }}>
               <InputNumber
@@ -168,7 +168,7 @@ const ComponentSettings: React.FC = () => {
         </Panel>
 
         {/* Form Configuration */}
-        <Panel header="表单组件配置（Form）" key="form">
+        <Panel header="表单组件配置(Form)" key="form">
           <Form layout="inline" style={{ marginBottom: 0 }}>
             <Form.Item label="表单布局" style={{ marginBottom: 8 }}>
               <Radio.Group
@@ -208,7 +208,7 @@ const ComponentSettings: React.FC = () => {
         </Panel>
 
         {/* Modal Configuration */}
-        <Panel header="弹窗组件配置（Modal）" key="modal">
+        <Panel header="弹窗组件配置(Modal)" key="modal">
           <Form layout="inline" style={{ marginBottom: 0 }}>
             <Form.Item label="默认宽度" style={{ marginBottom: 8 }}>
               <InputNumber

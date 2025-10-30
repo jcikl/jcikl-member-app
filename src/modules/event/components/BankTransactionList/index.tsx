@@ -2,7 +2,7 @@
  * Bank Transaction List Component
  * 银行交易记录列表组件
  * 
- * 显示属于该活动的实际银行交易记录（只读）
+ * 显示属于该活动的实际银行交易记录(只读)
  */
 
 import React, { useState } from 'react';
@@ -13,6 +13,7 @@ import {
   Space,
   Tag,
   Input,
+  message,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -58,6 +59,37 @@ interface Props {
   onExport?: () => void;
 }
 
+// 🆕 导出到 CSV 的辅助函数
+const exportToCSV = (transactions: BankTransaction[], type: 'income' | 'expense') => {
+  const typeLabel = type === 'income' ? '收入' : '支出';
+  const filename = `银行交易记录_${typeLabel}_${new Date().toISOString().split('T')[0]}.csv`;
+  
+  const headers = '日期,交易编号,描述,收款人/付款人,金额,银行账户,状态,类别,付款方式,收据号码,发票号码\n';
+  
+  const rows = transactions.map(txn => {
+    const date = globalDateService.formatDate(txn.transactionDate, 'display');
+    const description = `"${txn.description}"`;
+    const payerPayee = txn.payerPayee ? `"${txn.payerPayee}"` : '';
+    const bankAccount = txn.bankAccountName || txn.bankAccount || '';
+    const status = txn.status === 'verified' ? '已确认' : '待确认';
+    const category = txn.category || '';
+    const paymentMethod = txn.paymentMethod || '';
+    const receiptNumber = txn.receiptNumber || '';
+    const invoiceNumber = txn.invoiceNumber || '';
+    
+    return `${date},${txn.transactionNumber},${description},${payerPayee},${txn.amount.toFixed(2)},${bankAccount},${status},${category},${paymentMethod},${receiptNumber},${invoiceNumber}`;
+  }).join('\n');
+  
+  const csvContent = '\uFEFF' + headers + rows; // BOM for Excel
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 const BankTransactionList: React.FC<Props> = ({
   accountId: _accountId,
   transactions,
@@ -65,16 +97,6 @@ const BankTransactionList: React.FC<Props> = ({
   onRefresh,
   onExport,
 }) => {
-  console.log('🔍 [BankTransactionList] Component rendered', {
-    transactionsCount: transactions.length,
-    loading,
-    transactions: transactions.slice(0, 3).map(t => ({
-      id: t.id,
-      number: t.transactionNumber,
-      description: t.description,
-    })),
-  });
-  
   const [searchText, setSearchText] = useState('');
 
   const tableConfig = globalComponentService.getTableConfig();
@@ -95,8 +117,13 @@ const BankTransactionList: React.FC<Props> = ({
     );
   };
 
-  const filteredIncomeTransactions = incomeTransactions.filter(filterBySearch);
-  const filteredExpenseTransactions = expenseTransactions.filter(filterBySearch);
+  const filteredIncomeTransactions = incomeTransactions
+    .filter(filterBySearch)
+    .sort((a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime());
+  
+  const filteredExpenseTransactions = expenseTransactions
+    .filter(filterBySearch)
+    .sort((a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime());
 
   // 统计数据
   const totalIncome = filteredIncomeTransactions.reduce((sum, txn) => sum + txn.amount, 0);
@@ -109,23 +136,23 @@ const BankTransactionList: React.FC<Props> = ({
       title: '日期',
       dataIndex: 'transactionDate',
       width: 110,
-      sorter: (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
       render: (date: string) => globalDateService.formatDate(date, 'display'),
     },
     {
       title: '描述',
       dataIndex: 'description',
-      width: '35%',
+      width: 200,
+      ellipsis: true,
       render: (_: string, record: BankTransaction) => {
         return (
-          <div>
-            <div style={{ fontWeight: 500, fontSize: '13px', color: '#262626' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: 500, fontSize: '13px', color: '#262626' }}>
               {record.description}
-            </div>
+            </span>
             {record.payerPayee && (
-              <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '4px' }}>
-                {record.transactionType === 'income' ? '来自: ' : '支付给: '}{record.payerPayee}
-              </div>
+              <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                • {record.transactionType === 'income' ? '来自: ' : '支付给: '}{record.payerPayee}
+              </span>
             )}
           </div>
         );
@@ -134,9 +161,8 @@ const BankTransactionList: React.FC<Props> = ({
     {
       title: '金额',
       dataIndex: 'amount',
-      width: 140,
+      width: 120,
       align: 'right',
-      sorter: (a, b) => a.amount - b.amount,
       render: (value: number, record: BankTransaction) => {
         const isIncome = record.transactionType === 'income';
         return (
@@ -153,7 +179,8 @@ const BankTransactionList: React.FC<Props> = ({
     {
       title: '银行账户',
       dataIndex: 'bankAccount',
-      width: '20%',
+      width: 180,
+      ellipsis: true,
       render: (_: string, record: BankTransaction) => {
         if (record.bankAccountName && record.bankName) {
           return (
@@ -161,11 +188,7 @@ const BankTransactionList: React.FC<Props> = ({
               <div style={{ fontWeight: 500, fontSize: '13px' }}>
                 {record.bankAccountName} ({record.bankName})
               </div>
-              {record.accountNumber && (
-                <div style={{ fontSize: '11px', color: '#8c8c8c' }}>
-                  {record.accountNumber}
-                </div>
-              )}
+             
             </div>
           );
         }
@@ -175,7 +198,7 @@ const BankTransactionList: React.FC<Props> = ({
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
+      width: 80,
       filters: [
         { text: '已核对', value: 'verified' },
         { text: '待核对', value: 'pending' },
@@ -200,7 +223,7 @@ const BankTransactionList: React.FC<Props> = ({
 
   return (
     <Card
-      title="💰 实际银行交易记录（Bank Transaction Records）"
+      title="💰 实际银行交易记录(Bank Transaction Records)"
       extra={
         <Space>
           <Search
@@ -223,10 +246,30 @@ const BankTransactionList: React.FC<Props> = ({
           {onExport && (
             <Button
               icon={<DownloadOutlined />}
-              onClick={onExport}
+              onClick={() => {
+                // 🆕 执行导出
+                const totalCount = filteredIncomeTransactions.length + filteredExpenseTransactions.length;
+                if (totalCount === 0) {
+                  message.warning('没有数据可导出');
+                  return;
+                }
+                
+                if (filteredIncomeTransactions.length > 0) {
+                  exportToCSV(filteredIncomeTransactions, 'income');
+                  message.success(`已导出 ${filteredIncomeTransactions.length} 条收入记录`);
+                }
+                if (filteredExpenseTransactions.length > 0) {
+                  // 延迟导出支出，避免同时下载两个文件造成混淆
+                  setTimeout(() => {
+                    exportToCSV(filteredExpenseTransactions, 'expense');
+                    message.success(`已导出 ${filteredExpenseTransactions.length} 条支出记录`);
+                  }, 500);
+                }
+                if (onExport) onExport();
+              }}
               size="small"
             >
-              导出Excel
+              导出CSV
             </Button>
           )}
         </Space>
@@ -267,6 +310,7 @@ const BankTransactionList: React.FC<Props> = ({
           loading={loading}
           pagination={false}
           showHeader={true}
+          size="small"
           locale={{ emptyText: '暂无收入交易记录' }}
         />
       </div>
@@ -305,6 +349,7 @@ const BankTransactionList: React.FC<Props> = ({
           loading={loading}
           pagination={false}
           showHeader={true}
+          size="small"
           locale={{ emptyText: '暂无支出交易记录' }}
         />
       </div>

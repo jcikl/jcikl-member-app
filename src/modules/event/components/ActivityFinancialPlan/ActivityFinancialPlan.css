@@ -63,7 +63,7 @@
   display: none;
 }
 
-/* 可编辑行样式（编辑模式下） */
+/* 可编辑行样式(编辑模式下) */
 .activity-financial-plan-card .editable-row {
   cursor: pointer;
   transition: background-color 0.2s;

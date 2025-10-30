@@ -80,7 +80,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
           const snapshot = await getDocs(q);
           
           if (snapshot.size > 0) {
-            // 将子交易转换为拆分项（排除未分配金额的子交易）
+            // 将子交易转换为拆分项(排除未分配金额的子交易)
             const existingSplits: SplitItem[] = [];
             snapshot.docs.forEach(doc => {
               const childData = doc.data() as Transaction;
@@ -271,7 +271,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       okButtonProps={{ disabled: !isValid || loadingExistingSplits }}
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {/* 左侧：撤销拆分按钮（仅在已拆分时显示） */}
+          {/* 左侧：撤销拆分按钮(仅在已拆分时显示) */}
           <div>
             {transaction?.isSplit && onUnsplit && (
               <Button 
@@ -337,7 +337,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
               />
             )}
         
-        {/* 原交易信息 & 拆分统计（左右布局） */}
+        {/* 原交易信息 & 拆分统计(左右布局) */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
         {/* 左侧：原交易信息 */}
         <div style={{ flex: 1 }}>

@@ -2,27 +2,27 @@
  * Auto Match Service
  * 交易记录自动分类匹配服务
  * 
- * 匹配逻辑（根据交易类型区分）：
+ * 匹配逻辑(根据交易类型区分)：
  * 
- * 【收入交易】（最高100分）
+ * 【收入交易】(最高100分)
  * 1. 日期匹配 (40分) - 最重要，交易通常发生在活动当天或前后
  * 2. 票价匹配 (40分) - 次重要，金额是最可靠的匹配依据
  * 3. 活动名称匹配 (20分) - 参考项，银行描述不一定包含活动名称
  * 
  * 置信度标准：
- * - 总分 >= 80: 高置信度（可自动应用）
- * - 总分 60-79: 中置信度（需人工确认）
- * - 总分 < 60: 低置信度（显示分析结果，建议手动分类）
+ * - 总分 >= 80: 高置信度(可自动应用)
+ * - 总分 60-79: 中置信度(需人工确认)
+ * - 总分 < 60: 低置信度(显示分析结果，建议手动分类)
  * 
- * 【支出交易】（最高60分，不考虑票价）
+ * 【支出交易】(最高60分，不考虑票价)
  * 1. 日期匹配 (40分) - 最重要
  * 2. 活动名称匹配 (20分) - 参考项
- * 3. 票价匹配 (0分) - 忽略（支出是付款金额，不是票价收入）
+ * 3. 票价匹配 (0分) - 忽略(支出是付款金额，不是票价收入)
  * 
  * 置信度标准：
- * - 总分 >= 55: 高置信度（可自动应用）
- * - 总分 45-54: 中置信度（需人工确认）
- * - 总分 < 45: 低置信度（显示分析结果，建议手动分类）
+ * - 总分 >= 55: 高置信度(可自动应用)
+ * - 总分 45-54: 中置信度(需人工确认)
+ * - 总分 < 45: 低置信度(显示分析结果，建议手动分类)
  */
 
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
@@ -60,16 +60,16 @@ export interface MatchResult {
 export interface AutoMatchPreviewItem {
   transaction: Transaction;
   matches: MatchResult[]; // 分数 >= 60 的匹配
-  bestMatch: MatchResult | null; // 最佳自动匹配（分数 >= 60）
-  topAttempt: MatchResult | null; // 最高分的尝试（可能 < 60，用于显示分析结果）
-  canAutoApply: boolean; // 是否可自动应用（高置信度）
+  bestMatch: MatchResult | null; // 最佳自动匹配(分数 >= 60)
+  topAttempt: MatchResult | null; // 最高分的尝试(可能 < 60，用于显示分析结果)
+  canAutoApply: boolean; // 是否可自动应用(高置信度)
 }
 
 // ========== 核心匹配函数 ==========
 
 /**
  * 为单个交易寻找匹配的活动
- * @param includeAllScores - 是否返回所有分数的匹配（包括<60分），用于显示分析结果
+ * @param includeAllScores - 是否返回所有分数的匹配(包括<60分)，用于显示分析结果
  */
 export const findMatchesForTransaction = async (
   transaction: Transaction,
@@ -112,9 +112,9 @@ export const findMatchesForTransaction = async (
       // 计算各项得分
       const nameScore = calculateNameScore(transaction, event);
       
-      // 🚫 支出交易不考虑票价匹配（支出是付款金额，不是票价收入）
+      // 🚫 支出交易不考虑票价匹配(支出是付款金额，不是票价收入)
       const priceScore = transaction.transactionType === 'expense' 
-        ? { score: 0, type: '支出交易（忽略票价）', matchedPrice: undefined }
+        ? { score: 0, type: '支出交易(忽略票价)', matchedPrice: undefined }
         : calculatePriceScore(transaction.amount, event.pricing);
       
       const dateScore = calculateDateScore(transaction.transactionDate, event.startDate);
@@ -124,7 +124,7 @@ export const findMatchesForTransaction = async (
         ? nameScore.score + dateScore.score
         : nameScore.score + priceScore.score + dateScore.score;
       
-      // 🔄 支出交易阈值调整为45分（因为不考虑票价，最高只有60分）
+      // 🔄 支出交易阈值调整为45分(因为不考虑票价，最高只有60分)
       const threshold = transaction.transactionType === 'expense' ? 45 : 60;
       
       // 🔍 调试前3个匹配结果
@@ -144,7 +144,7 @@ export const findMatchesForTransaction = async (
       const shouldInclude = includeAllScores || totalScore >= threshold;
       
       if (shouldInclude) {
-        // 🔄 支出交易置信度调整（最高60分）
+        // 🔄 支出交易置信度调整(最高60分)
         let confidence: 'high' | 'medium' | 'low';
         if (transaction.transactionType === 'expense') {
           // 支出交易：55-60分=高置信度，45-54分=中置信度，<45分=低置信度
@@ -154,16 +154,17 @@ export const findMatchesForTransaction = async (
           confidence = totalScore >= 80 ? 'high' : totalScore >= 60 ? 'medium' : 'low';
         }
 
-        // 转换 eventDate 为 ISO 字符串（处理 Firestore Timestamp）
-        let eventDateStr = event.startDate;
-        if (event.startDate && typeof event.startDate === 'object') {
+        // 转换 eventDate 为 ISO 字符串(处理 Firestore Timestamp)
+        const start = (event as any)?.startDate;
+        let eventDateStr: string | undefined = typeof start === 'string' ? start : undefined;
+        if (start && typeof start === 'object') {
           // 方法1: 有 toDate() 方法
-          if ('toDate' in event.startDate && typeof (event.startDate as any).toDate === 'function') {
-            eventDateStr = (event.startDate as any).toDate().toISOString();
+          if ('toDate' in start && typeof (start as any).toDate === 'function') {
+            eventDateStr = (start as any).toDate().toISOString();
           }
           // 方法2: 原始 {seconds, nanoseconds} 格式
-          else if ('seconds' in event.startDate && 'nanoseconds' in event.startDate) {
-            const milliseconds = (event.startDate as any).seconds * 1000 + (event.startDate as any).nanoseconds / 1000000;
+          else if ('seconds' in start && 'nanoseconds' in start) {
+            const milliseconds = (start as any).seconds * 1000 + (start as any).nanoseconds / 1000000;
             eventDateStr = new Date(milliseconds).toISOString();
           }
         }
@@ -188,12 +189,12 @@ export const findMatchesForTransaction = async (
 
     // 排序逻辑：
     // 1. 如果是 includeAllScores，且最高分 < 60，优先按日期接近度排序
-    // 2. 但排除日期相差过远的匹配（> 90天）
+    // 2. 但排除日期相差过远的匹配(> 90天)
     // 3. 否则按总分排序
     const sortedMatches = allMatches.sort((a, b) => {
-      // 如果包含所有分数，且分数都很低（< 60）
+      // 如果包含所有分数，且分数都很低(< 60)
       if (includeAllScores && a.totalScore < 60 && b.totalScore < 60) {
-        // 排除日期相差过远的匹配（> 90天）
+        // 排除日期相差过远的匹配(> 90天)
         const aDateReasonable = a.daysDifference <= 90;
         const bDateReasonable = b.daysDifference <= 90;
         
@@ -202,7 +203,7 @@ export const findMatchesForTransaction = async (
           return aDateReasonable ? -1 : 1; // 日期合理的排在前面
         }
         
-        // 如果都合理或都不合理，按实际天数差异排序（天数越少越好）
+        // 如果都合理或都不合理，按实际天数差异排序(天数越少越好)
         if (a.daysDifference !== b.daysDifference) {
           return a.daysDifference - b.daysDifference;
         }
@@ -213,12 +214,12 @@ export const findMatchesForTransaction = async (
       return b.totalScore - a.totalScore;
     });
     
-    // 如果包含所有分数，过滤掉日期不合理的匹配（> 90天）
+    // 如果包含所有分数，过滤掉日期不合理的匹配(> 90天)
     if (includeAllScores) {
       const reasonableMatches = sortedMatches.filter(match => match.daysDifference <= 90);
       console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} total matches, ${reasonableMatches.length} with reasonable dates (top score: ${sortedMatches[0]?.totalScore ?? 0}, top date score: ${sortedMatches[0]?.dateScore ?? 0})`);
       
-      // 如果有日期合理的匹配，返回这些匹配；否则返回空数组（表示无合理匹配）
+      // 如果有日期合理的匹配，返回这些匹配；否则返回空数组(表示无合理匹配)
       return reasonableMatches.length > 0 ? reasonableMatches : [];
     } else {
       console.log(`✅ [findMatchesForTransaction] Found ${sortedMatches.length} matches (score ≥ 60)`);
@@ -236,15 +237,15 @@ export const findMatchesForTransaction = async (
  */
 export const autoMatchUncategorizedTransactions = async (): Promise<AutoMatchPreviewItem[]> => {
   try {
-    // 1. 获取所有未分类的交易（category 为空或 txAccount 为空）
+    // 1. 获取所有未分类的交易(category 为空或 txAccount 为空)
     const uncategorizedTransactions = await getUncategorizedTransactions();
     console.log(`🔍 Found ${uncategorizedTransactions.length} uncategorized transactions`);
 
-    // 2. 获取所有活动（一次性查询，避免重复）
+    // 2. 获取所有活动(一次性查询，避免重复)
     const events = await getAllActiveEvents();
     console.log(`🎯 Found ${events.length} events (all statuses)`);
 
-    // 3. 获取所有会员（一次性查询，避免重复）
+    // 3. 获取所有会员(一次性查询，避免重复)
     const members = await getAllActiveMembers();
     console.log(`👥 Found ${members.length} members (all statuses)`);
 
@@ -303,8 +304,8 @@ export const autoMatchUncategorizedTransactions = async (): Promise<AutoMatchPre
  * 获取所有未分类的交易
  * 排除：
  * 1. 已有分类的交易
- * 2. 已拆分的主交易（isSplit = true）
- * 3. 虚拟交易（isVirtual = true）
+ * 2. 已拆分的主交易(isSplit = true)
+ * 3. 虚拟交易(isVirtual = true)
  */
 const getUncategorizedTransactions = async (): Promise<Transaction[]> => {
   try {
@@ -358,7 +359,7 @@ const getUncategorizedTransactions = async (): Promise<Transaction[]> => {
 };
 
 /**
- * 获取所有活动（取消状态限制）
+ * 获取所有活动(取消状态限制)
  */
 const getAllActiveEvents = async (): Promise<Event[]> => {
   try {
@@ -401,7 +402,7 @@ const getAllActiveEvents = async (): Promise<Event[]> => {
 };
 
 /**
- * 获取所有会员（取消状态限制）
+ * 获取所有会员(取消状态限制)
  */
 const getAllActiveMembers = async (): Promise<Member[]> => {
   try {
@@ -459,7 +460,7 @@ const matchMemberFromDescription = (
   console.log(`👤 [matchMember] Checking transaction: ${transaction.mainDescription}`);
 
   for (const member of members) {
-    // 1. 匹配 NRIC/护照号（最可靠，12位数字）
+    // 1. 匹配 NRIC/护照号(最可靠，12位数字)
     const nric = member.profile?.nric || (member.profile as any)?.nricOrPassport;
     if (nric && nric.length >= 10 && description.includes(nric.toLowerCase())) {
       console.log(`✅ [matchMember] Matched by NRIC: ${member.name} (${nric})`);
@@ -471,7 +472,7 @@ const matchMemberFromDescription = (
       };
     }
 
-    // 2. 匹配邮箱（完整匹配）
+    // 2. 匹配邮箱(完整匹配)
     if (member.email && description.includes(member.email.toLowerCase())) {
       console.log(`✅ [matchMember] Matched by email: ${member.name} (${member.email})`);
       return {
@@ -482,7 +483,7 @@ const matchMemberFromDescription = (
       };
     }
 
-    // 3. 匹配手机号码（灵活匹配，去除前导0和+60）
+    // 3. 匹配手机号码(灵活匹配，去除前导0和+60)
     if (member.phone) {
       // 处理多种手机号格式
       const phoneVariants = [
@@ -507,7 +508,7 @@ const matchMemberFromDescription = (
       }
     }
 
-    // 4. 匹配会员ID（如果存在且不为空）
+    // 4. 匹配会员ID(如果存在且不为空)
     if (member.memberId && member.memberId !== 'null' && description.includes(member.memberId.toLowerCase())) {
       console.log(`✅ [matchMember] Matched by memberId: ${member.name} (${member.memberId})`);
       return {
@@ -518,7 +519,7 @@ const matchMemberFromDescription = (
       };
     }
 
-    // 5. 匹配姓名（完整匹配，至少3个字符）
+    // 5. 匹配姓名(完整匹配，至少3个字符)
     if (member.name && member.name.length >= 3) {
       const memberNameLower = member.name.toLowerCase();
       if (description.includes(memberNameLower)) {
@@ -532,7 +533,7 @@ const matchMemberFromDescription = (
       }
     }
 
-    // 6. 匹配身份证全名（如果与 name 不同）
+    // 6. 匹配身份证全名(如果与 name 不同)
     const fullNameNric = (member.profile as any)?.fullNameNric;
     if (fullNameNric && fullNameNric !== member.name && fullNameNric.length >= 3) {
       if (description.includes(fullNameNric.toLowerCase())) {
@@ -551,7 +552,7 @@ const matchMemberFromDescription = (
 };
 
 /**
- * 计算名称匹配得分（满分20分，作为辅助参考）
+ * 计算名称匹配得分(满分20分，作为辅助参考)
  */
 const calculateNameScore = (
   transaction: Transaction,
@@ -588,7 +589,7 @@ const calculateNameScore = (
   const cleanName = eventName.replace(/[-\s*]/g, '');
 
   if (cleanDesc.includes(cleanName) || cleanName.includes(cleanDesc)) {
-    return { score: 15, reason: '模糊匹配（忽略空格）' };
+    return { score: 15, reason: '模糊匹配(忽略空格)' };
   }
 
   // 4. 关键词匹配 (5-12分)
@@ -609,7 +610,7 @@ const calculateNameScore = (
 };
 
 /**
- * 计算票价匹配得分（满分40分，金额是最可靠的匹配依据）
+ * 计算票价匹配得分(满分40分，金额是最可靠的匹配依据)
  */
 const calculatePriceScore = (
   amount: number,
@@ -659,8 +660,8 @@ const calculatePriceScore = (
  * 计算日期匹配得分
  */
 const calculateDateScore = (
-  transactionDate: string,
-  eventDate: string
+  transactionDate: any,
+  eventDate: any
 ): { score: number; reason: string; daysDifference: number } => {
   console.log('📅 [calculateDateScore] Input:', {
     transactionDate,
@@ -670,8 +671,8 @@ const calculateDateScore = (
   });
 
   // 处理可能的 Firestore Timestamp 对象
-  let txDateStr = transactionDate;
-  let evtDateStr = eventDate;
+  let txDateStr: string | undefined = typeof transactionDate === 'string' ? transactionDate : undefined;
+  let evtDateStr: string | undefined = typeof eventDate === 'string' ? eventDate : undefined;
 
   // 如果是 Firestore Timestamp 对象，转换为字符串
   // 方法1: 有 toDate() 方法的 Timestamp 对象
@@ -697,8 +698,8 @@ const calculateDateScore = (
     console.log('🔄 [Method 2] Converted event timestamp to string:', evtDateStr);
   }
 
-  const txDate = new Date(txDateStr);
-  const evtDate = new Date(evtDateStr);
+  const txDate = new Date(txDateStr || '');
+  const evtDate = new Date(evtDateStr || '');
 
   // 验证日期是否有效
   const txDateValid = !isNaN(txDate.getTime());
@@ -727,7 +728,7 @@ const calculateDateScore = (
 
   console.log('📊 [calculateDateScore] Days difference:', daysDiff);
 
-  // 日期匹配得分（满分40分，最重要的匹配依据）
+  // 日期匹配得分(满分40分，最重要的匹配依据)
   if (daysDiff === 0) {
     return { score: 40, reason: '活动当天', daysDifference: daysDiff };
   }

@@ -2,10 +2,10 @@
  * Activity Financial Plan Component
  * 活动财务计划组件
  * 
- * 允许活动筹委自主管理活动财务预测（CRUD）
+ * 允许活动筹委自主管理活动财务预测(CRUD）
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Table,
@@ -19,6 +19,7 @@ import {
   message,
   Popconfirm,
   Tag,
+  Typography,
 } from 'antd';
 import {
   PlusOutlined,
@@ -28,15 +29,20 @@ import {
   RiseOutlined,
   FallOutlined,
   ImportOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { globalSystemService } from '@/config/globalSystemSettings';
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { globalDateService } from '@/config/globalDateSettings';
-import { getActiveIncomeCategories, getActiveExpenseCategories } from '@/modules/system/services/financialCategoryService';
+import { batchAddEventAccountPlans } from '@/modules/event/services/eventAccountPlanService';
+import { useAuthStore } from '@/stores/authStore';
+import { Progress } from 'antd';
 import './ActivityFinancialPlan.css';
 
 const { Option } = Select;
+const { Text } = Typography;
 
 export interface FinancialPlanItem {
   id: string;
@@ -45,8 +51,8 @@ export interface FinancialPlanItem {
   description: string;
   remark?: string;
   amount: number;
-  expectedDate: string;
-  status: 'planned' | 'pending-approval' | 'confirmed' | 'completed' | 'cancelled';
+  status?: 'pending' | 'completed' | 'cancelled'; // 🆕 可选的状态字段(用于活动账目记录）
+  transactionDate?: string; // 🆕 交易日期(用于活动账目记录）
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -56,6 +62,24 @@ export interface FinancialPlanItem {
 interface Props {
   accountId?: string;
   items: FinancialPlanItem[];
+  additionalItems?: FinancialPlanItem[]; // 🆕 额外数据源(用于继承其他标签页的类别）
+  // 🆕 只读模式(隐藏编辑和批量粘贴等改动类控件）
+  readOnly?: boolean;
+  // 🆕 对账状态映射(可选）：用于在列表中展示"已核对/未核对"标签
+  reconciliationMap?: Record<string, 'matched' | 'unmatched'>;
+  // 🆕 匹配的银行交易记录映射(可选）：显示已核对的银行交易详情
+  matchedBankTransactions?: Record<string, {
+    id: string;
+    transactionDate: string;
+    description: string;
+    amount: number;
+    bankAccount?: string;
+    bankAccountName?: string;
+  }>;
+  // 🆕 核对操作函数(可选）
+  onReconcile?: (txId: string) => void;
+  onCancelReconcile?: (txId: string) => void;
+  onAutoReconcile?: () => Promise<void>; // 🆕 自动核对函数
   loading?: boolean;
   onAdd: (item: Omit<FinancialPlanItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => Promise<void>;
   onUpdate: (id: string, updates: Partial<FinancialPlanItem>) => Promise<void>;
@@ -66,6 +90,13 @@ interface Props {
 const ActivityFinancialPlan: React.FC<Props> = ({
   accountId: _accountId,
   items,
+  additionalItems = [], // 🆕 默认空数组
+  readOnly = false,
+  reconciliationMap,
+  matchedBankTransactions,
+  onReconcile,
+  onCancelReconcile,
+  onAutoReconcile,
   loading,
   onAdd,
   onUpdate,
@@ -75,10 +106,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const [editMode, setEditMode] = useState(false);
   const [quickAddCategory, setQuickAddCategory] = useState<{income?: string; expense?: string}>({});
   const [editedItems, setEditedItems] = useState<Map<string, Partial<FinancialPlanItem>>>(new Map());
-  
-  // 动态类别
-  const [incomeCategories, setIncomeCategories] = useState<Array<{label: string; value: string}>>([]);
-  const [expenseCategories, setExpenseCategories] = useState<Array<{label: string; value: string}>>([]);
   
   // 批量粘贴
   const [bulkPasteVisible, setBulkPasteVisible] = useState(false);
@@ -90,29 +117,55 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     description: string;
     remark: string;
     amount: number;
-    expectedDate: string;
+    transactionDate?: string;
   }>>([]);
+  
+  // 🆕 Global setting for bulk import (批量导入统一设定)
+  const [globalType, setGlobalType] = useState<'income' | 'expense' | null>(null);
+  const [globalCategory, setGlobalCategory] = useState<string>('');
+  
+  // 🆕 从当前活动获取已存在的类别(合并当前数据和额外数据源）
+  const getExistingCategories = (type: 'income' | 'expense') => {
+    // 合并 items 和 additionalItems
+    const allItems = [...items, ...additionalItems];
+    const categories = allItems
+      .filter(item => item.type === type)
+      .map(item => item.category)
+      .filter((cat, index, self) => self.indexOf(cat) === index) // 去重
+      .sort();
+    return categories;
+  };
+  
+  // 🆕 当前可用的类别(根据选中的类型）
+  const availableCategories = globalType ? getExistingCategories(globalType) : [];
+  
+  // 🆕 获取编辑模式下的可用类别(根据记录类型）
+  const getCategoryOptions = (type: 'income' | 'expense') => {
+    return getExistingCategories(type);
+  };
+  
+  // 🆕 Import status (导入状态)
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
 
   const tableConfig = globalComponentService.getTableConfig();
   
-  // 加载动态类别
+  // 🆕 页面离开保护
   useEffect(() => {
-    loadCategories();
-  }, []);
-  
-  const loadCategories = async () => {
-    try {
-      const [income, expense] = await Promise.all([
-        getActiveIncomeCategories(),
-        getActiveExpenseCategories(),
-      ]);
-      setIncomeCategories(income);
-      setExpenseCategories(expense);
-    } catch (error) {
-      message.error('加载类别失败');
-      console.error(error);
-    }
-  };
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isImporting) {
+        e.preventDefault();
+        e.returnValue = '导入正在进行中，确定要离开吗？';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isImporting]);
 
   // 统计数据
   const incomeItems = items.filter(item => item.type === 'income');
@@ -123,9 +176,8 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 
   // 获取类别标签
   const getCategoryLabel = (type: 'income' | 'expense', value: string) => {
-    const categories = type === 'income' ? incomeCategories : expenseCategories;
-    const category = categories.find(cat => cat.value === value);
-    return category?.label || value;
+    // 🆕 直接返回类别值(用户可自由输入类别）
+    return value;
   };
   
   // 扩展数据类型：用于分组行
@@ -146,7 +198,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     
     // 按类别分组
     const incomeByCategory = incomeItems.reduce((acc, item) => {
-      const cat = item.category;
+      const cat = item.category || 'Uncategorized';
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(item);
       return acc;
@@ -186,7 +238,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     
     // 按类别分组
     const expenseByCategory = expenseItems.reduce((acc, item) => {
-      const cat = item.category;
+      const cat = item.category || 'Uncategorized';
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(item);
       return acc;
@@ -223,7 +275,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const incomeData = buildIncomeData();
   const expenseData = buildExpenseData();
   
-  // 获取编辑的值（如果有编辑过）
+  // 获取编辑的值(如果有编辑过）
   const getEditedValue = (id: string, field: keyof FinancialPlanItem) => {
     const edited = editedItems.get(id);
     return edited?.[field];
@@ -239,10 +291,9 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     });
   };
   
-  // 批量粘贴解析（从文本转为表格数据）
+  // 批量粘贴解析(从文本转为表格数据）
   const parseBulkPasteText = (text: string) => {
     const lines = text.trim().split('\n').filter(line => line.trim());
-    const defaultCategory = incomeCategories[0]?.value || 'other-income';
     
     const items = lines.map((line, index) => {
       const parts = line.split('\t').map(p => p.trim());
@@ -250,11 +301,10 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       return {
         key: `bulk-${Date.now()}-${index}`,
         type: 'income' as const,
-        category: defaultCategory,
+        category: 'Uncategorized', // 🆕 默认类别：未分类(用户可自由修改）
         description: parts[0] || '',
           remark: parts[1] || '',
           amount: parseFloat(parts[2]) || 0,
-        expectedDate: parts[3] || dayjs().format('YYYY-MM-DD'),
       };
     });
     
@@ -271,17 +321,15 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   
   // 添加空行
   const handleAddBulkRow = () => {
-    const defaultCategory = incomeCategories[0]?.value || 'other-income';
     setBulkPasteData([
       ...bulkPasteData,
       {
         key: `bulk-${Date.now()}`,
         type: 'income',
-        category: defaultCategory,
+        category: 'Uncategorized', // 🆕 默认类别
         description: '',
         remark: '',
         amount: 0,
-        expectedDate: dayjs().format('YYYY-MM-DD'),
       }
     ]);
   };
@@ -289,6 +337,33 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   // 删除行
   const handleDeleteBulkRow = (key: string) => {
     setBulkPasteData(bulkPasteData.filter(item => item.key !== key));
+  };
+  
+  // 🆕 应用到全部记录
+  const handleApplyGlobalCategory = () => {
+    if (!globalType || !globalCategory) {
+      message.warning('请先选择类型和类别');
+      return;
+    }
+
+    setBulkPasteData(bulkPasteData.map(item => ({
+      ...item,
+      type: globalType!,
+      category: globalCategory,
+    })));
+
+    message.success(`已为 ${bulkPasteData.length} 条记录设定类型和类别: ${globalType === 'income' ? '收入' : '支出'} - ${globalCategory}`);
+    
+    // Clear global setting
+    setGlobalType(null);
+    setGlobalCategory('');
+  };
+
+  // 🆕 清除统一设定
+  const handleClearGlobalSetting = () => {
+    setGlobalType(null);
+    setGlobalCategory('');
+    message.info('已清除统一设定');
   };
   
   // 更新表格数据
@@ -302,19 +377,36 @@ const ActivityFinancialPlan: React.FC<Props> = ({
   const handleOpenBulkImport = () => {
     setBulkPasteVisible(true);
     // 自动添加第一行
-    const defaultCategory = incomeCategories[0]?.value || 'other-income';
     setBulkPasteData([{
       key: `bulk-${Date.now()}`,
       type: 'income',
-      category: defaultCategory,
+      category: 'Uncategorized', // 🆕 默认类别
       description: '',
       remark: '',
       amount: 0,
-      expectedDate: dayjs().format('YYYY-MM-DD'),
+      transactionDate: dayjs().format('YYYY-MM-DD'),
     }]);
   };
   
-  // 批量粘贴提交
+  // 🆕 取消导入
+  const handleCancelImport = () => {
+    if (isImporting) {
+      Modal.confirm({
+        title: '确认取消',
+        content: '导入正在进行中，确定要取消吗？',
+        onOk: () => {
+          setIsImporting(false);
+          setImportProgress(0);
+          message.info('已取消导入');
+        },
+      });
+    } else {
+      setBulkPasteVisible(false);
+      setBulkPasteData([]);
+    }
+  };
+  
+  // 批量粘贴提交 (优化版)
   const handleBulkPasteSubmit = async () => {
     try {
       if (bulkPasteData.length === 0) {
@@ -328,44 +420,65 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       );
       
       if (invalidRows.length > 0) {
-        message.error(`有 ${invalidRows.length} 行数据不完整（描述和金额必填且金额需大于0）`);
+        message.error(`有 ${invalidRows.length} 行数据不完整(描述和金额必填且金额需大于0）`);
         return;
       }
       
-      for (const item of bulkPasteData) {
-        await onAdd({
+      // 开始导入
+      setIsImporting(true);
+      setImportProgress(0);
+      
+      // 准备批量导入数据
+      const itemsToAdd = bulkPasteData.map(item => ({
           type: item.type,
           category: item.category,
           description: item.description,
           remark: item.remark,
           amount: item.amount,
-          expectedDate: item.expectedDate,
-          status: 'planned',
-        } as any);
-      }
+      }));
+      
+      // 获取用户信息
+      const { user } = useAuthStore.getState();
+      const userId = user?.id || 'system';
+      
+      // 🚀 批量导入 - 一次性写入 (快)
+      await batchAddEventAccountPlans(_accountId!, itemsToAdd, userId);
+      
+      // 模拟进度更新
+      setImportProgress(100);
       
       message.success(`成功导入 ${bulkPasteData.length} 条记录`);
+      
       setBulkPasteVisible(false);
       setBulkPasteData([]);
       await onRefresh();
     } catch (error) {
       message.error('导入失败');
       console.error(error);
+    } finally {
+      setIsImporting(false);
+      setImportProgress(0);
     }
   };
 
   // 保存所有编辑并退出编辑模式
   const handleSaveAndExitEdit = async () => {
     try {
-      // 批量保存所有编辑的项目
-      for (const [id, changes] of editedItems.entries()) {
+      // 🆕 过滤掉虚拟的类别标题行(key包含 -cat- 或 -pending 的记录）
+      const realEditedItems = Array.from(editedItems.entries()).filter(([id]) => {
+        // 真实项目的id应该是有效的Firestore文档ID(不包含 -cat- 或 -pending）
+        return id && !id.includes('-cat-') && !id.includes('-pending');
+      });
+      
+      // 批量保存所有真实编辑的项目
+      for (const [id, changes] of realEditedItems) {
         if (Object.keys(changes).length > 0) {
           await onUpdate(id, changes);
         }
       }
       
-      if (editedItems.size > 0) {
-        message.success(`成功保存 ${editedItems.size} 个项目的更改`);
+      if (realEditedItems.length > 0) {
+        message.success(`成功保存 ${realEditedItems.length} 个项目的更改`);
       }
       
       // 退出编辑模式
@@ -377,7 +490,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 在类型下快速添加（仅需选择类别）
+  // 在类型下快速添加(仅需选择类别）
   const handleQuickAddInType = async (type: 'income' | 'expense', category: string) => {
     try {
       const itemData = {
@@ -386,8 +499,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         description: `新${type === 'income' ? '收入' : '支出'}项目`,
         remark: '',
         amount: 0,
-        expectedDate: dayjs().toISOString(),
-        status: 'planned' as const,
       };
 
       await onAdd(itemData as any);
@@ -399,7 +510,7 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 在特定类别下添加项目（从类别行的添加按钮）
+  // 在特定类别下添加项目(从类别行的添加按钮）
   const handleAddItemInCategory = async (type: 'income' | 'expense', category: string) => {
     try {
       const itemData = {
@@ -408,8 +519,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         description: `新${type === 'income' ? '收入' : '支出'}项目`,
         remark: '',
         amount: 0,
-        expectedDate: dayjs().toISOString(),
-        status: 'planned' as const,
       };
 
         await onAdd(itemData as any);
@@ -421,17 +530,15 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 删除整个类别及其下的所有项目
+  // 删除整个类别及其下的所有项目(优化版 - 使用 Promise.all 并行删除）
   const handleDeleteCategory = async (type: 'income' | 'expense', category: string) => {
     const categoryItems = items.filter(item => item.type === type && item.category === category);
     
     if (categoryItems.length === 0) return;
     
     try {
-      // 删除该类别下的所有项目
-      for (const item of categoryItems) {
-        await onDelete(item.id);
-      }
+      // 🚀 性能优化：使用 Promise.all 并行删除，而不是顺序执行
+      await Promise.all(categoryItems.map(item => onDelete(item.id)));
       message.success(`已删除 ${getCategoryLabel(type, category)} 类别及其 ${categoryItems.length} 个项目`);
     } catch (error) {
       message.error('删除类别失败');
@@ -449,12 +556,12 @@ const ActivityFinancialPlan: React.FC<Props> = ({
     }
   };
 
-  // 分组表格列定义
+  // 分组表格列定义(按指定顺序：项目/类别>备注>金额>状态>已匹配银行交易）
   const columns: ColumnsType<GroupedRow> = [
     {
       title: '项目/类别',
       dataIndex: 'description',
-      width: '35%',
+      width: '20%',
       render: (_: unknown, record: GroupedRow) => {
         // 类别标题行 (Ticketing, Sponsor, etc.)
         if (record.isCategoryHeader) {
@@ -463,11 +570,63 @@ const ActivityFinancialPlan: React.FC<Props> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              gap: '8px',
               fontWeight: 600, 
               fontSize: '14px',
               color: '#595959'
             }}>
+              {editMode && !record.isCategoryHeader ? null : (
+                <>
+                  {editMode ? (
+                    <Select
+                      mode="tags"
+                      showSearch
+                      size="small"
+                      value={
+                        // 🆕 从该类别下的第一个项目获取已编辑的类别名称
+                        (() => {
+                          const categoryItems = items.filter(i => i.type === record.type && i.category === record.category);
+                          if (categoryItems.length > 0 && categoryItems[0].id) {
+                            const editedCategory = getEditedValue(categoryItems[0].id, 'category');
+                            if (editedCategory !== undefined) return [editedCategory];
+                          }
+                          return record.category ? [record.category] : [];
+                        })()
+                      }
+                      onChange={(values) => {
+                        // 只允许一个类别，取最后一个值
+                        const newCategory = values[values.length - 1] || '';
+                        
+                        // 获取该类别下的所有项目
+                        const categoryItems = items.filter(i => i.type === record.type && i.category === record.category);
+                        
+                        // 更新每个项目的类别(只更新真实项目，不更新虚拟的类别标题行）
+                        categoryItems.forEach(item => {
+                          handleFieldChange(item.id, 'category', newCategory);
+                        });
+                      }}
+                      placeholder="选择已有类别或创建新类别"
+                      style={{ flex: 1, fontWeight: 600 }}
+                      filterOption={(input, option) => {
+                        const label = String(option?.children || option?.value || '');
+                        return label.toLowerCase().includes(input.toLowerCase());
+                      }}
+                      maxTagCount={1}
+                      tokenSeparators={[]}
+                      allowClear={false}
+                      disabled={!record.type}
+                    >
+                      {record.type && getCategoryOptions(record.type).map(cat => (
+                        <Option key={cat} value={cat}>
+                          {cat}
+                        </Option>
+                      ))}
+                    </Select>
+                  ) : (
               <div>{record.categoryLabel}</div>
+                  )}
+                </>
+              )}
               {editMode && (
         <Space size="small">
           <Button
@@ -543,70 +702,38 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       },
     },
     {
-      title: '备注 / 状态',
+      title: '备注',
       dataIndex: 'remark',
-      width: '20%',
+      width: '13%',
       render: (text: string, record: GroupedRow) => {
         // 只在项目行显示备注
         if (record.isTypeHeader || record.isCategoryHeader) return null;
         
-        // 编辑模式 - 备注和状态横向排列
+        // 编辑模式 - 备注输入框
         if (editMode) {
           const currentRemark = getEditedValue(record.id!, 'remark') ?? record.remark;
-          const currentStatus = getEditedValue(record.id!, 'status') ?? record.status;
           
           return (
-            <div style={{ display: 'flex', gap: '4px', width: '100%', alignItems: 'center' }}>
               <Input
                 size="small"
                 value={currentRemark}
                 onChange={(e) => handleFieldChange(record.id!, 'remark', e.target.value)}
                 placeholder="备注"
-                style={{ flex: 1, minWidth: 0 }}
-              />
-              <Select
-                size="small"
-                style={{ width: 90, flexShrink: 0 }}
-                value={currentStatus}
-                onChange={(value) => handleFieldChange(record.id!, 'status', value)}
-                placeholder="状态"
-              >
-                <Option value="planned">计划中</Option>
-                <Option value="pending-approval">待审批</Option>
-                <Option value="confirmed">已确认</Option>
-                <Option value="completed">已完成</Option>
-                <Option value="cancelled">已取消</Option>
-              </Select>
-            </div>
+            />
           );
         }
         
-        // 正常模式 - 显示备注和状态标签（同一行）
-        const statusMap = {
-          planned: { label: '计划中', color: 'blue' },
-          'pending-approval': { label: '待审批', color: 'gold' },
-          confirmed: { label: '已确认', color: 'orange' },
-          completed: { label: '已完成', color: 'green' },
-          cancelled: { label: '已取消', color: 'default' },
-        };
-        const statusConfig = statusMap[record.status as keyof typeof statusMap] || statusMap.planned;
-        
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: '#8c8c8c', fontSize: '13px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ color: '#8c8c8c', fontSize: '13px' }}>
               {text || '-'}
             </span>
-            <Tag color={statusConfig.color} style={{ fontSize: '11px', flexShrink: 0 }}>
-              {statusConfig.label}
-            </Tag>
-          </div>
         );
       },
     },
     {
       title: '金额',
       dataIndex: 'amount',
-      width: 100,
+      width: '10%',
       align: 'right',
       render: (_: unknown, record: GroupedRow) => {
         // 类型标题行不显示金额
@@ -656,53 +783,207 @@ const ActivityFinancialPlan: React.FC<Props> = ({
       },
     },
     {
-      title: '预计日期',
-      dataIndex: 'expectedDate',
-      width: 110,
+      title: '日期',
+      dataIndex: 'transactionDate',
+      width: '8%',
       render: (date: string, record: GroupedRow) => {
         // 只在项目行显示日期
         if (record.isTypeHeader || record.isCategoryHeader) return null;
         
-        // 编辑模式下可编辑
-        if (editMode) {
-          const currentValue = getEditedValue(record.id!, 'expectedDate') ?? record.expectedDate;
-          return (
-            <DatePicker
+        if (!date || date.trim() === '') {
+          return <span style={{ color: '#d9d9d9', fontSize: '13px' }}>-</span>;
+        }
+        
+        return (
+          <span style={{ fontSize: '13px', color: '#262626' }}>
+            {globalDateService.formatDate(date, 'display')}
+          </span>
+        );
+      },
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      width: '8%',
+      render: (_: unknown, record: GroupedRow) => {
+        // 只在项目行显示状态
+        if (record.isTypeHeader || record.isCategoryHeader) return null;
+        
+        // 🆕 合并的交易状态 + 对账状态标签
+        const recordStatus = (record as any).status;
+        const reconcileState = record.id && reconciliationMap ? reconciliationMap[record.id] : undefined;
+        
+        // 合并状态逻辑
+        let combinedStatus: { label: string; color: string } | null = null;
+        if (recordStatus) {
+          if (recordStatus === 'pending' && reconcileState === 'unmatched') {
+            combinedStatus = { label: '待处理', color: 'red' };
+          } else if (recordStatus === 'pending' && (reconcileState === 'matched' || !reconcileState)) {
+            combinedStatus = { label: '待处理', color: 'orange' };
+          } else if (recordStatus === 'completed' && reconcileState === 'unmatched') {
+            combinedStatus = { label: '待核对', color: 'orange' };
+          } else if (recordStatus === 'completed' && reconcileState === 'matched') {
+            combinedStatus = { label: '已核对', color: 'green' };
+          } else if (recordStatus === 'completed') {
+            combinedStatus = { label: '已完成', color: 'green' };
+          } else if (recordStatus === 'cancelled') {
+            combinedStatus = { label: '已取消', color: 'default' };
+          }
+        }
+        
+        // 🆕 核对操作按钮(仅当有核对函数时显示）
+        // 判断是否有手动核对：通过 matchedBankTransactions 检查
+        const hasManualReconcile = matchedBankTransactions && record.id && matchedBankTransactions[record.id];
+        
+        const reconcileActions = onReconcile && record.id ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {combinedStatus && (
+              <Tag color={combinedStatus.color as any} style={{ fontSize: '11px', margin: 0 }}>
+                {combinedStatus.label}
+              </Tag>
+            )}
+            {hasManualReconcile ? (
+              // 🆕 手动核对：显示"取消核对"按钮
+              <Button
+                type="link"
               size="small"
-              style={{ width: '100%' }}
-              format="DD-MMM-YYYY"
-              placeholder="选择日期"
-              value={currentValue ? dayjs(currentValue) : null}
-              onChange={(date) => handleFieldChange(record.id!, 'expectedDate', date ? date.toISOString() : new Date().toISOString())}
-            />
+                danger
+                onClick={() => onCancelReconcile?.(record.id!)}
+                style={{ padding: 0, fontSize: '11px', height: 'auto', lineHeight: '1' }}
+              >
+                取消核对
+              </Button>
+            ) : (
+              // 🆕 未手动核对：显示"核对"按钮
+              <Button
+                type="link"
+                size="small"
+                onClick={() => onReconcile?.(record.id!)}
+                style={{ padding: 0, fontSize: '11px', height: 'auto', lineHeight: '1' }}
+              >
+                核对
+              </Button>
+            )}
+          </div>
+        ) : (
+          combinedStatus ? (
+            <Tag color={combinedStatus.color as any} style={{ fontSize: '11px' }}>
+              {combinedStatus.label}
+            </Tag>
+          ) : null
+        );
+
+        return reconcileActions;
+      },
+    },
+    {
+      title: '已匹配银行交易',
+      dataIndex: 'matchedBankTransaction',
+      width: '20%',
+      render: (_: unknown, record: GroupedRow) => {
+        // 只在项目行显示
+        if (record.isTypeHeader || record.isCategoryHeader) return null;
+        
+        // 如果没有提供 matchedBankTransactions，返回 null
+        if (!matchedBankTransactions || !record.id) return null;
+        
+        const matchedBankTx = matchedBankTransactions[record.id];
+        
+        if (!matchedBankTx) {
+          return (
+            <span style={{ color: '#d9d9d9', fontSize: '12px' }}>
+              无匹配记录
+            </span>
           );
         }
         
-        // 正常显示模式
-        return globalDateService.formatDate(date, 'display');
+        return (
+          <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
+            <div style={{ fontWeight: 500, color: '#262626', marginBottom: '4px' }}>
+              {matchedBankTx.description}
+            </div>
+            <div style={{ color: '#8c8c8c', display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span>
+                {matchedBankTx.transactionDate 
+                  ? globalDateService.formatDate(matchedBankTx.transactionDate, 'display')
+                  : matchedBankTx.transactionDate}
+              </span>
+              <span>•</span>
+              <span style={{ fontWeight: 500, color: record.type === 'income' ? '#52c41a' : '#ff4d4f' }}>
+                RM {matchedBankTx.amount.toFixed(2)}
+              </span>
+              {matchedBankTx.bankAccountName && (
+                <>
+                  <span>•</span>
+                  <span style={{ color: '#1890ff' }}>{matchedBankTx.bankAccountName}</span>
+                </>
+              )}
+            </div>
+          </div>
+        );
       },
     },
   ];
 
+  // 🆕 根据模式过滤列：活动账目记录模式显示所有列，活动财务预算模式只显示基本列并调整列宽
+  const filteredColumns = useMemo(() => {
+    const isEventTransactionMode = !!reconciliationMap;
+    
+    if (isEventTransactionMode) {
+      // 活动账目记录模式：显示所有列
+      return columns;
+    } else {
+      // 活动财务预算模式：只显示基本列(项目/类别、备注、金额），并调整列宽
+      return columns.filter(col => {
+        const title = (col.title as string) || '';
+        return ['项目/类别', '备注', '金额'].includes(title);
+      }).map(col => {
+        // 调整活动财务预算模式的列宽(只有3列，需要更宽的布局）
+        const title = (col.title as string) || '';
+        if (title === '项目/类别') {
+          return { ...col, width: '50%' }; // 主要信息，需要更多空间
+        } else if (title === '备注') {
+          return { ...col, width: '35%' }; // 次要信息
+        } else if (title === '金额') {
+          return { ...col, width: '15%' }; // 金额信息
+        }
+        return col;
+      });
+    }
+  }, [columns, reconciliationMap]);
+
   return (
     <Card 
-      title="🔮 活动财务计划（Activity Financial Plan）"
+      title="🔮 活动财务预算(Project Budget）"
       extra={
         <Space>
           {!editMode ? (
             <>
-          <Button
-                icon={<EditOutlined />}
-                onClick={() => setEditMode(true)}
-              >
-                编辑模式
-          </Button>
-          <Button
-            icon={<ImportOutlined />}
-            onClick={handleOpenBulkImport}
-          >
-            批量粘贴
-          </Button>
+          {!readOnly && (
+            <Button
+              icon={<EditOutlined />}
+              onClick={() => setEditMode(true)}
+            >
+              编辑模式
+            </Button>
+          )}
+          {onAutoReconcile && (
+            <Button
+              icon={<CheckCircleOutlined />}
+              onClick={onAutoReconcile}
+              type="dashed"
+            >
+              自动核对
+            </Button>
+          )}
+          {!readOnly && (
+            <Button
+              icon={<ImportOutlined />}
+              onClick={handleOpenBulkImport}
+            >
+              批量粘贴
+            </Button>
+          )}
           <Button
             icon={<DownloadOutlined />}
             onClick={() => message.info('导出功能开发中...')}
@@ -756,22 +1037,31 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           {editMode && (
             <Space size="small">
               <Select
+                mode="tags"
+                showSearch
                 size="small"
                 style={{ width: 200 }}
-                placeholder="选择新类别"
-                value={quickAddCategory.income}
-                onChange={(value) => {
+                placeholder="选择类别或创建新类别"
+                value={quickAddCategory.income ? [quickAddCategory.income] : []}
+                onChange={(values) => {
+                  // 只允许一个类别，取最后一个值
+                  const category = values[values.length - 1] || '';
                   setQuickAddCategory(prev => ({
                     ...prev,
-                    income: value
+                    income: category
                   }));
                 }}
+                filterOption={(input, option) => {
+                  const label = String(option?.children || option?.value || '');
+                  return label.toLowerCase().includes(input.toLowerCase());
+                }}
+                maxTagCount={1}
+                tokenSeparators={[]}
+                allowClear
               >
-                {incomeCategories
-                  .filter(cat => !incomeItems.map(i => i.category).includes(cat.value))
-                  .map(cat => (
-                    <Option key={cat.value} value={cat.value}>
-                      {cat.label}
+                {getCategoryOptions('income').map(cat => (
+                  <Option key={cat} value={cat}>
+                    {cat}
                     </Option>
                   ))}
               </Select>
@@ -798,12 +1088,13 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 
               <Table
                 {...tableConfig}
-          columns={columns}
+          columns={filteredColumns}
           dataSource={incomeData}
           rowKey="key"
                 loading={loading}
           pagination={false}
           showHeader={true}
+          size="small"
           rowClassName={(record) => {
             if (record.isCategoryHeader) return 'category-header-row';
             if (editMode && !record.isCategoryHeader) return 'item-row editable-row';
@@ -836,22 +1127,31 @@ const ActivityFinancialPlan: React.FC<Props> = ({
           {editMode && (
             <Space size="small">
               <Select
+                mode="tags"
+                showSearch
                 size="small"
                 style={{ width: 200 }}
-                placeholder="选择新类别"
-                value={quickAddCategory.expense}
-                onChange={(value) => {
+                placeholder="选择类别或创建新类别"
+                value={quickAddCategory.expense ? [quickAddCategory.expense] : []}
+                onChange={(values) => {
+                  // 只允许一个类别，取最后一个值
+                  const category = values[values.length - 1] || '';
                   setQuickAddCategory(prev => ({
                     ...prev,
-                    expense: value
+                    expense: category
                   }));
                 }}
+                filterOption={(input, option) => {
+                  const label = String(option?.children || option?.value || '');
+                  return label.toLowerCase().includes(input.toLowerCase());
+                }}
+                maxTagCount={1}
+                tokenSeparators={[]}
+                allowClear
               >
-                {expenseCategories
-                  .filter(cat => !expenseItems.map(i => i.category).includes(cat.value))
-                  .map(cat => (
-                      <Option key={cat.value} value={cat.value}>
-                        {cat.label}
+                {getCategoryOptions('expense').map(cat => (
+                  <Option key={cat} value={cat}>
+                    {cat}
                       </Option>
                     ))}
                   </Select>
@@ -878,12 +1178,13 @@ const ActivityFinancialPlan: React.FC<Props> = ({
 
         <Table
           {...tableConfig}
-          columns={columns}
+          columns={filteredColumns}
           dataSource={expenseData}
           rowKey="key"
           loading={loading}
           pagination={false}
           showHeader={true}
+          size="small"
           rowClassName={(record) => {
             if (record.isCategoryHeader) return 'category-header-row';
             if (editMode && !record.isCategoryHeader) return 'item-row editable-row';
@@ -945,22 +1246,131 @@ const ActivityFinancialPlan: React.FC<Props> = ({
         title="批量导入财务计划"
         open={bulkPasteVisible}
         onOk={handleBulkPasteSubmit}
-        onCancel={() => {
-          setBulkPasteVisible(false);
-          setBulkPasteText('');
-          setBulkPasteData([]);
-        }}
+        onCancel={handleCancelImport}
         width={1200}
-        okText={`确认导入 (${bulkPasteData.length})`}
-        cancelText="取消"
-        okButtonProps={{ disabled: bulkPasteData.length === 0 }}
+        okText={isImporting ? `导入中... (${bulkPasteData.length})` : `确认导入 (${bulkPasteData.length})`}
+        cancelText={isImporting ? '取消导入' : '取消'}
+        okButtonProps={{ 
+          loading: isImporting,
+          disabled: readOnly || bulkPasteData.length === 0 || isImporting 
+        }}
+        closable={!isImporting}
+        maskClosable={!isImporting}
       >
+        {/* 🆕 Global Setting Bar */}
+        <div 
+          style={{ 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            padding: 16,
+            borderRadius: 6,
+            marginBottom: 16 
+          }}
+        >
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Text strong style={{ color: 'white', fontSize: 14 }}>
+              🔹 统一设定 (一键应用到下方所有记录)
+            </Text>
+            <Space wrap style={{ width: '100%' }}>
+              <Select
+                placeholder="选择类型"
+                style={{ width: 120, background: 'white' }}
+                value={globalType}
+                onChange={(value) => {
+                  setGlobalType(value);
+                  setGlobalCategory(''); // 切换类型时清空类别
+                }}
+              >
+                <Option value="income">📈 收入</Option>
+                <Option value="expense">📉 支出</Option>
+              </Select>
+              
+              <Select
+                mode="tags"
+                showSearch
+                placeholder={availableCategories.length > 0 ? "选择已有类别或创建新类别" : "输入新类别"}
+                style={{ minWidth: 200 }}
+                value={globalCategory ? [globalCategory] : []}
+                onChange={(values) => {
+                  // 只允许一个类别，取最后一个值
+                  const lastValue = values[values.length - 1] || '';
+                  setGlobalCategory(lastValue);
+                }}
+                disabled={!globalType}
+                filterOption={(input, option) => {
+                  const label = String(option?.children || option?.value || '');
+                  return label.toLowerCase().includes(input.toLowerCase());
+                }}
+                maxTagCount={1}
+                tokenSeparators={[]}
+                allowClear
+              >
+                {availableCategories.map(cat => (
+                  <Option key={cat} value={cat}>
+                    {cat}
+                  </Option>
+                ))}
+              </Select>
+              
+              <Button 
+                type="primary"
+                onClick={handleApplyGlobalCategory}
+                disabled={!globalType || !globalCategory || bulkPasteData.length === 0}
+                style={{ background: '#52c41a', borderColor: '#52c41a' }}
+              >
+                ✓ 应用到全部记录 ({bulkPasteData.length})
+              </Button>
+              
+              <Button 
+                danger
+                onClick={handleClearGlobalSetting}
+                disabled={!globalType && !globalCategory}
+                style={{ background: 'white', color: '#ff4d4f' }}
+              >
+                📝 清除设定
+              </Button>
+            </Space>
+          </Space>
+        </div>
+        
+        {/* 🆕 Import Progress (导入进度显示) */}
+        {isImporting && (
+          <div style={{ 
+            marginBottom: 16, 
+            padding: 16, 
+            background: '#f0f9ff', 
+            borderRadius: 6,
+            border: '1px solid #91d5ff'
+          }}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text strong style={{ fontSize: 14 }}>
+                  📊 导入进度
+                </Text>
+                <Text strong style={{ color: '#1890ff', fontSize: 14 }}>
+                  {importProgress} / {bulkPasteData.length}
+                </Text>
+              </div>
+              <Progress 
+                percent={Math.round((importProgress / bulkPasteData.length) * 100)} 
+                status="active" 
+                strokeColor={{
+                  '0%': '#108ee9',
+                  '100%': '#87d068',
+                }}
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                ⚠️ 正在导入... 请勿关闭页面或刷新浏览器
+              </Text>
+            </Space>
+          </div>
+        )}
+
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ margin: 0, marginBottom: 4, fontWeight: 600 }}>使用说明：</p>
               <ul style={{ paddingLeft: 20, margin: '4px 0', fontSize: '13px', color: '#666' }}>
-                <li>从Excel复制数据后，选中表格任意单元格按 Ctrl+V 粘贴（自动解析）</li>
+                <li>从Excel复制数据后，选中表格任意单元格按 Ctrl+V 粘贴(自动解析）</li>
                 <li>Excel格式：<code>描述 [Tab] 备注 [Tab] 金额 [Tab] 日期</code></li>
                 <li>也可手动点击"添加行"按钮逐行输入</li>
           </ul>
@@ -1066,25 +1476,6 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                     ),
                   },
                   {
-                    title: '预计日期',
-                    dataIndex: 'expectedDate',
-                    key: 'expectedDate',
-                    width: 140,
-                    render: (date, record) => (
-                      <DatePicker
-                        value={date ? dayjs(date) : null}
-                        onChange={(value) => handleBulkDataChange(
-                          record.key, 
-                          'expectedDate', 
-                          value ? value.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
-                        )}
-                        size="small"
-                        style={{ width: '100%' }}
-                        format="YYYY-MM-DD"
-                      />
-                    ),
-                  },
-                  {
                     title: '类型',
                     dataIndex: 'type',
                     key: 'type',
@@ -1107,21 +1498,13 @@ const ActivityFinancialPlan: React.FC<Props> = ({
                     key: 'category',
                     width: 150,
                     render: (category, record) => (
-                      <Select
-                        value={category}
-                        onChange={(value) => handleBulkDataChange(record.key, 'category', value)}
+                      <Input
                         size="small"
+                        value={category}
+                        onChange={(e) => handleBulkDataChange(record.key, 'category', e.target.value)}
+                        placeholder="输入类别"
                         style={{ width: '100%' }}
-                      >
-                        {record.type === 'income' 
-                          ? incomeCategories.map(cat => (
-                              <Option key={cat.value} value={cat.value}>{cat.label}</Option>
-                            ))
-                          : expenseCategories.map(cat => (
-                              <Option key={cat.value} value={cat.value}>{cat.label}</Option>
-                            ))
-                        }
-                      </Select>
+                      />
                     ),
                   },
                   {

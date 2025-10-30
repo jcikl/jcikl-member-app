@@ -397,7 +397,7 @@ export const closeFiscalYear = async (
           totalExpense += data.amount;
         }
       } else {
-        // 旧结构（向后兼容）
+        // 旧结构(向后兼容)
         totalIncome += data.income || 0;
         totalExpense += data.expense || 0;
       }

@@ -730,7 +730,7 @@ const EventRegistrationManagementPage: React.FC = () => {
             >
               <Input type="number" prefix="RM" placeholder="0.00" />
             </Form.Item>
-            <Form.Item name="memberId" label="会员ID（可选）">
+            <Form.Item name="memberId" label="会员ID(可选)">
               <Input placeholder="如果是会员，请输入会员ID" />
             </Form.Item>
             <Form.Item name="notes" label="备注">

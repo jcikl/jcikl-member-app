@@ -91,6 +91,10 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   
+  // 🆕 Global setting states (统一设定状态)
+  const [globalType, setGlobalType] = useState<'income' | 'expense' | null>(null);
+  const [globalCategory, setGlobalCategory] = useState<string>('');
+  
   // Modal states
   const [addCategoryModalVisible, setAddCategoryModalVisible] = useState(false);
   const [editCategoryModalVisible, setEditCategoryModalVisible] = useState(false);
@@ -322,6 +326,40 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
     }
   };
 
+  // 🆕 Handle apply global category to all records
+  const handleApplyGlobalCategory = () => {
+    if (!globalType || !globalCategory) {
+      message.warning('请先选择类型和类别');
+      return;
+    }
+
+    const categoryLabel = getCategoryLabel(globalCategory, globalType).label;
+    
+    if (globalType === 'income') {
+      setIncomeRows(incomeRows.map(row => ({
+        ...row,
+        category: globalCategory,
+      })));
+      message.success(`已为 ${incomeRows.length} 条收入记录设定类别: ${categoryLabel}`);
+    } else {
+      setExpenseRows(expenseRows.map(row => ({
+        ...row,
+        category: globalCategory,
+      })));
+      message.success(`已为 ${expenseRows.length} 条支出记录设定类别: ${categoryLabel}`);
+    }
+    
+    // Clear global setting
+    setGlobalType(null);
+    setGlobalCategory('');
+  };
+
+  // 🆕 Handle clear global setting
+  const handleClearGlobalSetting = () => {
+    setGlobalType(null);
+    setGlobalCategory('');
+    message.info('已清除统一设定');
+  };
 
   // Group rows by category
   const groupedIncomeRows = useMemo(() => {
@@ -522,6 +560,72 @@ const BulkFinancialInput: React.FC<BulkFinancialInputProps> = ({
       }
     >
       <Form form={form} layout="vertical">
+        {/* 🆕 Global Setting Bar */}
+        <Card 
+          size="small" 
+          style={{ 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            marginBottom: 16 
+          }}
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Text strong style={{ color: 'white' }}>
+              🔹 统一设定 (一键应用到下方所有记录)
+            </Text>
+            <Space wrap style={{ width: '100%' }}>
+              <Select
+                placeholder="选择类型"
+                style={{ width: 120, background: 'white' }}
+                value={globalType}
+                onChange={setGlobalType}
+              >
+                <Select.Option value="income">📈 收入</Select.Option>
+                <Select.Option value="expense">📉 支出</Select.Option>
+              </Select>
+              
+              <Select
+                placeholder="选择类别"
+                style={{ minWidth: 150, background: 'white' }}
+                value={globalCategory}
+                onChange={setGlobalCategory}
+                disabled={!globalType}
+                options={
+                  globalType === 'income' 
+                    ? incomeCategories.map(cat => ({ 
+                        label: `${cat.icon} ${cat.label}`, 
+                        value: cat.value 
+                      }))
+                    : globalType === 'expense'
+                      ? expenseCategories.map(cat => ({ 
+                          label: `${cat.icon} ${cat.label}`, 
+                          value: cat.value 
+                        }))
+                      : []
+                }
+              />
+              
+              <Button 
+                type="primary"
+                onClick={handleApplyGlobalCategory}
+                disabled={!globalType || !globalCategory}
+                style={{ background: '#52c41a', borderColor: '#52c41a' }}
+              >
+                ✓ 应用到全部记录
+              </Button>
+              
+              <Button 
+                danger
+                onClick={handleClearGlobalSetting}
+                disabled={!globalType && !globalCategory}
+                style={{ background: 'white', color: '#ff4d4f' }}
+              >
+                📝 清除设定
+              </Button>
+            </Space>
+          </Space>
+        </Card>
+
         {/* Table Header */}
         <div className="bulk-input-header">
           <Row gutter={4}>

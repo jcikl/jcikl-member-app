@@ -117,7 +117,7 @@ export const DynamicFormBuilder: React.FC<DynamicFormBuilderProps> = ({
   }, [fields, schema, onSchemaChange]);
 
   /**
-   * 渲染字段（设计模式）
+   * 渲染字段(设计模式)
    */
   const renderFieldDesign = (field: FormFieldConfig) => {
     const isSelected = selectedFieldId === field.id;

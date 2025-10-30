@@ -1,6 +1,6 @@
 /**
  * Member Form Component
- * 会员表单组件（用于创建和编辑）
+ * 会员表单组件(用于创建和编辑)
  */
 
 import React, { useState, useEffect } from 'react';

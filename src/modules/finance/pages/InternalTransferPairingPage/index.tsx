@@ -128,17 +128,17 @@ const InternalTransferPairingPage: React.FC = () => {
         expense: allInternalTransfers.data.filter(t => !pairedIds.has(t.id) && t.transactionType === 'expense'),
       };
       
-      // 🆕 按日期排序（新到旧）
+      // 🆕 按日期排序(新到旧)
       unpaired.income.sort((a, b) => {
         const dateA = new Date(a.transactionDate).getTime();
         const dateB = new Date(b.transactionDate).getTime();
-        return dateB - dateA; // 降序（新到旧）
+        return dateB - dateA; // 降序(新到旧)
       });
       
       unpaired.expense.sort((a, b) => {
         const dateA = new Date(a.transactionDate).getTime();
         const dateB = new Date(b.transactionDate).getTime();
-        return dateB - dateA; // 降序（新到旧）
+        return dateB - dateA; // 降序(新到旧)
       });
       
       console.log('🔍 [InternalTransferPairingPage] 未配对记录统计:', {
@@ -216,7 +216,7 @@ const InternalTransferPairingPage: React.FC = () => {
       sorter: (a: InternalTransferPair, b: InternalTransferPair) => {
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
-        return dateB - dateA; // 从新到旧（降序）
+        return dateB - dateA; // 从新到旧(降序)
       },
       defaultSortOrder: 'descend',
       render: (date: string) => globalDateService.formatDate(new Date(date), 'display'),

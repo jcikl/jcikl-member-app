@@ -198,7 +198,7 @@ export const MemberEditPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      // 验证邮箱唯一性（排除当前会员）
+      // 验证邮箱唯一性(排除当前会员)
       if (values.email && values.email !== member.email) {
         const emailExists = await checkEmailExists(values.email);
         if (emailExists) {
@@ -207,7 +207,7 @@ export const MemberEditPage: React.FC = () => {
         }
       }
 
-      // 验证电话唯一性（排除当前会员）
+      // 验证电话唯一性(排除当前会员)
       if (values.phone && values.phone !== member.phone) {
         const phoneExists = await checkPhoneExists(values.phone);
         if (phoneExists) {

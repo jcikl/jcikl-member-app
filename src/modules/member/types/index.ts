@@ -57,6 +57,10 @@ export type Gender = 'Male' | 'Female';
 // ========== Member Profile ==========
 export interface MemberProfile {
   // Basic Info
+  name?: string;
+  email?: string;
+  phone?: string;
+  memberId?: string;
   avatar?: string;
   profilePhotoUrl?: string;     // 🆕 个人照片URL
   birthDate?: string | any;     // Format: dd-mmm-yyyy or Dayjs object
@@ -91,7 +95,7 @@ export interface MemberProfile {
     instagram?: string;
     wechat?: string;
   };
-  linkedin?: string;              // 🆕 LinkedIn链接（简化访问）
+  linkedin?: string;              // 🆕 LinkedIn链接(简化访问)
   
   // Career & Business
   company?: string;
@@ -104,6 +108,12 @@ export interface MemberProfile {
   businessCategories?: BusinessCategory[];
   acceptInternationalBusiness?: 'Yes' | 'No' | 'Willing to explore';
   categories?: string[];          // 🆕 类别列表
+  hobbies?: string;               // 🆕 爱好(迁移字段)
+  status?: MemberStatus;          // 🆕 个人状态(迁移字段)
+  level?: MemberLevel;            // 🆕 个人级别(迁移字段)
+  accountType?: string;           // 🆕 账户类型(迁移字段)
+  createdAt?: string;             // 🆕 创建时间(迁移字段)
+  updatedAt?: string;             // 🆕 更新时间(迁移字段)
   
   // JCI Specific
   jciPosition?: string;
@@ -191,7 +201,7 @@ export interface Member extends BaseEntity {
   level: MemberLevel;
   accountType?: string;
   category?: MemberCategoryType;
-  membershipCategory?: string;   // 🆕 会员类别（补充字段）
+  membershipCategory?: string;   // 🆕 会员类别(补充字段)
   
   // Category Management
   categoryAssignedBy?: string;   // 🆕 类别分配者

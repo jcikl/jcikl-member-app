@@ -8,7 +8,7 @@ import { globalSystemService } from '@/config';
  * 
  * 注意：这些函数接受可选的 message 实例参数
  * 推荐在 React 组件中使用 App.useApp() 获取 message 实例并传入
- * 如果不传入，将使用静态 API（会有弃用警告）
+ * 如果不传入，将使用静态 API(会有弃用警告)
  */
 
 /**

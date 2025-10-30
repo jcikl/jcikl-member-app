@@ -124,13 +124,13 @@ export const DataFixPage: React.FC = () => {
           return;
         }
         
-        // 检查是否是 financialAccount（正确）
+        // 检查是否是 financialAccount(正确)
         if (financialAccountSet.has(relatedEventId)) {
           stats.correct++;
           return;
         }
         
-        // 检查是否是活动ID（错误，需要修复）
+        // 检查是否是活动ID(错误，需要修复)
         if (eventIdToFinancialAccountMap.has(relatedEventId)) {
           stats.wrongId++;
           return;
@@ -215,7 +215,7 @@ export const DataFixPage: React.FC = () => {
       
       setProgress({ total: transactionsToFix.length, fixed: 0, failed: 0, percentage: 0 });
       
-      // 4. 批量更新（每次500条）
+      // 4. 批量更新(每次500条)
       const batchSize = 500;
       let fixed = 0;
       let failed = 0;

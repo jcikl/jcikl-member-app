@@ -9,7 +9,7 @@ import './styles.css';
 
 /**
  * DataGrid Component
- * 智能数据网格组件（基于BaseTable）
+ * 智能数据网格组件(基于BaseTable)
  * 
  * @description 增强版表格，支持批量操作、列配置等功能
  */

@@ -14,7 +14,6 @@ export const GLOBAL_COMPONENT_CONFIG = {
     showTotal: (total: number) => `共 ${total} 条`,
     size: 'middle' as const,
     bordered: false,
-    scroll: { x: 'max-content' as const },
   },
 
   // ========== Form Configuration ==========

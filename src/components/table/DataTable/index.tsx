@@ -16,7 +16,7 @@ interface DataTableProps<T> extends Omit<TableProps<T>, 'columns'> {
 
 /**
  * Data Table Component
- * 数据表格组件（基于BaseTable）
+ * 数据表格组件(基于BaseTable)
  * 
  * @description 简化的数据表格组件，提供基础的搜索、导出、刷新功能
  */

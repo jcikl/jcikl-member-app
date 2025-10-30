@@ -181,7 +181,7 @@ const buildQuery = (params: EventSearchParams): Query<DocumentData> => {
 
 /**
  * Get event by ID with retry mechanism
- * 根据ID获取活动（带重试机制）
+ * 根据ID获取活动(带重试机制)
  */
 export const getEventById = async (eventId: string): Promise<Event | null> => {
   try {
@@ -205,7 +205,7 @@ export const getEventById = async (eventId: string): Promise<Event | null> => {
 
 /**
  * Get paginated events list with search & filter
- * 获取分页活动列表（带搜索和筛选）
+ * 获取分页活动列表(带搜索和筛选)
  */
 export const getEvents = async (
   params: PaginationParams & EventSearchParams

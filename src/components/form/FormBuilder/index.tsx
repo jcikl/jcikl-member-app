@@ -18,7 +18,7 @@ interface FormBuilderProps {
 
 /**
  * Form Builder Component
- * 动态表单构建器（基于BaseForm）
+ * 动态表单构建器(基于BaseForm)
  * 
  * @description 简化的动态表单构建器，提供基础的字段渲染功能
  */

@@ -191,7 +191,7 @@
   }
 }
 
-/* 深色模式支持（手动控制） */
+/* 深色模式支持(手动控制) */
 .dark .filter-panel {
   background: #1f1f1f;
   border-color: #434343;

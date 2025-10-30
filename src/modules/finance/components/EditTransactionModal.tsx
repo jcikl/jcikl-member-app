@@ -275,7 +275,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             }}
           >
             <Radio value="member">会员</Radio>
-            <Radio value="manual">非会员（手动输入）</Radio>
+            <Radio value="manual">非会员(手动输入)</Radio>
           </Radio.Group>
         </Form.Item>
 

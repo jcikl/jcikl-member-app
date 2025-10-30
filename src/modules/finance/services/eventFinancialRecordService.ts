@@ -41,7 +41,7 @@ export const upsertEventFinancialRecordFromTransaction = async (params: {
   try {
     const now = new Date().toISOString();
 
-    // 🆕 Step 1: 先按 transactionId 查找（优先级最高 - 这个交易可能已经有关联的财务记录）
+    // 🆕 Step 1: 先按 transactionId 查找(优先级最高 - 这个交易可能已经有关联的财务记录)
     const snapshot = await getDocs(collection(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS));
     const allRecords = snapshot.docs
       .filter(d => d.data().type === 'eventFinancialRecord')
@@ -63,7 +63,7 @@ export const upsertEventFinancialRecordFromTransaction = async (params: {
     });
 
     if (existingByTransaction) {
-      // 情况 1: 这个交易已经有关联的财务记录 -> 更新关联活动（eventId 可能变了）
+      // 情况 1: 这个交易已经有关联的财务记录 -> 更新关联活动(eventId 可能变了)
       console.log('✏️ [upsertEventFinancialRecord] Updating existing record linked to this transaction');
       const feeRef = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_RECORDS, existingByTransaction.id);
       

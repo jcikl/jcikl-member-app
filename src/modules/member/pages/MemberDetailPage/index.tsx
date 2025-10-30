@@ -194,30 +194,30 @@ const MemberDetailPage: React.FC = () => {
           </Col>
           <Col xs={24} sm={18}>
             <Title level={2} style={{ marginBottom: 8 }}>
-              {member.name}
+              {member.profile.name || member.name}
             </Title>
             <Space size="middle" wrap>
-              <Tag color={getStatusColor(member.status)}>
-                {getStatusLabel(member.status)}
+              <Tag color={getStatusColor(((member as any).profile?.status))}>
+                {getStatusLabel(((member as any).profile?.status) as any)}
               </Tag>
               {member.category && (
                 <Tag color="blue">{getCategoryLabel(member.category)}</Tag>
               )}
-              <Tag color={getLevelColor(member.level)}>
-                {getLevelLabel(member.level)}
+              <Tag color={getLevelColor(((member as any).profile?.level) as any)}>
+                {getLevelLabel(((member as any).profile?.level) as any)}
               </Tag>
             </Space>
             <div style={{ marginTop: 16 }}>
               <Space direction="vertical" size="small">
                 <Text>
-                  <MailOutlined /> {member.email}
+                  <MailOutlined /> {((member as any).profile?.email) || '-'}
                 </Text>
                 <Text>
-                  <PhoneOutlined /> {member.phone}
+                  <PhoneOutlined /> {((member as any).profile?.phone) || '-'}
                 </Text>
-                {member.chapter && (
+                {(((member as any).jciCareer?.chapter) || member.chapter) && (
                   <Text>
-                    <BankOutlined /> {member.chapter}
+                    <BankOutlined /> {((member as any).jciCareer?.chapter) || '-'}
                   </Text>
                 )}
               </Space>
@@ -229,24 +229,37 @@ const MemberDetailPage: React.FC = () => {
       {/* Basic Information */}
       <Card title="基本信息" style={{ marginBottom: 16 }}>
         <Descriptions column={{ xs: 1, sm: 2, md: 3 }} bordered>
-          <Descriptions.Item label="会员ID">{member.memberId}</Descriptions.Item>
-          <Descriptions.Item label="姓名">{member.name}</Descriptions.Item>
-          <Descriptions.Item label="邮箱">{member.email}</Descriptions.Item>
-          <Descriptions.Item label="电话">{member.phone}</Descriptions.Item>
+          <Descriptions.Item label="会员ID">{member.profile.memberId}</Descriptions.Item>
+          <Descriptions.Item label="姓名">{member.profile.name}</Descriptions.Item>
+          <Descriptions.Item label="邮箱">{member.profile.email}</Descriptions.Item>
+          <Descriptions.Item label="电话">{member.profile.phone}</Descriptions.Item>
           <Descriptions.Item label="性别">
             {member.profile.gender || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="出生日期">
             {member.profile.birthDate || '-'}
           </Descriptions.Item>
-          <Descriptions.Item label="身份证号">
-            {member.profile.nric || '-'}
-          </Descriptions.Item>
           <Descriptions.Item label="国籍">
             {member.profile.nationality || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="备用电话">
             {member.profile.alternativePhone || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="身份证(或护照)">
+            {member.profile.nricOrPassport || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="身份证全名">
+            {member.profile.fullNameNric || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="LinkedIn">
+            {member.profile.linkedin ? (
+              <a href={member.profile.linkedin} target="_blank" rel="noopener noreferrer">{member.profile.linkedin}</a>
+            ) : '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="头像链接">
+            {member.profile.profilePhotoUrl ? (
+              <a href={member.profile.profilePhotoUrl} target="_blank" rel="noopener noreferrer">打开</a>
+            ) : '-'}
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -255,22 +268,22 @@ const MemberDetailPage: React.FC = () => {
       <Card title="组织信息" style={{ marginBottom: 16 }}>
         <Descriptions column={{ xs: 1, sm: 2, md: 3 }} bordered>
           <Descriptions.Item label="分会">
-            {member.chapter || '-'}
+            {(member as any).jciCareer?.chapter || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="分会ID">
-            {member.chapterId || '-'}
+            {(member as any).jciCareer?.chapterId || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="国家地区">
-            {member.countryRegion || '-'}
+            {(member as any).jciCareer?.countryRegion || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="国家">
-            {member.country || '-'}
+            {(member as any).jciCareer?.country || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="世界地区">
-            {member.worldRegion || '-'}
+            {(member as any).jciCareer?.worldRegion || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="JCI职位">
-            {member.profile.jciPosition || '-'}
+            {(member as any).jciCareer?.jciPosition || '-'}
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -279,64 +292,133 @@ const MemberDetailPage: React.FC = () => {
       <Card title="职业与商业" style={{ marginBottom: 16 }}>
         <Descriptions column={{ xs: 1, sm: 2 }} bordered>
           <Descriptions.Item label="公司">
-            {member.profile.company || '-'}
+            {(member as any).business?.company || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="部门与职位">
-            {member.profile.departmentAndPosition || '-'}
+            {(member as any).business?.departmentAndPosition || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="行业详情" span={2}>
-            {member.profile.industryDetail || '-'}
+            {(member as any).business?.industryDetail || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="公司介绍" span={2}>
-            {member.profile.companyIntro || '-'}
+            {(member as any).business?.companyIntro || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="公司网站" span={2}>
+            {(member as any).business?.companyWebsite ? (
+              <a href={(member as any).business.companyWebsite} target="_blank" rel="noopener noreferrer">{(member as any).business.companyWebsite}</a>
+            ) : '-'}
           </Descriptions.Item>
           <Descriptions.Item label="所属行业" span={2}>
-            {member.profile.ownIndustry?.length 
-              ? member.profile.ownIndustry.map(ind => (
+            {(member as any).business?.ownIndustry?.length 
+              ? (member as any).business.ownIndustry.map((ind: string) => (
                   <Tag key={ind}>{ind}</Tag>
                 ))
               : '-'
             }
           </Descriptions.Item>
           <Descriptions.Item label="感兴趣行业" span={2}>
-            {member.profile.interestedIndustries?.length 
-              ? member.profile.interestedIndustries.map(ind => (
+            {(member as any).business?.interestedIndustries?.length 
+              ? (member as any).business.interestedIndustries.map((ind: string) => (
                   <Tag key={ind}>{ind}</Tag>
                 ))
               : '-'
             }
           </Descriptions.Item>
           <Descriptions.Item label="商业类别" span={2}>
-            {member.profile.businessCategories?.length 
-              ? member.profile.businessCategories.map(cat => (
+            {(member as any).business?.businessCategories?.length 
+              ? (member as any).business.businessCategories.map((cat: string) => (
                   <Tag key={cat}>{cat}</Tag>
                 ))
               : '-'
             }
           </Descriptions.Item>
           <Descriptions.Item label="接受国际业务">
-            {member.profile.acceptInternationalBusiness || '-'}
+            {(member as any).business?.acceptInternationalBusiness || '-'}
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      {/* 服装与物品 */}
+      <Card title="服装与物品" style={{ marginBottom: 16 }}>
+        <Descriptions column={{ xs: 1, sm: 2 }} bordered>
+          <Descriptions.Item label="T恤尺寸">
+            {member.profile.shirtSize || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="夹克尺寸">
+            {member.profile.jacketSize || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="刺绣名称" span={2}>
+            {member.profile.nameToBeEmbroidered || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="T恤领取状态" span={2}>
+            {member.profile.tshirtReceivingStatus || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="裁剪/版型" span={2}>
+            {member.profile.cutting || '-'}
           </Descriptions.Item>
         </Descriptions>
       </Card>
       
       {/* Membership Dates */}
-      <Card title="会籍日期">
+      <Card title="JCI 会籍与任期" style={{ marginBottom: 16 }}>
         <Descriptions column={{ xs: 1, sm: 2, md: 3 }} bordered>
-          <Descriptions.Item label="加入日期">
-            {member.joinDate ? new Date(member.joinDate).toLocaleDateString('zh-CN') : '-'}
+          <Descriptions.Item label="JCI 类别">{(member as any).jciCareer?.category || '-'}</Descriptions.Item>
+          <Descriptions.Item label="会员类别">{(member as any).jciCareer?.membershipCategory || '-'}</Descriptions.Item>
+          <Descriptions.Item label="分配者">{(member as any).jciCareer?.categoryAssignedBy || '-'}</Descriptions.Item>
+          <Descriptions.Item label="分配日期">{(member as any).jciCareer?.categoryAssignedDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="分配原因" span={2}>{(member as any).jciCareer?.categoryReason || '-'}</Descriptions.Item>
+          <Descriptions.Item label="JCI 职位">{(member as any).jciCareer?.jciPosition || '-'}</Descriptions.Item>
+          <Descriptions.Item label="任期开始">{(member as any).jciCareer?.termStartDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="任期结束">{(member as any).jciCareer?.termEndDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="职位开始">{(member as any).jciCareer?.positionStartDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="职位结束">{(member as any).jciCareer?.positionEndDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="加入日期(JCI)">{(member as any).jciCareer?.joinDate || '-'}</Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      <Card title="支付与背书" style={{ marginBottom: 16 }}>
+        <Descriptions column={{ xs: 1, sm: 2, md: 3 }} bordered>
+          <Descriptions.Item label="付款日期">{(member as any).jciCareer?.paymentDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="付款凭证链接">
+            {(member as any).jciCareer?.paymentSlipUrl ? (
+              <a href={(member as any).jciCareer.paymentSlipUrl} target="_blank" rel="noopener noreferrer">打开</a>
+            ) : '-'}
           </Descriptions.Item>
-          <Descriptions.Item label="续期日期">
-            {member.renewalDate ? new Date(member.renewalDate).toLocaleDateString('zh-CN') : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="到期日期">
-            {member.expiryDate ? new Date(member.expiryDate).toLocaleDateString('zh-CN') : '-'}
-          </Descriptions.Item>
+          <Descriptions.Item label="付款验证日期">{(member as any).jciCareer?.paymentVerifiedDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="背书日期">{(member as any).jciCareer?.endorsementDate || '-'}</Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      <Card title="JCI 关系与期望" style={{ marginBottom: 16 }}>
+        <Descriptions column={{ xs: 1, sm: 2, md: 3 }} bordered>
+          <Descriptions.Item label="介绍人">{(member as any).jciCareer?.introducerName || '-'}</Descriptions.Item>
+          <Descriptions.Item label="参议员编号">{(member as any).jciCareer?.senatorId || '-'}</Descriptions.Item>
+          <Descriptions.Item label="JCI 期望" span={2}>{(member as any).jciCareer?.jciBenefitsExpectation || '-'}</Descriptions.Item>
+          <Descriptions.Item label="JCI 兴趣" span={2}>{(member as any).jciCareer?.jciEventInterests || '-'}</Descriptions.Item>
+          <Descriptions.Item label="成为活跃会员方式" span={2}>{(member as any).jciCareer?.activeMemberHow || '-'}</Descriptions.Item>
+          <Descriptions.Item label="五年愿景" span={2}>{(member as any).jciCareer?.fiveYearsVision || '-'}</Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      <Card title="会籍日期与元数据">
+        <Descriptions column={{ xs: 1, sm: 2, md: 3 }} bordered>
           <Descriptions.Item label="创建时间">
-            {member.createdAt ? new Date(member.createdAt).toLocaleString('zh-CN') : '-'}
+            {(member as any).profile?.createdAt ? new Date((member as any).profile.createdAt).toLocaleString('zh-CN') : '-'}
           </Descriptions.Item>
           <Descriptions.Item label="更新时间">
-            {member.updatedAt ? new Date(member.updatedAt).toLocaleString('zh-CN') : '-'}
+            {(member as any).profile?.updatedAt ? new Date((member as any).profile.updatedAt).toLocaleString('zh-CN') : '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="账户类型">{(member as any).profile?.accountType || '-'}</Descriptions.Item>
+          <Descriptions.Item label="个人状态">{(member as any).profile?.status || '-'}</Descriptions.Item>
+          <Descriptions.Item label="个人级别">{(member as any).profile?.level || '-'}</Descriptions.Item>
+          <Descriptions.Item label="加入(旧)">{(member as any).profile?.joinedDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="个人邮箱">{(member as any).profile?.email || '-'}</Descriptions.Item>
+          <Descriptions.Item label="个人电话">{(member as any).profile?.phone || '-'}</Descriptions.Item>
+          <Descriptions.Item label="WhatsApp群组">{(member as any).profile?.whatsappGroup || '-'}</Descriptions.Item>
+          <Descriptions.Item label="类别标签" span={2}>
+            {Array.isArray((member as any).profile?.categories) && (member as any).profile.categories.length > 0 ? (
+              ((member as any).profile.categories as string[]).map((c: string) => <Tag key={c}>{c}</Tag>)
+            ) : '-'}
           </Descriptions.Item>
         </Descriptions>
       </Card>

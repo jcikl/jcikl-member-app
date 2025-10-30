@@ -1,6 +1,6 @@
 /**
  * Financial Category Service
- * 财务类别管理服务（使用类别代码作为文档ID）
+ * 财务类别管理服务(使用类别代码作为文档ID)
  */
 
 import {
@@ -20,8 +20,8 @@ import { globalSystemService } from '@/config/globalSystemSettings';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
 
 export interface FinancialCategory {
-  value: string;              // 类别代码（作为文档ID，如 'TXINC-0001', 'TXEXP-0001'）
-  label: string;              // 类别名称（如 '门票收入', '场地费'）
+  value: string;              // 类别代码(作为文档ID，如 'TXINC-0001', 'TXEXP-0001')
+  label: string;              // 类别名称(如 '门票收入', '场地费')
   type: 'income' | 'expense'; // 类型
   description?: string;       // 描述
   sortOrder: number;          // 排序
@@ -114,7 +114,7 @@ export const getAllFinancialCategories = async (): Promise<FinancialCategory[]> 
 };
 
 /**
- * 获取财务类别（带过滤）
+ * 获取财务类别(带过滤)
  */
 export const getFinancialCategories = async (
   type?: 'income' | 'expense',
@@ -179,7 +179,7 @@ export const getFinancialCategory = async (id: string): Promise<FinancialCategor
 };
 
 /**
- * 创建财务类别（使用代码作为文档ID）
+ * 创建财务类别(使用代码作为文档ID)
  */
 export const createFinancialCategory = async (
   categoryData: Omit<FinancialCategory, 'createdAt' | 'updatedAt'>,
@@ -231,11 +231,11 @@ export const updateFinancialCategory = async (
   try {
     const docRef = doc(db, GLOBAL_COLLECTIONS.FINANCIAL_CATEGORIES, id);
     
-    // 禁止修改 value 字段（因为它是文档ID）
+    // 禁止修改 value 字段(因为它是文档ID)
     const { value, ...allowedUpdates } = updates;
     
     if (value && value !== id) {
-      throw new Error('类别代码不可修改（它是文档ID）');
+      throw new Error('类别代码不可修改(它是文档ID)');
     }
 
     const now = new Date().toISOString();

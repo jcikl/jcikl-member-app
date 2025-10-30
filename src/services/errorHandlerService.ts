@@ -272,7 +272,7 @@ export const setupOfflineDetection = (
 };
 
 /**
- * 错误日志记录（可选：发送到服务器）
+ * 错误日志记录(可选：发送到服务器)
  */
 export const logErrorToServer = async (
   error: any,

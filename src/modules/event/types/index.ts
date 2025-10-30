@@ -17,7 +17,7 @@ export type ParticipantType =
   | 'Member'          // JCI 会员
   | 'Alumni'          // 校友
   | 'EarlyBird'       // 早鸟
-  | 'Committee';      // 委员会成员（免费）
+  | 'Committee';      // 委员会成员(免费)
 
 // ========== Registration Status ==========
 export type RegistrationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
@@ -105,13 +105,13 @@ export interface Event extends BaseEntity {
   pricing: EventPricing;
   isFree: boolean;
   financialAccount?: string;   // 项目财务户口匹配 (FinanceEvent ID)
-  financialAccountName?: string; // 财务账户名称（用于显示）
+  financialAccountName?: string; // 财务账户名称(用于显示)
   
   // Organizers & Contacts
   organizerId: string;
   organizerName: string;
   coOrganizers?: string[];     // 协办组织
-  boardMember?: string;        // 🆕 负责理事（会长、副会长、秘书长、财政、理事）
+  boardMember?: string;        // 🆕 负责理事(会长、副会长、秘书长、财政、理事)
   contactPerson?: string;
   contactPhone?: string;
   contactEmail?: string;
@@ -139,7 +139,7 @@ export interface Event extends BaseEntity {
   responsibleOfficer?: {
     memberId: string;               // 负责理事会员ID
     name: string;                   // 负责理事姓名
-    position: string;               // 负责理事职位（会长、副会长、秘书长、财政等）
+    position: string;               // 负责理事职位(会长、副会长、秘书长、财政等)
     email?: string;                 // 负责理事邮箱
     phone?: string;                 // 负责理事电话
   };
@@ -266,7 +266,7 @@ export interface EventFormData {
   earlyBirdDeadline?: string;
   isFree?: boolean;
   financialAccount?: string;   // 项目财务户口匹配 (FinanceEvent ID)
-  financialAccountName?: string; // 财务账户名称（用于显示）
+  financialAccountName?: string; // 财务账户名称(用于显示)
   
   // Organizers
   organizerId?: string;
@@ -364,16 +364,20 @@ export const REGISTRATION_TARGET_AUDIENCE_OPTIONS: SelectOption[] = [
 // ========== Event Account (活动账户) ==========
 
 export type EventAccountTransactionType = 'income' | 'expense';
+export type EventAccountTransactionStatus = 'pending' | 'completed' | 'cancelled';
 export type EventAccountStatus = 'active' | 'closed' | 'archived';
 
 export interface EventAccountTransaction {
   id: string;
+  accountId: string;            // 关联的活动账户ID
   transactionDate: string;
   transactionType: EventAccountTransactionType;
   category: string;             // 收入类型：ticket, sponsorship, donation / 支出类型：venue, food, marketing
   description: string;
   remark?: string;              // 备注信息
   amount: number;
+  status: EventAccountTransactionStatus; // 交易状态：pending=待处理, completed=已完成, cancelled=已取消
+  reconciledBankTransactionId?: string; // 🆕 已核对的银行交易ID
   paymentDate?: string;         // 付款日期
   payerPayee?: string;          // 付款人/收款人
   paymentMethod?: string;
@@ -381,10 +385,6 @@ export interface EventAccountTransaction {
   invoiceNumber?: string;
   notes?: string;
   attachments?: string[];
-  isForecast: boolean;          // 是否为预测数据
-  forecastConfidence?: 'high' | 'medium' | 'low'; // 预测置信度
-  actualAmount?: number;        // 如果是预测，记录实际金额
-  variance?: number;            // 预测与实际的差异
   createdAt: string;
   updatedAt: string;
   createdBy: string;

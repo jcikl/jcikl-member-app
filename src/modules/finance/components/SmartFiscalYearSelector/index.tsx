@@ -75,7 +75,7 @@ const SmartFiscalYearSelector: React.FC<SmartFiscalYearSelectorProps> = ({
       const status = smartFiscalYearService.detectCurrentFiscalYearStatus();
       setFiscalYearStatus(status);
       
-      // 获取智能财年选项（基于实际数据范围）
+      // 获取智能财年选项(基于实际数据范围)
       const options = await smartFiscalYearService.getSmartFiscalYearOptions();
       setFiscalYearOptions(options);
       

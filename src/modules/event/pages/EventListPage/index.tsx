@@ -155,17 +155,17 @@ const EventListPage: React.FC = () => {
   // 🆕 按负责理事分组函数
   const groupEventsByBoardMember = (eventList: Event[]): { boardMember: string; events: Event[] }[] => {
     const boardMemberLabels: Record<string, string> = {
-      'president': 'President（会长）',
-      'secretary': 'Secretary（秘书）',
-      'honorary-treasurer': 'Honorary Treasurer（名誉司库）',
-      'general-legal-council': 'General Legal Council（法律顾问）',
-      'executive-vp': 'Executive Vice President（执行副会长）',
-      'vp-individual': 'VP Individual（个人发展副会长）',
-      'vp-community': 'VP Community（社区发展副会长）',
-      'vp-business': 'VP Business（商业发展副会长）',
-      'vp-international': 'VP International（国际事务副会长）',
-      'vp-lom': 'VP LOM（地方组织副会长）',
-      'immediate-past-president': 'Immediate Past President（卸任会长）',
+      'president': 'President(会长)',
+      'secretary': 'Secretary(秘书)',
+      'honorary-treasurer': 'Honorary Treasurer(名誉司库)',
+      'general-legal-council': 'General Legal Council(法律顾问)',
+      'executive-vp': 'Executive Vice President(执行副会长)',
+      'vp-individual': 'VP Individual(个人发展副会长)',
+      'vp-community': 'VP Community(社区发展副会长)',
+      'vp-business': 'VP Business(商业发展副会长)',
+      'vp-international': 'VP International(国际事务副会长)',
+      'vp-lom': 'VP LOM(地方组织副会长)',
+      'immediate-past-president': 'Immediate Past President(卸任会长)',
       '': '未设置负责理事',
     };
     
@@ -198,7 +198,7 @@ const EventListPage: React.FC = () => {
   // 🆕 获取活动的年份范围
   const fetchAvailableYears = useCallback(async () => {
     try {
-      // 获取所有活动（不分页）以获取完整的年份范围
+      // 获取所有活动(不分页)以获取完整的年份范围
       const result = await getEvents({
         page: 1,
         limit: 10000, // 获取所有活动
@@ -215,7 +215,7 @@ const EventListPage: React.FC = () => {
         }
       });
       
-      // 转换为数组并排序（从新到旧）
+      // 转换为数组并排序(从新到旧)
       const yearArray = Array.from(years).sort((a, b) => b - a);
       setAvailableYears(yearArray);
       
@@ -902,17 +902,17 @@ const EventListPage: React.FC = () => {
             value={bulkBoardMember || undefined}
             onChange={setBulkBoardMember}
           >
-            <Select.Option value="president">President（会长）</Select.Option>
-            <Select.Option value="secretary">Secretary（秘书）</Select.Option>
-            <Select.Option value="honorary-treasurer">Honorary Treasurer（名誉司库）</Select.Option>
-            <Select.Option value="general-legal-council">General Legal Council（法律顾问）</Select.Option>
-            <Select.Option value="executive-vp">Executive Vice President（执行副会长）</Select.Option>
-            <Select.Option value="vp-individual">VP Individual（个人发展副会长）</Select.Option>
-            <Select.Option value="vp-community">VP Community（社区发展副会长）</Select.Option>
-            <Select.Option value="vp-business">VP Business（商业发展副会长）</Select.Option>
-            <Select.Option value="vp-international">VP International（国际事务副会长）</Select.Option>
-            <Select.Option value="vp-lom">VP LOM（地方组织副会长）</Select.Option>
-            <Select.Option value="immediate-past-president">Immediate Past President（卸任会长）</Select.Option>
+            <Select.Option value="president">President(会长)</Select.Option>
+            <Select.Option value="secretary">Secretary(秘书)</Select.Option>
+            <Select.Option value="honorary-treasurer">Honorary Treasurer(名誉司库)</Select.Option>
+            <Select.Option value="general-legal-council">General Legal Council(法律顾问)</Select.Option>
+            <Select.Option value="executive-vp">Executive Vice President(执行副会长)</Select.Option>
+            <Select.Option value="vp-individual">VP Individual(个人发展副会长)</Select.Option>
+            <Select.Option value="vp-community">VP Community(社区发展副会长)</Select.Option>
+            <Select.Option value="vp-business">VP Business(商业发展副会长)</Select.Option>
+            <Select.Option value="vp-international">VP International(国际事务副会长)</Select.Option>
+            <Select.Option value="vp-lom">VP LOM(地方组织副会长)</Select.Option>
+            <Select.Option value="immediate-past-president">Immediate Past President(卸任会长)</Select.Option>
           </Select>
         </div>
       </Modal>

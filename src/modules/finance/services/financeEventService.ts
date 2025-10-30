@@ -1,6 +1,6 @@
 /**
  * Finance Event Service
- * 活动管理服务（用于活动财务分类）
+ * 活动管理服务(用于活动财务分类)
  */
 
 import {
