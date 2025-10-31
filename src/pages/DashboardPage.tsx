@@ -120,6 +120,28 @@ const DashboardPage: React.FC = () => {
         setIndustryDistribution(industries);
         console.log('📊 [Dashboard] interest distribution received:', interests);
         setInterestDistribution(interests);
+
+        // Compare with client-side recompute for diagnostics
+        try {
+          const clientCounts: Record<string, number> = {};
+          let totalWithIndustry = 0;
+          members.forEach((m) => {
+            // respect acceptInternationalBusiness filter (same as service)
+            if (selectedAcceptIntl) {
+              const aib = (m as any)?.profile?.acceptInternationalBusiness as string | undefined;
+              if (!aib || aib !== selectedAcceptIntl) return;
+            }
+            const arr = normalizeToStringArray((m as any)?.profile?.ownIndustry ?? (m as any)?.business?.ownIndustry);
+            if (arr.length > 0) {
+              totalWithIndustry++;
+              arr.forEach(ind => { clientCounts[ind] = (clientCounts[ind] || 0) + 1; });
+            }
+          });
+          const clientDist = Object.entries(clientCounts).map(([industry, count]) => ({ industry, count, percentage: totalWithIndustry > 0 ? (count / totalWithIndustry) * 100 : 0 })).sort((a, b) => b.count - a.count);
+          console.log('🧪 [Dashboard] client recomputed totalWithIndustry:', totalWithIndustry, 'industries:', clientDist.length, clientDist);
+        } catch (e) {
+          console.warn('🧪 [Dashboard] client recompute failed:', e);
+        }
       } catch (error) {
         console.error('Failed to fetch lists:', error);
       } finally {
@@ -189,12 +211,16 @@ const DashboardPage: React.FC = () => {
 
     // 按行业筛选
     if (selectedIndustry) {
+      const before = filtered.length;
       filtered = filtered.filter(m => normalizeToStringArray(m.profile?.ownIndustry).includes(selectedIndustry));
+      console.log('🎯 [Dashboard] filter by industry:', selectedIndustry, 'before:', before, 'after:', filtered.length);
     }
 
     // 按兴趣筛选
     if (selectedInterest) {
+      const before = filtered.length;
       filtered = filtered.filter(m => normalizeToStringArray(m.profile?.interestedIndustries).includes(selectedInterest));
+      console.log('🎯 [Dashboard] filter by interest:', selectedInterest, 'before:', before, 'after:', filtered.length);
     }
 
     // 按会员ID筛选(反向筛选)
