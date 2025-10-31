@@ -246,5 +246,5 @@ export const reconcileEventFinancialRecord = async (eventId: string): Promise<vo
   }
 };
 
-console.log('✅ Event Financial Record Service Loaded');
+
 

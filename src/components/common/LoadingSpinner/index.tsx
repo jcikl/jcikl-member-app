@@ -18,6 +18,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   fullscreen = false,
 }) => {
   if (fullscreen) {
+    // 全屏模式：tip 有效
     return (
       <div className="loading-fullscreen">
         <Spin size={size} tip={tip} spinning={true} />
@@ -25,9 +26,11 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     );
   }
 
+  // 非全屏模式：tip 无效，改用文本节点
   return (
     <div className="loading-container">
-      <Spin size={size} tip={tip} spinning={true} />
+      {tip && <div style={{ marginBottom: 16, textAlign: 'center' }}>{tip}</div>}
+      <Spin size={size} spinning={true} />
     </div>
   );
 };

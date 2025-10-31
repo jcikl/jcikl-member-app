@@ -733,7 +733,7 @@ export const updateOverdueStatus = async (): Promise<number> => {
   }
 };
 
-console.log('✅ Member Fee Service Loaded');
+
 
 /**
  * Upsert Member Fee by Transaction linkage

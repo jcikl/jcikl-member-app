@@ -306,4 +306,4 @@ export const getActiveExpenseCategories = async (): Promise<Array<{ label: strin
   }));
 };
 
-console.log('✅ Financial Category Service Loaded');
+

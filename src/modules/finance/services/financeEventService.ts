@@ -151,5 +151,5 @@ export const deleteFinanceEvent = async (eventId: string, userId: string): Promi
   }
 };
 
-console.log('✅ Finance Event Service Loaded');
+
 

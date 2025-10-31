@@ -288,5 +288,5 @@ export const getActiveTransactionPurposes = async (): Promise<Array<{ label: str
   }));
 };
 
-console.log('✅ Transaction Purpose Service Loaded');
+
 

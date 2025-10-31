@@ -14,7 +14,7 @@ export type MemberLevel = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
 // ========== Member Category ==========
 export type MemberCategoryType = 
   | 'Official Member'      // 正式会员
-  | 'Associate Member'     // 准会员
+  | 'Probation Member'     // 准会员
   | 'Honorary Member'      // 荣誉会员
   | 'Visiting Member'      // 访问会员
   | 'Alumni'               // 校友
@@ -359,7 +359,7 @@ export const MEMBER_LEVEL_OPTIONS: SelectOption[] = [
 
 export const MEMBER_CATEGORY_OPTIONS: SelectOption[] = [
   { label: '正式会员', value: 'Official Member' },
-  { label: '准会员', value: 'Associate Member' },
+  { label: '准会员', value: 'Probation Member' },
   { label: '荣誉会员', value: 'Honorary Member' },
   { label: '访问会员', value: 'Visiting Member' },
   { label: '校友', value: 'Alumni' },
@@ -402,5 +402,5 @@ export const BUSINESS_CATEGORY_OPTIONS: SelectOption[] = [
   { label: '服务提供商', value: 'Service Provider' },
 ];
 
-console.log('✅ Member Types Loaded');
+
 

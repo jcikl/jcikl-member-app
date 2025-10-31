@@ -259,7 +259,7 @@ const schema = globalValidationService.createSchema({
 | Category | New Fee | Renewal | Tasks Required |
 |----------|---------|---------|----------------|
 | Official Member | RM 480 | RM 350 | 3 events + 1 course + 1 role |
-| Associate Member | RM 250 | RM 200 | 2 events |
+| Probation Member | RM 250 | RM 200 | 2 events |
 | Honorary Member | RM 0 | RM 0 | None |
 | Visiting Member | RM 100 | RM 100 | None |
 

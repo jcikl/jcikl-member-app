@@ -255,5 +255,5 @@ export const reconcileGeneralFinancialRecord = async (category: string, txAccoun
   }
 };
 
-console.log('✅ General Financial Record Service Loaded');
+
 

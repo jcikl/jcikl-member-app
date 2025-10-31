@@ -371,5 +371,5 @@ export const getRegistrationStatistics = async (
   }
 };
 
-console.log('✅ Event Registration Service Loaded');
+
 

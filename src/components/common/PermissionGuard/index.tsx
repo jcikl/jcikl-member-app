@@ -58,7 +58,8 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
   if (loading || checking) {
     return (
       <div style={{ textAlign: 'center', padding: '48px' }}>
-        <Spin tip="验证权限中..." />
+        <div style={{ marginBottom: 16 }}>验证权限中...</div>
+        <Spin />
       </div>
     );
   }

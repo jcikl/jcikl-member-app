@@ -392,8 +392,9 @@ export const FinancialRecordsDebugPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Spin size="large" tip="加载中..." />
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ marginBottom: 16 }}>加载中...</div>
+        <Spin size="large" />
       </div>
     );
   }

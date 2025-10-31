@@ -39,7 +39,7 @@ class GlobalSettingsService {
         this.cache.set(setting.key, setting.value);
       });
 
-      console.log(`✅ Loaded ${this.cache.size} global settings`);
+      
 
       // Subscribe to real-time updates
       this.subscribeToChanges();
@@ -289,5 +289,5 @@ class GlobalSettingsService {
 
 export const globalSettingsService = new GlobalSettingsService();
 
-console.log('✅ Global Settings Service Loaded');
+
 

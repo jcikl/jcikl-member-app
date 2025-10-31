@@ -685,5 +685,5 @@ export const getAllBankAccountsMonthlyData = async (
   }
 };
 
-console.log('✅ Bank Account Service Loaded');
+
 

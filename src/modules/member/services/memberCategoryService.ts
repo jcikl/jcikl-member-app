@@ -240,7 +240,7 @@ export const initializeDefaultCategories = async (): Promise<void> => {
         icon: 'crown',
       },
       {
-        name: 'Associate Member',
+        name: 'Probation Member',
         displayName: '准会员',
         description: '新加入的准会员',
         fees: {

@@ -116,9 +116,7 @@ const DashboardPage: React.FC = () => {
           getInterestDistribution(),
         ]);
 
-        console.log('📊 [Dashboard] industry distribution received:', industries);
         setIndustryDistribution(industries);
-        console.log('📊 [Dashboard] interest distribution received:', interests);
         setInterestDistribution(interests);
 
         // Compare with client-side recompute for diagnostics
@@ -138,7 +136,7 @@ const DashboardPage: React.FC = () => {
             }
           });
           const clientDist = Object.entries(clientCounts).map(([industry, count]) => ({ industry, count, percentage: totalWithIndustry > 0 ? (count / totalWithIndustry) * 100 : 0 })).sort((a, b) => b.count - a.count);
-          console.log('🧪 [Dashboard] client recomputed totalWithIndustry:', totalWithIndustry, 'industries:', clientDist.length, clientDist);
+          // client recompute diagnostics removed in production
         } catch (e) {
           console.warn('🧪 [Dashboard] client recompute failed:', e);
         }
@@ -150,7 +148,7 @@ const DashboardPage: React.FC = () => {
     };
 
     fetchLists();
-  }, [selectedAcceptIntl]);
+  }, [selectedAcceptIntl, members]);
 
   // 加载生日数据
   useEffect(() => {
@@ -179,10 +177,10 @@ const DashboardPage: React.FC = () => {
     const loadMembers = async () => {
       setMembersLoading(true);
       try {
-        // 加载全量会员以与行业分布统计口径一致
+        // 加载全量会员以与行业分布统计口径一致 (Firestore最大limit为10000)
         const result = await getMembers({
           page: 1,
-          limit: 100000, // 近似全量
+          limit: 10000, // Firestore最大限制
         });
         setMembers(result.data);
         setFilteredMembers(result.data);
@@ -211,16 +209,12 @@ const DashboardPage: React.FC = () => {
 
     // 按行业筛选
     if (selectedIndustry) {
-      const before = filtered.length;
       filtered = filtered.filter(m => normalizeToStringArray(m.profile?.ownIndustry).includes(selectedIndustry));
-      console.log('🎯 [Dashboard] filter by industry:', selectedIndustry, 'before:', before, 'after:', filtered.length);
     }
 
     // 按兴趣筛选
     if (selectedInterest) {
-      const before = filtered.length;
       filtered = filtered.filter(m => normalizeToStringArray(m.profile?.interestedIndustries).includes(selectedInterest));
-      console.log('🎯 [Dashboard] filter by interest:', selectedInterest, 'before:', before, 'after:', filtered.length);
     }
 
     // 按会员ID筛选(反向筛选)
@@ -624,11 +618,13 @@ const DashboardPage: React.FC = () => {
                 backgroundColor: '#f0f5ff', 
                 borderRadius: 4,
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 gap: 8,
               }}>
-                <FilterOutlined style={{ color: '#1890ff' }} />
-                <span style={{ fontSize: '13px', color: '#595959' }}>当前筛选：</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FilterOutlined style={{ color: '#1890ff' }} />
+                  <span style={{ fontSize: '13px', color: '#595959' }}>当前筛选：</span>
+                </div>
                 {selectedIndustry && (
                   <Tag color="blue" closable onClose={() => setSelectedIndustry(null)}>
                     行业：{selectedIndustry}
@@ -685,7 +681,7 @@ const DashboardPage: React.FC = () => {
                             <Tag 
                               color={
                                 member.category === 'Official Member' ? 'blue' :
-                                member.category === 'Associate Member' ? 'green' :
+                                member.category === 'Probation Member' ? 'green' :
                                 member.category === 'Alumni' ? 'orange' : 'default'
                               }
                               style={{ fontSize: '10px', lineHeight: '16px', height: 18 }}

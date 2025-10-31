@@ -62,6 +62,6 @@ export const useGlobalStore = create<GlobalState>(set => ({
   closeModal: () => set({ isModalOpen: false, modalType: null }),
 }));
 
-console.log('✅ Global Store Loaded');
+
 
 

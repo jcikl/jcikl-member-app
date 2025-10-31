@@ -651,5 +651,5 @@ export interface FinancialReportParams {
   groupBy?: 'date' | 'category' | 'account' | 'project';
 }
 
-console.log('✅ Finance Module Types Loaded');
+
 

@@ -457,5 +457,5 @@ export const EVENT_EXPENSE_CATEGORIES: SelectOption[] = [
   { label: '其他支出', value: 'other_expense' },
 ];
 
-console.log('✅ Event Types Loaded');
+
 

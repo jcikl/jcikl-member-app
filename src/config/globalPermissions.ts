@@ -10,5 +10,5 @@ export const globalPermissionService = {
   },
 };
 
-console.log('✅ Global Permission Settings Loaded (Placeholder)');
+
 

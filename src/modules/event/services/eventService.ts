@@ -617,5 +617,5 @@ export const getEventRegistrations = async (eventId: string): Promise<EventRegis
   }
 };
 
-console.log('✅ Event Service Loaded');
+
 

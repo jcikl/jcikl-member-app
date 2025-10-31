@@ -43,5 +43,5 @@ export const GlobalServices = {
   Date: globalDateService,
 };
 
-console.log('✅ All Global Configurations Loaded');
+
 

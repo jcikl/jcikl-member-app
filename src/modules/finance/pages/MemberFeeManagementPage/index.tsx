@@ -284,9 +284,10 @@ const MemberFeeManagementPage: React.FC = () => {
     try {
       setTransactionsLoading(true);
       
+      // 为避免分页大小影响记录载入，这里固定拉取较大的上限，由前端分页
       const result = await getTransactions({
-        page: transactionPage,
-        limit: transactionPageSize,
+        page: 1,
+        limit: 10000,
         category: 'member-fees',
         // 🔑 不要将'uncategorized'传给服务端，在客户端筛选
         txAccount: (txAccountFilter !== 'all' && txAccountFilter !== 'uncategorized' && !txAccountFilter.startsWith('year-')) ? txAccountFilter : undefined,
@@ -397,8 +398,11 @@ const MemberFeeManagementPage: React.FC = () => {
       setHasUncategorized(uncategorizedCount > 0);
       
       // 🆕 Step 5: 设置最终数据
-      setTransactions(filteredTransactions);
+      // 前端分页
       setTransactionTotal(filteredTransactions.length);
+      const start = (transactionPage - 1) * transactionPageSize;
+      const end = start + transactionPageSize;
+      setTransactions(filteredTransactions.slice(start, end));
     } catch (error: any) {
       message.error('加载交易记录失败');
       globalSystemService.log('error', 'Failed to load member fee transactions', 'MemberFeeManagementPage', { error });
@@ -613,7 +617,6 @@ const MemberFeeManagementPage: React.FC = () => {
     }
     try {
       setAutoPreviewLoading(true);
-      console.log('[autoPreview][apply] targets', targets);
       await Promise.all(targets.map(r => {
         const updates: any = { txAccount: r.suggestedTxAccount! };
         if (r.suggestedMemberId) {
@@ -622,7 +625,6 @@ const MemberFeeManagementPage: React.FC = () => {
           // 用户清除了关联会员，需要从 metadata 中删除原有 memberId
           updates.metadata = { memberId: deleteField() };
         }
-        console.log('[autoPreview][apply] updating', { transactionId: r.id, updates, currentMemberId: r.currentMemberId, suggestedMemberId: r.suggestedMemberId });
         return updateTransaction(r.id, updates, user.id);
       }));
       message.success(`已应用 ${targets.length} 条匹配结果`);
@@ -1029,7 +1031,7 @@ const MemberFeeManagementPage: React.FC = () => {
                 >
                   <Option value="all">所有类别</Option>
                   <Option value="Official Member">👔 正式会员</Option>
-                  <Option value="Associate Member">🎓 准会员</Option>
+                  <Option value="Probation Member">🎓 准会员</Option>
                   <Option value="Honorary Member">🏆 荣誉会员</Option>
                   <Option value="Visiting Member">🌏 访问会员</Option>
                   <Option value="Alumni">🎓 校友</Option>

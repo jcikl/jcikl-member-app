@@ -179,11 +179,7 @@ export const updateTransaction = async (
   userId: string
 ): Promise<void> => {
   try {
-    console.log('🔄 [updateTransaction] Starting update:', {
-      transactionId,
-      data,
-      userId,
-    });
+    
     
     const transactionRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, transactionId);
     const transactionDoc = await getDoc(transactionRef);
@@ -193,15 +189,7 @@ export const updateTransaction = async (
     }
     
     const existingData = transactionDoc.data();
-    console.log('📊 [updateTransaction] Existing data:', {
-      bankAccountId: existingData.bankAccountId,
-      amount: existingData.amount,
-      transactionType: existingData.transactionType,
-      // Legacy fields
-      income: existingData.income,
-      expense: existingData.expense,
-      status: existingData.status,
-    });
+    
     
     const updates: Partial<Transaction> = {
       updatedAt: new Date().toISOString(),
@@ -210,10 +198,7 @@ export const updateTransaction = async (
     // Update bank account ID if changed
     if (data.bankAccountId !== undefined) {
       updates.bankAccountId = data.bankAccountId;
-      console.log('🏦 [updateTransaction] Updating bankAccountId:', {
-        from: existingData.bankAccountId,
-        to: data.bankAccountId,
-      });
+      
     }
     
     // Update transaction date
@@ -263,22 +248,17 @@ export const updateTransaction = async (
     }
     
     const cleanData = cleanUndefinedValues(updates);
-    console.log('💾 [updateTransaction] Updates to apply:', updates);
-    console.log('🧹 [updateTransaction] Cleaned data:', cleanData);
+    
     
     await updateDoc(transactionRef, cleanData);
-    console.log('✅ [updateTransaction] Firestore update completed');
+    
     
     // Handle bank account changes
     const oldBankAccountId = existingData.bankAccountId;
     const newBankAccountId = data.bankAccountId;
     const bankAccountChanged = newBankAccountId && newBankAccountId !== oldBankAccountId;
     
-    console.log('🏦 [updateTransaction] Bank account change check:', {
-      oldBankAccountId,
-      newBankAccountId,
-      bankAccountChanged,
-    });
+    
     
     // Calculate amount changes (支持新旧两种数据结构)
     let oldAmount: number;
@@ -305,19 +285,11 @@ export const updateTransaction = async (
       amountChanged = false;
     }
     
-    console.log('💰 [updateTransaction] Amount calculation:', {
-      oldAmount,
-      newAmount,
-      amountChanged,
-      oldStructure: existingData.income !== undefined ? 
-        { income: existingData.income, expense: existingData.expense } : null,
-      newStructure: existingData.amount !== undefined ?
-        { amount: existingData.amount, transactionType: existingData.transactionType } : null,
-    });
+    
     
     // Update bank account balances
     if (bankAccountChanged) {
-      console.log('🔄 [updateTransaction] Bank account changed - updating transaction dates');
+      
       
       // 更新旧账户的最后交易日期
       if (oldBankAccountId) {
@@ -329,7 +301,7 @@ export const updateTransaction = async (
         await updateBankAccountLastTransaction(newBankAccountId);
       }
       
-      console.log('✅ [updateTransaction] Both bank accounts updated');
+      
     } else if (oldBankAccountId) {
       // 更新账户的最后交易日期
       await updateBankAccountLastTransaction(oldBankAccountId);
@@ -350,11 +322,7 @@ export const updateTransaction = async (
     const linkedMemberId = finalMetadata?.memberId;
 
     if (finalCategory === 'member-fees' && typeof linkedMemberId === 'string' && linkedMemberId.trim()) {
-      console.log('🔗 [updateTransaction] Member fee transaction detected, auto-syncing...', {
-        transactionId,
-        memberId: linkedMemberId,
-        category: finalCategory,
-      });
+      
 
       try {
         // Fetch member details
@@ -378,7 +346,17 @@ export const updateTransaction = async (
           // Reconcile to update paidAmount, paymentDate, status
           await reconcileMemberFeeFromTransactions(member.id);
 
-          console.log('✅ [updateTransaction] Member fee record auto-synced successfully');
+          // 🆕 当存在会员费交易且已关联会员时，将其类别升级为 Probation Member（不覆盖 Alumni/Visiting/Probation）
+          try {
+            const currentCat = (member as any)?.jciCareer?.category as string | undefined;
+            if (currentCat !== 'Alumni' && currentCat !== 'Visiting Member' && currentCat !== 'Probation Member') {
+              await updateDoc(doc(db, GLOBAL_COLLECTIONS.MEMBERS, member.id), {
+                'jciCareer.category': 'Probation Member',
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          } catch {}
+
           globalSystemService.log('info', 'Member fee auto-synced from transaction', 'transactionService.updateTransaction', {
             transactionId,
             memberId: member.id,
@@ -408,11 +386,7 @@ export const updateTransaction = async (
     // When transaction category starts with 'event-' and has metadata.eventId,
     // automatically create/update eventFinancialRecord in FINANCIAL_RECORDS
     if (finalCategory.startsWith('event-') && finalMetadata?.eventId) {
-      console.log('🔗 [updateTransaction] Event financial transaction detected, auto-syncing...', {
-        transactionId,
-        eventId: finalMetadata.eventId,
-        category: finalCategory,
-      });
+      
 
       try {
         const finalAmount = updates.amount ?? existingData.amount;
@@ -452,7 +426,7 @@ export const updateTransaction = async (
 
         await reconcileEventFinancialRecord(finalMetadata.eventId);
 
-        console.log('✅ [updateTransaction] Event financial record auto-synced successfully');
+        
         globalSystemService.log('info', 'Event financial auto-synced from transaction', 'transactionService.updateTransaction', {
           transactionId,
           eventId: finalMetadata.eventId,
@@ -474,11 +448,7 @@ export const updateTransaction = async (
     // When transaction category starts with 'general-',
     // automatically create/update generalFinancialRecord in FINANCIAL_RECORDS
     if (finalCategory.startsWith('general-')) {
-      console.log('🔗 [updateTransaction] General financial transaction detected, auto-syncing...', {
-        transactionId,
-        category: finalCategory,
-        txAccount: updates.txAccount ?? existingData.txAccount,
-      });
+      
 
       try {
         const finalAmount = updates.amount ?? existingData.amount;
@@ -516,7 +486,7 @@ export const updateTransaction = async (
 
         await reconcileGeneralFinancialRecord(finalCategory, finalTxAccount);
 
-        console.log('✅ [updateTransaction] General financial record auto-synced successfully');
+        
         globalSystemService.log('info', 'General financial auto-synced from transaction', 'transactionService.updateTransaction', {
           transactionId,
           category: finalCategory,
@@ -568,10 +538,7 @@ export const deleteTransaction = async (
     
     const data = transactionDoc.data();
     
-    console.log('🔄 [deleteTransaction] Deleting transaction:', {
-      transactionId,
-      bankAccountId: data.bankAccountId,
-    });
+    
     
     // 更新账户最后交易日期
     await updateBankAccountLastTransaction(data.bankAccountId);
@@ -1015,7 +982,9 @@ export const approveTransaction = async (
 ): Promise<void> => {
   try {
     const transactionRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, transactionId);
-    
+    const txDoc = await getDoc(transactionRef);
+    const txData = txDoc.exists() ? txDoc.data() as any : undefined;
+
     const updates = cleanUndefinedValues({
       status: 'completed' as TransactionStatus,
       approvedBy: userId,
@@ -1025,6 +994,22 @@ export const approveTransaction = async (
     
     await updateDoc(transactionRef, updates);
     
+    // 🆕 若是会员费交易且已关联会员，审批后确保其类别为 Probation Member（不覆盖 Alumni/Visiting/Probation）
+    try {
+      const isMemberFee = txData?.category === 'member-fees' || (txData?.txAccount && String(txData.txAccount).includes('member-fee'));
+      const linkedMemberId = txData?.metadata?.memberId as string | undefined;
+      if (isMemberFee && typeof linkedMemberId === 'string' && linkedMemberId.trim()) {
+        const member = await getMemberById(linkedMemberId);
+        const currentCat = (member as any)?.jciCareer?.category as string | undefined;
+        if (member && currentCat !== 'Alumni' && currentCat !== 'Visiting Member' && currentCat !== 'Probation Member') {
+          await updateDoc(doc(db, GLOBAL_COLLECTIONS.MEMBERS, member.id), {
+            'jciCareer.category': 'Probation Member',
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+    } catch {}
+
     globalSystemService.log(
       'info',
       'Transaction approved',
@@ -1136,14 +1121,7 @@ export const getBalanceBeforeDate = async (
   bankAccountId: string,
   beforeDate: string
 ): Promise<number> => {
-  console.log('\n' + '='.repeat(80));
-  console.log('📊 [getBalanceBeforeDate] 开始计算历史余额');
-  console.log('='.repeat(80));
-  console.log('📌 输入参数:', {
-    bankAccountId,
-    beforeDate,
-    说明: `计算 ${beforeDate} 之前的所有交易累计`
-  });
+  
   
   try {
     // Step 1: 获取银行账户初始余额
@@ -1157,17 +1135,11 @@ export const getBalanceBeforeDate = async (
     const account = accountDoc.data();
     const initialBalance = account.initialBalance || 0;
     
-    console.log('📌 Step 1: 账户初始余额');
-    console.log(`   账户名称: ${account.accountName}`);
-    console.log(`   初始余额: RM ${initialBalance.toFixed(2)}`);
+    
     
     // Step 2: 查询该账户的所有交易(不使用status条件)
     // 原因：数据库中 status 字段为 undefined，查询 status=='completed' 会返回0笔
-    console.log('📌 Step 2: 查询该账户所有交易');
-    console.log(`   Collection: ${GLOBAL_COLLECTIONS.TRANSACTIONS}`);
-    console.log(`   查询条件:`);
-    console.log(`     bankAccountId = "${bankAccountId}"`);
-    console.log(`   ⚠️  注意: 不使用status条件(因为数据库中status为undefined)`);
+    
     
     const q = query(
       collection(db, GLOBAL_COLLECTIONS.TRANSACTIONS),
@@ -1176,21 +1148,15 @@ export const getBalanceBeforeDate = async (
     
     const snapshot = await getDocs(q);
     
-    console.log('📌 Step 2: 查询结果');
-    console.log(`   找到该账户交易总数: ${snapshot.size} 笔`);
+    
     
     if (snapshot.empty) {
-      console.log('   ℹ️  该账户没有任何交易，返回初始余额');
-      console.log('='.repeat(80) + '\n');
+      
       return initialBalance;
     }
     
     // 显示前3笔交易的日期格式(用于调试)
-    console.log('   📋 显示前3笔交易的日期格式:');
-    snapshot.docs.slice(0, 3).forEach((doc, idx) => {
-      const data = doc.data() as any;
-      console.log(`     #${idx + 1}: "${data.transactionDate}" - ${data.mainDescription?.substring(0, 30)}`);
-    });
+    
     
     // Step 3: 获取所有交易并在内存中过滤
     const allTransactions = snapshot.docs.map(doc => ({
@@ -1198,9 +1164,7 @@ export const getBalanceBeforeDate = async (
       ...doc.data()
     }));
     
-    console.log('📌 Step 3: 在内存中过滤日期和虚拟交易');
-    console.log(`   过滤条件: transactionDate < "${beforeDate}" AND isVirtual != true`);
-    console.log(`   说明: 虚拟交易(子交易)不影响余额计算`);
+    
     
     // 过滤出 beforeDate 之前的交易(强制规范到 YYYY-MM-DD 再比较，避免字典序误判)
     // 同时排除虚拟交易(isVirtual === true)
@@ -1237,24 +1201,15 @@ export const getBalanceBeforeDate = async (
       return txISO < beforeISO;
     });
     
-    console.log(`   过滤后交易数: ${transactions.length} 笔`);
+    
     
     if (transactions.length === 0) {
-      console.log('   ℹ️  没有符合条件的历史交易，返回初始余额');
-      console.log(`   💡 提示: "${beforeDate}" 可能是该账户的第一笔交易日期`);
-      console.log('='.repeat(80) + '\n');
+      
       return initialBalance;
     }
     
     // 显示过滤后的前3笔交易
-    console.log('   ✅ 过滤成功！显示前3笔交易:');
-    transactions.slice(0, 3).forEach((tx: any, idx) => {
-      const iso = normalizeToISODate(tx.transactionDate);
-      console.log(`     #${idx + 1}: ${tx.transactionDate} (→ ${iso}) - ${tx.mainDescription?.substring(0, 30)}`);
-    });
-    if (transactions.length > 3) {
-      console.log(`     ... 还有 ${transactions.length - 3} 笔`);
-    }
+    
     
     // Step 4: 按交易日期排序(从早到晚)
     transactions.sort((a: any, b: any) => {
@@ -1263,27 +1218,13 @@ export const getBalanceBeforeDate = async (
       return dateA - dateB;
     });
     
-    console.log('📌 Step 4: 按时间排序');
-    console.table(
-      transactions.slice(0, 5).map((tx: any, idx) => ({
-        序号: idx + 1,
-        日期: tx.transactionDate,
-        描述: tx.mainDescription?.substring(0, 30),
-        收入: tx.income || tx.amount && tx.transactionType === 'income' ? tx.amount : 0,
-        支出: tx.expense || tx.amount && tx.transactionType === 'expense' ? tx.amount : 0,
-      }))
-    );
     
-    if (transactions.length > 5) {
-      console.log(`   ... 还有 ${transactions.length - 5} 笔交易`);
-    }
     
     // Step 5: 累计计算
     let runningBalance = initialBalance;
     let sampleBalances: any[] = [];
     
-    console.log('📌 Step 5: 逐笔累加');
-    console.log(`   起始余额: RM ${runningBalance.toFixed(2)}`);
+    
     
     transactions.forEach((txn: any, index) => {
       
@@ -1319,15 +1260,7 @@ export const getBalanceBeforeDate = async (
       }
     });
     
-    console.table(sampleBalances);
     
-    console.log('📌 Step 6: 计算结果');
-    console.log(`   历史交易数: ${transactions.length} 笔`);
-    console.log(`   初始余额: RM ${initialBalance.toFixed(2)}`);
-    console.log(`   历史累计: RM ${(runningBalance - initialBalance).toFixed(2)}`);
-    console.log(`   最终余额: RM ${runningBalance.toFixed(2)}`);
-    console.log(`   ✅ 这个余额将作为当前页的起始余额`);
-    console.log('='.repeat(80) + '\n');
     
     return runningBalance;
     
@@ -1451,11 +1384,7 @@ export const splitTransaction = async (
   unallocatedTransaction?: Transaction;
 }> => {
   try {
-    console.log('🔀 [splitTransaction] Starting split:', {
-      transactionId,
-      splitsCount: splits.length,
-      userId,
-    });
+    
     
     // Step 1: 获取父交易
     const parentRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, transactionId);
@@ -1474,7 +1403,7 @@ export const splitTransaction = async (
     
     // 🆕 Step 2.1: 如果已拆分，先删除所有现有子交易(更新拆分记录)
     if (parentData.isSplit) {
-      console.log('🔄 [splitTransaction] 交易已拆分，删除现有子交易并重新拆分');
+      
       
       // 查找所有现有子交易
       const existingChildren = await getDocs(
@@ -1484,24 +1413,20 @@ export const splitTransaction = async (
         )
       );
       
-      console.log(`🗑️  [splitTransaction] 找到 ${existingChildren.size} 笔现有子交易，准备删除`);
+      
       
       // 删除所有现有子交易
       for (const childDoc of existingChildren.docs) {
         await deleteDoc(doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, childDoc.id));
       }
       
-      console.log('✅ [splitTransaction] 现有子交易已删除，准备创建新拆分');
+      
     }
     
     const parentAmount = parentData.amount;
     const totalSplitAmount = splits.reduce((sum, split) => sum + split.amount, 0);
     
-    console.log('💰 [splitTransaction] Amount validation:', {
-      parentAmount,
-      totalSplitAmount,
-      valid: totalSplitAmount <= parentAmount,
-    });
+    
     
     if (totalSplitAmount > parentAmount) {
       throw new Error(`拆分金额总和 (${totalSplitAmount}) 不能超过原交易金额 (${parentAmount})`);
@@ -1509,12 +1434,7 @@ export const splitTransaction = async (
     
     const unallocatedAmount = parentAmount - totalSplitAmount;
     
-    console.log('📊 [splitTransaction] Split summary:', {
-      parentAmount,
-      totalSplitAmount,
-      unallocatedAmount,
-      willCreateUnallocated: unallocatedAmount > 0,
-    });
+    
     
     // Step 3: 使用 Batch 创建子交易
     const childTransactions: Transaction[] = [];
@@ -1580,9 +1500,7 @@ export const splitTransaction = async (
     let unallocatedTransaction: Transaction | undefined;
     
     if (unallocatedAmount > 0) {
-      console.log('📝 [splitTransaction] Creating unallocated transaction:', {
-        amount: unallocatedAmount,
-      });
+      
       
       const unallocatedData: Omit<Transaction, 'id'> = {
         transactionNumber: await generateTransactionNumber(
@@ -1642,12 +1560,7 @@ export const splitTransaction = async (
     
     await updateDoc(parentRef, updateData);
     
-    console.log('✅ [splitTransaction] Split completed:', {
-      parentId: transactionId,
-      childCount: childTransactions.length,
-      allocatedAmount: totalSplitAmount,
-      unallocatedAmount: unallocatedAmount,
-    });
+    
     
     // 记录日志
     globalSystemService.log(
@@ -1698,10 +1611,7 @@ export const unsplitTransaction = async (
   userId: string
 ): Promise<void> => {
   try {
-    console.log('🔄 [unsplitTransaction] Starting unsplit:', {
-      transactionId,
-      userId,
-    });
+    
     
     // Step 1: 获取父交易
     const parentRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, transactionId);
@@ -1725,9 +1635,7 @@ export const unsplitTransaction = async (
     
     const childrenSnapshot = await getDocs(childrenQuery);
     
-    console.log('🗑️ [unsplitTransaction] Deleting child transactions:', {
-      count: childrenSnapshot.size,
-    });
+    
     
     // 删除所有子交易
     for (const childDoc of childrenSnapshot.docs) {
@@ -1746,10 +1654,7 @@ export const unsplitTransaction = async (
     
     await updateDoc(parentRef, parentUpdates);
     
-    console.log('✅ [unsplitTransaction] Unsplit completed:', {
-      parentId: transactionId,
-      deletedCount: childrenSnapshot.size,
-    });
+    
     
     globalSystemService.log(
       'info',
@@ -1800,11 +1705,7 @@ export const batchSplitTransactions = async (
   let successCount = 0;
   let failedCount = 0;
 
-  console.log('🔀 [batchSplitTransactions] Starting batch split:', {
-    transactionCount: transactionIds.length,
-    splitRule,
-    userId,
-  });
+  
 
   for (const transactionId of transactionIds) {
     try {
@@ -1868,11 +1769,7 @@ export const batchSplitTransactions = async (
     }
   }
 
-  console.log('✅ [batchSplitTransactions] Batch split completed:', {
-    total: transactionIds.length,
-    successCount,
-    failedCount,
-  });
+  
 
   return { successCount, failedCount, results };
 };
@@ -1981,10 +1878,7 @@ export const batchSetCategory = async (
 export const getTransactionsByProjectAccountId = async (
   projectAccountId: string
 ): Promise<Transaction[]> => {
-  console.log('🔍 [getTransactionsByProjectAccountId] Starting query...', { 
-    projectAccountId,
-    collection: GLOBAL_COLLECTIONS.TRANSACTIONS,
-  });
+  
   
   try {
     const q = query(
@@ -1993,22 +1887,13 @@ export const getTransactionsByProjectAccountId = async (
       orderBy('transactionDate', 'desc')
     );
 
-    console.log('📡 [getTransactionsByProjectAccountId] Executing Firestore query...');
+    
     const snapshot = await getDocs(q);
-    console.log('✅ [getTransactionsByProjectAccountId] Query completed', {
-      totalDocs: snapshot.size,
-      isEmpty: snapshot.empty,
-    });
+    
 
     const transactions = snapshot.docs.map(doc => {
       const data = doc.data();
-      console.log('📄 [getTransactionsByProjectAccountId] Document data:', {
-        id: doc.id,
-        transactionNumber: data.transactionNumber,
-        projectAccountId: data.projectAccountId,
-        mainDescription: data.mainDescription,
-        amount: data.amount,
-      });
+      
       
       return {
         id: doc.id,
@@ -2020,9 +1905,7 @@ export const getTransactionsByProjectAccountId = async (
       } as Transaction;
     });
 
-    console.log('✅ [getTransactionsByProjectAccountId] Returning transactions:', {
-      count: transactions.length,
-    });
+    
 
     return transactions;
   } catch (error: any) {
@@ -2109,7 +1992,7 @@ export const updateTransactionReconciliation = async (
           reconciledBankTransactionId: transactionId, // 双向引用
           updatedAt: new Date().toISOString(),
         }));
-        console.log('✅ [updateTransactionReconciliation] Bank transaction synchronized:', bankTransactionId);
+    
         
         // 🆕 如果bankTransaction关联了活动账目记录，也更新它
         if (bankTxData.reconciledEventAccountTransactionId) {
@@ -2118,7 +2001,7 @@ export const updateTransactionReconciliation = async (
             await updateEventAccountTransaction(bankTxData.reconciledEventAccountTransactionId, {
               status: 'completed' as any,
             }, userId);
-            console.log('✅ [updateTransactionReconciliation] Event account transaction synchronized');
+            
           } catch (error: any) {
             console.error('⚠️ [updateTransactionReconciliation] Failed to sync event account transaction:', error);
           }
@@ -2183,14 +2066,14 @@ export const clearTransactionReconciliation = async (
             reconciledBankTransactionId: deleteField(),
             updatedAt: new Date().toISOString(),
           });
-          console.log('✅ [clearTransactionReconciliation] Bank transaction synchronized:', bankTransactionId);
+          
           
           // 🆕 如果bankTransaction关联了活动账目记录，也清除它的核对状态
           if (bankTxData.reconciledEventAccountTransactionId) {
             try {
               const { clearEventAccountTransactionReconciliation } = await import('@/modules/event/services/eventAccountService');
               await clearEventAccountTransactionReconciliation(bankTxData.reconciledEventAccountTransactionId, userId);
-              console.log('✅ [clearTransactionReconciliation] Event account transaction synchronized');
+              
             } catch (error: any) {
               console.error('⚠️ [clearTransactionReconciliation] Failed to sync event account transaction:', error);
             }
@@ -2219,5 +2102,5 @@ export const clearTransactionReconciliation = async (
   }
 };
 
-console.log('✅ Transaction Service Loaded');
+
 

@@ -51,6 +51,60 @@ const getMembersRef = () => collection(db, GLOBAL_COLLECTIONS.MEMBERS);
 // ========== Helper Functions ==========
 
 /**
+ * Auto update jciCareer.category to 'Alumni' when age >= 40
+ */
+const autoUpdateAlumniCategoryIfNeeded = async (member: Member): Promise<void> => {
+  try {
+    const currentCategory = (member as any)?.jciCareer?.category as string | undefined;
+    // 若已是 Visiting Member，则不升级为 Alumni
+    if (currentCategory === 'Visiting Member') return;
+    const birth = (member as any)?.profile?.birthDate as string | undefined;
+    if (currentCategory === 'Alumni') return;
+    if (!birth || typeof birth !== 'string') return;
+    // 非马来西亚证件排除
+    const idVal = (member as any)?.profile?.nricOrPassport as string | undefined;
+    const isMalaysia = !!idVal && /^\d{12}$/.test(idVal.replace(/\D/g, ''));
+    if (!isMalaysia) return;
+    const birthDate = dayjs(birth);
+    if (!birthDate.isValid()) return;
+    const age = dayjs().diff(birthDate, 'year');
+    if (age >= 40) {
+      const memberRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, member.id);
+      await updateDoc(memberRef, cleanUndefinedValues({
+        'jciCareer.category': 'Alumni',
+        updatedAt: Timestamp.now(),
+      }));
+    }
+  } catch {
+    // silent fail; do not block reads
+  }
+};
+
+/**
+ * Auto update jciCareer.category to 'Visiting Member' when NRIC/Passport indicates non-Malaysian
+ * 简规则：马来西亚NRIC为12位纯数字；否则视为非马来
+ */
+const autoUpdateVisitingCategoryIfNeeded = async (member: Member): Promise<void> => {
+  try {
+    const currentCategory = (member as any)?.jciCareer?.category as string | undefined;
+    if (currentCategory === 'Visiting Member') return;
+    const idVal = (member as any)?.profile?.nricOrPassport as string | undefined;
+    if (!idVal || typeof idVal !== 'string') return;
+    const digitsOnly = idVal.replace(/\D/g, '');
+    const isMalaysiaNric = /^\d{12}$/.test(digitsOnly);
+    if (!isMalaysiaNric) {
+      const memberRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, member.id);
+      await updateDoc(memberRef, cleanUndefinedValues({
+        'jciCareer.category': 'Visiting Member',
+        updatedAt: Timestamp.now(),
+      }));
+    }
+  } catch {
+    // silent fail
+  }
+};
+
+/**
  * Convert Firestore document to Member object
  * 转换 Firestore 文档为会员对象
  */
@@ -210,13 +264,52 @@ export const getMemberById = async (memberId: string): Promise<Member | null> =>
       return null;
     }
     
-    return convertToMember(memberDoc.id, memberDoc.data());
+    const converted = convertToMember(memberDoc.id, memberDoc.data());
+    await autoUpdateAdhoc(converted);
+    return converted;
   } catch (error) {
     handleFirebaseError(error, {
       customMessage: '获取会员信息失败',
       showNotification: false,
     });
     throw error;
+  }
+};
+
+// Wrap auto-update for single member with safe call
+const autoUpdateAdhoc = async (m: Member) => {
+  await Promise.allSettled([
+    autoUpdateAlumniCategoryIfNeeded(m),
+    autoUpdateVisitingCategoryIfNeeded(m),
+    autoUpdateProbationCategoryIfNeeded(m),
+  ]);
+};
+
+/**
+ * Auto update jciCareer.category to 'Probation Member' when member has paid member-fee
+ * 不覆盖 Alumni / Visiting Member
+ */
+const autoUpdateProbationCategoryIfNeeded = async (member: Member): Promise<void> => {
+  try {
+    const currentCategory = (member as any)?.jciCareer?.category as string | undefined;
+    if (currentCategory === 'Alumni' || currentCategory === 'Visiting Member' || currentCategory === 'Probation Member') return;
+    // 查询财务记录：memberFee 且 paidAmount>0
+    const q = query(
+      collection(db, GC.FINANCIAL_RECORDS),
+      where('type', '==', 'memberFee'),
+      where('memberId', '==', member.id),
+      where('paidAmount', '>', 0)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const memberRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, member.id);
+      await updateDoc(memberRef, cleanUndefinedValues({
+        'jciCareer.category': 'Probation Member',
+        updatedAt: Timestamp.now(),
+      }));
+    }
+  } catch {
+    // silent fail
   }
 };
 
@@ -229,6 +322,15 @@ export const getMembers = async (
 ): Promise<PaginatedResponse<Member>> => {
   try {
     const { page = 1, limit: pageLimit = 20, search, ...searchParams } = params;
+    const catStrLc = String((searchParams as any)?.category || '').toLowerCase();
+    const isProbationRequested = catStrLc === 'probation member';
+    console.log('[MemberService.getMembers] incoming params:', {
+      page,
+      pageLimit,
+      category: (searchParams as any)?.category,
+      categoryString: String((searchParams as any)?.category),
+      hasSearch: !!search,
+    });
     
     // Step 1: Get total count for pagination calculation
     // 第一步：获取总数用于分页计算
@@ -258,7 +360,36 @@ export const getMembers = async (
       
       // Execute paginated query
       const snapshot = await getDocs(q);
-      const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
+      let members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
+      // 🆕 Probation Member 视图增强：含有已支付会费记录的会员也视为准会员（即使分类尚未写回）
+      if (isProbationRequested) {
+        console.log('[MemberService.getMembers] Probation filter (paged) before:', {
+          snapshotDocs: snapshot.size,
+          membersLen: members.length,
+        });
+        try {
+          const paidSnap = await getDocs(query(
+            collection(db, GC.FINANCIAL_RECORDS),
+            where('type', '==', 'memberFee'),
+            where('paidAmount', '>', 0)
+          ));
+          const paidMemberIds = new Set<string>();
+          paidSnap.docs.forEach(d => {
+            const v = d.data() as any;
+            if (typeof v.memberId === 'string' && v.memberId) paidMemberIds.add(v.memberId);
+          });
+          const before = members.length;
+          members = members.filter((m: any) => (m?.jciCareer?.category) === 'Probation Member' || paidMemberIds.has(m.id));
+          console.log('[MemberService.getMembers] Probation filter (paged) after:', {
+            before,
+            after: members.length,
+            paidIdsCount: paidMemberIds.size,
+            samplePaidIds: Array.from(paidMemberIds).slice(0, 5),
+            sampleKeptIds: members.slice(0, 5).map(x => x.id),
+          });
+        } catch {}
+      }
+      await Promise.allSettled(members.map(m => autoUpdateAdhoc(m)));
       
       // Apply client-side filters that can't be done server-side
       let filteredMembers = members;
@@ -300,8 +431,36 @@ export const getMembers = async (
     const searchQuery = buildQuery(searchParams);
     const searchSnapshot = await getDocs(searchQuery);
     
-    // Convert all documents to Member objects
+    // Convert all documents to Member objects and trigger auto update
     let allMembers = searchSnapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
+    if (isProbationRequested) {
+      console.log('[MemberService.getMembers] Probation filter (search) before:', {
+        docs: searchSnapshot.size,
+        allLen: allMembers.length,
+      });
+      try {
+        const paidSnap = await getDocs(query(
+          collection(db, GC.FINANCIAL_RECORDS),
+          where('type', '==', 'memberFee'),
+          where('paidAmount', '>', 0)
+        ));
+        const paidMemberIds = new Set<string>();
+        paidSnap.docs.forEach(d => {
+          const v = d.data() as any;
+          if (typeof v.memberId === 'string' && v.memberId) paidMemberIds.add(v.memberId);
+        });
+        const before = allMembers.length;
+        allMembers = allMembers.filter((m: any) => (m?.jciCareer?.category) === 'Probation Member' || paidMemberIds.has(m.id));
+        console.log('[MemberService.getMembers] Probation filter (search) after:', {
+          before,
+          after: allMembers.length,
+          paidIdsCount: paidMemberIds.size,
+          samplePaidIds: Array.from(paidMemberIds).slice(0, 5),
+          sampleKeptIds: allMembers.slice(0, 5).map(x => x.id),
+        });
+      } catch {}
+    }
+    await Promise.allSettled(allMembers.map(m => autoUpdateAdhoc(m)));
     
     // Apply search filter (expanded to include fullNameNric)
     const searchLower = search.toLowerCase();
@@ -710,8 +869,7 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
     const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
     
-    console.log('🎂 [Birthday] Total active members:', members.length);
-    console.log('🎂 [Birthday] Members with birthDate:', members.filter(m => m.profile?.birthDate).length);
+    
     
     const upcomingBirthdays: Array<{
       id: string;
@@ -808,7 +966,7 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
       }
     });
     
-    console.log('🎂 [Birthday] Upcoming birthdays found:', upcomingBirthdays.length);
+    
     
     // Sort by days until birthday
     upcomingBirthdays.sort((a, b) => a.daysUntilBirthday - b.daysUntilBirthday);
@@ -835,7 +993,7 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
     const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
     
-    console.log('🎂 [Birthday Month] Checking month:', month, 'Total members:', members.length);
+    
     
     const birthdayList: Array<{
       id: string;
@@ -900,7 +1058,7 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
       }
     });
     
-    console.log('🎂 [Birthday Month] Found birthdays:', birthdayList.length);
+    
     
     // Sort by day of month
     birthdayList.sort((a, b) => a.day - b.day);
@@ -926,7 +1084,7 @@ export const getIndustryDistribution = async (
   try {
     const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
-    console.log('📊 [IndustryDist] total members:', members.length);
+    
     
     const industryCount: Record<string, number> = {};
     let totalWithIndustry = 0;
@@ -946,7 +1104,6 @@ export const getIndustryDistribution = async (
       } else if (raw && typeof raw === 'object') {
         // Firestore map/object case → convert values to array
         industries = Object.values(raw as Record<string, unknown>).filter((v): v is string => typeof v === 'string' && !!v);
-        console.log('⚠️ [IndustryDist] ownIndustry map coerced to array:', { id: member.id, size: industries.length });
       } else if (typeof raw === 'string' && raw) {
         industries = [raw];
       }
@@ -958,9 +1115,7 @@ export const getIndustryDistribution = async (
         });
       }
 
-      if (idx < 5) {
-        console.log('🔎 [IndustryDist] sample member industries:', { id: member.id, industries });
-      }
+      
     });
     
     const distribution = Object.entries(industryCount)
@@ -971,7 +1126,7 @@ export const getIndustryDistribution = async (
       }))
       .sort((a, b) => b.count - a.count);
     
-    console.log('📊 [IndustryDist] totalWithIndustry:', totalWithIndustry, 'total industries:', distribution.length);
+    
     return distribution;
   } catch (error) {
     console.error('Error fetching industry distribution:', error);
@@ -991,7 +1146,7 @@ export const getInterestDistribution = async (): Promise<Array<{
   try {
     const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
-    console.log('📊 [InterestDist] total members:', members.length);
+    
     
     const interestCount: Record<string, number> = {};
     let totalWithInterest = 0;
@@ -1003,7 +1158,6 @@ export const getInterestDistribution = async (): Promise<Array<{
         interests = (raw as unknown[]).filter((v): v is string => typeof v === 'string' && !!v);
       } else if (raw && typeof raw === 'object') {
         interests = Object.values(raw as Record<string, unknown>).filter((v): v is string => typeof v === 'string' && !!v);
-        console.log('⚠️ [InterestDist] interestedIndustries map coerced to array:', { id: member.id, size: interests.length });
       } else if (typeof raw === 'string' && raw) {
         interests = [raw];
       }
@@ -1015,9 +1169,7 @@ export const getInterestDistribution = async (): Promise<Array<{
         });
       }
 
-      if (idx < 5) {
-        console.log('🔎 [InterestDist] sample member interests:', { id: member.id, interests });
-      }
+      
     });
     
     const distribution = Object.entries(interestCount)
@@ -1029,7 +1181,7 @@ export const getInterestDistribution = async (): Promise<Array<{
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 interests
     
-    console.log('📊 [InterestDist] totalWithInterest:', totalWithInterest, 'top10:', distribution);
+    
     return distribution;
   } catch (error) {
     console.error('Error fetching interest distribution:', error);
@@ -1058,5 +1210,5 @@ export const getAllActiveMembers = async (): Promise<Member[]> => {
   }
 };
 
-console.log('✅ Member Service Loaded');
+
 

@@ -111,6 +111,7 @@ const MemberListPage: React.FC = () => {
     try {
       // 🆕 根据 activeTab 自动设置分类筛选
       const categoryFilter = activeTab !== 'all' ? (activeTab as any) : undefined;
+      console.log('[MemberListPage.fetchMembers] activeTab/categoryFilter:', { activeTab, categoryFilter, searchText, searchParams });
       
       const result = await getMembers({
         page: pagination.current,
@@ -119,11 +120,60 @@ const MemberListPage: React.FC = () => {
         ...searchParams,
         category: categoryFilter, // 🆕 添加分类筛选
       });
-      
-      setMembers(result.data);
+
+      // 🆕 Alumni 标签：显示 40 岁及以上会员（或已标记为 Alumni）
+      const isAlumniTab = activeTab === 'Alumni';
+      // 🆕 Visiting Member 标签：显示护照/证件不属于马来西亚(或已标记为 Visiting Member)
+      const isVisitingTab = activeTab === 'Visiting Member';
+      // 🆕 Honorary Member 标签：显示拥有 senatorId 的会员
+      const isHonoraryTab = activeTab === 'Honorary Member';
+      const computeAge = (birth?: string): number | undefined => {
+        if (!birth || typeof birth !== 'string') return undefined;
+        const date = new Date(birth);
+        if (Number.isNaN(date.getTime())) return undefined;
+        const today = new Date();
+        let age = today.getFullYear() - date.getFullYear();
+        const m = today.getMonth() - date.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < date.getDate())) age--;
+        return age;
+      };
+      const isNonMalaysiaId = (val?: string): boolean => {
+        if (!val || typeof val !== 'string') return false;
+        const digitsOnly = val.replace(/\D/g, '');
+        // 马来西亚NRIC: 12位纯数字(忽略符号和空格)；否则视为非马来
+        return !/^\d{12}$/.test(digitsOnly);
+      };
+
+      let data = result.data as any[];
+      if (isAlumniTab) {
+        data = data.filter((m: any) => {
+          const byCategory = (m?.jciCareer?.category) === 'Alumni';
+          const age = computeAge(m?.profile?.birthDate);
+          const byAge = typeof age === 'number' && age >= 40;
+          // 仅限马来西亚NRIC（12位数字），非马来证件排除
+          const isMalaysia = !!m?.profile?.nricOrPassport && /^\d{12}$/.test(String(m.profile.nricOrPassport).replace(/\D/g, ''));
+          if (!isMalaysia) return false;
+          return byCategory || byAge;
+        });
+      }
+      if (isVisitingTab) {
+        data = data.filter((m: any) => {
+          const byCategory = (m?.jciCareer?.category) === 'Visiting Member';
+          const byId = isNonMalaysiaId(m?.profile?.nricOrPassport);
+          return byCategory || byId;
+        });
+      }
+      if (isHonoraryTab) {
+        data = data.filter((m: any) => {
+          const senatorId = (m?.jciCareer?.senatorId || '').toString().trim();
+          return senatorId.length > 0;
+        });
+      }
+
+      setMembers(data);
       setPagination(prev => ({
         ...prev,
-        total: result.total,
+        total: (isAlumniTab || isVisitingTab || isHonoraryTab) ? data.length : result.total,
       }));
     } catch (error) {
       message.error('获取会员列表失败');
@@ -669,35 +719,56 @@ const MemberListPage: React.FC = () => {
             
             <Col span={8}><strong>自有行业:</strong></Col>
             <Col span={16}>
-              {(selectedMember as any).business?.ownIndustry && (selectedMember as any).business.ownIndustry.length > 0 ? (
-                <Space wrap>
-                  {(selectedMember as any).business.ownIndustry.map((industry: string, idx: number) => (
-                    <Tag key={idx} color="blue">{industry}</Tag>
-                  ))}
-                </Space>
-              ) : '-'}
+              {(() => {
+                const raw = (selectedMember as any).business?.ownIndustry;
+                const toArray = (v: any): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x)
+                  : v && typeof v === 'object' ? Object.values(v).filter((x): x is string => typeof x === 'string' && !!x)
+                  : typeof v === 'string' && v ? [v] : [];
+                const arr = toArray(raw);
+                return arr.length > 0 ? (
+                  <Space wrap>
+                    {arr.map((industry: string, idx: number) => (
+                      <Tag key={idx} color="blue">{industry}</Tag>
+                    ))}
+                  </Space>
+                ) : '-';
+              })()}
             </Col>
             
             <Col span={8}><strong>感兴趣的行业:</strong></Col>
             <Col span={16}>
-              {(selectedMember as any).business?.interestedIndustries && (selectedMember as any).business.interestedIndustries.length > 0 ? (
-                <Space wrap>
-                  {(selectedMember as any).business.interestedIndustries.map((industry: string, idx: number) => (
-                    <Tag key={idx} color="green">{industry}</Tag>
-                  ))}
-                </Space>
-              ) : '-'}
+              {(() => {
+                const raw = (selectedMember as any).business?.interestedIndustries;
+                const toArray = (v: any): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x)
+                  : v && typeof v === 'object' ? Object.values(v).filter((x): x is string => typeof x === 'string' && !!x)
+                  : typeof v === 'string' && v ? [v] : [];
+                const arr = toArray(raw);
+                return arr.length > 0 ? (
+                  <Space wrap>
+                    {arr.map((industry: string, idx: number) => (
+                      <Tag key={idx} color="green">{industry}</Tag>
+                    ))}
+                  </Space>
+                ) : '-';
+              })()}
             </Col>
             
             <Col span={8}><strong>业务类别:</strong></Col>
             <Col span={16}>
-              {(selectedMember as any).business?.businessCategories && (selectedMember as any).business.businessCategories.length > 0 ? (
-                <Space wrap>
-                  {(selectedMember as any).business.businessCategories.map((category: string, idx: number) => (
-                    <Tag key={idx} color="purple">{category}</Tag>
-                  ))}
-                </Space>
-              ) : '-'}
+              {(() => {
+                const raw = (selectedMember as any).business?.businessCategories;
+                const toArray = (v: any): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x)
+                  : v && typeof v === 'object' ? Object.values(v).filter((x): x is string => typeof x === 'string' && !!x)
+                  : typeof v === 'string' && v ? [v] : [];
+                const arr = toArray(raw);
+                return arr.length > 0 ? (
+                  <Space wrap>
+                    {arr.map((category: string, idx: number) => (
+                      <Tag key={idx} color="purple">{category}</Tag>
+                    ))}
+                  </Space>
+                ) : '-';
+              })()}
             </Col>
             
             <Col span={8}><strong>接受国际业务:</strong></Col>
@@ -977,7 +1048,7 @@ const MemberListPage: React.FC = () => {
             size="small"
             danger
             icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id, record.name)}
+            onClick={() => handleDelete(record.id, ((record as any).profile?.name || record.name))}
           >
             删除
           </Button>

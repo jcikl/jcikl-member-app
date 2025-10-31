@@ -123,6 +123,6 @@ export const globalComponentService = {
   },
 };
 
-console.log('✅ Global Component Settings Loaded');
+
 
 

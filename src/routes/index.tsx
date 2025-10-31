@@ -8,6 +8,7 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import GlobalSettingsPage from '@/modules/system/pages/GlobalSettingsPage';
 import FinancialCategoryManagementPage from '@/modules/system/pages/FinancialCategoryManagementPage';
 import MemberDataMigrationPage from '@/modules/system/pages/MemberDataMigrationPage';
+import MemberCategoryBackfillPage from '@/modules/system/pages/MemberCategoryBackfillPage';
 import QuickAddEventTransactionPage from '@/pages/QuickAddEventTransactionPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
@@ -102,6 +103,10 @@ export const router = createBrowserRouter(
           {
             path: 'member-data-migration',
             element: <MemberDataMigrationPage />,
+          },
+          {
+            path: 'member-category-backfill',
+            element: <MemberCategoryBackfillPage />,
           },
           {
             path: 'transaction-date-format-fix',
@@ -230,8 +235,13 @@ export const router = createBrowserRouter(
     path: '*',
     element: <NotFoundPage />,
   },
-  ]
+  ],
+  {
+    future: {
+      v7_startTransition: true,
+    },
+  }
 );
 
-console.log('✅ Router Configuration Loaded');
+
 

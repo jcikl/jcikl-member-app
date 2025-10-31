@@ -91,6 +91,6 @@ export const getCollectionPath = (collectionName: CollectionName): string => {
 // Total collections count
 export const TOTAL_COLLECTIONS = Object.keys(GLOBAL_COLLECTIONS).length;
 
-console.log(`✅ Global Collections Loaded: ${TOTAL_COLLECTIONS} collections`);
+
 
 

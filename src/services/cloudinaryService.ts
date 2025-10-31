@@ -125,5 +125,5 @@ class CloudinaryService {
 
 export const cloudinaryService = new CloudinaryService();
 
-console.log('✅ Cloudinary Service Loaded');
+
 

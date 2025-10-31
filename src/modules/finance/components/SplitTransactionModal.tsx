@@ -53,7 +53,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
   onCancel,
   onUnsplit,
 }) => {
-  console.log('🎯 [SplitTransactionModal] 组件初始化, visible:', visible, 'transaction:', transaction?.id);
+  
   
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -206,13 +206,8 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
 
   // 🆕 应用快速拆分
   const handleQuickSplit = () => {
-    console.log('🔍 [SplitTransactionModal.handleQuickSplit] =====快速拆分按钮被点击=====');
-    console.log('🔍 [SplitTransactionModal] quickSplitTemplate:', JSON.stringify(quickSplitTemplate, null, 2));
-    console.log('🔍 [SplitTransactionModal] current parentAmount:', parentAmount);
-    console.log('🔍 [SplitTransactionModal] current splits:', splits.length, 'items');
     
     const total = quickSplitTemplate.reduce((sum, item) => sum + item.amount, 0);
-    console.log('🔍 [SplitTransactionModal] 总金额:', total);
     
     if (total > parentAmount) {
       console.warn('⚠️ 快速拆分金额总和超过原交易金额');
@@ -220,17 +215,13 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       return;
     }
 
-    console.log('✅ [SplitTransactionModal] 应用快速拆分规则, 设置 splits:', JSON.stringify(quickSplitTemplate, null, 2));
     setSplits(quickSplitTemplate);
     message.success('已应用快速拆分规则');
-    console.log('✅ [SplitTransactionModal] 快速拆分规则已应用');
   };
 
   // 🆕 调试：组件渲染状态
   useEffect(() => {
-    console.log('🔄 [SplitTransactionModal] 组件渲染, loadingExistingSplits:', loadingExistingSplits);
-    console.log('🔄 [SplitTransactionModal] splits 数量:', splits.length);
-    console.log('🔄 [SplitTransactionModal] parentAmount:', parentAmount);
+    // render diagnostics removed in production
   }, [loadingExistingSplits, splits.length, parentAmount]);
 
   // 🆕 处理撤销拆分
@@ -320,7 +311,8 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       {/* 🆕 加载状态 */}
       {loadingExistingSplits && (
         <div style={{ textAlign: 'center', padding: '20px' }}>
-          <Spin tip="加载现有拆分数据..." />
+          <div style={{ marginBottom: 8 }}>加载现有拆分数据...</div>
+          <Spin />
         </div>
       )}
       
@@ -494,7 +486,6 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
           <Button
             type="primary"
             onClick={() => {
-              console.log('🖱️ [SplitTransactionModal] 按钮被点击！！！');
               handleQuickSplit();
             }}
             block
