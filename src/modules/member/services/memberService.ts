@@ -916,7 +916,9 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
  * Get member industry distribution
  * 获取会员行业分布
  */
-export const getIndustryDistribution = async (): Promise<Array<{
+export const getIndustryDistribution = async (
+  acceptInternationalBusiness?: 'Yes' | 'No' | 'Willing to explore'
+): Promise<Array<{
   industry: string;
   count: number;
   percentage: number;
@@ -930,6 +932,13 @@ export const getIndustryDistribution = async (): Promise<Array<{
     let totalWithIndustry = 0;
     
     members.forEach((member, idx) => {
+      // Optional filter by acceptInternationalBusiness (merged into profile)
+      if (acceptInternationalBusiness) {
+        const aib = (member as any)?.profile?.acceptInternationalBusiness as string | undefined;
+        if (!aib || aib !== acceptInternationalBusiness) {
+          return; // skip this member when filter is applied
+        }
+      }
       const raw = (member as any)?.profile?.ownIndustry ?? (member as any)?.business?.ownIndustry ?? [];
       let industries: string[] = [];
       if (Array.isArray(raw)) {

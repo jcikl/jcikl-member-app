@@ -65,6 +65,7 @@ const DashboardPage: React.FC = () => {
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<IndustryType | null>(null);
+  const [selectedAcceptIntl, setSelectedAcceptIntl] = useState<'Yes' | 'No' | 'Willing to explore' | null>(null);
   const [selectedInterest, setSelectedInterest] = useState<IndustryType | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
@@ -111,7 +112,7 @@ const DashboardPage: React.FC = () => {
       setListsLoading(true);
       try {
         const [industries, interests] = await Promise.all([
-          getIndustryDistribution(),
+          getIndustryDistribution(selectedAcceptIntl || undefined),
           getInterestDistribution(),
         ]);
 
@@ -127,7 +128,7 @@ const DashboardPage: React.FC = () => {
     };
 
     fetchLists();
-  }, []);
+  }, [selectedAcceptIntl]);
 
   // 加载生日数据
   useEffect(() => {
@@ -414,12 +415,29 @@ const DashboardPage: React.FC = () => {
             } 
             className="content-card"
             extra={
-              <Badge 
-                count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
-                offset={[-5, 5]}
-              >
-                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>全部</span>
-              </Badge>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Select
+                  size="small"
+                  allowClear
+                  placeholder="跨境业务"
+                  style={{ width: 130 }}
+                  value={selectedAcceptIntl || undefined}
+                  onChange={(val) => setSelectedAcceptIntl((val as any) ?? null)}
+                  options={[
+                    { label: 'Yes', value: 'Yes' },
+                    { label: 'No', value: 'No' },
+                    { label: 'Willing to explore', value: 'Willing to explore' },
+                  ]}
+                />
+                <Badge 
+                  count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
+                  offset={[-5, 5]}
+                >
+                  <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                    {selectedAcceptIntl ? `筛: ${selectedAcceptIntl}` : '全部'}
+                  </span>
+                </Badge>
+              </div>
             }
           >
             <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
