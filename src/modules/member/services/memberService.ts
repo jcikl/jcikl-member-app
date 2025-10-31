@@ -924,12 +924,16 @@ export const getIndustryDistribution = async (): Promise<Array<{
   try {
     const snapshot = await getDocs(query(getMembersRef(), where('profile.status', '==', 'active')));
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
-    
+
     const industryCount: Record<string, number> = {};
     let totalWithIndustry = 0;
-    
+
     members.forEach(member => {
-      const industries = member.profile?.ownIndustry || [];
+      // Normalize industry to an array of strings
+      const fallback = (member as any).business?.ownIndustry;
+      const raw = (member.profile?.ownIndustry ?? fallback) as unknown;
+      const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw.trim() ? [raw] : []);
+      const industries = arr.filter((v) => typeof v === 'string' && v.trim().length > 0) as string[];
       if (industries.length > 0) {
         totalWithIndustry++;
         industries.forEach(industry => {
@@ -966,12 +970,16 @@ export const getInterestDistribution = async (): Promise<Array<{
   try {
     const snapshot = await getDocs(query(getMembersRef(), where('profile.status', '==', 'active')));
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
-    
+
     const interestCount: Record<string, number> = {};
     let totalWithInterest = 0;
-    
+
     members.forEach(member => {
-      const interests = member.profile?.interestedIndustries || [];
+      // Normalize interested industries to an array of strings
+      const fallback = (member as any).business?.interestedIndustries;
+      const raw = (member.profile?.interestedIndustries ?? fallback) as unknown;
+      const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw.trim() ? [raw] : []);
+      const interests = arr.filter((v) => typeof v === 'string' && v.trim().length > 0) as string[];
       if (interests.length > 0) {
         totalWithInterest++;
         interests.forEach(interest => {
