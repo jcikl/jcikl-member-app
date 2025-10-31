@@ -336,51 +336,54 @@ const DashboardPage: React.FC = () => {
               </Select>
             }
           >
-            <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-            <List
-              loading={listsLoading}
-              dataSource={upcomingBirthdays.slice(0, 10)}
-              locale={{ 
-                emptyText: (
+            <div style={{
+              maxHeight: 160,
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              paddingBottom: 4,
+              msOverflowStyle: 'none',
+              scrollbarWidth: 'none'
+            }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                {(!listsLoading && upcomingBirthdays.length === 0) ? (
                   <div style={{ padding: '20px', textAlign: 'center', color: '#8c8c8c' }}>
                     <div>{birthdayViewMode === 'upcoming' ? '未来30天无生日会员' : '本月无生日会员'}</div>
                     <div style={{ fontSize: '12px', marginTop: '8px' }}>
                       💡 请在会员管理中录入会员出生日期
                     </div>
                   </div>
-                )
-              }}
-              renderItem={item => (
-                <List.Item style={{ padding: '8px 0' }}>
-                  <List.Item.Meta
-                    avatar={
-                      <Avatar 
-                        src={item.avatar} 
-                        icon={<UserOutlined />}
-                        size="small"
-                      />
-                    }
-                    title={
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '13px' }}>{item.name}</span>
-                        {birthdayViewMode === 'upcoming' ? (
-                          <Tag color={item.daysUntilBirthday === 0 ? 'red' : item.daysUntilBirthday! <= 7 ? 'orange' : 'blue'}>
-                            {item.daysUntilBirthday === 0 ? '今天' : `${item.daysUntilBirthday}天后`}
-                          </Tag>
-                        ) : (
-                          <Tag color="blue">{item.day}日</Tag>
-                        )}
+                ) : (
+                  upcomingBirthdays.slice(0, 10).map((item) => (
+                    <div key={`${item.id}-${item.birthDate}`} style={{
+                      minWidth: 220,
+                      maxWidth: 260,
+                      padding: '8px 10px',
+                      border: '1px solid #f0f0f0',
+                      borderRadius: 6,
+                      background: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                    }}>
+                      <Avatar src={item.avatar} icon={<UserOutlined />} size={32} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                          {birthdayViewMode === 'upcoming' ? (
+                            <Tag color={item.daysUntilBirthday === 0 ? 'red' : item.daysUntilBirthday! <= 7 ? 'orange' : 'blue'}>
+                              {item.daysUntilBirthday === 0 ? '今天' : `${item.daysUntilBirthday}天后`}
+                            </Tag>
+                          ) : (
+                            <Tag color="blue">{item.day}日</Tag>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.birthDate}</div>
                       </div>
-                    }
-                    description={
-                      <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                        {item.birthDate}
-                      </span>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
             {upcomingBirthdays.length > 0 && (
               <div style={{ 
