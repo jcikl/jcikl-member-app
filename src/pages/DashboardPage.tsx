@@ -173,20 +173,27 @@ const DashboardPage: React.FC = () => {
     loadMembers();
   }, []);
 
+  // 🆕 工具: 将行业/兴趣字段规范为字符串数组
+  const normalizeToStringArray = (value: any): string[] => {
+    let base: any[] = [];
+    if (Array.isArray(value)) base = value as any[];
+    else if (value && typeof value === 'object') base = Object.values(value as Record<string, unknown>);
+    else if (typeof value === 'string' && value) base = [value];
+    return base.filter((v): v is string => typeof v === 'string' && !!v);
+  };
+
   // 🆕 根据筛选条件过滤会员
   useEffect(() => {
     let filtered = [...members];
 
     // 按行业筛选
     if (selectedIndustry) {
-      filtered = filtered.filter(m => m.profile?.ownIndustry?.includes(selectedIndustry));
+      filtered = filtered.filter(m => normalizeToStringArray(m.profile?.ownIndustry).includes(selectedIndustry));
     }
 
     // 按兴趣筛选
     if (selectedInterest) {
-      filtered = filtered.filter(m => 
-        m.profile?.interestedIndustries?.includes(selectedInterest)
-      );
+      filtered = filtered.filter(m => normalizeToStringArray(m.profile?.interestedIndustries).includes(selectedInterest));
     }
 
     // 按会员ID筛选(反向筛选)
@@ -228,12 +235,14 @@ const DashboardPage: React.FC = () => {
     } else {
       setSelectedMemberId(member.id);
       // 反向筛选：如果会员有行业，高亮对应行业
-      if (member.profile?.ownIndustry && member.profile.ownIndustry.length > 0) {
-        setSelectedIndustry(member.profile.ownIndustry[0]);
+      {
+        const industries = normalizeToStringArray(member.profile?.ownIndustry);
+        if (industries.length > 0) setSelectedIndustry(industries[0] as any);
       }
       // 反向筛选：如果会员有兴趣，高亮第一个兴趣
-      if (member.profile?.interestedIndustries && member.profile.interestedIndustries.length > 0) {
-        setSelectedInterest(member.profile.interestedIndustries[0]);
+      {
+        const interests = normalizeToStringArray(member.profile?.interestedIndustries);
+        if (interests.length > 0) setSelectedInterest(interests[0] as any);
       }
     }
   };
