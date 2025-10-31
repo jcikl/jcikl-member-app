@@ -418,12 +418,18 @@ const DashboardPage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Select
                   size="small"
-                  allowClear
                   placeholder="跨境业务"
                   style={{ width: 130 }}
-                  value={selectedAcceptIntl || undefined}
-                  onChange={(val) => setSelectedAcceptIntl((val as any) ?? null)}
+                  value={(selectedAcceptIntl ?? 'ALL') as any}
+                  onChange={(val) => {
+                    if (val === 'ALL') {
+                      setSelectedAcceptIntl(null);
+                    } else {
+                      setSelectedAcceptIntl(val as any);
+                    }
+                  }}
                   options={[
+                    { label: 'All', value: 'ALL' },
                     { label: 'Yes', value: 'Yes' },
                     { label: 'No', value: 'No' },
                     { label: 'Willing to explore', value: 'Willing to explore' },
