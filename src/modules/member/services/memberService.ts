@@ -922,23 +922,32 @@ export const getIndustryDistribution = async (): Promise<Array<{
   percentage: number;
 }>> => {
   try {
-    const snapshot = await getDocs(query(getMembersRef(), where('profile.status', '==', 'active')));
+    const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
-
+    console.log('📊 [IndustryDist] total members:', members.length);
+    
     const industryCount: Record<string, number> = {};
     let totalWithIndustry = 0;
+    
+    members.forEach((member, idx) => {
+      const raw = (member as any)?.profile?.ownIndustry ?? (member as any)?.business?.ownIndustry ?? [];
+      const industries: string[] = Array.isArray(raw)
+        ? (raw as string[]).filter(Boolean)
+        : (typeof raw === 'string' && raw ? [raw] : []);
 
-    members.forEach(member => {
-      // Normalize industry to an array of strings
-      const fallback = (member as any).business?.ownIndustry;
-      const raw = (member.profile?.ownIndustry ?? fallback) as unknown;
-      const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw.trim() ? [raw] : []);
-      const industries = arr.filter((v) => typeof v === 'string' && v.trim().length > 0) as string[];
+      if (!Array.isArray(raw) && raw) {
+        console.log('⚠️ [IndustryDist] ownIndustry not array, coerced:', { id: member.id, type: typeof raw, value: raw });
+      }
+
       if (industries.length > 0) {
         totalWithIndustry++;
         industries.forEach(industry => {
           industryCount[industry] = (industryCount[industry] || 0) + 1;
         });
+      }
+
+      if (idx < 5) {
+        console.log('🔎 [IndustryDist] sample member industries:', { id: member.id, industries });
       }
     });
     
@@ -951,6 +960,7 @@ export const getIndustryDistribution = async (): Promise<Array<{
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 industries
     
+    console.log('📊 [IndustryDist] totalWithIndustry:', totalWithIndustry, 'top10:', distribution);
     return distribution;
   } catch (error) {
     console.error('Error fetching industry distribution:', error);
@@ -970,16 +980,12 @@ export const getInterestDistribution = async (): Promise<Array<{
   try {
     const snapshot = await getDocs(query(getMembersRef(), where('profile.status', '==', 'active')));
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
-
+    
     const interestCount: Record<string, number> = {};
     let totalWithInterest = 0;
-
+    
     members.forEach(member => {
-      // Normalize interested industries to an array of strings
-      const fallback = (member as any).business?.interestedIndustries;
-      const raw = (member.profile?.interestedIndustries ?? fallback) as unknown;
-      const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw.trim() ? [raw] : []);
-      const interests = arr.filter((v) => typeof v === 'string' && v.trim().length > 0) as string[];
+      const interests = member.profile?.interestedIndustries || [];
       if (interests.length > 0) {
         totalWithInterest++;
         interests.forEach(interest => {

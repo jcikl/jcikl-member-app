@@ -115,7 +115,9 @@ const DashboardPage: React.FC = () => {
           getInterestDistribution(),
         ]);
 
+        console.log('📊 [Dashboard] industry distribution received:', industries);
         setIndustryDistribution(industries);
+        console.log('📊 [Dashboard] interest distribution received:', interests);
         setInterestDistribution(interests);
       } catch (error) {
         console.error('Failed to fetch lists:', error);
