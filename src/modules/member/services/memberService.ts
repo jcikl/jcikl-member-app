@@ -931,12 +931,15 @@ export const getIndustryDistribution = async (): Promise<Array<{
     
     members.forEach((member, idx) => {
       const raw = (member as any)?.profile?.ownIndustry ?? (member as any)?.business?.ownIndustry ?? [];
-      const industries: string[] = Array.isArray(raw)
-        ? (raw as string[]).filter(Boolean)
-        : (typeof raw === 'string' && raw ? [raw] : []);
-
-      if (!Array.isArray(raw) && raw) {
-        console.log('⚠️ [IndustryDist] ownIndustry not array, coerced:', { id: member.id, type: typeof raw, value: raw });
+      let industries: string[] = [];
+      if (Array.isArray(raw)) {
+        industries = (raw as unknown[]).filter((v): v is string => typeof v === 'string' && !!v);
+      } else if (raw && typeof raw === 'object') {
+        // Firestore map/object case → convert values to array
+        industries = Object.values(raw as Record<string, unknown>).filter((v): v is string => typeof v === 'string' && !!v);
+        console.log('⚠️ [IndustryDist] ownIndustry map coerced to array:', { id: member.id, size: industries.length });
+      } else if (typeof raw === 'string' && raw) {
+        industries = [raw];
       }
 
       if (industries.length > 0) {
@@ -978,19 +981,34 @@ export const getInterestDistribution = async (): Promise<Array<{
   percentage: number;
 }>> => {
   try {
-    const snapshot = await getDocs(query(getMembersRef(), where('profile.status', '==', 'active')));
+    const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
+    console.log('📊 [InterestDist] total members:', members.length);
     
     const interestCount: Record<string, number> = {};
     let totalWithInterest = 0;
     
-    members.forEach(member => {
-      const interests = member.profile?.interestedIndustries || [];
+    members.forEach((member, idx) => {
+      const raw = (member as any)?.profile?.interestedIndustries ?? (member as any)?.business?.interestedIndustries ?? [];
+      let interests: string[] = [];
+      if (Array.isArray(raw)) {
+        interests = (raw as unknown[]).filter((v): v is string => typeof v === 'string' && !!v);
+      } else if (raw && typeof raw === 'object') {
+        interests = Object.values(raw as Record<string, unknown>).filter((v): v is string => typeof v === 'string' && !!v);
+        console.log('⚠️ [InterestDist] interestedIndustries map coerced to array:', { id: member.id, size: interests.length });
+      } else if (typeof raw === 'string' && raw) {
+        interests = [raw];
+      }
+
       if (interests.length > 0) {
         totalWithInterest++;
         interests.forEach(interest => {
           interestCount[interest] = (interestCount[interest] || 0) + 1;
         });
+      }
+
+      if (idx < 5) {
+        console.log('🔎 [InterestDist] sample member interests:', { id: member.id, interests });
       }
     });
     
@@ -1003,6 +1021,7 @@ export const getInterestDistribution = async (): Promise<Array<{
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 interests
     
+    console.log('📊 [InterestDist] totalWithInterest:', totalWithInterest, 'top10:', distribution);
     return distribution;
   } catch (error) {
     console.error('Error fetching interest distribution:', error);
