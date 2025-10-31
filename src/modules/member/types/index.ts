@@ -323,9 +323,49 @@ export interface MemberFormData {
   gender?: Gender;
   company?: string;
   departmentAndPosition?: string;
+  nationality?: string;
+  alternativePhone?: string;
+  nricOrPassport?: string;
+  fullNameNric?: string;
+  linkedin?: string;
+  profilePhotoUrl?: string;
+  whatsappGroup?: string;
+  shirtSize?: string;
+  jacketSize?: string;
+  nameToBeEmbroidered?: string;
+  tshirtReceivingStatus?: string;
+  cutting?: string;
   
   // Dates
   joinDate?: string;
+
+  // Namespaced - Business (optional at creation)
+  business?: {
+    company?: string;
+    departmentAndPosition?: string;
+    ownIndustry?: string[];
+    interestedIndustries?: string[];
+    businessCategories?: string[];
+    companyWebsite?: string;
+    companyIntro?: string;
+    acceptInternationalBusiness?: string;
+  };
+
+  // Namespaced - JCI Career (optional at creation)
+  jciCareer?: {
+    category?: string;
+    membershipCategory?: string;
+    chapter?: string;
+    chapterId?: string;
+    worldRegion?: string;
+    country?: string;
+    countryRegion?: string;
+    jciPosition?: string;
+    termStartDate?: string;
+    termEndDate?: string;
+    joinDate?: string;
+    senatorId?: string;
+  };
 }
 
 // ========== Search & Filter ==========

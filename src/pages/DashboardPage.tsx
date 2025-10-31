@@ -15,6 +15,8 @@ import {
   getInterestDistribution,
   getMembers
 } from '@/modules/member/services/memberService';
+import { getMemberFees } from '@/modules/finance/services/memberFeeService';
+import { globalDateService } from '@/config/globalDateSettings';
 
 // Types
 import type { Member, IndustryType } from '@/modules/member/types';
@@ -63,6 +65,7 @@ const DashboardPage: React.FC = () => {
   // 🆕 会员列表相关状态
   const [members, setMembers] = useState<Member[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
+  const [fiscalNewMemberIds, setFiscalNewMemberIds] = useState<Set<string>>(new Set());
   const [membersLoading, setMembersLoading] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<IndustryType | null>(null);
   const [selectedAcceptIntl, setSelectedAcceptIntl] = useState<'Yes' | 'No' | 'Willing to explore' | null>(null);
@@ -183,7 +186,37 @@ const DashboardPage: React.FC = () => {
           limit: 10000, // Firestore最大限制
         });
         setMembers(result.data);
+
+        // 默认视图：基于“当前年-新会员费(YYYY-new-member-fee)”的已缴成员集合
+        try {
+          const fy = globalDateService.getCurrentFiscalYearRange();
+          const currentYearStr = globalDateService.formatDate(new Date(), 'year');
+          const fees = await getMemberFees({ page: 1, limit: 10000 });
+          const ids = new Set<string>();
+          fees.data.forEach(f => {
+            const paid = Number((f as any).paidAmount || 0) > 0;
+            const pd = (f as any).paymentDate as string | undefined;
+            if (!paid || !pd) return;
+            const d = new Date(pd);
+            // 优先：按txAccount匹配“YYYY-new-member-fee”
+            const txa = (f as any).txAccount as string | undefined;
+            const matchByTx = !!txa && txa.startsWith(`${currentYearStr}-new-member-fee`);
+            // 兼容：若无txAccount则按财年范围兜底
+            if (matchByTx || (d >= fy.start && d <= fy.end)) {
+              ids.add((f as any).memberId);
+            }
+          });
+          setFiscalNewMemberIds(ids);
+          // 无筛选时默认展示当前财年新会员
+          if (!selectedIndustry && !selectedInterest && !selectedMemberId) {
+            setFilteredMembers(result.data.filter(m => ids.has(m.id)));
+          } else {
+            setFilteredMembers(result.data);
+          }
+        } catch {
+          // 回退：无法读取会费则显示全量
         setFilteredMembers(result.data);
+        }
       } catch (error) {
         console.error('Failed to fetch members:', error);
       } finally {
@@ -222,8 +255,13 @@ const DashboardPage: React.FC = () => {
       filtered = filtered.filter(m => m.id === selectedMemberId);
     }
 
+    // 无任何筛选条件时，默认显示当前财年新会员集合
+    if (!selectedIndustry && !selectedInterest && !selectedMemberId && fiscalNewMemberIds.size > 0) {
+      filtered = filtered.filter(m => fiscalNewMemberIds.has(m.id));
+    }
+
     setFilteredMembers(filtered);
-  }, [selectedIndustry, selectedInterest, selectedMemberId, members]);
+  }, [selectedIndustry, selectedInterest, selectedMemberId, members, fiscalNewMemberIds]);
 
   // 🆕 处理行业点击
   const handleIndustryClick = (industry: string) => {
@@ -278,7 +316,7 @@ const DashboardPage: React.FC = () => {
   return (
     <PermissionGuard permissions="DASHBOARD_VIEW">
       <div>
-      <h1 style={{ marginBottom: 24 }}>欢迎来到 JCI KL 会员管理系统</h1>
+      <h1 style={{ marginBottom: 12 }}>欢迎来到 JCI KL 会员管理系统</h1>
       
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={6}>
@@ -324,7 +362,7 @@ const DashboardPage: React.FC = () => {
       </Row>
 
       {/* 会员生日列表：单独一行置顶 */}
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col xs={24} sm={24} md={24} lg={24}>
           <Card 
             title={
@@ -389,21 +427,21 @@ const DashboardPage: React.FC = () => {
                     }}>
                       <Avatar src={item.avatar} icon={<UserOutlined />} size={32} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                          {birthdayViewMode === 'upcoming' ? (
-                            <Tag color={item.daysUntilBirthday === 0 ? 'red' : item.daysUntilBirthday! <= 7 ? 'orange' : 'blue'}>
-                              {item.daysUntilBirthday === 0 ? '今天' : `${item.daysUntilBirthday}天后`}
-                            </Tag>
-                          ) : (
-                            <Tag color="blue">{item.day}日</Tag>
-                          )}
-                        </div>
+                        {birthdayViewMode === 'upcoming' ? (
+                          <Tag color={item.daysUntilBirthday === 0 ? 'red' : item.daysUntilBirthday! <= 7 ? 'orange' : 'blue'}>
+                            {item.daysUntilBirthday === 0 ? '今天' : `${item.daysUntilBirthday}天后`}
+                          </Tag>
+                        ) : (
+                          <Tag color="blue">{item.day}日</Tag>
+                        )}
+                      </div>
                         <div style={{ fontSize: 12, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.birthDate}</div>
                       </div>
                     </div>
                   ))
-                )}
+              )}
               </div>
             </div>
             {upcomingBirthdays.length > 0 && (
@@ -423,7 +461,7 @@ const DashboardPage: React.FC = () => {
       </Row>
 
       {/* 会员行业分布、兴趣分布、会员列表：三卡片同排 */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         {/* 会员行业分布 */}
         <Col xs={8} sm={8} md={8} lg={8}>
           <Card 
@@ -455,14 +493,14 @@ const DashboardPage: React.FC = () => {
                     { label: 'Willing to explore', value: 'Willing to explore' },
                   ]}
                 />
-                <Badge 
-                  count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
-                  offset={[-5, 5]}
-                >
+              <Badge 
+                count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
+                offset={[-5, 5]}
+              >
                   <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
                     {selectedAcceptIntl ? `筛: ${selectedAcceptIntl}` : '全部'}
                   </span>
-                </Badge>
+              </Badge>
               </div>
             }
           >
@@ -622,8 +660,8 @@ const DashboardPage: React.FC = () => {
                 gap: 8,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FilterOutlined style={{ color: '#1890ff' }} />
-                  <span style={{ fontSize: '13px', color: '#595959' }}>当前筛选：</span>
+                <FilterOutlined style={{ color: '#1890ff' }} />
+                <span style={{ fontSize: '13px', color: '#595959' }}>当前筛选：</span>
                 </div>
                 {selectedIndustry && (
                   <Tag color="blue" closable onClose={() => setSelectedIndustry(null)}>
@@ -646,15 +684,15 @@ const DashboardPage: React.FC = () => {
               itemLayout="horizontal"
               renderItem={member => (
                 <List.Item
-                  style={{
+                    style={{
                     padding: '8px 4px',
-                    cursor: 'pointer',
+                      cursor: 'pointer',
                     backgroundColor: selectedMemberId === member.id ? '#fff7e6' : 'transparent',
                     borderRadius: selectedMemberId === member.id ? 4 : 0,
                     transition: 'background-color 0.2s ease',
-                  }}
-                  onClick={() => handleMemberClick(member)}
-                >
+                    }}
+                    onClick={() => handleMemberClick(member)}
+                  >
                   <List.Item.Meta
                     avatar={
                       <Avatar 
@@ -666,15 +704,15 @@ const DashboardPage: React.FC = () => {
                     title={
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
                         <span style={{
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          color: '#262626',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                        fontSize: '13px', 
+                        fontWeight: 600, 
+                        color: '#262626',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                           paddingRight: 8,
-                        }}>
-                          {member.name}
+                      }}>
+                        {member.name}
                         </span>
                         <span>
                           {member.category && (
@@ -693,8 +731,8 @@ const DashboardPage: React.FC = () => {
                       </div>
                     }
                     description={
-                      <div style={{
-                        fontSize: '11px',
+                      <div style={{ 
+                        fontSize: '11px', 
                         color: '#8c8c8c',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',

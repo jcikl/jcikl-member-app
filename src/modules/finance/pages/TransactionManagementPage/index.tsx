@@ -679,6 +679,7 @@ const TransactionManagementPage: React.FC = () => {
     amount: number;
     category?: string;
     notes?: string;
+    txAccount?: string;
   }>) => {
     if (!user || !splittingTransaction) return;
 

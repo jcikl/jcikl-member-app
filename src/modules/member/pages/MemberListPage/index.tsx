@@ -22,7 +22,6 @@ import {
 } from 'antd';
 import {
   PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
   EyeOutlined,
   ReloadOutlined,
@@ -120,7 +119,7 @@ const MemberListPage: React.FC = () => {
         ...searchParams,
         category: categoryFilter, // 🆕 添加分类筛选
       });
-
+      
       // 🆕 Alumni 标签：显示 40 岁及以上会员（或已标记为 Alumni）
       const isAlumniTab = activeTab === 'Alumni';
       // 🆕 Visiting Member 标签：显示护照/证件不属于马来西亚(或已标记为 Visiting Member)
@@ -220,10 +219,6 @@ const MemberListPage: React.FC = () => {
   
   const handleView = (memberId: string) => {
     navigate(`/members/${memberId}`);
-  };
-  
-  const handleEdit = (memberId: string) => {
-    navigate(`/members/${memberId}/edit`);
   };
   
   const handleDelete = async (memberId: string, memberName: string) => {
@@ -726,11 +721,11 @@ const MemberListPage: React.FC = () => {
                   : typeof v === 'string' && v ? [v] : [];
                 const arr = toArray(raw);
                 return arr.length > 0 ? (
-                  <Space wrap>
+                <Space wrap>
                     {arr.map((industry: string, idx: number) => (
-                      <Tag key={idx} color="blue">{industry}</Tag>
-                    ))}
-                  </Space>
+                    <Tag key={idx} color="blue">{industry}</Tag>
+                  ))}
+                </Space>
                 ) : '-';
               })()}
             </Col>
@@ -744,11 +739,11 @@ const MemberListPage: React.FC = () => {
                   : typeof v === 'string' && v ? [v] : [];
                 const arr = toArray(raw);
                 return arr.length > 0 ? (
-                  <Space wrap>
+                <Space wrap>
                     {arr.map((industry: string, idx: number) => (
-                      <Tag key={idx} color="green">{industry}</Tag>
-                    ))}
-                  </Space>
+                    <Tag key={idx} color="green">{industry}</Tag>
+                  ))}
+                </Space>
                 ) : '-';
               })()}
             </Col>
@@ -762,11 +757,11 @@ const MemberListPage: React.FC = () => {
                   : typeof v === 'string' && v ? [v] : [];
                 const arr = toArray(raw);
                 return arr.length > 0 ? (
-                  <Space wrap>
+                <Space wrap>
                     {arr.map((category: string, idx: number) => (
-                      <Tag key={idx} color="purple">{category}</Tag>
-                    ))}
-                  </Space>
+                    <Tag key={idx} color="purple">{category}</Tag>
+                  ))}
+                </Space>
                 ) : '-';
               })()}
             </Col>
@@ -1302,16 +1297,6 @@ const MemberListPage: React.FC = () => {
         subtitle={selectedMember ? `${(selectedMember as any).profile?.memberId || '-'} - ${MEMBER_STATUS_OPTIONS.find(o => o.value === (selectedMember as any).profile?.status)?.label || (selectedMember as any).profile?.status || '-'}` : ''}
         tabs={detailTabs}
         actions={selectedMember ? [
-          {
-            key: 'edit',
-            label: '编辑',
-            icon: <EditOutlined />,
-            type: 'primary',
-            onClick: () => {
-              setDrawerVisible(false);
-              handleEdit(selectedMember.id);
-            },
-          },
           {
             key: 'delete',
             label: '删除',

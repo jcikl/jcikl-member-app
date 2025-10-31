@@ -18,6 +18,8 @@ import {
   Alert,
   Spin,
   Modal,
+  Row,
+  Col,
 } from 'antd';
 import {
   PlusOutlined,
@@ -28,6 +30,10 @@ import { db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config/globalCollections';
 import { BaseModal } from '@/components/common/BaseModal';
 import type { Transaction } from '../types';
+import { getTransactionPurposes } from '@/modules/system/services/transactionPurposeService';
+import { getEvents } from '@/modules/event/services/eventService';
+import { getMembers } from '@/modules/member/services/memberService';
+import { generateYearOptions } from '@/utils/dateHelpers';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -36,6 +42,10 @@ interface SplitItem {
   amount: number;
   category?: string;
   notes?: string;
+  txAccount?: string; // 二次分类(仅当日常账户时可选)
+  year?: string; // 年份前缀(用于快速组合txAccount)
+  responsibleId?: string; // 负责人(用于快速组合txAccount)
+  memberFeeType?: string; // 会员费类型(new-member-fee/renewal-fee)
 }
 
 interface SplitTransactionModalProps {
@@ -58,6 +68,11 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [loadingExistingSplits, setLoadingExistingSplits] = useState(false);
+  const [txPurposeOptions, setTxPurposeOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [eventOptions, setEventOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [eventsList, setEventsList] = useState<any[]>([]);
+  const [directorOptions, setDirectorOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const yearOptions = generateYearOptions().map(y => ({ label: y, value: y }));
   const [splits, setSplits] = useState<SplitItem[]>([
     {
       amount: 0,
@@ -86,11 +101,21 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
               const childData = doc.data() as Transaction;
               // 排除未分配金额的虚拟交易
               if (!childData.notes?.includes('未分配金额')) {
-                existingSplits.push({
+                const splitItem: SplitItem = {
                   amount: childData.amount,
                   category: childData.category,
                   notes: childData.notes || childData.mainDescription,
-                });
+                  txAccount: childData.txAccount,
+                };
+                // 如果是会员费且已有 txAccount，尝试解析出年份与类型用于还原UI
+                if (childData.category === 'member-fees' && childData.txAccount) {
+                  const m = String(childData.txAccount).match(/^(\d{4})-(.+)$/);
+                  if (m) {
+                    splitItem.year = m[1];
+                    splitItem.memberFeeType = m[2];
+                  }
+                }
+                existingSplits.push(splitItem);
               }
             });
             
@@ -120,6 +145,76 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
     
     loadExistingSplits();
   }, [visible, transaction, form]);
+
+  // 🆕 加载可用txAccount(交易用途)选项
+  useEffect(() => {
+    const loadPurposes = async () => {
+      try {
+        const list = await getTransactionPurposes('active');
+        setTxPurposeOptions(list.map(p => ({ label: `${p.label} (${p.value})`, value: p.value })));
+      } catch {
+        setTxPurposeOptions([]);
+      }
+    };
+    const loadEvents = async () => {
+      try {
+        const result = await getEvents({ page: 1, limit: 1000 });
+        setEventsList(result.data);
+        setEventOptions(result.data.map((e: any) => ({ label: e.name, value: e.name })));
+      } catch {
+        setEventOptions([]);
+      }
+    };
+    const loadDirectors = async () => {
+      try {
+        // 从活动列表中获取负责理事( boardMember ) 名称集合
+        const result = await getEvents({ page: 1, limit: 1000 });
+        const names = new Set<string>();
+        result.data.forEach((e: any) => {
+          const bm = (e && (e.boardMember || e.responsibleOfficer?.name || e.responsibleName)) as string | undefined;
+          if (bm && String(bm).trim()) names.add(String(bm).trim());
+        });
+        setDirectorOptions(Array.from(names).sort().map(n => ({ label: n, value: n })));
+      } catch {
+        setDirectorOptions([]);
+      }
+    };
+    if (visible) {
+      loadPurposes();
+      loadEvents();
+      loadDirectors();
+    }
+  }, [visible]);
+
+  // 根据活动列表生成年份集合
+  const eventYears = React.useMemo(() => {
+    const years = new Set<string>();
+    eventsList.forEach((e: any) => {
+      const ds = e.startDate || e.eventDate || e.date || e.createdAt;
+      if (!ds) return;
+      const y = new Date(ds).getFullYear();
+      if (!Number.isNaN(y)) years.add(String(y));
+    });
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [eventsList]);
+
+  // 辅助：按年份与负责理事(boardMember)过滤活动选项
+  const buildEventOptionsFiltered = (year?: string, boardMember?: string) => {
+    const list = eventsList.filter((e: any) => {
+      if (year) {
+        const ds = e.startDate || e.eventDate || e.date || e.createdAt;
+        if (!ds) return false;
+        const y = new Date(ds).getFullYear();
+        if (String(y) !== String(year)) return false;
+      }
+      if (boardMember) {
+        const bm = (e && (e.boardMember || e.responsibleOfficer?.name || e.responsibleName)) as string | undefined;
+        if (!bm || String(bm).trim() !== String(boardMember).trim()) return false;
+      }
+      return true;
+    });
+    return list.map((e: any) => ({ label: e.name, value: e.name }));
+  };
 
   const parentAmount = transaction?.amount || 0;
   const totalSplitAmount = splits.reduce((sum, split) => sum + (split.amount || 0), 0);
@@ -152,6 +247,36 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       ...newSplits[index],
       [field]: value,
     };
+    const currentYear = String(new Date().getFullYear());
+    // 当选择类别为活动财务时，默认年份为当前年份(用于筛选)
+    if (field === 'category' && value === 'event-finance') {
+      if (!newSplits[index].year) newSplits[index].year = currentYear;
+    }
+    // 当选择类别为会员费时，默认年份与类型
+    if (field === 'category' && value === 'member-fees') {
+      if (!newSplits[index].year) newSplits[index].year = currentYear;
+      if (!newSplits[index].memberFeeType) newSplits[index].memberFeeType = 'new-member-fee';
+    }
+    // 对 event-finance 与 general-accounts 组合 txAccount
+    const s = newSplits[index];
+    if (s.category === 'event-finance') {
+      // 年份/负责理事仅用于筛选：如改变后当前活动不在筛选内则清空
+      if ((field === 'year' || field === 'responsibleId') && s.txAccount) {
+        const yr = field === 'year' ? String(value) : s.year;
+        const bm = field === 'responsibleId' ? String(value) : s.responsibleId;
+        const match = buildEventOptionsFiltered(yr, bm).some(opt => opt.value === s.txAccount);
+        if (!match) newSplits[index].txAccount = undefined;
+      }
+      const base = s.txAccount || '';
+      let combined = base;
+      // 不再将负责人/年份写入txAccount，纯筛选
+      newSplits[index].txAccount = combined || base;
+    }
+    if (s.category === 'member-fees') {
+      const y = s.year || currentYear;
+      const t = s.memberFeeType || 'new-member-fee';
+      newSplits[index].txAccount = `${y}-${t}`;
+    }
     setSplits(newSplits);
   };
 
@@ -167,6 +292,10 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
         if (!split.category || !split.category.trim()) {
           message.error(`拆分项 ${i + 1}: 请选择类别`);
           return;
+        }
+        // 当类别为日常账户时，建议选择txAccount
+        if (split.category === 'general-accounts' && !split.txAccount) {
+          message.warning(`拆分项 ${i + 1}: 建议选择日常账户用途(txAccount)`);
         }
       }
 
@@ -197,17 +326,23 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
     onCancel();
   };
 
-  // 🆕 快速拆分预设
-  const quickSplitTemplate: SplitItem[] = [
-    { amount: 350, category: 'member-fees', notes: '会员费' },
-    { amount: 75, category: 'general-accounts', notes: '日常财务 (TXGA-0004)' },
-    { amount: 75, category: 'general-accounts', notes: '日常财务 (TXGA-0003)' },
-  ];
+  // 🆕 快速拆分预设(动态按用途名称填充 notes)
+  const buildQuickSplitTemplate = (): SplitItem[] => {
+    const purposeCode = 'TXGA-0004';
+    const purposeLabel = (txPurposeOptions.find(p => p.value === purposeCode)?.label) || purposeCode;
+    const y = String(new Date().getFullYear());
+    const memberFeeType = 'new-member-fee'; // 默认：新会员
+    return [
+      { amount: 350, category: 'member-fees', notes: '会员费', year: y, memberFeeType, txAccount: `${y}-${memberFeeType}` },
+      { amount: 75, category: 'general-accounts', txAccount: purposeCode, notes: purposeLabel },
+      { amount: 75, category: 'general-accounts', txAccount: purposeCode, notes: purposeLabel },
+    ];
+  };
 
   // 🆕 应用快速拆分
   const handleQuickSplit = () => {
-    
-    const total = quickSplitTemplate.reduce((sum, item) => sum + item.amount, 0);
+    const splitsTemplate = buildQuickSplitTemplate();
+    const total = splitsTemplate.reduce((sum, item) => sum + item.amount, 0);
     
     if (total > parentAmount) {
       console.warn('⚠️ 快速拆分金额总和超过原交易金额');
@@ -215,7 +350,7 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
       return;
     }
 
-    setSplits(quickSplitTemplate);
+    setSplits(splitsTemplate);
     message.success('已应用快速拆分规则');
   };
 
@@ -330,9 +465,9 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
             )}
         
         {/* 原交易信息 & 拆分统计(左右布局) */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         {/* 左侧：原交易信息 */}
-        <div style={{ flex: 1 }}>
+        <Col xs={24} md={12}>
           <div style={{ color: '#666', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>
             原交易信息
           </div>
@@ -342,10 +477,10 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
             <div style={{ marginBottom: 6 }}><strong>类型：</strong>{transaction.transactionType === 'income' ? '收入' : '支出'}</div>
             <div><strong>金额：</strong><span style={{ color: '#1890ff', fontWeight: 600 }}>RM {parentAmount.toFixed(2)}</span></div>
           </div>
-        </div>
+        </Col>
 
         {/* 右侧：拆分统计 */}
-        <div style={{ flex: 1 }}>
+        <Col xs={24} md={12}>
           <div style={{ color: '#666', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>
             拆分统计
           </div>
@@ -402,8 +537,8 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
               />
             )}
           </div>
-        </div>
-      </div>
+        </Col>
+      </Row>
 
       <Divider style={{ margin: '16px 0' }}>拆分明细</Divider>
 
@@ -435,47 +570,212 @@ const SplitTransactionModal: React.FC<SplitTransactionModalProps> = ({
             </div>
 
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ marginBottom: 4, fontSize: 13, color: '#666' }}>
-                    金额 <span style={{ color: 'red' }}>*</span>
-                  </div>
-                  <InputNumber
-                    style={{ width: '100%' }}
-                    value={split.amount}
-                    onChange={(value) => handleSplitChange(index, 'amount', value || 0)}
-                    prefix="RM"
-                    precision={2}
-                    min={0.01}
-                    max={parentAmount}
-                    placeholder="请输入金额"
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ marginBottom: 4, fontSize: 13, color: '#666' }}>
-                    类别 <span style={{ color: 'red' }}>*</span>
-                  </div>
-                  <Select
-                    style={{ width: '100%' }}
-                    value={split.category}
-                    onChange={(value) => handleSplitChange(index, 'category', value)}
-                    placeholder="选择类别"
-                  >
-                    <Option value="member-fees">会员费</Option>
-                    <Option value="event-finance">活动财务</Option>
-                    <Option value="general-accounts">日常账户</Option>
-                  </Select>
-                </div>
+              <Row gutter={[12, 12]}>
+                <Col xs={24} md={12}>
+                  <Row gutter={[8, 8]} align="middle">
+                    <Col flex="80px">
+                      <span style={{ fontSize: 13, color: '#666' }}>
+                        金额 <span style={{ color: 'red' }}>*</span>
+                      </span>
+                    </Col>
+                    <Col flex="auto">
+                      <InputNumber
+                        style={{ width: '100%' }}
+                        value={split.amount}
+                        onChange={(value) => handleSplitChange(index, 'amount', value || 0)}
+                        prefix="RM"
+                        precision={2}
+                        min={0.01}
+                        max={parentAmount}
+                        placeholder="请输入金额"
+                      />
+                    </Col>
+                  </Row>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Row gutter={[8, 8]} align="middle">
+                    <Col flex="80px">
+                      <span style={{ fontSize: 13, color: '#666' }}>
+                        类别 <span style={{ color: 'red' }}>*</span>
+                      </span>
+                    </Col>
+                    <Col flex="auto">
+                      <Button.Group style={{ width: '100%', display: 'flex' }}>
+                        <Button
+                          style={{ flex: 1 }}
+                          type={split.category === 'member-fees' ? 'primary' : 'default'}
+                          onClick={() => handleSplitChange(index, 'category', 'member-fees')}
+                        >
+                          会员费
+                        </Button>
+                        <Button
+                          style={{ flex: 1 }}
+                          type={split.category === 'event-finance' ? 'primary' : 'default'}
+                          onClick={() => handleSplitChange(index, 'category', 'event-finance')}
+                        >
+                          活动财务
+                        </Button>
+                        <Button
+                          style={{ flex: 1 }}
+                          type={split.category === 'general-accounts' ? 'primary' : 'default'}
+                          onClick={() => handleSplitChange(index, 'category', 'general-accounts')}
+                        >
+                          日常账户
+                        </Button>
+                      </Button.Group>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+
+            {/* 年份与负责人(用于快速组合txAccount，活动财务专用) */}
+            {split.category === 'event-finance' && (
+              <Row gutter={[12, 12]}>
+                <Col xs={24} md={12}>
+                  <Row gutter={[8, 8]} align="middle">
+                    <Col flex="80px"><span style={{ fontSize: 13, color: '#666' }}>年份</span></Col>
+                    <Col flex="auto">
+                      <Select
+                        style={{ width: '100%' }}
+                        value={split.year || String(new Date().getFullYear())}
+                        options={(eventYears.length > 0 ? eventYears : yearOptions.map(o => o.value)).map(y => ({ label: String(y), value: String(y) }))}
+                        onChange={(v) => handleSplitChange(index, 'year', v)}
+                        placeholder="选择年份"
+                        allowClear
+                      />
+                    </Col>
+                  </Row>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Row gutter={[8, 8]} align="middle">
+                    <Col flex="80px"><span style={{ fontSize: 13, color: '#666' }}>负责理事</span></Col>
+                    <Col flex="auto">
+                      <Select
+                        style={{ width: '100%' }}
+                        value={split.responsibleId}
+                        options={directorOptions}
+                        onChange={(v) => handleSplitChange(index, 'responsibleId', v)}
+                        placeholder="按负责理事筛选活动"
+                        showSearch
+                        optionFilterProp="label"
+                        allowClear
+                      />
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            )}
+
+            {/* 二次分类(txAccount)：当选择日常账户或活动财务时可见 */}
+            {split.category === 'general-accounts' && (
+              <div>
+                <Row gutter={[8, 8]} align="middle">
+                  <Col flex="80px"><span style={{ fontSize: 13, color: '#666' }}>用途/账户</span></Col>
+                  <Col flex="auto">
+                    <Select
+                      style={{ width: '100%' }}
+                      value={split.txAccount}
+                      onChange={(value) => handleSplitChange(index, 'txAccount', value)}
+                      options={txPurposeOptions}
+                      placeholder="选择日常账户用途 (例如 TXGA-0004)"
+                      allowClear
+                      showSearch
+                      optionFilterProp="label"
+                    />
+                  </Col>
+                </Row>
               </div>
+            )}
+
+            {/* 会员费：年份 + 会费类型 */}
+            {split.category === 'member-fees' && (
+              <Row gutter={[12, 12]}>
+                <Col xs={24} md={12}>
+                  <Row gutter={[8, 8]} align="middle">
+                    <Col flex="80px"><span style={{ fontSize: 13, color: '#666' }}>年份</span></Col>
+                    <Col flex="auto">
+                      <Input
+                        style={{ width: '100%' }}
+                        value={split.year || String(new Date().getFullYear())}
+                        onChange={(e) => handleSplitChange(index, 'year', e.target.value)}
+                        placeholder="输入年份，如 2025"
+                        maxLength={4}
+                      />
+                    </Col>
+                  </Row>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Row gutter={[8, 8]} align="middle">
+                    <Col flex="80px"><span style={{ fontSize: 13, color: '#666' }}>会费类型</span></Col>
+                    <Col flex="auto">
+                      <Button.Group style={{ width: '100%', display: 'flex' }}>
+                        <Button
+                          style={{ flex: 1 }}
+                          type={(split.memberFeeType || 'new-member-fee') === 'new-member-fee' ? 'primary' : 'default'}
+                          onClick={() => handleSplitChange(index, 'memberFeeType', 'new-member-fee')}
+                        >
+                          新会员
+                        </Button>
+                        <Button
+                          style={{ flex: 1 }}
+                          type={split.memberFeeType === 'renewal-fee' ? 'primary' : 'default'}
+                          onClick={() => handleSplitChange(index, 'memberFeeType', 'renewal-fee')}
+                        >
+                          续费
+                        </Button>
+                        <Button
+                          style={{ flex: 1 }}
+                          type={split.memberFeeType === 'visiting-member-fee' ? 'primary' : 'default'}
+                          onClick={() => handleSplitChange(index, 'memberFeeType', 'visiting-member-fee')}
+                        >
+                          拜访
+                        </Button>
+                        <Button
+                          style={{ flex: 1 }}
+                          type={split.memberFeeType === 'alumni-fee' ? 'primary' : 'default'}
+                          onClick={() => handleSplitChange(index, 'memberFeeType', 'alumni-fee')}
+                        >
+                          校友
+                        </Button>
+                      </Button.Group>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            )}
+
+            {split.category === 'event-finance' && (
+              <div>
+                <Row gutter={[8, 8]} align="middle">
+                  <Col flex="80px"><span style={{ fontSize: 13, color: '#666' }}>关联活动</span></Col>
+                  <Col flex="auto">
+                    <Select
+                      style={{ width: '100%' }}
+                      value={split.txAccount}
+                      onChange={(value) => handleSplitChange(index, 'txAccount', value)}
+                      options={buildEventOptionsFiltered(split.year || String(new Date().getFullYear()), split.responsibleId)}
+                      placeholder="选择活动名称"
+                      allowClear
+                      showSearch
+                      optionFilterProp="label"
+                    />
+                  </Col>
+                </Row>
+              </div>
+            )}
 
               <div>
-                <div style={{ marginBottom: 4, fontSize: 13, color: '#666' }}>备注</div>
-                <TextArea
-                  value={split.notes}
-                  onChange={(e) => handleSplitChange(index, 'notes', e.target.value)}
-                  placeholder="可选的额外说明"
-                  rows={2}
-                />
+                <Row gutter={[8, 8]} align="middle">
+                  <Col flex="80px"><span style={{ fontSize: 13, color: '#666' }}>备注</span></Col>
+                  <Col flex="auto">
+                    <TextArea
+                      value={split.notes}
+                      onChange={(e) => handleSplitChange(index, 'notes', e.target.value)}
+                      placeholder="可选的额外说明"
+                      rows={2}
+                    />
+                  </Col>
+                </Row>
               </div>
             </Space>
           </div>

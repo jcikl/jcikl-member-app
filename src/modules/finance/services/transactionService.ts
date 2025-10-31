@@ -984,7 +984,7 @@ export const approveTransaction = async (
     const transactionRef = doc(db, GLOBAL_COLLECTIONS.TRANSACTIONS, transactionId);
     const txDoc = await getDoc(transactionRef);
     const txData = txDoc.exists() ? txDoc.data() as any : undefined;
-
+    
     const updates = cleanUndefinedValues({
       status: 'completed' as TransactionStatus,
       approvedBy: userId,
@@ -1009,7 +1009,7 @@ export const approveTransaction = async (
         }
       }
     } catch {}
-
+    
     globalSystemService.log(
       'info',
       'Transaction approved',
@@ -1376,6 +1376,7 @@ export const splitTransaction = async (
     amount: number;
     category?: string;
     notes?: string;
+    txAccount?: string;
   }>,
   userId: string
 ): Promise<{
@@ -1462,6 +1463,7 @@ export const splitTransaction = async (
         subDescription: `${categoryLabel} - RM ${split.amount.toFixed(2)}`, // 分类和金额作为副描述
         amount: split.amount,
         category: split.category,
+        txAccount: split.txAccount,
         paymentMethod: parentData.paymentMethod, // 继承
         status: parentData.status, // 继承
         inputBy: userId,

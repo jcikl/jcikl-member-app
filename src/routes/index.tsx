@@ -21,7 +21,6 @@ import TransactionDateFormatFixPage from '@/pages/TransactionDateFormatFixPage';
 import MemberListPage from '@/modules/member/pages/MemberListPage';
 import MemberDetailPage from '@/modules/member/pages/MemberDetailPage';
 import MemberCreatePage from '@/modules/member/pages/MemberCreatePage';
-import MemberEditPage from '@/modules/member/pages/MemberEditPage';
 
 // Event Module
 import EventListPage from '@/modules/event/pages/EventListPage';
@@ -147,10 +146,6 @@ export const router = createBrowserRouter(
           {
             path: ':id',
             element: <MemberDetailPage />,
-          },
-          {
-            path: ':id/edit',
-            element: <MemberEditPage />,
           },
         ],
       },
