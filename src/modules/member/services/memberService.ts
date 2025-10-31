@@ -707,7 +707,7 @@ export const getUpcomingBirthdays = async (days: number = 30): Promise<Array<{
   avatar?: string;
 }>> => {
   try {
-    const snapshot = await getDocs(query(getMembersRef(), where('profile.status', '==', 'active')));
+    const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
     
     console.log('🎂 [Birthday] Total active members:', members.length);
@@ -832,7 +832,7 @@ export const getBirthdaysByMonth = async (month: number): Promise<Array<{
   avatar?: string;
 }>> => {
   try {
-    const snapshot = await getDocs(query(getMembersRef(), where('profile.status', '==', 'active')));
+    const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
     
     console.log('🎂 [Birthday Month] Checking month:', month, 'Total members:', members.length);
