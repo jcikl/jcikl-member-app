@@ -413,7 +413,7 @@ const DashboardPage: React.FC = () => {
                 count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
                 offset={[-5, 5]}
               >
-                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>
+                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>全部</span>
               </Badge>
             }
           >

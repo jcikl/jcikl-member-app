@@ -960,10 +960,9 @@ export const getIndustryDistribution = async (): Promise<Array<{
         count,
         percentage: totalWithIndustry > 0 ? (count / totalWithIndustry) * 100 : 0,
       }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // Top 10 industries
+      .sort((a, b) => b.count - a.count);
     
-    console.log('📊 [IndustryDist] totalWithIndustry:', totalWithIndustry, 'top10:', distribution);
+    console.log('📊 [IndustryDist] totalWithIndustry:', totalWithIndustry, 'total industries:', distribution.length);
     return distribution;
   } catch (error) {
     console.error('Error fetching industry distribution:', error);
