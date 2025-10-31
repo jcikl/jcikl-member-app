@@ -179,10 +179,10 @@ const DashboardPage: React.FC = () => {
     const loadMembers = async () => {
       setMembersLoading(true);
       try {
+        // 加载全量会员以与行业分布统计口径一致
         const result = await getMembers({
           page: 1,
-          limit: 100, // 加载前100个会员
-          status: 'active', // 只显示活跃会员
+          limit: 100000, // 近似全量
         });
         setMembers(result.data);
         setFilteredMembers(result.data);
