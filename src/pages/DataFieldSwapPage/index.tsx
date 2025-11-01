@@ -795,14 +795,9 @@ const DataFieldSwapPage: React.FC = () => {
                 Table.SELECTION_NONE,
               ],
             }}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条记录`,
-              pageSizeOptions: ['10', '20', '50', '100', '200'],
-            }}
+            pagination={false}
             size="small"
-            scroll={{ y: 400 }}
+            scroll={{ y: 500 }}
           />
           
           {stats.affectedMembers > 0 && (
