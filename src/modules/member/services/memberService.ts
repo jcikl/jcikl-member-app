@@ -678,7 +678,7 @@ const computeAutoCategory = async (memberId: string, profile?: any): Promise<str
 
 export const updateMember = async (
   memberId: string,
-  data: Partial<MemberFormData>,
+  data: Partial<MemberFormData> | Record<string, any>,
   updatedBy: string
 ): Promise<Member> => {
   try {
@@ -690,93 +690,132 @@ export const updateMember = async (
       throw new Error('会员不存在');
     }
     
-    // Prepare update data
-    // 业务规则：自动计算类别(不再人工设置)
-    const baseProfile = {
-      ...memberDoc.data()?.profile,
-      ...(data.birthDate !== undefined ? { birthDate: data.birthDate } : {}),
-      ...(data.gender !== undefined ? { gender: data.gender } : {}),
-      // nationality 在 MemberFormData 中可能不存在，保持从原档案读取
-      ...(data.company !== undefined ? { company: data.company } : {}),
-      ...(data.departmentAndPosition !== undefined ? { departmentAndPosition: data.departmentAndPosition } : {}),
-    } as any;
-    const autoCategory = await computeAutoCategory(memberId, baseProfile);
+    // 检查是否是直接传递的updateData（带dot notation的字段）
+    const hasDotNotation = Object.keys(data).some(key => key.includes('.'));
+    
+    let updateData: Record<string, any>;
+    
+    if (hasDotNotation) {
+      // 直接使用传递的数据（已经是dot notation格式）
+      console.log('🔧 [updateMember] 使用dot notation格式更新:', data);
+      
+      // 处理日期字段转换为Timestamp
+      const processedData: Record<string, any> = {};
+      for (const [key, value] of Object.entries(data)) {
+        // 日期字段需要转换为Timestamp
+        if (key.includes('.joinDate') || key.includes('.paymentDate') || 
+            key.includes('.paymentVerifiedDate') || key.includes('.endorsementDate')) {
+          if (value && value !== '') {
+            try {
+              processedData[key] = Timestamp.fromDate(new Date(value));
+            } catch (e) {
+              console.error(`日期转换失败 ${key}:`, value, e);
+              processedData[key] = null;
+            }
+          } else {
+            processedData[key] = null;
+          }
+        } else {
+          // 非日期字段直接使用（空字符串转为null）
+          processedData[key] = value === '' ? null : value;
+        }
+      }
+      
+      updateData = cleanUndefinedValues({
+        ...processedData,
+        updatedAt: Timestamp.now(),
+        updatedBy,
+      });
+    } else {
+      // 兼容旧格式：使用MemberFormData格式
+      console.log('🔧 [updateMember] 使用传统格式更新:', data);
+      
+      // 业务规则：自动计算类别(不再人工设置)
+      const baseProfile = {
+        ...memberDoc.data()?.profile,
+        ...(data.birthDate !== undefined ? { birthDate: data.birthDate } : {}),
+        ...(data.gender !== undefined ? { gender: data.gender } : {}),
+        ...(data.company !== undefined ? { company: data.company } : {}),
+        ...(data.departmentAndPosition !== undefined ? { departmentAndPosition: data.departmentAndPosition } : {}),
+      } as any;
+      const autoCategory = await computeAutoCategory(memberId, baseProfile);
 
-    const updateData = cleanUndefinedValues({
-      ...(data.name && { name: data.name }),
-      ...(data.email && { email: data.email }),
-      ...(data.phone && { phone: data.phone }),
-      ...(data.status && { status: data.status }),
-      ...(data.level && { level: data.level }),
-      // 强制覆盖为自动类别
-      category: autoCategory,
-      ...(data.chapter && { chapter: data.chapter }),
-      ...(data.chapterId && { chapterId: data.chapterId }),
-      
-      // Update profile fields if provided
-      // Support all profile fields via dot notation
-      ...(data.avatar !== undefined && { 'profile.avatar': data.avatar }),
-      ...(data.birthDate !== undefined && { 'profile.birthDate': data.birthDate }),
-      ...(data.gender !== undefined && { 'profile.gender': data.gender }),
-      ...(data.company !== undefined && { 'profile.company': data.company }),
-      ...(data.departmentAndPosition !== undefined && { 
-        'profile.departmentAndPosition': data.departmentAndPosition 
-      }),
-      // Additional profile fields support
-      ...(data.fullNameNric !== undefined && { 'profile.fullNameNric': data.fullNameNric }),
-      ...(data.nricOrPassport !== undefined && { 'profile.nricOrPassport': data.nricOrPassport }),
-      ...(data.alternativePhone !== undefined && { 'profile.alternativePhone': data.alternativePhone }),
-      ...(data.whatsappGroup !== undefined && { 'profile.whatsappGroup': data.whatsappGroup }),
-      ...(data.nationality !== undefined && { 'profile.nationality': data.nationality }),
-      ...(data.profilePhotoUrl !== undefined && { 'profile.profilePhotoUrl': data.profilePhotoUrl }),
-      ...(data.linkedin !== undefined && { 'profile.linkedin': data.linkedin }),
-      
-      // Business fields support
-      ...(data.industryDetail !== undefined && { 'business.industryDetail': data.industryDetail }),
-      ...(data.companyWebsite !== undefined && { 'business.companyWebsite': data.companyWebsite }),
-      ...(data.companyIntro !== undefined && { 'business.companyIntro': data.companyIntro }),
-      ...(data.acceptInternationalBusiness !== undefined && { 'business.acceptInternationalBusiness': data.acceptInternationalBusiness }),
-      ...(data.ownIndustry !== undefined && { 'business.ownIndustry': Array.isArray(data.ownIndustry) ? data.ownIndustry : (typeof data.ownIndustry === 'string' && data.ownIndustry ? data.ownIndustry.split(',').map(s => s.trim()).filter(s => s) : []) }),
-      ...(data.interestedIndustries !== undefined && { 'business.interestedIndustries': Array.isArray(data.interestedIndustries) ? data.interestedIndustries : (typeof data.interestedIndustries === 'string' && data.interestedIndustries ? data.interestedIndustries.split(',').map(s => s.trim()).filter(s => s) : []) }),
-      ...(data.businessCategories !== undefined && { 'business.businessCategories': Array.isArray(data.businessCategories) ? data.businessCategories : (typeof data.businessCategories === 'string' && data.businessCategories ? data.businessCategories.split(',').map(s => s.trim()).filter(s => s) : []) }),
-      ...(data.company !== undefined && { 'business.company': data.company }),
-      ...(data.departmentAndPosition !== undefined && { 'business.departmentAndPosition': data.departmentAndPosition }),
-      
-      // JCI Career fields support
-      ...(data.memberId !== undefined && { 'jciCareer.memberId': data.memberId }),
-      ...(data.joinDate !== undefined && { 'jciCareer.joinDate': data.joinDate ? Timestamp.fromDate(new Date(data.joinDate)) : null }),
-      ...(data.senatorId !== undefined && { 'jciCareer.senatorId': data.senatorId }),
-      ...(data.worldRegion !== undefined && { 'jciCareer.worldRegion': data.worldRegion }),
-      ...(data.countryRegion !== undefined && { 'jciCareer.countryRegion': data.countryRegion }),
-      ...(data.country !== undefined && { 'jciCareer.country': data.country }),
-      ...(data.introducerName !== undefined && { 'jciCareer.introducerName': data.introducerName }),
-      ...(data.jciPosition !== undefined && { 'jciCareer.jciPosition': data.jciPosition }),
-      ...(data.membershipCategory !== undefined && { 'jciCareer.membershipCategory': data.membershipCategory }),
-      ...(data.jciBenefitsExpectation !== undefined && { 'jciCareer.jciBenefitsExpectation': data.jciBenefitsExpectation }),
-      ...(data.jciEventInterests !== undefined && { 'jciCareer.jciEventInterests': data.jciEventInterests }),
-      ...(data.activeMemberHow !== undefined && { 'jciCareer.activeMemberHow': data.activeMemberHow }),
-      ...(data.fiveYearsVision !== undefined && { 'jciCareer.fiveYearsVision': data.fiveYearsVision }),
-      ...(data.paymentDate !== undefined && { 'jciCareer.paymentDate': data.paymentDate ? Timestamp.fromDate(new Date(data.paymentDate)) : null }),
-      ...(data.paymentSlipUrl !== undefined && { 'jciCareer.paymentSlipUrl': data.paymentSlipUrl }),
-      ...(data.paymentVerifiedDate !== undefined && { 'jciCareer.paymentVerifiedDate': data.paymentVerifiedDate ? Timestamp.fromDate(new Date(data.paymentVerifiedDate)) : null }),
-      ...(data.endorsementDate !== undefined && { 'jciCareer.endorsementDate': data.endorsementDate ? Timestamp.fromDate(new Date(data.endorsementDate)) : null }),
-      
-      // Clothing & Items fields support
-      ...(data.shirtSize !== undefined && { 'profile.shirtSize': data.shirtSize }),
-      ...(data.jacketSize !== undefined && { 'profile.jacketSize': data.jacketSize }),
-      ...(data.nameToBeEmbroidered !== undefined && { 'profile.nameToBeEmbroidered': data.nameToBeEmbroidered }),
-      ...(data.tshirtReceivingStatus !== undefined && { 'profile.tshirtReceivingStatus': data.tshirtReceivingStatus }),
-      ...(data.cutting !== undefined && { 'profile.cutting': data.cutting }),
-      
-      // Metadata
-      updatedAt: Timestamp.now(),
-      updatedBy,
-    });
+      updateData = cleanUndefinedValues({
+        ...(data.name && { name: data.name }),
+        ...(data.email && { email: data.email }),
+        ...(data.phone && { phone: data.phone }),
+        ...(data.status && { status: data.status }),
+        ...(data.level && { level: data.level }),
+        category: autoCategory,
+        ...(data.chapter && { chapter: data.chapter }),
+        ...(data.chapterId && { chapterId: data.chapterId }),
+        
+        // Profile fields
+        ...(data.avatar !== undefined && { 'profile.avatar': data.avatar }),
+        ...(data.birthDate !== undefined && { 'profile.birthDate': data.birthDate }),
+        ...(data.gender !== undefined && { 'profile.gender': data.gender }),
+        ...(data.company !== undefined && { 'profile.company': data.company }),
+        ...(data.departmentAndPosition !== undefined && { 
+          'profile.departmentAndPosition': data.departmentAndPosition 
+        }),
+        ...(data.fullNameNric !== undefined && { 'profile.fullNameNric': data.fullNameNric }),
+        ...(data.nricOrPassport !== undefined && { 'profile.nricOrPassport': data.nricOrPassport }),
+        ...(data.alternativePhone !== undefined && { 'profile.alternativePhone': data.alternativePhone }),
+        ...(data.whatsappGroup !== undefined && { 'profile.whatsappGroup': data.whatsappGroup }),
+        ...(data.nationality !== undefined && { 'profile.nationality': data.nationality }),
+        ...(data.profilePhotoUrl !== undefined && { 'profile.profilePhotoUrl': data.profilePhotoUrl }),
+        ...(data.linkedin !== undefined && { 'profile.linkedin': data.linkedin }),
+        
+        // Business fields
+        ...(data.industryDetail !== undefined && { 'business.industryDetail': data.industryDetail }),
+        ...(data.companyWebsite !== undefined && { 'business.companyWebsite': data.companyWebsite }),
+        ...(data.companyIntro !== undefined && { 'business.companyIntro': data.companyIntro }),
+        ...(data.acceptInternationalBusiness !== undefined && { 'business.acceptInternationalBusiness': data.acceptInternationalBusiness }),
+        ...(data.ownIndustry !== undefined && { 'business.ownIndustry': Array.isArray(data.ownIndustry) ? data.ownIndustry : (typeof data.ownIndustry === 'string' && data.ownIndustry ? data.ownIndustry.split(',').map(s => s.trim()).filter(s => s) : []) }),
+        ...(data.interestedIndustries !== undefined && { 'business.interestedIndustries': Array.isArray(data.interestedIndustries) ? data.interestedIndustries : (typeof data.interestedIndustries === 'string' && data.interestedIndustries ? data.interestedIndustries.split(',').map(s => s.trim()).filter(s => s) : []) }),
+        ...(data.businessCategories !== undefined && { 'business.businessCategories': Array.isArray(data.businessCategories) ? data.businessCategories : (typeof data.businessCategories === 'string' && data.businessCategories ? data.businessCategories.split(',').map(s => s.trim()).filter(s => s) : []) }),
+        ...(data.company !== undefined && { 'business.company': data.company }),
+        ...(data.departmentAndPosition !== undefined && { 'business.departmentAndPosition': data.departmentAndPosition }),
+        
+        // JCI Career fields
+        ...(data.memberId !== undefined && { 'jciCareer.memberId': data.memberId }),
+        ...(data.joinDate !== undefined && { 'jciCareer.joinDate': data.joinDate ? Timestamp.fromDate(new Date(data.joinDate)) : null }),
+        ...(data.senatorId !== undefined && { 'jciCareer.senatorId': data.senatorId }),
+        ...(data.worldRegion !== undefined && { 'jciCareer.worldRegion': data.worldRegion }),
+        ...(data.countryRegion !== undefined && { 'jciCareer.countryRegion': data.countryRegion }),
+        ...(data.country !== undefined && { 'jciCareer.country': data.country }),
+        ...(data.introducerName !== undefined && { 'jciCareer.introducerName': data.introducerName }),
+        ...(data.jciPosition !== undefined && { 'jciCareer.jciPosition': data.jciPosition }),
+        ...(data.membershipCategory !== undefined && { 'jciCareer.membershipCategory': data.membershipCategory }),
+        ...(data.jciBenefitsExpectation !== undefined && { 'jciCareer.jciBenefitsExpectation': data.jciBenefitsExpectation }),
+        ...(data.jciEventInterests !== undefined && { 'jciCareer.jciEventInterests': data.jciEventInterests }),
+        ...(data.activeMemberHow !== undefined && { 'jciCareer.activeMemberHow': data.activeMemberHow }),
+        ...(data.fiveYearsVision !== undefined && { 'jciCareer.fiveYearsVision': data.fiveYearsVision }),
+        ...(data.paymentDate !== undefined && { 'jciCareer.paymentDate': data.paymentDate ? Timestamp.fromDate(new Date(data.paymentDate)) : null }),
+        ...(data.paymentSlipUrl !== undefined && { 'jciCareer.paymentSlipUrl': data.paymentSlipUrl }),
+        ...(data.paymentVerifiedDate !== undefined && { 'jciCareer.paymentVerifiedDate': data.paymentVerifiedDate ? Timestamp.fromDate(new Date(data.paymentVerifiedDate)) : null }),
+        ...(data.endorsementDate !== undefined && { 'jciCareer.endorsementDate': data.endorsementDate ? Timestamp.fromDate(new Date(data.endorsementDate)) : null }),
+        
+        // Clothing & Items fields
+        ...(data.shirtSize !== undefined && { 'profile.shirtSize': data.shirtSize }),
+        ...(data.jacketSize !== undefined && { 'profile.jacketSize': data.jacketSize }),
+        ...(data.nameToBeEmbroidered !== undefined && { 'profile.nameToBeEmbroidered': data.nameToBeEmbroidered }),
+        ...(data.tshirtReceivingStatus !== undefined && { 'profile.tshirtReceivingStatus': data.tshirtReceivingStatus }),
+        ...(data.cutting !== undefined && { 'profile.cutting': data.cutting }),
+        
+        updatedAt: Timestamp.now(),
+        updatedBy,
+      });
+    }
+    
+    console.log('💾 [updateMember] 最终写入Firestore的数据:', updateData);
     
     // Update in Firestore with retry
     await retryWithBackoff(
       () => updateDoc(memberRef, updateData)
     );
+    
+    console.log('✅ [updateMember] Firestore更新成功');
     
     // Fetch and return updated member
     const updatedMember = await getMemberById(memberId);
@@ -787,6 +826,7 @@ export const updateMember = async (
     
     return updatedMember;
   } catch (error) {
+    console.error('❌ [updateMember] 更新失败:', error);
     handleFirebaseError(error, {
       customMessage: '更新会员失败',
     });
