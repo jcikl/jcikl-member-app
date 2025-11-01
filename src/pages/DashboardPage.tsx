@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge, Tabs } from 'antd';
-import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined, TeamOutlined, FilterOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge, message, Tabs, Empty } from 'antd';
+import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined, TeamOutlined, FilterOutlined, CloseCircleOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 // Components
@@ -16,10 +16,15 @@ import {
   getMembers
 } from '@/modules/member/services/memberService';
 import { getMemberFees } from '@/modules/finance/services/memberFeeService';
+import { getEvents } from '@/modules/event/services/eventService';
+import { getOrCreateEventAccount, getEventAccountTransactions } from '@/modules/event/services/eventAccountService';
+import { getEventAccountPlans } from '@/modules/event/services/eventAccountPlanService';
+import { getTransactionsByEventId, getTransactions } from '@/modules/finance/services/transactionService';
 import { globalDateService } from '@/config/globalDateSettings';
 
 // Types
 import type { Member, IndustryType } from '@/modules/member/types';
+import type { Event } from '@/modules/event/types';
 
 const { Option } = Select;
 
@@ -71,6 +76,22 @@ const DashboardPage: React.FC = () => {
   const [selectedAcceptIntl, setSelectedAcceptIntl] = useState<'Yes' | 'No' | 'Willing to explore' | null>(null);
   const [selectedInterest, setSelectedInterest] = useState<IndustryType | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+
+  // 🆕 活动相关状态
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [pastEvents, setPastEvents] = useState<Event[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [selectedEventYear, setSelectedEventYear] = useState<string>(dayjs().year().toString());
+
+  // 🆕 活动财务数据
+  const [eventFinancials, setEventFinancials] = useState<Map<string, {
+    budgetTotal: number;        // 财务预算总额
+    accountIncomeTotal: number; // 活动账户收入总额
+    accountExpenseTotal: number; // 活动账户支出总额
+    bankIncomeTotal: number;    // 银行交易收入总额
+    bankExpenseTotal: number;   // 银行交易支出总额
+    netProfit: number;          // 净利润 (账户收入 - 账户支出)
+  }>>(new Map());
 
   // 月份选项
   const monthOptions = [
@@ -227,6 +248,161 @@ const DashboardPage: React.FC = () => {
     loadMembers();
   }, []);
 
+  // 🆕 加载活动列表
+  useEffect(() => {
+    const loadEvents = async () => {
+      setEventsLoading(true);
+      try {
+        const now = new Date();
+        
+        // 加载所有活动
+        const result = await getEvents({
+          page: 1,
+          limit: 1000,
+        });
+
+        // 区分即将举办和已结束的活动
+        const upcoming: Event[] = [];
+        const past: Event[] = [];
+
+        result.data.forEach(event => {
+          const eventDate = new Date(event.startDate);
+          if (eventDate > now) {
+            upcoming.push(event);
+          } else {
+            past.push(event);
+          }
+        });
+
+        // 按日期排序
+        upcoming.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        past.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+
+        setUpcomingEvents(upcoming);
+        setPastEvents(past);
+
+        // 加载所有活动的财务数据
+        await loadEventFinancials([...upcoming, ...past]);
+      } catch (error) {
+        console.error('Failed to fetch events:', error);
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, []);
+
+  // 🆕 加载活动财务数据
+  const loadEventFinancials = async (events: Event[]) => {
+    try {
+      const financialsMap = new Map<string, {
+        budgetTotal: number;
+        accountIncomeTotal: number;
+        accountExpenseTotal: number;
+        bankIncomeTotal: number;
+        bankExpenseTotal: number;
+        netProfit: number;
+      }>();
+
+      // 为每个活动并行加载财务数据
+      await Promise.all(
+        events.map(async (event) => {
+          try {
+            // 1. 获取活动账户（财务预算）
+            const account = await getOrCreateEventAccount(event.id, event.name, 'admin');
+            const budgetTotal = (account.budgetIncome || 0) + (account.budgetExpense || 0);
+
+            // 2. 获取活动账户交易记录（财务流水）
+            const accountTransactions = await getEventAccountTransactions(account.id);
+            let accountIncomeTotal = 0;
+            let accountExpenseTotal = 0;
+
+            accountTransactions.forEach(tx => {
+              if (tx.transactionType === 'income') {
+                accountIncomeTotal += tx.amount;
+              } else if (tx.transactionType === 'expense') {
+                accountExpenseTotal += tx.amount;
+              }
+            });
+
+            // 3. 获取银行交易记录
+            // 🆕 修复：使用 financialAccount 而不是 event.id
+            const financialAccountId = event.financialAccount || event.id;
+            let bankTransactions = await getTransactionsByEventId(financialAccountId);
+            
+            // 方式2: 如果没有结果，通过 category='event-finance' 和 txAccount 查询
+            if (bankTransactions.length === 0) {
+              try {
+                const eventFinanceResult = await getTransactions({
+                  page: 1,
+                  limit: 10000,
+                  category: 'event-finance',
+                });
+                
+                // 客户端过滤：通过 txAccount 或 metadata.eventId 匹配
+                bankTransactions = eventFinanceResult.data.filter(tx => {
+                  const matchByAccount = tx.txAccount === event.name;
+                  const matchByMetadataId = (tx.metadata as any)?.eventId === event.id;
+                  const matchByMetadataName = (tx.metadata as any)?.eventName === event.name;
+                  return matchByAccount || matchByMetadataId || matchByMetadataName;
+                });
+              } catch (err) {
+                console.error('Failed to query event-finance transactions:', err);
+              }
+            }
+            
+            let bankIncomeTotal = 0;
+            let bankExpenseTotal = 0;
+
+            bankTransactions.forEach(tx => {
+              // 🆕 跳过虚拟交易（子交易），避免重复计算
+              // 拆分交易：父交易已被拆分，实际金额由子交易体现
+              if (tx.isVirtual || tx.parentTransactionId) {
+                return;
+              }
+
+              // 🆕 统计所有交易（不区分 pending/completed）
+              // 原因：仪表板应该显示所有财务活动，无论批准状态
+              if (tx.transactionType === 'income') {
+                bankIncomeTotal += tx.amount;
+              } else if (tx.transactionType === 'expense') {
+                bankExpenseTotal += tx.amount;
+              }
+            });
+
+            // 4. 计算净利润
+            const netProfit = accountIncomeTotal - accountExpenseTotal;
+
+            financialsMap.set(event.id, {
+              budgetTotal,
+              accountIncomeTotal,
+              accountExpenseTotal,
+              bankIncomeTotal,
+              bankExpenseTotal,
+              netProfit,
+            });
+          } catch (error) {
+            console.error(`Failed to load financials for event ${event.id}:`, error);
+            // 为失败的活动设置默认值
+            financialsMap.set(event.id, {
+              budgetTotal: 0,
+              accountIncomeTotal: 0,
+              accountExpenseTotal: 0,
+              bankIncomeTotal: 0,
+              bankExpenseTotal: 0,
+              netProfit: 0,
+            });
+          }
+        })
+      );
+
+      setEventFinancials(financialsMap);
+    } catch (error) {
+      console.error('Failed to load event financials:', error);
+    }
+  };
+
   // 🆕 工具: 将行业/兴趣字段规范为字符串数组
   const normalizeToStringArray = (value: any): string[] => {
     let base: any[] = [];
@@ -313,6 +489,102 @@ const DashboardPage: React.FC = () => {
     setSelectedMemberId(null);
   };
 
+  // 🆕 刷新所有数据
+  const handleRefreshAll = async () => {
+    setListsLoading(true);
+    setMembersLoading(true);
+    try {
+      // 刷新生日数据
+      const birthdaysPromise = (async () => {
+        if (birthdayViewMode === 'upcoming') {
+          const birthdays = await getUpcomingBirthdays(30);
+          setUpcomingBirthdays(birthdays);
+        } else {
+          const birthdays = await getBirthdaysByMonth(selectedMonth);
+          setUpcomingBirthdays(birthdays);
+        }
+      })();
+
+      // 刷新行业和兴趣分布
+      const distributionsPromise = (async () => {
+        const [industries, interests] = await Promise.all([
+          getIndustryDistribution(selectedAcceptIntl || undefined),
+          getInterestDistribution(),
+        ]);
+        setIndustryDistribution(industries);
+        setInterestDistribution(interests);
+      })();
+
+      // 刷新会员列表
+      const membersPromise = (async () => {
+        const result = await getMembers({
+          page: 1,
+          limit: 10000,
+        });
+        setMembers(result.data);
+
+        // 重新计算财年新会员
+        const fy = globalDateService.getCurrentFiscalYearRange();
+        const currentYearStr = globalDateService.formatDate(new Date(), 'year');
+        const fees = await getMemberFees({ page: 1, limit: 10000 });
+        const ids = new Set<string>();
+        fees.data.forEach(f => {
+          const paid = Number((f as any).paidAmount || 0) > 0;
+          const pd = (f as any).paymentDate as string | undefined;
+          if (!paid || !pd) return;
+          const d = new Date(pd);
+          const txa = (f as any).txAccount as string | undefined;
+          const matchByTx = !!txa && txa.startsWith(`${currentYearStr}-new-member-fee`);
+          if (matchByTx || (d >= fy.start && d <= fy.end)) {
+            ids.add((f as any).memberId);
+          }
+        });
+        setFiscalNewMemberIds(ids);
+        
+        if (!selectedIndustry && !selectedInterest && !selectedMemberId) {
+          setFilteredMembers(result.data.filter(m => ids.has(m.id)));
+        } else {
+          setFilteredMembers(result.data);
+        }
+      })();
+
+      await Promise.all([birthdaysPromise, distributionsPromise, membersPromise]);
+      message.success('数据已刷新');
+    } catch (error) {
+      console.error('刷新失败:', error);
+      message.error('刷新失败');
+    } finally {
+      setListsLoading(false);
+      setMembersLoading(false);
+    }
+  };
+
+  // 🆕 导出当前数据
+  const handleExport = () => {
+    message.info('导出功能开发中');
+  };
+
+  // 🆕 获取可用的年份选项（从活动中提取）
+  const availableYears = React.useMemo(() => {
+    const years = new Set<string>();
+    [...upcomingEvents, ...pastEvents].forEach(event => {
+      const year = dayjs(event.startDate).year().toString();
+      years.add(year);
+    });
+    return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a)); // 降序排列
+  }, [upcomingEvents, pastEvents]);
+
+  // 🆕 根据年份过滤 Past Events
+  const filteredPastEvents = React.useMemo(() => {
+    if (selectedEventYear === 'all') {
+      return pastEvents;
+    }
+    return pastEvents.filter(event => {
+      const eventYear = dayjs(event.startDate).year().toString();
+      return eventYear === selectedEventYear;
+    });
+  }, [pastEvents, selectedEventYear]);
+
   return (
     <PermissionGuard permissions="DASHBOARD_VIEW">
       <div>
@@ -361,48 +633,382 @@ const DashboardPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 会员信息总览卡片 - 整合4个卡片 */}
-      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-        <Col xs={24}>
-          <Card 
-            title="会员信息总览"
-            className="content-card"
-          >
-            <Tabs
-              defaultActiveKey="birthdays"
-              items={[
-                {
-                  key: 'birthdays',
-                  label: (
-                    <span>
-                      <GiftOutlined style={{ marginRight: 8 }} />
-                      会员生日列表
-                    </span>
-                  ),
-                  children: (
-                    <div>
-                      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Select
-                          size="small"
-                          value={birthdayViewMode === 'upcoming' ? 'upcoming' : selectedMonth}
-                          onChange={(value) => {
-                            if (value === 'upcoming') {
-                              setBirthdayViewMode('upcoming');
-                            } else {
-                              setBirthdayViewMode('month');
-                              setSelectedMonth(value as number);
-                            }
-                          }}
-                          style={{ width: 140 }}
-                        >
-                          <Option value="upcoming">即将到来</Option>
-                          {monthOptions.map(opt => (
-                            <Option key={opt.value} value={opt.value}>
-                              {opt.label.split(' ')[0]}
-                            </Option>
-                          ))}
-                        </Select>
+      {/* 活动数据中心 */}
+      <Card
+        title={
+          <span>
+            📅 活动数据中心
+          </span>
+        }
+        extra={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: '#8c8c8c' }}>年份筛选:</span>
+            <Select
+              size="small"
+              value={selectedEventYear}
+              onChange={setSelectedEventYear}
+              style={{ width: 100 }}
+            >
+              <Option value="all">全部</Option>
+              {availableYears.map(year => (
+                <Option key={year} value={year}>{year}</Option>
+              ))}
+            </Select>
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => message.info('刷新功能开发中')}
+            >
+              刷新
+            </Button>
+            <Button
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={() => message.info('导出功能开发中')}
+            >
+              导出
+            </Button>
+          </div>
+        }
+        style={{ marginTop: 12 }}
+        bodyStyle={{ padding: '16px' }}
+      >
+        <Tabs
+          defaultActiveKey="upcoming"
+          items={[
+            {
+              key: 'upcoming',
+              label: (
+                <span>
+                  <CalendarOutlined style={{ marginRight: 8 }} />
+                  Upcoming Events
+                </span>
+              ),
+              children: (
+                <Row gutter={[16, 16]} align="stretch">
+                  <Col xs={24}>
+                    <Card 
+                      title={`即将举办的活动列表 (${upcomingEvents.length})`}
+                      className="content-card"
+                      style={{ height: '100%' }}
+                    >
+                      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                        {eventsLoading ? (
+                          <div style={{ padding: 40, textAlign: 'center' }}>
+                            <div>加载中...</div>
+                          </div>
+                        ) : upcomingEvents.length === 0 ? (
+                          <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description="暂无即将举办的活动"
+                          />
+                        ) : (
+                          <List
+                            dataSource={upcomingEvents}
+                            renderItem={(event) => {
+                              const chairman = event.committeeMembers?.find(m => m.position === '筹委主席');
+                              const priceRange = event.isFree 
+                                ? 'FREE' 
+                                : `RM ${event.pricing.committeePrice} - RM ${event.pricing.regularPrice}`;
+                              const financial = eventFinancials.get(event.id);
+                              
+                              return (
+                                <List.Item style={{ padding: '12px 0', display: 'block' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                                    {/* 左侧：活动基本信息 */}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</span>
+                                        <Tag color="blue">{event.level}</Tag>
+                                      </div>
+                                      <div style={{ fontSize: 12 }}>
+                                        <div style={{ marginTop: 4 }}>
+                                          <CalendarOutlined style={{ marginRight: 6 }} />
+                                          {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
+                                        </div>
+                                        {event.boardMember && (
+                                          <div style={{ marginTop: 4 }}>
+                                            <UserOutlined style={{ marginRight: 6 }} />
+                                            负责理事: {event.boardMember}
+                                          </div>
+                                        )}
+                                        <div style={{ marginTop: 4 }}>
+                                          <TeamOutlined style={{ marginRight: 6 }} />
+                                          筹委主席: {chairman?.name || '-'}
+                                        </div>
+                                        <div style={{ marginTop: 4 }}>
+                                          <DollarOutlined style={{ marginRight: 6 }} />
+                                          {priceRange}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* 右侧：财务对比 */}
+                                    {financial && (
+                                      <div style={{
+                                        minWidth: 320,
+                                        padding: '12px 16px',
+                                        background: '#f0f5ff',
+                                        borderRadius: 6,
+                                        border: '1px solid #d9d9d9',
+                                      }}>
+                                        {/*<div style={{ fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 10 }}>💰 财务对比</div>*/}
+                                        <div style={{ display: 'flex', gap: 24 }}>
+                                          {/* 左列 */}
+                                          <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                              <span style={{ fontSize: 10, color: '#8c8c8c' }}>预算</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600 }}>RM {financial.budgetTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                              <span style={{ fontSize: 10, color: '#52c41a' }}>账户收入</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#52c41a' }}>RM {financial.accountIncomeTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                              <span style={{ fontSize: 10, color: '#1890ff' }}>银行收入</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#1890ff' }}>RM {financial.bankIncomeTotal.toFixed(2)}</span>
+                                            </div>
+                                          </div>
+                                          {/* 右列 */}
+                                          <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                              <span style={{ fontSize: 10, color: '#8c8c8c' }}>净利润</span>
+                                              <span style={{ 
+                                                fontSize: 12, 
+                                                fontWeight: 600,
+                                                color: financial.netProfit >= 0 ? '#52c41a' : '#ff4d4f'
+                                              }}>
+                                                RM {financial.netProfit.toFixed(2)}
+                                              </span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                              <span style={{ fontSize: 10, color: '#ff4d4f' }}>账户支出</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#ff4d4f' }}>RM {financial.accountExpenseTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                              <span style={{ fontSize: 10, color: '#fa8c16' }}>银行支出</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#fa8c16' }}>RM {financial.bankExpenseTotal.toFixed(2)}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </List.Item>
+                              );
+                            }}
+                          />
+                        )}
                       </div>
+                    </Card>
+                  </Col>
+                </Row>
+              ),
+            },
+            {
+              key: 'past',
+              label: (
+                <span>
+                  <TrophyOutlined style={{ marginRight: 8 }} />
+                  Past Events
+                </span>
+              ),
+              children: (
+                <Row gutter={[16, 16]} align="stretch">
+                  <Col xs={24}>
+                    <Card 
+                      title={
+                        <span>
+                          已结束的活动列表 ({filteredPastEvents.length})
+                          {selectedEventYear !== 'all' && (
+                            <Tag color="blue" style={{ marginLeft: 8 }}>
+                              {selectedEventYear}年
+                            </Tag>
+                          )}
+                        </span>
+                      }
+                      className="content-card"
+                      style={{ height: '100%' }}
+                    >
+                      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                        {eventsLoading ? (
+                          <div style={{ padding: 40, textAlign: 'center' }}>
+                            <div>加载中...</div>
+                          </div>
+                        ) : filteredPastEvents.length === 0 ? (
+                          <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description={selectedEventYear !== 'all' ? `${selectedEventYear}年暂无已结束的活动` : '暂无已结束的活动'}
+                          />
+                        ) : (
+                          <List
+                            dataSource={filteredPastEvents}
+                            renderItem={(event) => {
+                              const chairman = event.committeeMembers?.find(m => m.position === '筹委主席');
+                              const priceRange = event.isFree 
+                                ? 'FREE' 
+                                : `RM ${event.pricing.committeePrice} - RM ${event.pricing.regularPrice}`;
+                              const financial = eventFinancials.get(event.id);
+                              
+                              return (
+                                <List.Item style={{ padding: '12px 0', display: 'block' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                                    {/* 左侧：活动基本信息 */}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</span>
+                                        <Tag color="orange">{event.level}</Tag>
+                                      </div>
+                                      <div style={{ fontSize: 12 }}>
+                                        <div style={{ marginTop: 4 }}>
+                                          <CalendarOutlined style={{ marginRight: 6 }} />
+                                          {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
+                                        </div>
+                                        {event.boardMember && (
+                                          <div style={{ marginTop: 4 }}>
+                                            <UserOutlined style={{ marginRight: 6 }} />
+                                            负责理事: {event.boardMember}
+                                          </div>
+                                        )}
+                                        <div style={{ marginTop: 4 }}>
+                                          <TeamOutlined style={{ marginRight: 6 }} />
+                                          筹委主席: {chairman?.name || '-'}
+                                        </div>
+                                        <div style={{ marginTop: 4 }}>
+                                          <DollarOutlined style={{ marginRight: 6 }} />
+                                          {priceRange}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* 右侧：财务对比 */}
+                                    {financial && (
+                                      <div style={{
+                                        minWidth: 320,
+                                        padding: '12px 16px',
+                                        background: '#fff7e6',
+                                        borderRadius: 6,
+                                        border: '1px solid #d9d9d9',
+                                      }}>
+                                        {/*<div style={{ fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 10 }}>💰 财务对比</div>*/}
+                                        <div style={{ display: 'flex', gap: 24 }}>
+                                          {/* 左列 */}
+                                          <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                              <span style={{ fontSize: 10, color: '#8c8c8c' }}>预算</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600 }}>RM {financial.budgetTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                              <span style={{ fontSize: 10, color: '#52c41a' }}>账户收入</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#52c41a' }}>RM {financial.accountIncomeTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                              <span style={{ fontSize: 10, color: '#1890ff' }}>银行收入</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#1890ff' }}>RM {financial.bankIncomeTotal.toFixed(2)}</span>
+                                            </div>
+                                          </div>
+                                          {/* 右列 */}
+                                          <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                              <span style={{ fontSize: 10, color: '#8c8c8c' }}>净利润</span>
+                                              <span style={{ 
+                                                fontSize: 12, 
+                                                fontWeight: 600,
+                                                color: financial.netProfit >= 0 ? '#52c41a' : '#ff4d4f'
+                                              }}>
+                                                RM {financial.netProfit.toFixed(2)}
+                                              </span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                              <span style={{ fontSize: 10, color: '#ff4d4f' }}>账户支出</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#ff4d4f' }}>RM {financial.accountExpenseTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                              <span style={{ fontSize: 10, color: '#fa8c16' }}>银行支出</span>
+                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#fa8c16' }}>RM {financial.bankExpenseTotal.toFixed(2)}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </List.Item>
+                              );
+                            }}
+                          />
+                        )}
+                      </div>
+                    </Card>
+                  </Col>
+                </Row>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
+      {/* 会员数据中心：包裹4个子卡片 */}
+      <Card
+        title={
+          <span>
+            🎯 会员数据中心
+          </span>
+        }
+        extra={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={handleRefreshAll}
+            >
+              刷新
+            </Button>
+            <Button
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={handleExport}
+            >
+              导出
+            </Button>
+          </div>
+        }
+        style={{ marginTop: 12 }}
+        bodyStyle={{ padding: '16px' }}
+      >
+        {/* 会员生日列表：单独一行置顶 */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={24} md={24} lg={24}>
+            <Card 
+            title={
+              <span>
+                <GiftOutlined style={{ marginRight: 8, color: '#f5222d' }} />
+                会员生日列表
+              </span>
+            } 
+            className="content-card"
+            extra={
+              <Select
+                size="small"
+                value={birthdayViewMode === 'upcoming' ? 'upcoming' : selectedMonth}
+                onChange={(value) => {
+                  if (value === 'upcoming') {
+                    setBirthdayViewMode('upcoming');
+                  } else {
+                    setBirthdayViewMode('month');
+                    setSelectedMonth(value as number);
+                  }
+                }}
+                style={{ width: 140 }}
+              >
+                <Option value="upcoming">即将到来</Option>
+                {monthOptions.map(opt => (
+                  <Option key={opt.value} value={opt.value}>
+                    {opt.label.split(' ')[0]}
+                  </Option>
+                ))}
+              </Select>
+            }
+          >
             <div style={{
               maxHeight: 160,
               overflowX: 'auto',
@@ -464,48 +1070,55 @@ const DashboardPage: React.FC = () => {
                 💡 共找到 {upcomingBirthdays.length} 位会员，显示前 10 位
               </div>
             )}
-                    </div>
-                  ),
-                },
-                {
-                  key: 'industry',
-                  label: (
-                    <span>
-                      <ShopOutlined style={{ marginRight: 8 }} />
-                      会员行业分布
-                    </span>
-                  ),
-                  children: (
-                    <div>
-                      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-                        <Select
-                          size="small"
-                          placeholder="跨境业务"
-                          style={{ width: 130 }}
-                          value={(selectedAcceptIntl ?? 'ALL') as any}
-                          onChange={(val) => {
-                            if (val === 'ALL') {
-                              setSelectedAcceptIntl(null);
-                            } else {
-                              setSelectedAcceptIntl(val as any);
-                            }
-                          }}
-                          options={[
-                            { label: 'All', value: 'ALL' },
-                            { label: 'Yes', value: 'Yes' },
-                            { label: 'No', value: 'No' },
-                            { label: 'Willing to explore', value: 'Willing to explore' },
-                          ]}
-                        />
-                        <Badge 
-                          count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
-                          offset={[-5, 5]}
-                        >
-                          <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                            {selectedAcceptIntl ? `筛: ${selectedAcceptIntl}` : '全部'}
-                          </span>
-                        </Badge>
-                      </div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 会员行业分布、兴趣分布、会员列表：三卡片同排 */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
+        {/* 会员行业分布 */}
+        <Col xs={8} sm={8} md={8} lg={8}>
+          <Card 
+            title={
+              <span>
+                <ShopOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                会员行业分布
+              </span>
+            } 
+            className="content-card"
+            style={{ height: '100%' }}
+            extra={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Select
+                  size="small"
+                  placeholder="跨境业务"
+                  style={{ width: 130 }}
+                  value={(selectedAcceptIntl ?? 'ALL') as any}
+                  onChange={(val) => {
+                    if (val === 'ALL') {
+                      setSelectedAcceptIntl(null);
+                    } else {
+                      setSelectedAcceptIntl(val as any);
+                    }
+                  }}
+                  options={[
+                    { label: 'All', value: 'ALL' },
+                    { label: 'Yes', value: 'Yes' },
+                    { label: 'No', value: 'No' },
+                    { label: 'Willing to explore', value: 'Willing to explore' },
+                  ]}
+                />
+              <Badge 
+                count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
+                offset={[-5, 5]}
+              >
+                  <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                    {selectedAcceptIntl ? `筛: ${selectedAcceptIntl}` : '全部'}
+                  </span>
+              </Badge>
+              </div>
+            }
+          >
             <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
             <List
               loading={listsLoading}
@@ -552,27 +1165,29 @@ const DashboardPage: React.FC = () => {
               )}
             />
             </div>
-                    </div>
-                  ),
-                },
-                {
-                  key: 'interest',
-                  label: (
-                    <span>
-                      <HeartOutlined style={{ marginRight: 8 }} />
-                      会员兴趣分布
-                    </span>
-                  ),
-                  children: (
-                    <div>
-                      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Badge 
-                          count={selectedInterest ? <FilterOutlined style={{ color: '#52c41a' }} /> : 0}
-                          offset={[-5, 5]}
-                        >
-                          <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>
-                        </Badge>
-                      </div>
+          </Card>
+        </Col>
+
+        {/* 会员兴趣分布 */}
+        <Col xs={8} sm={8} md={8} lg={8}>
+          <Card 
+            title={
+              <span>
+                <HeartOutlined style={{ marginRight: 8, color: '#52c41a' }} />
+                会员兴趣分布
+              </span>
+            } 
+            className="content-card"
+            style={{ height: '100%' }}
+            extra={
+              <Badge 
+                count={selectedInterest ? <FilterOutlined style={{ color: '#52c41a' }} /> : 0}
+                offset={[-5, 5]}
+              >
+                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>
+              </Badge>
+            }
+          >
             <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
             <List
               loading={listsLoading}
@@ -619,36 +1234,37 @@ const DashboardPage: React.FC = () => {
               )}
             />
             </div>
-                    </div>
-                  ),
-                },
-                {
-                  key: 'members',
-                  label: (
-                    <span>
-                      <TeamOutlined style={{ marginRight: 8 }} />
-                      会员列表
-                      {(selectedIndustry || selectedInterest || selectedMemberId) && (
-                        <Tag color="blue" style={{ marginLeft: 8 }}>
-                          已筛选 {filteredMembers.length} / {members.length}
-                        </Tag>
-                      )}
-                    </span>
-                  ),
-                  children: (
-                    <div>
-                      {(selectedIndustry || selectedInterest || selectedMemberId) && (
-                        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                          <Button 
-                            type="link" 
-                            size="small" 
-                            icon={<CloseCircleOutlined />}
-                            onClick={handleClearFilters}
-                          >
-                            清除筛选
-                          </Button>
-                        </div>
-                      )}
+          </Card>
+        </Col>
+      {/* 🆕 会员列表卡片 */}
+        <Col xs={8} sm={8} md={8} lg={8}>
+          <Card 
+            title={
+              <span>
+                <TeamOutlined style={{ marginRight: 8, color: '#722ed1' }} />
+                会员列表
+                {(selectedIndustry || selectedInterest || selectedMemberId) && (
+                  <Tag color="blue" style={{ marginLeft: 12 }}>
+                    已筛选 {filteredMembers.length} / {members.length}
+                  </Tag>
+                )}
+              </span>
+            } 
+            className="content-card"
+            style={{ height: '100%' }}
+            extra={
+              (selectedIndustry || selectedInterest || selectedMemberId) ? (
+                <Button 
+                  type="link" 
+                  size="small" 
+                  icon={<CloseCircleOutlined />}
+                  onClick={handleClearFilters}
+                >
+                  清除筛选
+                </Button>
+              ) : null
+            }
+          >
             {/* 筛选条件显示 */}
             {(selectedIndustry || selectedInterest) && (
               <div style={{ 
@@ -760,38 +1376,10 @@ const DashboardPage: React.FC = () => {
                 💡 共找到 {filteredMembers.length} 位会员，显示前 20 位
               </div>
             )}
-                    </div>
-                  ),
-                },
-              ]}
-            />
           </Card>
         </Col>
       </Row>
-
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24} lg={16}>
-          <Card title="系统状态" className="content-card">
-            <p>✅ 全局设置系统已初始化</p>
-            <p>✅ 深色模式主题已配置</p>
-            <p>✅ 组件库已集成</p>
-            <p>✅ Firebase 连接已建立</p>
-            <p>✅ 权限系统已配置</p>
-          </Card>
-        </Col>
-        
-        <Col xs={24} lg={8}>
-          <Card title="快速操作" className="content-card">
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              <li>📊 查看会员统计</li>
-              <li>👥 管理会员信息</li>
-              <li>⚙️ 配置系统设置</li>
-              <li>🎨 自定义主题</li>
-              <li>🔐 权限管理</li>
-            </ul>
-          </Card>
-        </Col>
-      </Row>
+      </Card>
       </div>
     </PermissionGuard>
   );

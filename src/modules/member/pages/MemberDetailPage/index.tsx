@@ -525,7 +525,7 @@ const MemberDetailPage: React.FC = () => {
   // 统一的 Row gutter 配置
   const ROW_GUTTER: [number, number] = [16, 16];  // 标签页层面的 gutter
   const ROW_GUTTER_INNER = 16;  // 卡片内部的 gutter
-
+  
   return (
     <div className="member-detail-page">
       <PageHeader
@@ -586,7 +586,7 @@ const MemberDetailPage: React.FC = () => {
           </Col>
         </Row>
       </Card>
-
+      
       {/* Tabs */}
       <Card style={{ marginBottom: 16 }}>
         <Tabs
@@ -625,7 +625,7 @@ const MemberDetailPage: React.FC = () => {
               children: (
                 <Row gutter={ROW_GUTTER} align="stretch">
                   <Col xs={24} md={16}>
-                    {/* Basic Information */}
+      {/* Basic Information */}
                     <Card title="基本信息" bordered={true} style={{ height: '100%' }}>
                       <Form form={form}>
                         <Row gutter={[12, 12]}>
@@ -829,7 +829,7 @@ const MemberDetailPage: React.FC = () => {
                           </Col>
                         </Row>
                       </Form>
-                    </Card>
+      </Card>
                   </Col>
                 </Row>
               ),
@@ -840,7 +840,7 @@ const MemberDetailPage: React.FC = () => {
               children: (
                 <Row gutter={ROW_GUTTER} align="stretch">
                   <Col xs={24} md={8}>
-                    {/* Organization Information */}
+      {/* Organization Information */}
                     <Card title="组织信息" bordered={true} style={{ height: '100%' }}>
                       <Form form={form}>
                         <Row gutter={[12, 12]}>
@@ -919,7 +919,7 @@ const MemberDetailPage: React.FC = () => {
                           </Col>
                         </Row>
                       </Form>
-                    </Card>
+      </Card>
                   </Col>
                 </Row>
               ),
@@ -1010,7 +1010,7 @@ const MemberDetailPage: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    </Card>
+      </Card>
                   </Col>
                   <Col xs={24}>
                     <Card title="Trainer Development Pathway" bordered={true}>
