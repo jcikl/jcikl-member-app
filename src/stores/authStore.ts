@@ -121,10 +121,10 @@ export const useAuthStore = create<AuthState>()(
             cleanUndefinedValues(newUser)
           );
 
-          const userData: User = {
+          const userData = {
             id: firebaseUser.uid,
             ...newUser,
-          };
+          } as User;
 
           set({
             user: userData,
@@ -166,50 +166,86 @@ export const useAuthStore = create<AuthState>()(
           let userData: User;
 
           if (firebaseUser.email) {
+            // Normalize email to lowercase for consistent matching
+            const normalizedEmail = firebaseUser.email.toLowerCase().trim();
             console.log(`🔍 [Google Login] Searching for existing member with email: ${firebaseUser.email}`);
+            console.log(`📧 [Google Login] Normalized email: ${normalizedEmail}`);
             
-            const emailQuery = query(
+            // Try exact match first
+            let emailQuery = query(
               collection(db, GLOBAL_COLLECTIONS.MEMBERS),
               where('email', '==', firebaseUser.email),
               limit(1)
             );
-            const emailResults = await getDocs(emailQuery);
+            let emailResults = await getDocs(emailQuery);
+            
+            console.log(`🔍 [Google Login] Exact match query returned ${emailResults.size} results`);
+            
+            // If no exact match, try lowercase match
+            if (emailResults.empty && normalizedEmail !== firebaseUser.email) {
+              console.log(`🔍 [Google Login] Trying lowercase match...`);
+              emailQuery = query(
+                collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+                where('email', '==', normalizedEmail),
+                limit(1)
+              );
+              emailResults = await getDocs(emailQuery);
+              console.log(`🔍 [Google Login] Lowercase match query returned ${emailResults.size} results`);
+            }
             
             if (!emailResults.empty) {
               memberDoc = emailResults.docs[0];
               memberDocRef = memberDoc.ref;
+              const memberData = memberDoc.data();
               console.log(`✅ [Google Login] Found existing member: ${memberDoc.id}`);
+              console.log(`📋 [Google Login] Member data:`, {
+                id: memberDoc.id,
+                name: memberData.name,
+                email: memberData.email,
+                category: memberData.category,
+                status: memberData.status,
+              });
+            } else {
+              console.log(`❌ [Google Login] No existing member found with email: ${firebaseUser.email}`);
+              console.log(`💡 [Google Login] Will create new member or check Google UID`);
             }
           }
 
           if (memberDoc && memberDocRef) {
             // Step 2: Link Google UID to existing member document
-            const existingData = memberDoc.data() as User;
+            const existingData = memberDoc.data() as any; // Preserve all Member fields
             
             console.log(`🔗 [Google Login] Linking Google UID to existing member: ${memberDoc.id}`);
             
-            // Update existing member document with Google info
+            // Update existing member document with Google info (merge to preserve all fields)
             await setDoc(
               memberDocRef,
               cleanUndefinedValues({
                 googleLinked: true,
                 googleUid: firebaseUser.uid,
-                avatar: firebaseUser.photoURL || existingData.avatar,
+                avatar: firebaseUser.photoURL || existingData.avatar || existingData.profile?.avatar,
                 updatedAt: new Date().toISOString(),
               }),
               { merge: true }
             );
 
-            // Use the existing member's data
+            // Use the existing member's data (preserve ALL Member fields)
             userData = {
               id: memberDoc.id,
-              ...existingData,
+              ...existingData, // This includes profile, business, jciCareer, etc.
               googleLinked: true,
               googleUid: firebaseUser.uid,
-              avatar: firebaseUser.photoURL || existingData.avatar,
-            };
+              avatar: firebaseUser.photoURL || existingData.avatar || existingData.profile?.avatar,
+            } as User;
 
             console.log(`✅ [Google Login] Successfully linked Google account to member: ${existingData.name}`);
+            console.log(`📦 [Google Login] User data includes:`, {
+              hasProfile: !!userData.profile,
+              hasBusiness: !!userData.business,
+              hasJciCareer: !!userData.jciCareer,
+              category: userData.category,
+              status: userData.status,
+            });
           } else {
             // Step 3: Check if Google UID already exists (user previously logged in with Google)
             const googleDocRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid);
@@ -255,7 +291,7 @@ export const useAuthStore = create<AuthState>()(
               userData = {
                 id: firebaseUser.uid,
                 ...newUser,
-              };
+              } as User;
             }
           }
 
