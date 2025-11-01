@@ -141,11 +141,12 @@ export const router = createBrowserRouter(
             path: 'create',
             element: <MemberCreatePage />,
           },
-          {
-            path: ':id',
-            element: <MemberDetailPage />,
-          },
         ],
+      },
+      // Member Profile Route (独立路由)
+      {
+        path: 'profile/:id',
+        element: <MemberDetailPage />,
       },
       // Event Module Routes
       {
