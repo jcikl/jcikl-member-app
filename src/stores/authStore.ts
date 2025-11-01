@@ -173,25 +173,19 @@ export const useAuthStore = create<AuthState>()(
           const normalizedEmail = firebaseUser.email.toLowerCase().trim();
           console.log(`📧 [Google Login] Normalized email: ${normalizedEmail}`);
           
-          // Search for ALL members with this email (no limit to find duplicates)
-          let emailQuery = query(
-            collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-            where('email', '==', firebaseUser.email)
-          );
-          let emailResults = await getDocs(emailQuery);
+          // Get ALL members collection to search manually (to handle case variations)
+          const allMembersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
+          const allMembersSnapshot = await getDocs(allMembersRef);
           
-          console.log(`🔍 [Google Login] Exact match query returned ${emailResults.size} results`);
+          // Filter by email (case-insensitive)
+          const matchingDocs = allMembersSnapshot.docs.filter(doc => {
+            const docEmail = (doc.data().email || '').toLowerCase().trim();
+            return docEmail === normalizedEmail;
+          });
           
-          // If no exact match, try lowercase match
-          if (emailResults.empty && normalizedEmail !== firebaseUser.email) {
-            console.log(`🔍 [Google Login] Trying lowercase match...`);
-            emailQuery = query(
-              collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-              where('email', '==', normalizedEmail)
-            );
-            emailResults = await getDocs(emailQuery);
-            console.log(`🔍 [Google Login] Lowercase match query returned ${emailResults.size} results`);
-          }
+          console.log(`🔍 [Google Login] Found ${matchingDocs.length} members with email (case-insensitive)`);
+          
+          const emailResults = { docs: matchingDocs, size: matchingDocs.length, empty: matchingDocs.length === 0 };
           
           if (!emailResults.empty) {
             // If multiple documents found, select the one with most complete data
@@ -371,25 +365,19 @@ export const useAuthStore = create<AuthState>()(
                 
                 const normalizedEmail = firebaseUser.email.toLowerCase().trim();
                 
-                // Search for ALL members with this email (no limit to find duplicates)
-                let emailQuery = query(
-                  collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-                  where('email', '==', firebaseUser.email)
-                );
-                let emailResults = await getDocs(emailQuery);
+                // Get ALL members collection to search manually (to handle case variations)
+                const allMembersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
+                const allMembersSnapshot = await getDocs(allMembersRef);
                 
-                console.log(`🔍 [CheckAuth] Email exact match returned ${emailResults.size} results`);
+                // Filter by email (case-insensitive)
+                const matchingDocs = allMembersSnapshot.docs.filter(doc => {
+                  const docEmail = (doc.data().email || '').toLowerCase().trim();
+                  return docEmail === normalizedEmail;
+                });
                 
-                // Try lowercase if exact match fails
-                if (emailResults.empty && normalizedEmail !== firebaseUser.email) {
-                  console.log(`🔍 [CheckAuth] Trying lowercase email match...`);
-                  emailQuery = query(
-                    collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-                    where('email', '==', normalizedEmail)
-                  );
-                  emailResults = await getDocs(emailQuery);
-                  console.log(`🔍 [CheckAuth] Lowercase match returned ${emailResults.size} results`);
-                }
+                console.log(`🔍 [CheckAuth] Found ${matchingDocs.length} members with email (case-insensitive)`);
+                
+                const emailResults = { docs: matchingDocs, size: matchingDocs.length, empty: matchingDocs.length === 0 };
                 
                 if (!emailResults.empty) {
                   // If multiple documents found, select the one with most complete data
