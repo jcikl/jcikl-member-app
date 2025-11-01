@@ -680,6 +680,29 @@ const DashboardPage: React.FC = () => {
     setSelectedMemberId(null);
   };
 
+  // 🆕 刷新系统统计数据
+  const handleRefreshStats = async () => {
+    try {
+      const memberStats = await getMemberStats();
+      setStats({
+        totalMembers: memberStats.total || 0,
+        totalEvents: 0,
+        totalRevenue: 0,
+        totalAwards: 0,
+        loading: false,
+      });
+      message.success('统计数据已刷新');
+    } catch (error) {
+      console.error('Failed to refresh stats:', error);
+      message.error('刷新失败');
+    }
+  };
+
+  // 🆕 导出系统统计数据
+  const handleExportStats = () => {
+    message.info('导出功能开发中');
+  };
+
   // 🆕 刷新所有数据（智能清除缓存）
   const handleRefreshAll = async () => {
     const startTime = performance.now();
@@ -824,48 +847,78 @@ const DashboardPage: React.FC = () => {
       <div>
       <h1 style={{ marginBottom: 12 }}>欢迎来到 JCI KL 会员管理系统</h1>
       
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} md={6}>
-          <MetricCard
-            title="会员总数"
-            value={stats.totalMembers}
-            prefix={<UserOutlined />}
-            color="#52c41a"
-            loading={stats.loading}
-          />
-        </Col>
-        
-        <Col xs={24} sm={12} md={6}>
-          <MetricCard
-            title="活动总数"
-            value={stats.totalEvents}
-            prefix={<CalendarOutlined />}
-            color="#1890ff"
-            loading={stats.loading}
-          />
-        </Col>
-        
-        <Col xs={24} sm={12} md={6}>
-          <MetricCard
-            title="总收入"
-            value={stats.totalRevenue}
-            suffix="RM"
-            prefix={<DollarOutlined />}
-            color="#f5222d"
-            loading={stats.loading}
-          />
-        </Col>
-        
-        <Col xs={24} sm={12} md={6}>
-          <MetricCard
-            title="奖项数量"
-            value={stats.totalAwards}
-            prefix={<TrophyOutlined />}
-            color="#faad14"
-            loading={stats.loading}
-          />
-        </Col>
-      </Row>
+      {/* 🆕 系统概览：框住4个统计卡片 */}
+      <Card
+        title={
+          <span>
+            📊 系统概览
+          </span>
+        }
+        extra={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              loading={stats.loading}
+              onClick={handleRefreshStats}
+            >
+              刷新
+            </Button>
+            <Button
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={handleExportStats}
+            >
+              导出
+            </Button>
+          </div>
+        }
+        style={{ marginBottom: 16 }}
+        bodyStyle={{ padding: '16px' }}
+      >
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <MetricCard
+              title="会员总数"
+              value={stats.totalMembers}
+              prefix={<UserOutlined />}
+              color="#52c41a"
+              loading={stats.loading}
+            />
+          </Col>
+          
+          <Col xs={24} sm={12} md={6}>
+            <MetricCard
+              title="活动总数"
+              value={stats.totalEvents}
+              prefix={<CalendarOutlined />}
+              color="#1890ff"
+              loading={stats.loading}
+            />
+          </Col>
+          
+          <Col xs={24} sm={12} md={6}>
+            <MetricCard
+              title="总收入"
+              value={stats.totalRevenue}
+              suffix="RM"
+              prefix={<DollarOutlined />}
+              color="#f5222d"
+              loading={stats.loading}
+            />
+          </Col>
+          
+          <Col xs={24} sm={12} md={6}>
+            <MetricCard
+              title="奖项数量"
+              value={stats.totalAwards}
+              prefix={<TrophyOutlined />}
+              color="#faad14"
+              loading={stats.loading}
+            />
+          </Col>
+        </Row>
+      </Card>
 
       {/* 活动数据中心 */}
       <Card
