@@ -28,6 +28,59 @@ import type { Event } from '@/modules/event/types';
 
 const { Option } = Select;
 
+// 🆕 缓存配置
+const CACHE_CONFIG = {
+  EVENT_FINANCIALS_KEY: 'dashboard_event_financials',
+  TTL: 10 * 60 * 1000, // 10分钟缓存过期时间
+};
+
+// 🆕 缓存工具函数
+const cacheUtils = {
+  // 保存到缓存
+  set: (key: string, data: any) => {
+    try {
+      const cacheData = {
+        data,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(key, JSON.stringify(cacheData));
+    } catch (error) {
+      console.warn('Failed to save cache:', error);
+    }
+  },
+  
+  // 从缓存获取
+  get: (key: string, ttl: number) => {
+    try {
+      const cached = localStorage.getItem(key);
+      if (!cached) return null;
+      
+      const cacheData = JSON.parse(cached);
+      const age = Date.now() - cacheData.timestamp;
+      
+      // 检查是否过期
+      if (age > ttl) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      
+      return cacheData.data;
+    } catch (error) {
+      console.warn('Failed to read cache:', error);
+      return null;
+    }
+  },
+  
+  // 清除缓存
+  clear: (key: string) => {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('Failed to clear cache:', error);
+    }
+  },
+};
+
 /**
  * Dashboard Page
  * 仪表板页面
@@ -82,6 +135,8 @@ const DashboardPage: React.FC = () => {
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [selectedEventYear, setSelectedEventYear] = useState<string>(dayjs().year().toString());
+  const [cacheUsed, setCacheUsed] = useState(false);
+  const [cacheAge, setCacheAge] = useState<number>(0);
 
   // 🆕 活动财务数据
   const [eventFinancials, setEventFinancials] = useState<Map<string, {
@@ -293,9 +348,45 @@ const DashboardPage: React.FC = () => {
     loadEvents();
   }, []);
 
-  // 🆕 加载活动财务数据
-  const loadEventFinancials = async (events: Event[]) => {
+  // 🆕 加载活动财务数据（带缓存）
+  const loadEventFinancials = async (events: Event[], forceRefresh = false) => {
     try {
+      // 🆕 尝试从缓存读取
+      if (!forceRefresh) {
+        const cachedItem = localStorage.getItem(CACHE_CONFIG.EVENT_FINANCIALS_KEY);
+        if (cachedItem) {
+          try {
+            const cacheData = JSON.parse(cachedItem);
+            const age = Date.now() - cacheData.timestamp;
+            
+            // 检查是否过期
+            if (age <= CACHE_CONFIG.TTL) {
+              console.log(`✅ 从缓存加载活动财务数据 (${Math.floor(age / 1000)}秒前)`);
+              setEventFinancials(new Map(Object.entries(cacheData.data)));
+              setCacheUsed(true);
+              setCacheAge(age);
+              
+              // 🆕 后台静默刷新（检查缓存年龄，如果超过5分钟则后台更新）
+              if (age > 5 * 60 * 1000) {
+                console.log('🔄 缓存超过5分钟，后台静默刷新...');
+                setTimeout(() => loadEventFinancials(events, true), 2000);
+              }
+              return;
+            } else {
+              // 缓存过期，清除
+              localStorage.removeItem(CACHE_CONFIG.EVENT_FINANCIALS_KEY);
+              console.log('⏰ 缓存已过期，重新加载');
+            }
+          } catch (error) {
+            console.warn('缓存数据解析失败:', error);
+          }
+        }
+      }
+
+      console.log('🔄 从服务器加载活动财务数据...');
+      setCacheUsed(false);
+      setCacheAge(0);
+
       const financialsMap = new Map<string, {
         budgetTotal: number;
         accountIncomeTotal: number;
@@ -398,6 +489,13 @@ const DashboardPage: React.FC = () => {
       );
 
       setEventFinancials(financialsMap);
+      
+      // 🆕 保存到缓存
+      const cacheData = Object.fromEntries(financialsMap);
+      cacheUtils.set(CACHE_CONFIG.EVENT_FINANCIALS_KEY, cacheData);
+      setCacheUsed(true);
+      setCacheAge(0);
+      console.log('💾 活动财务数据已缓存（10分钟有效）');
     } catch (error) {
       console.error('Failed to load event financials:', error);
     }
@@ -489,10 +587,58 @@ const DashboardPage: React.FC = () => {
     setSelectedMemberId(null);
   };
 
-  // 🆕 刷新所有数据
+  // 🆕 刷新活动数据（活动数据中心专用）
+  const handleRefreshEvents = async () => {
+    setEventsLoading(true);
+    
+    // 🆕 清除缓存
+    cacheUtils.clear(CACHE_CONFIG.EVENT_FINANCIALS_KEY);
+    console.log('🗑️ 已清除活动财务缓存');
+    
+    try {
+      const now = new Date();
+      
+      // 重新加载活动
+      const result = await getEvents({
+        page: 1,
+        limit: 1000,
+      });
+
+      const upcoming: Event[] = [];
+      const past: Event[] = [];
+
+      result.data.forEach(event => {
+        const eventDate = new Date(event.startDate);
+        if (eventDate > now) {
+          upcoming.push(event);
+        } else {
+          past.push(event);
+        }
+      });
+
+      upcoming.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+      past.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+
+      setUpcomingEvents(upcoming);
+      setPastEvents(past);
+
+      // 强制刷新财务数据
+      await loadEventFinancials([...upcoming, ...past], true);
+      
+      message.success('活动数据已刷新');
+    } catch (error) {
+      console.error('刷新活动数据失败:', error);
+      message.error('刷新失败');
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  // 🆕 刷新所有数据（会员数据中心专用）
   const handleRefreshAll = async () => {
     setListsLoading(true);
     setMembersLoading(true);
+    
     try {
       // 刷新生日数据
       const birthdaysPromise = (async () => {
@@ -574,7 +720,7 @@ const DashboardPage: React.FC = () => {
     return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a)); // 降序排列
   }, [upcomingEvents, pastEvents]);
 
-  // 🆕 根据年份过滤 Past Events
+  // 🆕 根据年份过滤 Past Events（useMemo 缓存）
   const filteredPastEvents = React.useMemo(() => {
     if (selectedEventYear === 'all') {
       return pastEvents;
@@ -584,6 +730,15 @@ const DashboardPage: React.FC = () => {
       return eventYear === selectedEventYear;
     });
   }, [pastEvents, selectedEventYear]);
+
+  // 🆕 缓存活动统计计算
+  const eventStats = React.useMemo(() => {
+    return {
+      totalUpcoming: upcomingEvents.length,
+      totalPast: pastEvents.length,
+      totalFilteredPast: filteredPastEvents.length,
+    };
+  }, [upcomingEvents.length, pastEvents.length, filteredPastEvents.length]);
 
   return (
     <PermissionGuard permissions="DASHBOARD_VIEW">
@@ -654,10 +809,18 @@ const DashboardPage: React.FC = () => {
                 <Option key={year} value={year}>{year}</Option>
               ))}
             </Select>
+            {cacheUsed && (
+              <Tooltip title={`缓存有效期: ${Math.floor((CACHE_CONFIG.TTL - cacheAge) / 60000)}分钟`}>
+                <Tag color="green" style={{ margin: 0 }}>
+                  <span style={{ fontSize: 11 }}>💾 缓存加速</span>
+                </Tag>
+              </Tooltip>
+            )}
             <Button
               size="small"
               icon={<ReloadOutlined />}
-              onClick={() => message.info('刷新功能开发中')}
+              onClick={handleRefreshEvents}
+              loading={eventsLoading}
             >
               刷新
             </Button>
