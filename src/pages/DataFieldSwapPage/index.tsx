@@ -675,11 +675,13 @@ const DataFieldSwapPage: React.FC = () => {
         <Card title="快捷配置示例" style={{ marginBottom: 24 }}>
           <Space direction="vertical" style={{ width: '100%' }}>
             <Alert
-              message="示例1: 修复T恤尺寸和刺绣名称对调错误"
+              message="示例: 修复T恤尺寸和刺绣名称对调错误"
               description={
                 <div>
-                  <p>当前字段: profile.shirtSize → 目标字段: profile.nameToBeEmbroidered</p>
-                  <p>当前字段: profile.nameToBeEmbroidered → 目标字段: profile.shirtSize</p>
+                  <p>对调操作: profile.shirtSize ↔ profile.nameToBeEmbroidered</p>
+                  <p style={{ color: '#faad14', marginTop: 4 }}>
+                    ⚠️ 注意：一次对调操作即可完成字段互换，无需重复配置
+                  </p>
                 </div>
               }
               type="info"
@@ -690,9 +692,8 @@ const DataFieldSwapPage: React.FC = () => {
               onClick={() => {
                 setSwapMappings([
                   { id: '1', operationType: 'swap' as OperationType, currentField: 'profile.shirtSize', targetField: 'profile.nameToBeEmbroidered' },
-                  { id: '2', operationType: 'swap' as OperationType, currentField: 'profile.nameToBeEmbroidered', targetField: 'profile.shirtSize' },
                 ]);
-                message.success('已应用快捷配置');
+                message.success('已应用快捷配置：T恤尺寸 ↔ 刺绣名称');
               }}
             >
               应用此配置
