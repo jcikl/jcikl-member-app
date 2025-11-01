@@ -42,19 +42,6 @@ service cloud.firestore {
              request.auth.token.email.lower() == resource.data.email.lower();
     }
     
-    /**
-     * Get user's member document (by UID or email)
-     * 获取用户的会员文档（通过 UID 或邮箱）
-     */
-    function getUserData() {
-      let userData = get(/databases/$(database)/documents/members/$(request.auth.uid)).data;
-      // If document exists, return it
-      if (exists(/databases/$(database)/documents/members/$(request.auth.uid))) {
-        return userData;
-      }
-      // Otherwise, return empty (will be handled by individual checks)
-      return {};
-    }
     
     /**
      * Check if user has admin role
