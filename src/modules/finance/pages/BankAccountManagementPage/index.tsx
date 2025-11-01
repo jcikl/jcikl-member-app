@@ -714,327 +714,326 @@ const BankAccountManagementPage: React.FC = () => {
     </>
   );
 
-  // 🆕 渲染财年管理标签页内容
-  const renderFiscalYearTab = () => (
-    <Tabs activeKey={fiscalYearTab} onChange={setFiscalYearTab}>
-      <Tabs.TabPane tab={<span><SettingOutlined />财年配置</span>} key="config">
-        <Row gutter={24}>
-          {/* 财年配置 */}
-          <Col span={16}>
-            <Card title="财年设置" style={{ marginBottom: 24 }}>
-              <Form
-                form={fiscalYearForm}
-                layout="vertical"
-                onFinish={handleSaveFiscalYear}
-                initialValues={{
-                  startMonth: 10,
-                  startDay: 1,
-                  name: 'JCI KL 财年',
-                  description: 'JCI KL 财年从每年10月1日开始'
-                }}
-              >
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="name"
-                      label="财年名称"
-                      rules={[{ required: true, message: '请输入财年名称' }]}
-                    >
-                      <Input
-                        style={{ width: '100%' }}
-                        placeholder="如：JCI KL 财年"
-                        disabled
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="description"
-                      label="描述"
-                    >
-                      <Input
-                        style={{ width: '100%' }}
-                        placeholder="财年描述信息"
-                        disabled
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="startMonth"
-                      label="起始月份"
-                      rules={[{ required: true, message: '请选择起始月份' }]}
-                    >
-                      <InputNumber
-                        min={1}
-                        max={12}
-                        style={{ width: '100%' }}
-                        placeholder="月份"
-                        addonAfter="月"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="startDay"
-                      label="起始日期"
-                      rules={[{ required: true, message: '请选择起始日期' }]}
-                    >
-                      <InputNumber
-                        min={1}
-                        max={31}
-                        style={{ width: '100%' }}
-                        placeholder="日期"
-                        addonAfter="日"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Alert
-                  message="配置说明"
-                  description="设置财年的起始月份和日期后，系统将自动计算每年的财年范围。例如：设置10月1日，则2024年财年为2024-10-01至2025-09-30。"
-                  type="info"
-                  showIcon
-                  icon={<InfoCircleOutlined />}
-                  style={{ marginBottom: 16 }}
-                />
-
-                <Form.Item>
-                  <Space>
-                    <Button type="primary" htmlType="submit" loading={fiscalYearLoading}>
-                      保存配置
-                    </Button>
-                    <Button onClick={handleResetFiscalYear}>
-                      重置
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
-            </Card>
-          </Col>
-
-          {/* 当前财年状态 */}
-          <Col span={8}>
-            <Card title="当前财年状态" style={{ marginBottom: 24 }}>
-              {fiscalYearStatus?.currentPeriod ? (
-                <div>
-                  <Space direction="vertical" style={{ width: '100%' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <Title level={4} style={{ margin: 0 }}>
-                        {fiscalYearStatus.currentPeriod.displayName}
-                      </Title>
-                      <Text type="secondary">
-                        {fiscalYearStatus.currentPeriod.startDate} 至 {fiscalYearStatus.currentPeriod.endDate}
-                      </Text>
-                    </div>
-
-                    <Divider />
-
-                    <div>
-                      <Text strong>财年进度</Text>
-                      <Progress 
-                        percent={fiscalYearStatus.currentPeriod.progressPercentage}
-                        status="active"
-                        strokeColor={{
-                          '0%': '#108ee9',
-                          '100%': '#87d068',
-                        }}
-                      />
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {fiscalYearStatus.currentPeriod.daysElapsed} 天 / {fiscalYearStatus.currentPeriod.totalDays} 天
-                      </Text>
-                    </div>
-
-                    <div>
-                      <Text strong>剩余天数</Text>
-                      <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f' }}>
-                        {fiscalYearStatus.currentPeriod.daysRemaining} 天
-                      </div>
-                    </div>
-
-                    <Alert
-                      message="财年状态"
-                      description={`当前正在${fiscalYearStatus.currentPeriod.displayName}，进度 ${fiscalYearStatus.currentPeriod.progressPercentage}%`}
-                      type="info"
-                      showIcon
-                      icon={<InfoCircleOutlined />}
+  // 🆕 渲染财年配置标签页内容
+  const renderFiscalYearConfigTab = () => (
+    <>
+      <Row gutter={24}>
+        {/* 财年配置 */}
+        <Col span={16}>
+          <Card title="财年设置" style={{ marginBottom: 24 }}>
+            <Form
+              form={fiscalYearForm}
+              layout="vertical"
+              onFinish={handleSaveFiscalYear}
+              initialValues={{
+                startMonth: 10,
+                startDay: 1,
+                name: 'JCI KL 财年',
+                description: 'JCI KL 财年从每年10月1日开始'
+              }}
+            >
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="name"
+                    label="财年名称"
+                    rules={[{ required: true, message: '请输入财年名称' }]}
+                  >
+                    <Input
+                      style={{ width: '100%' }}
+                      placeholder="如：JCI KL 财年"
+                      disabled
                     />
-                  </Space>
-                </div>
-              ) : (
-                <Alert
-                  message="未检测到当前财年"
-                  description="请检查财年配置是否正确"
-                  type="warning"
-                  showIcon
-                />
-              )}
-            </Card>
-          </Col>
-        </Row>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="description"
+                    label="描述"
+                  >
+                    <Input
+                      style={{ width: '100%' }}
+                      placeholder="财年描述信息"
+                      disabled
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-        {/* 智能建议 */}
-        {fiscalYearStatus?.suggestions && fiscalYearStatus.suggestions.length > 0 && (
-          <Card title="智能建议" style={{ marginBottom: 24 }}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {fiscalYearStatus.suggestions.map((suggestion: any, index: number) => (
-                <Alert
-                  key={index}
-                  message={suggestion.reason}
-                  description={`建议查看 ${suggestion.period.displayName} 的数据`}
-                  type={suggestion.priority === 'high' ? 'success' : suggestion.priority === 'medium' ? 'info' : 'warning'}
-                  showIcon
-                  icon={<BulbOutlined />}
-                />
-              ))}
-            </Space>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="startMonth"
+                    label="起始月份"
+                    rules={[{ required: true, message: '请选择起始月份' }]}
+                  >
+                    <InputNumber
+                      min={1}
+                      max={12}
+                      style={{ width: '100%' }}
+                      placeholder="月份"
+                      addonAfter="月"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="startDay"
+                    label="起始日期"
+                    rules={[{ required: true, message: '请选择起始日期' }]}
+                  >
+                    <InputNumber
+                      min={1}
+                      max={31}
+                      style={{ width: '100%' }}
+                      placeholder="日期"
+                      addonAfter="日"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Alert
+                message="配置说明"
+                description="设置财年的起始月份和日期后，系统将自动计算每年的财年范围。例如：设置10月1日，则2024年财年为2024-10-01至2025-09-30。"
+                type="info"
+                showIcon
+                icon={<InfoCircleOutlined />}
+                style={{ marginBottom: 16 }}
+              />
+
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" loading={fiscalYearLoading}>
+                    保存配置
+                  </Button>
+                  <Button onClick={handleResetFiscalYear}>
+                    重置
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
           </Card>
-        )}
+        </Col>
 
-        {/* 财年预览 */}
-        <Card title="财年预览">
-          <List
-            dataSource={historyData}
-            renderItem={(period) => (
-              <List.Item>
-                <List.Item.Meta
-                  avatar={getStatusIcon(period)}
-                  title={
-                    <Space>
-                      <Text strong={period.isCurrent}>{period.displayName}</Text>
-                      <Tag color={getStatusColor(period)}>
-                        {period.isCompleted ? '已完成' : period.isCurrent ? '进行中' : '未开始'}
-                      </Tag>
-                    </Space>
-                  }
-                  description={
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      <Text type="secondary">
-                        {period.startDate} 至 {period.endDate}
-                      </Text>
-                      {period.isCurrent && (
-                        <Progress 
-                          percent={period.progressPercentage} 
-                          size="small" 
-                          status="active"
-                          format={(percent) => `${percent}% (剩余 ${period.daysRemaining} 天)`}
-                        />
-                      )}
-                    </Space>
-                  }
-                />
-              </List.Item>
-            )}
-          />
-        </Card>
-      </Tabs.TabPane>
+        {/* 当前财年状态 */}
+        <Col span={8}>
+          <Card title="当前财年状态" style={{ marginBottom: 24 }}>
+            {fiscalYearStatus?.currentPeriod ? (
+              <div>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <Title level={4} style={{ margin: 0 }}>
+                      {fiscalYearStatus.currentPeriod.displayName}
+                    </Title>
+                    <Text type="secondary">
+                      {fiscalYearStatus.currentPeriod.startDate} 至 {fiscalYearStatus.currentPeriod.endDate}
+                    </Text>
+                  </div>
 
-      <Tabs.TabPane tab={<span><BarChartOutlined />财年统计</span>} key="statistics">
-        <Row gutter={24}>
-          <Col span={8}>
-            <SmartFiscalYearSelector
-              onFiscalYearChange={handleFiscalYearChange}
-              onStatisticsTypeChange={handleStatisticsTypeChange}
-              defaultStatisticsType={statisticsType}
-              showSuggestions={true}
-              showProgress={true}
-            />
-          </Col>
+                  <Divider />
 
-          <Col span={16}>
-            {selectedPeriod ? (
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Card title={`${selectedPeriod.displayName} 统计报告`}>
-                  <Space direction="vertical" style={{ width: '100%' }}>
-                    <Alert
-                      message="当前统计设置"
-                      description={
-                        <Space direction="vertical">
-                          <Text>
-                            统计类型: <Text strong>{statisticsType === 'fiscal' ? '财年' : '自然年'}</Text>
-                          </Text>
-                          <Text>
-                            日期范围: <Text strong>{selectedPeriod.startDate} 至 {selectedPeriod.endDate}</Text>
-                          </Text>
-                          <Text>
-                            财年进度: <Text strong>{selectedPeriod.progressPercentage}%</Text>
-                            {selectedPeriod.isCurrent && (
-                              <Text type="secondary"> (剩余 {selectedPeriod.daysRemaining} 天)</Text>
-                            )}
-                          </Text>
-                        </Space>
-                      }
-                      type="info"
-                      showIcon
-                      icon={<CalendarOutlined />}
+                  <div>
+                    <Text strong>财年进度</Text>
+                    <Progress 
+                      percent={fiscalYearStatus.currentPeriod.progressPercentage}
+                      status="active"
+                      strokeColor={{
+                        '0%': '#108ee9',
+                        '100%': '#87d068',
+                      }}
                     />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {fiscalYearStatus.currentPeriod.daysElapsed} 天 / {fiscalYearStatus.currentPeriod.totalDays} 天
+                    </Text>
+                  </div>
 
-                    <Row gutter={16}>
-                      <Col span={8}>
-                        <Card size="small">
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 24, fontWeight: 'bold', color: '#52c41a' }}>
-                              RM 125,430
-                            </div>
-                            <Text type="secondary">总收入</Text>
-                          </div>
-                        </Card>
-                      </Col>
-                      <Col span={8}>
-                        <Card size="small">
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f' }}>
-                              RM 98,750
-                            </div>
-                            <Text type="secondary">总支出</Text>
-                          </div>
-                        </Card>
-                      </Col>
-                      <Col span={8}>
-                        <Card size="small">
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff' }}>
-                              RM 26,680
-                            </div>
-                            <Text type="secondary">净收入</Text>
-                          </div>
-                        </Card>
-                      </Col>
-                    </Row>
+                  <div>
+                    <Text strong>剩余天数</Text>
+                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f' }}>
+                      {fiscalYearStatus.currentPeriod.daysRemaining} 天
+                    </div>
+                  </div>
 
-                    <Space>
-                      <Button type="primary" icon={<BarChartOutlined />}>
-                        生成报告
-                      </Button>
-                      <Button icon={<DownloadOutlined />} onClick={handleExportReport}>
-                        导出报告
-                      </Button>
-                      <Button icon={<PrinterOutlined />} onClick={handlePrintReport}>
-                        打印报告
-                      </Button>
-                    </Space>
-                  </Space>
-                </Card>
-              </Space>
+                  <Alert
+                    message="财年状态"
+                    description={`当前正在${fiscalYearStatus.currentPeriod.displayName}，进度 ${fiscalYearStatus.currentPeriod.progressPercentage}%`}
+                    type="info"
+                    showIcon
+                    icon={<InfoCircleOutlined />}
+                  />
+                </Space>
+              </div>
             ) : (
-              <Card>
+              <Alert
+                message="未检测到当前财年"
+                description="请检查财年配置是否正确"
+                type="warning"
+                showIcon
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 智能建议 */}
+      {fiscalYearStatus?.suggestions && fiscalYearStatus.suggestions.length > 0 && (
+        <Card title="智能建议" style={{ marginBottom: 24 }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {fiscalYearStatus.suggestions.map((suggestion: any, index: number) => (
+              <Alert
+                key={index}
+                message={suggestion.reason}
+                description={`建议查看 ${suggestion.period.displayName} 的数据`}
+                type={suggestion.priority === 'high' ? 'success' : suggestion.priority === 'medium' ? 'info' : 'warning'}
+                showIcon
+                icon={<BulbOutlined />}
+              />
+            ))}
+          </Space>
+        </Card>
+      )}
+
+      {/* 财年预览 */}
+      <Card title="财年预览">
+        <List
+          dataSource={historyData}
+          renderItem={(period) => (
+            <List.Item>
+              <List.Item.Meta
+                avatar={getStatusIcon(period)}
+                title={
+                  <Space>
+                    <Text strong={period.isCurrent}>{period.displayName}</Text>
+                    <Tag color={getStatusColor(period)}>
+                      {period.isCompleted ? '已完成' : period.isCurrent ? '进行中' : '未开始'}
+                    </Tag>
+                  </Space>
+                }
+                description={
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Text type="secondary">
+                      {period.startDate} 至 {period.endDate}
+                    </Text>
+                    {period.isCurrent && (
+                      <Progress 
+                        percent={period.progressPercentage} 
+                        size="small" 
+                        status="active"
+                        format={(percent) => `${percent}% (剩余 ${period.daysRemaining} 天)`}
+                      />
+                    )}
+                  </Space>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      </Card>
+    </>
+  );
+
+  // 🆕 渲染财年统计标签页内容
+  const renderFiscalYearStatisticsTab = () => (
+    <Row gutter={24}>
+      <Col span={8}>
+        <SmartFiscalYearSelector
+          onFiscalYearChange={handleFiscalYearChange}
+          onStatisticsTypeChange={handleStatisticsTypeChange}
+          defaultStatisticsType={statisticsType}
+          showSuggestions={true}
+          showProgress={true}
+        />
+      </Col>
+
+      <Col span={16}>
+        {selectedPeriod ? (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Card title={`${selectedPeriod.displayName} 统计报告`}>
+              <Space direction="vertical" style={{ width: '100%' }}>
                 <Alert
-                  message="请选择财年或年份"
-                  description="使用左侧的选择器选择要查看的财年或年份，系统将自动生成相应的统计报告。"
+                  message="当前统计设置"
+                  description={
+                    <Space direction="vertical">
+                      <Text>
+                        统计类型: <Text strong>{statisticsType === 'fiscal' ? '财年' : '自然年'}</Text>
+                      </Text>
+                      <Text>
+                        日期范围: <Text strong>{selectedPeriod.startDate} 至 {selectedPeriod.endDate}</Text>
+                      </Text>
+                      <Text>
+                        财年进度: <Text strong>{selectedPeriod.progressPercentage}%</Text>
+                        {selectedPeriod.isCurrent && (
+                          <Text type="secondary"> (剩余 {selectedPeriod.daysRemaining} 天)</Text>
+                        )}
+                      </Text>
+                    </Space>
+                  }
                   type="info"
                   showIcon
                   icon={<CalendarOutlined />}
                 />
-              </Card>
-            )}
-          </Col>
-        </Row>
-      </Tabs.TabPane>
-    </Tabs>
+
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <Card size="small">
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 'bold', color: '#52c41a' }}>
+                          RM 125,430
+                        </div>
+                        <Text type="secondary">总收入</Text>
+                      </div>
+                    </Card>
+                  </Col>
+                  <Col span={8}>
+                    <Card size="small">
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f' }}>
+                          RM 98,750
+                        </div>
+                        <Text type="secondary">总支出</Text>
+                      </div>
+                    </Card>
+                  </Col>
+                  <Col span={8}>
+                    <Card size="small">
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff' }}>
+                          RM 26,680
+                        </div>
+                        <Text type="secondary">净收入</Text>
+                      </div>
+                    </Card>
+                  </Col>
+                </Row>
+
+                <Space>
+                  <Button type="primary" icon={<BarChartOutlined />}>
+                    生成报告
+                  </Button>
+                  <Button icon={<DownloadOutlined />} onClick={handleExportReport}>
+                    导出报告
+                  </Button>
+                  <Button icon={<PrinterOutlined />} onClick={handlePrintReport}>
+                    打印报告
+                  </Button>
+                </Space>
+              </Space>
+            </Card>
+          </Space>
+        ) : (
+          <Card>
+            <Alert
+              message="请选择财年或年份"
+              description="使用左侧的选择器选择要查看的财年或年份，系统将自动生成相应的统计报告。"
+              type="info"
+              showIcon
+              icon={<CalendarOutlined />}
+            />
+          </Card>
+        )}
+      </Col>
+    </Row>
   );
 
   return (
@@ -1066,13 +1065,22 @@ const BankAccountManagementPage: React.FC = () => {
                 children: renderBankAccountsTab(),
               },
               {
-                key: 'fiscal-year',
+                key: 'fiscal-year-config',
                 label: (
                   <span>
-                    <CalendarOutlined /> 财年管理
+                    <SettingOutlined /> 财年配置
                   </span>
                 ),
-                children: renderFiscalYearTab(),
+                children: renderFiscalYearConfigTab(),
+              },
+              {
+                key: 'fiscal-year-statistics',
+                label: (
+                  <span>
+                    <BarChartOutlined /> 财年统计
+                  </span>
+                ),
+                children: renderFiscalYearStatisticsTab(),
               },
             ]}
           />
