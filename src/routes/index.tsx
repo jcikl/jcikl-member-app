@@ -38,7 +38,6 @@ import EventFinancialPage from '@/modules/finance/pages/EventFinancialPage';
 import GeneralAccountsPage from '@/modules/finance/pages/GeneralAccountsPage';
 import BankAccountManagementPage from '@/modules/finance/pages/BankAccountManagementPage';
 import TransactionManagementPage from '@/modules/finance/pages/TransactionManagementPage';
-import InternalTransferPairingPage from '@/modules/finance/pages/InternalTransferPairingPage';
 
 /**
  * Application Router Configuration
@@ -214,10 +213,6 @@ export const router = createBrowserRouter(
           {
             path: 'fiscal-years',
             element: <FiscalYearManagementPage />,
-          },
-          {
-            path: 'internal-transfer-pairing',
-            element: <InternalTransferPairingPage />,
           },
         ],
       },

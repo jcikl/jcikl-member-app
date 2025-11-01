@@ -43,6 +43,7 @@ import {
   TableOutlined,
   ApartmentOutlined,
   RobotOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -69,6 +70,7 @@ import BatchSplitModal from '../../components/BatchSplitModal';
 import BatchSetCategoryModal from '../../components/BatchSetCategoryModal';
 import EditTransactionModal from '../../components/EditTransactionModal';
 import AutoMatchModal from '../../components/AutoMatchModal';
+import InternalTransferPairingPanel from '../../components/InternalTransferPairingPanel';
 import { autoMatchUncategorizedTransactions } from '../../services/autoMatchService';
 import type { AutoMatchPreviewItem, MatchResult } from '../../services/autoMatchService';
 import { useNavigate } from 'react-router-dom';
@@ -3062,6 +3064,15 @@ const TransactionManagementPage: React.FC = () => {
                     )}
                   </div>
                 ),
+              },
+              {
+                key: 'internal-transfer-pairing',
+                label: (
+                  <span>
+                    <SwapOutlined /> 内部转账配对
+                  </span>
+                ),
+                children: <InternalTransferPairingPanel />,
               },
             ]}
           />
