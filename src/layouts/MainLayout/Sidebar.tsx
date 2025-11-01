@@ -97,8 +97,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           label: '财务概览',
         },
         {
-          key: '/finance/bank-accounts',
-          label: '银行账户',
+          key: '/finance/settings',
+          label: '财务设置',
         },
         {
           key: '/finance/transactions',
@@ -106,20 +106,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
             <span>
               交易记录{uncategorizedCount > 0 && (
                 <Badge count={uncategorizedCount} overflowCount={9999} style={{ marginLeft: 8 }} />
-              )}
-            </span>
-          ),
-        },
-        {
-          key: '/finance/fiscal-years',
-          label: '财年管理',
-        },
-        {
-          key: '/finance/internal-transfer-pairing',
-          label: (
-            <span>
-              内部转账配对{unpairedTransferCount > 0 && (
-                <Badge count={unpairedTransferCount} overflowCount={9999} style={{ marginLeft: 8 }} />
               )}
             </span>
           ),

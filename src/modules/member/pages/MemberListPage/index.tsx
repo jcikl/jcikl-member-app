@@ -28,7 +28,6 @@ import {
   TeamOutlined,
   UserAddOutlined,
   ClockCircleOutlined,
-  SearchOutlined,
   BankOutlined,
   TrophyOutlined,
   CalendarOutlined,
@@ -87,7 +86,6 @@ const MemberListPage: React.FC = () => {
   
   // Search & Filter
   const [searchParams, setSearchParams] = useState<MemberSearchParams>({});
-  const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all'); // 🆕 标签页状态
   
   // New UI States
@@ -110,12 +108,11 @@ const MemberListPage: React.FC = () => {
     try {
       // 🆕 根据 activeTab 自动设置分类筛选
       const categoryFilter = activeTab !== 'all' ? (activeTab as any) : undefined;
-      console.log('[MemberListPage.fetchMembers] activeTab/categoryFilter:', { activeTab, categoryFilter, searchText, searchParams });
+      console.log('[MemberListPage.fetchMembers] activeTab/categoryFilter:', { activeTab, categoryFilter, searchParams });
       
       const result = await getMembers({
         page: pagination.current,
         limit: pagination.pageSize,
-        search: searchText,
         ...searchParams,
         category: categoryFilter, // 🆕 添加分类筛选
       });
@@ -180,7 +177,7 @@ const MemberListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagination.current, pagination.pageSize, searchText, searchParams, activeTab]);
+  }, [pagination.current, pagination.pageSize, searchParams, activeTab]);
   
   const fetchStats = useCallback(async () => {
     try {
@@ -262,11 +259,6 @@ const MemberListPage: React.FC = () => {
   const handleFilterChangeAuto = (values: Record<string, any>) => {
     const newParams: MemberSearchParams = {};
     
-    // 搜索关键词
-    if (values.search) {
-      setSearchText(values.search);
-    }
-    
     // 单个字段筛选
     if (values.category) newParams.category = values.category;
     if (values.status) newParams.status = values.status;
@@ -285,7 +277,6 @@ const MemberListPage: React.FC = () => {
    */
   const handleResetFilter = () => {
     form.resetFields();
-    setSearchText('');
     setSearchParams({});
     setPagination(prev => ({ ...prev, current: 1 }));
   };
@@ -1178,22 +1169,6 @@ const MemberListPage: React.FC = () => {
         >
           <Row gutter={[16, 16]} style={{ width: '100%' }}>
             <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="search">
-                <Input
-                  placeholder="搜索会员信息..."
-                  prefix={<SearchOutlined />}
-                  allowClear
-                  onChange={(e) => {
-                    // 搜索框防抖
-                    setTimeout(() => {
-                      handleFilterChangeAuto({ ...form.getFieldsValue(), search: e.target.value });
-                    }, 300);
-                  }}
-                />
-              </Form.Item>
-            </Col>
-            
-            <Col xs={24} sm={12} md={8} lg={4}>
               <Form.Item name="status">
                 <Select
                   placeholder="状态"
@@ -1210,7 +1185,7 @@ const MemberListPage: React.FC = () => {
               </Form.Item>
             </Col>
             
-            <Col xs={24} sm={12} md={8} lg={4}>
+            <Col xs={24} sm={12} md={8} lg={6}>
               <Form.Item name="level">
                 <Select
                   placeholder="级别"
@@ -1226,7 +1201,7 @@ const MemberListPage: React.FC = () => {
               </Form.Item>
             </Col>
             
-            <Col xs={24} sm={12} md={8} lg={4}>
+            <Col xs={24} sm={12} md={8} lg={6}>
               <Form.Item name="joinDateRange">
                 <RangePicker
                   placeholder={['开始日期', '结束日期']}
@@ -1235,7 +1210,7 @@ const MemberListPage: React.FC = () => {
               </Form.Item>
             </Col>
             
-            <Col xs={24} sm={12} md={8} lg={2}>
+            <Col xs={24} sm={12} md={8} lg={3}>
               <Form.Item>
                 <Button
                   icon={<ReloadOutlined />}

@@ -33,10 +33,9 @@ import EventAccountManagementPage from '@/modules/event/pages/EventAccountManage
 // Finance Module
 import FinanceOverviewPage from '@/modules/finance/pages/FinanceOverviewPage';
 import MemberFeeManagementPage from '@/modules/finance/pages/MemberFeeManagementPage';
-import FiscalYearManagementPage from '@/modules/finance/pages/FiscalYearManagementPage';
 import EventFinancialPage from '@/modules/finance/pages/EventFinancialPage';
 import GeneralAccountsPage from '@/modules/finance/pages/GeneralAccountsPage';
-import BankAccountManagementPage from '@/modules/finance/pages/BankAccountManagementPage';
+import BankAccountManagementPage from '@/modules/finance/pages/BankAccountManagementPage'; // 🆕 现在包含财年管理
 import TransactionManagementPage from '@/modules/finance/pages/TransactionManagementPage';
 
 /**
@@ -191,8 +190,12 @@ export const router = createBrowserRouter(
             element: <FinanceOverviewPage />,
           },
           {
+            path: 'settings',
+            element: <BankAccountManagementPage />, // 🆕 合并后的财务设置页面（包含银行账户和财年管理）
+          },
+          {
             path: 'bank-accounts',
-            element: <BankAccountManagementPage />,
+            element: <BankAccountManagementPage />, // 🆕 保留旧路由以兼容
           },
           {
             path: 'transactions',
@@ -209,10 +212,6 @@ export const router = createBrowserRouter(
           {
             path: 'accounts',
             element: <GeneralAccountsPage />,
-          },
-          {
-            path: 'fiscal-years',
-            element: <FiscalYearManagementPage />,
           },
         ],
       },
