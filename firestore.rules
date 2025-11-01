@@ -32,11 +32,37 @@ service cloud.firestore {
     }
     
     /**
+     * Check if user's email matches the document's email (for Google login)
+     * 检查用户邮箱是否匹配文档邮箱（用于 Google 登录）
+     */
+    function isOwnerByEmail() {
+      return isAuthenticated() && 
+             request.auth.token.email != null &&
+             resource.data.email != null &&
+             request.auth.token.email.lower() == resource.data.email.lower();
+    }
+    
+    /**
+     * Get user's member document (by UID or email)
+     * 获取用户的会员文档（通过 UID 或邮箱）
+     */
+    function getUserData() {
+      let userData = get(/databases/$(database)/documents/members/$(request.auth.uid)).data;
+      // If document exists, return it
+      if (exists(/databases/$(database)/documents/members/$(request.auth.uid))) {
+        return userData;
+      }
+      // Otherwise, return empty (will be handled by individual checks)
+      return {};
+    }
+    
+    /**
      * Check if user has admin role
      * 检查用户是否是管理员
      */
     function isAdmin() {
       return isAuthenticated() && 
+             exists(/databases/$(database)/documents/members/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin';
     }
     
@@ -46,6 +72,7 @@ service cloud.firestore {
      */
     function isActive() {
       return isAuthenticated() && 
+             exists(/databases/$(database)/documents/members/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/members/$(request.auth.uid)).data.status == 'active';
     }
     
@@ -74,9 +101,9 @@ service cloud.firestore {
                        request.resource.data.role == 'member' &&
                        request.resource.data.status in ['pending', 'active'];
       
-      // Allow update for own profile or admin
-      // 允许用户更新自己的资料或管理员更新任何资料
-      allow update: if isOwner(memberId) || isAdmin();
+      // Allow update for own profile (by UID or email) or admin
+      // 允许用户更新自己的资料（通过 UID 或邮箱匹配）或管理员更新任何资料
+      allow update: if isOwner(memberId) || isOwnerByEmail() || isAdmin();
       
       // Allow delete only for admin
       // 只有管理员可以删除
