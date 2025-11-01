@@ -24,6 +24,29 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
   const INACTIVE_COLOR = '#d9d9d9';
   
   /**
+   * 检查会员是否达到或超过指定类别级别
+   */
+  const isCategoryOrHigher = (targetCategory: string): boolean => {
+    if (!member) return false;
+    
+    const category = member.category || member.jciCareer?.category;
+    
+    // 定义类别层级（从低到高）
+    const categoryLevels: { [key: string]: number } = {
+      'JCI Friend': 0,
+      'Probation Member': 1,
+      'Official Member': 2,
+      'Honorary Member': 3,
+      'Alumni': 3,
+    };
+    
+    const currentLevel = categoryLevels[category || ''] || 0;
+    const targetLevel = categoryLevels[targetCategory] || 0;
+    
+    return currentLevel >= targetLevel;
+  };
+  
+  /**
    * 检查 Probation to Voting Member 步骤是否完成
    */
   const checkProbationToVotingSteps = () => {
@@ -37,8 +60,8 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
     const tasks = member.profile.taskCompletions || [];
     const activities = member.profile.activityParticipation || [];
     
-    // 步骤 2: Probation Member (如果当前是 Probation Member 则为 true)
-    const isProbationMember = member.category === 'Probation Member' || member.jciCareer?.category === 'Probation Member';
+    // 步骤 2: Probation Member (如果当前类别 >= Probation Member)
+    const isProbationMember = isCategoryOrHigher('Probation Member');
     
     // 步骤 3: JCI Discover or New Member Orientation
     const hasOrientation = tasks.some(t => 
@@ -67,8 +90,8 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
       a.eventName?.includes('Board of Director')
     );
     
-    // 步骤 7: Voting Member (如果当前是 Official Member 则为 true)
-    const isVotingMember = member.category === 'Official Member' || member.jciCareer?.category === 'Official Member';
+    // 步骤 7: Voting Member (如果当前类别 >= Official Member)
+    const isVotingMember = isCategoryOrHigher('Official Member');
     
     return [
       isJCIFriend,
@@ -85,20 +108,22 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
    * 检查 Leadership 步骤是否完成
    */
   const checkLeadershipSteps = () => {
-    // 起点步骤 - 始终为 true
+    // 步骤 1: JCI Friend (始终为 true - 起点)
     const isJCIFriend = true;
-    const isNewMember = true;
     
     if (!member) {
-      return [isJCIFriend, isNewMember, false, false, false, false, false, false, false, false];
+      return [isJCIFriend, false, false, false, false, false, false, false, false, false];
     }
+    
+    // 步骤 2: New Member (如果当前类别 >= Probation Member)
+    const isNewMember = isCategoryOrHigher('Probation Member');
     
     const positions = member.profile.jciPosition?.split(',').map(p => p.trim()) || [];
     const activities = member.profile.activityParticipation || [];
     
     return [
       isJCIFriend, // JCI Friend - always true (起点)
-      isNewMember, // New Member - always true (起点)
+      isNewMember, // New Member - true if category >= Probation Member
       positions.some(p => p.includes('Committee')),
       positions.some(p => p.includes('Chairman') || p.includes('Chairperson')),
       positions.some(p => p.includes('Director') && !p.includes('Board')),
@@ -114,20 +139,22 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
    * 检查 Trainer 步骤是否完成
    */
   const checkTrainerSteps = () => {
-    // 起点步骤 - 始终为 true
+    // 步骤 1: JCI Friend (始终为 true - 起点)
     const isJCIFriend = true;
-    const isNewMember = true;
     
     if (!member) {
-      return [isJCIFriend, isNewMember, false, false, false, false, false];
+      return [isJCIFriend, false, false, false, false, false, false];
     }
+    
+    // 步骤 2: New Member (如果当前类别 >= Probation Member)
+    const isNewMember = isCategoryOrHigher('Probation Member');
     
     const positions = member.profile.jciPosition?.split(',').map(p => p.trim()) || [];
     const tasks = member.profile.taskCompletions || [];
     
     return [
       isJCIFriend, // JCI Friend - always true (起点)
-      isNewMember, // New Member - always true (起点)
+      isNewMember, // New Member - true if category >= Probation Member
       positions.some(p => p.includes('Trainer')) || tasks.some(t => t.taskName?.includes('JCI Trainer')),
       tasks.some(t => t.taskName?.includes('Intermediate Trainer')),
       tasks.some(t => t.taskName?.includes('Certified Trainer')),
