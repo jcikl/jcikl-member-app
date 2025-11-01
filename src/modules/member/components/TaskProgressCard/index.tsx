@@ -27,15 +27,15 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
    * 检查 Probation to Voting Member 步骤是否完成
    */
   const checkProbationToVotingSteps = () => {
+    // 步骤 1: JCI Friend (始终为 true - 起点)
+    const isJCIFriend = true;
+    
     if (!member) {
-      return [false, false, false, false, false, false, false];
+      return [isJCIFriend, false, false, false, false, false, false];
     }
     
     const tasks = member.profile.taskCompletions || [];
     const activities = member.profile.activityParticipation || [];
-    
-    // 步骤 1: JCI Friend (默认为 true - 起点)
-    const isJCIFriend = true;
     
     // 步骤 2: Probation Member (如果当前是 Probation Member 则为 true)
     const isProbationMember = member.category === 'Probation Member' || member.jciCareer?.category === 'Probation Member';
@@ -85,16 +85,20 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
    * 检查 Leadership 步骤是否完成
    */
   const checkLeadershipSteps = () => {
+    // 起点步骤 - 始终为 true
+    const isJCIFriend = true;
+    const isNewMember = true;
+    
     if (!member) {
-      return Array(10).fill(false);
+      return [isJCIFriend, isNewMember, false, false, false, false, false, false, false, false];
     }
     
     const positions = member.profile.jciPosition?.split(',').map(p => p.trim()) || [];
     const activities = member.profile.activityParticipation || [];
     
     return [
-      true, // JCI Friend - always true (起点)
-      true, // New Member - always true if member exists
+      isJCIFriend, // JCI Friend - always true (起点)
+      isNewMember, // New Member - always true (起点)
       positions.some(p => p.includes('Committee')),
       positions.some(p => p.includes('Chairman') || p.includes('Chairperson')),
       positions.some(p => p.includes('Director') && !p.includes('Board')),
@@ -110,16 +114,20 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
    * 检查 Trainer 步骤是否完成
    */
   const checkTrainerSteps = () => {
+    // 起点步骤 - 始终为 true
+    const isJCIFriend = true;
+    const isNewMember = true;
+    
     if (!member) {
-      return Array(7).fill(false);
+      return [isJCIFriend, isNewMember, false, false, false, false, false];
     }
     
     const positions = member.profile.jciPosition?.split(',').map(p => p.trim()) || [];
     const tasks = member.profile.taskCompletions || [];
     
     return [
-      true, // JCI Friend - always true (起点)
-      true, // New Member - always true if member exists
+      isJCIFriend, // JCI Friend - always true (起点)
+      isNewMember, // New Member - always true (起点)
       positions.some(p => p.includes('Trainer')) || tasks.some(t => t.taskName?.includes('JCI Trainer')),
       tasks.some(t => t.taskName?.includes('Intermediate Trainer')),
       tasks.some(t => t.taskName?.includes('Certified Trainer')),
