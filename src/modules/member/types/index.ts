@@ -101,14 +101,13 @@ export interface MemberProfile {
   company?: string;
   companyWebsite?: string;        // 🆕 公司网站
   departmentAndPosition?: string;
-  industryDetail?: string;
   companyIntro?: string;
   ownIndustry?: IndustryType[];
   interestedIndustries?: IndustryType[];
   businessCategories?: BusinessCategory[];
   acceptInternationalBusiness?: 'Yes' | 'No' | 'Willing to explore';
   categories?: string[];          // 🆕 类别列表
-  hobbies?: string;               // 🆕 爱好(迁移字段)
+  hobbies?: string | string[];    // 🆕 爱好(迁移字段) - 支持字符串和数组
   status?: MemberStatus;          // 🆕 个人状态(迁移字段)
   level?: MemberLevel;            // 🆕 个人级别(迁移字段)
   accountType?: string;           // 🆕 账户类型(迁移字段)
@@ -133,7 +132,6 @@ export interface MemberProfile {
   positionEndDate?: string | null;   // 🆕 职位结束日期
   termStartDate?: string | null;     // 🆕 任期开始日期
   termEndDate?: string | null;       // 🆕 任期结束日期
-  vpDivision?: string | null;        // 🆕 VP部门
   
   // Career Development
   fiveYearsVision?: string;
@@ -223,7 +221,6 @@ export interface Member extends BaseEntity {
     company?: string;
     companyWebsite?: string;
     departmentAndPosition?: string;
-    industryDetail?: string;
     companyIntro?: string;
     acceptInternationalBusiness?: 'Yes' | 'No' | 'Willing to explore';
     ownIndustry?: IndustryType[];
@@ -252,7 +249,6 @@ export interface Member extends BaseEntity {
     termEndDate?: string;
     positionStartDate?: string;
     positionEndDate?: string;
-    vpDivision?: string;
     isActingPosition?: boolean;
     actingForPosition?: string;
     isCurrentTerm?: boolean;
@@ -385,7 +381,6 @@ export interface MemberFormData {
   cutting?: string;
   
   // Business fields (扁平化访问)
-  industryDetail?: string;
   companyWebsite?: string;
   companyIntro?: string;
   acceptInternationalBusiness?: 'Yes' | 'No' | 'Willing to explore';
@@ -408,7 +403,6 @@ export interface MemberFormData {
   termEndDate?: string;
   positionStartDate?: string;
   positionEndDate?: string;
-  vpDivision?: string;
   isActingPosition?: boolean;
   actingForPosition?: string;
   isCurrentTerm?: boolean;

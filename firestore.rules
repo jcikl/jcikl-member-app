@@ -33,13 +33,20 @@ service cloud.firestore {
     
     /**
      * Check if user's email matches the document's email (for Google login)
+     * Checks both top-level email and profile.email
      * 检查用户邮箱是否匹配文档邮箱（用于 Google 登录）
+     * 同时检查顶层 email 和 profile.email
      */
     function isOwnerByEmail() {
       return isAuthenticated() && 
              request.auth.token.email != null &&
-             resource.data.email != null &&
-             request.auth.token.email.lower() == resource.data.email.lower();
+             (
+               (resource.data.email != null && 
+                request.auth.token.email.lower() == resource.data.email.lower()) ||
+               (resource.data.profile != null && 
+                resource.data.profile.email != null && 
+                request.auth.token.email.lower() == resource.data.profile.email.lower())
+             );
     }
     
     

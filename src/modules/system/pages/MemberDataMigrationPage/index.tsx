@@ -101,7 +101,6 @@ const PATH_MIGRATIONS: Array<{ from: string; to: string }> = [
   { from: 'profile.companyWebsite', to: 'business.companyWebsite' },
   { from: 'profile.departmentAndPosition', to: 'business.departmentAndPosition' },
   { from: 'profile.ownIndustry', to: 'business.ownIndustry' },
-  { from: 'profile.industryDetail', to: 'business.industryDetail' },
   { from: 'profile.companyIntro', to: 'business.companyIntro' },
   { from: 'profile.interestedIndustries', to: 'business.interestedIndustries' },
   { from: 'profile.businessCategories', to: 'business.businessCategories' },
@@ -149,7 +148,7 @@ const BASIC_PROFILE_FIELDS = [
 ];
 const CAREER_PROFILE_FIELDS = [
   'company', 'companyWebsite', 'departmentAndPosition', 'ownIndustry',
-  'industryDetail', 'companyIntro', 'interestedIndustries', 'businessCategories',
+  'companyIntro', 'interestedIndustries', 'businessCategories',
   'acceptInternationalBusiness'
 ];
 const JCI_PROFILE_FIELDS = [
@@ -190,7 +189,7 @@ const TOP_TO_PROFILE_FIELDS = [
 
 // 顶层 → business.*
 const TOP_TO_BUSINESS_FIELDS = [
-  'company','companyWebsite','departmentAndPosition','ownIndustry','industryDetail','companyIntro','interestedIndustries','businessCategories','acceptInternationalBusiness'
+  'company','companyWebsite','departmentAndPosition','ownIndustry','companyIntro','interestedIndustries','businessCategories','acceptInternationalBusiness'
 ];
 
 function flattenNamespaceToTop(target: Record<string, any>, source: any) {
@@ -246,11 +245,6 @@ function buildMemberUpdate(raw: any, options?: { enablePathMigration?: boolean; 
   }
   if (nextProfile.joinedDate !== undefined) {
     delete nextProfile.joinedDate;
-  }
-
-  // 删除 vpDivision
-  if (nextProfile.vpDivision !== undefined) {
-    delete nextProfile.vpDivision;
   }
 
   // introducerId/introducerName 迁移到顶层
@@ -751,9 +745,9 @@ export const MemberDataMigrationPage: React.FC = () => {
     '职业信息 (Career/Business Info)': {
       '工作与企业': [
         // current paths
-        'profile.company', 'profile.companyWebsite', 'profile.departmentAndPosition', 'profile.ownIndustry', 'profile.industryDetail', 'profile.companyIntro', 'profile.shirtSize', 'profile.jacketSize', 'profile.nameToBeEmbroidered', 'profile.tshirtReceivingStatus', 'profile.cutting',
+        'profile.company', 'profile.companyWebsite', 'profile.departmentAndPosition', 'profile.ownIndustry', 'profile.companyIntro', 'profile.shirtSize', 'profile.jacketSize', 'profile.nameToBeEmbroidered', 'profile.tshirtReceivingStatus', 'profile.cutting',
         // preview paths
-        'business.company', 'business.companyWebsite', 'business.departmentAndPosition', 'business.ownIndustry', 'business.industryDetail', 'business.companyIntro',
+        'business.company', 'business.companyWebsite', 'business.departmentAndPosition', 'business.ownIndustry', 'business.companyIntro',
       ],
       '行业与兴趣': [
         'profile.interestedIndustries', 'profile.businessCategories', 'profile.acceptInternationalBusiness',

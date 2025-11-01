@@ -169,35 +169,66 @@ export const useAuthStore = create<AuthState>()(
 
           console.log(`🔍 [Google Login] Searching for member with email: ${firebaseUser.email}`);
           
-          // Normalize email to lowercase for consistent matching
           const normalizedEmail = firebaseUser.email.toLowerCase().trim();
           console.log(`📧 [Google Login] Normalized email: ${normalizedEmail}`);
           
-          // Get ALL members collection to search manually (to handle case variations)
-          const allMembersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
-          const allMembersSnapshot = await getDocs(allMembersRef);
+          let matchingDocs: any[] = [];
           
-          console.log(`📚 [Google Login] Total members in collection: ${allMembersSnapshot.size}`);
+          // Strategy 1: Try UID lookup first (fastest, exact match)
+          console.log(`⚡ [Google Login] Step 1: Trying UID lookup...`);
+          const uidDoc = await getDoc(doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid));
+          if (uidDoc.exists() && 
+              ((uidDoc.data().email || '').toLowerCase().trim() === normalizedEmail ||
+               (uidDoc.data().profile?.email || '').toLowerCase().trim() === normalizedEmail)) {
+            matchingDocs = [uidDoc];
+            console.log(`✅ [Google Login] Found by UID: ${uidDoc.id}`);
+          }
           
-          // Filter by email (case-insensitive)
-          const matchingDocs = allMembersSnapshot.docs.filter(doc => {
-            const data = doc.data();
-            const docEmail = (data.email || '').toLowerCase().trim();
-            const matches = docEmail === normalizedEmail;
+          // Strategy 2: Try top-level email query (fast, indexed)
+          if (matchingDocs.length === 0) {
+            console.log(`⚡ [Google Login] Step 2: Trying top-level email query...`);
+            const emailQuery = query(
+              collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+              where('email', '>=', normalizedEmail),
+              where('email', '<=', normalizedEmail + '\uf8ff'),
+              limit(5)
+            );
+            const emailSnapshot = await getDocs(emailQuery);
+            const emailMatches = emailSnapshot.docs.filter(doc => 
+              (doc.data().email || '').toLowerCase().trim() === normalizedEmail
+            );
+            if (emailMatches.length > 0) {
+              matchingDocs = emailMatches;
+              console.log(`✅ [Google Login] Found ${emailMatches.length} by top-level email`);
+            }
+          }
+          
+          // Strategy 3: Full collection scan (slow, only if needed)
+          if (matchingDocs.length === 0) {
+            console.log(`⚠️ [Google Login] Step 3: Falling back to full scan (checking profile.email)...`);
+            const allMembersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
+            const allMembersSnapshot = await getDocs(allMembersRef);
             
-            if (matches) {
+            matchingDocs = allMembersSnapshot.docs.filter(doc => {
+              const data = doc.data();
+              const profileEmail = (data.profile?.email || '').toLowerCase().trim();
+              return profileEmail === normalizedEmail;
+            });
+            
+            console.log(`📚 [Google Login] Full scan: ${allMembersSnapshot.size} docs, found ${matchingDocs.length} matches`);
+          }
+          
+          if (matchingDocs.length > 0) {
+            matchingDocs.forEach(doc => {
               console.log(`🎯 [Google Login] Matched document:`, {
                 id: doc.id,
-                email: data.email,
-                normalizedDocEmail: docEmail,
-                searchingFor: normalizedEmail,
+                email: doc.data().email,
+                profileEmail: doc.data().profile?.email,
               });
-            }
-            
-            return matches;
-          });
+            });
+          }
           
-          console.log(`🔍 [Google Login] Found ${matchingDocs.length} members with email (case-insensitive)`);
+          console.log(`🔍 [Google Login] Total matches found: ${matchingDocs.length}`);
           
           const emailResults = { docs: matchingDocs, size: matchingDocs.length, empty: matchingDocs.length === 0 };
           
@@ -378,32 +409,63 @@ export const useAuthStore = create<AuthState>()(
                 console.log(`🔍 [CheckAuth] Google user - searching ONLY by email:`, firebaseUser.email);
                 
                 const normalizedEmail = firebaseUser.email.toLowerCase().trim();
+                let matchingDocs: any[] = [];
                 
-                // Get ALL members collection to search manually (to handle case variations)
-                const allMembersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
-                const allMembersSnapshot = await getDocs(allMembersRef);
+                // Strategy 1: Try UID lookup first (fastest)
+                console.log(`⚡ [CheckAuth] Step 1: Trying UID lookup...`);
+                const uidDoc = await getDoc(doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid));
+                if (uidDoc.exists() && 
+                    ((uidDoc.data().email || '').toLowerCase().trim() === normalizedEmail ||
+                     (uidDoc.data().profile?.email || '').toLowerCase().trim() === normalizedEmail)) {
+                  matchingDocs = [uidDoc];
+                  console.log(`✅ [CheckAuth] Found by UID: ${uidDoc.id}`);
+                }
                 
-                console.log(`📚 [CheckAuth] Total members in collection: ${allMembersSnapshot.size}`);
+                // Strategy 2: Try top-level email query (fast, indexed)
+                if (matchingDocs.length === 0) {
+                  console.log(`⚡ [CheckAuth] Step 2: Trying top-level email query...`);
+                  const emailQuery = query(
+                    collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+                    where('email', '>=', normalizedEmail),
+                    where('email', '<=', normalizedEmail + '\uf8ff'),
+                    limit(5)
+                  );
+                  const emailSnapshot = await getDocs(emailQuery);
+                  const emailMatches = emailSnapshot.docs.filter(doc => 
+                    (doc.data().email || '').toLowerCase().trim() === normalizedEmail
+                  );
+                  if (emailMatches.length > 0) {
+                    matchingDocs = emailMatches;
+                    console.log(`✅ [CheckAuth] Found ${emailMatches.length} by top-level email`);
+                  }
+                }
                 
-                // Filter by email (case-insensitive)
-                const matchingDocs = allMembersSnapshot.docs.filter(doc => {
-                  const data = doc.data();
-                  const docEmail = (data.email || '').toLowerCase().trim();
-                  const matches = docEmail === normalizedEmail;
+                // Strategy 3: Full collection scan (slow, only if needed)
+                if (matchingDocs.length === 0) {
+                  console.log(`⚠️ [CheckAuth] Step 3: Falling back to full scan (checking profile.email)...`);
+                  const allMembersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
+                  const allMembersSnapshot = await getDocs(allMembersRef);
                   
-                  if (matches) {
+                  matchingDocs = allMembersSnapshot.docs.filter(doc => {
+                    const data = doc.data();
+                    const profileEmail = (data.profile?.email || '').toLowerCase().trim();
+                    return profileEmail === normalizedEmail;
+                  });
+                  
+                  console.log(`📚 [CheckAuth] Full scan: ${allMembersSnapshot.size} docs, found ${matchingDocs.length} matches`);
+                }
+                
+                if (matchingDocs.length > 0) {
+                  matchingDocs.forEach(doc => {
                     console.log(`🎯 [CheckAuth] Matched document:`, {
                       id: doc.id,
-                      email: data.email,
-                      normalizedDocEmail: docEmail,
-                      searchingFor: normalizedEmail,
+                      email: doc.data().email,
+                      profileEmail: doc.data().profile?.email,
                     });
-                  }
-                  
-                  return matches;
-                });
+                  });
+                }
                 
-                console.log(`🔍 [CheckAuth] Found ${matchingDocs.length} members with email (case-insensitive)`);
+                console.log(`🔍 [CheckAuth] Total matches found: ${matchingDocs.length}`);
                 
                 const emailResults = { docs: matchingDocs, size: matchingDocs.length, empty: matchingDocs.length === 0 };
                 
@@ -472,7 +534,21 @@ export const useAuthStore = create<AuthState>()(
                   hasProfile: !!userData.profile,
                   hasBusiness: !!userData.business,
                   hasJciCareer: !!userData.jciCareer,
+                  status: userData.status,
                 });
+
+                // Check if account is suspended
+                if (userData.status === 'suspended') {
+                  console.log(`⚠️ [CheckAuth] Account is suspended, logging out`);
+                  await firebaseSignOut(auth);
+                  set({
+                    user: null,
+                    firebaseUser: null,
+                    isAuthenticated: false,
+                    loading: false,
+                  });
+                  return;
+                }
 
                 set({
                   user: userData,

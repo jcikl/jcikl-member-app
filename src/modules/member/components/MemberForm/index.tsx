@@ -70,7 +70,6 @@ const MemberForm: React.FC<MemberFormProps> = ({ member, mode }) => {
         gender: member.profile.gender,
         company: member.profile.company,
         departmentAndPosition: member.profile.departmentAndPosition,
-        industryDetail: member.profile.industryDetail,
         companyIntro: member.profile.companyIntro,
         ownIndustry: member.profile.ownIndustry,
         interestedIndustries: member.profile.interestedIndustries,
@@ -337,15 +336,6 @@ const MemberForm: React.FC<MemberFormProps> = ({ member, mode }) => {
               name="departmentAndPosition"
             >
               <Input placeholder="请输入部门与职位" />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24}>
-            <Form.Item
-              label="行业详情"
-              name="industryDetail"
-            >
-              <Input.TextArea placeholder="请输入行业详情" rows={2} />
             </Form.Item>
           </Col>
 

@@ -692,7 +692,7 @@ interface MemberProfile {
     | 'Rock Climbing'
     | 'Hiking'
     | 'Car Enthusiast'
-    | 'Liquor/ Wine tasting (Wine/ Whisky/ Brandy & etc.)'
+    | 'Liquor/ Wine tasting'
     | 'Movie'
     | 'Public Speaking'
     | 'Reading'
@@ -750,7 +750,6 @@ interface MemberProfile {
   // Work Details
   company?: string;                      // Company name
   departmentAndPosition?: string;        // Department & position
-  industryDetail?: string;               // Specific industry details
   companyIntro?: string;                 // Company operations & role
   
   // Career Development
@@ -4640,7 +4639,7 @@ interface MemberProfile {
     | 'Rock Climbing'
     | 'Hiking'
     | 'Car Enthusiast'
-    | 'Liquor/ Wine tasting (Wine/ Whisky/ Brandy & etc.)'
+    | 'Liquor/ Wine tasting'
     | 'Movie'
     | 'Public Speaking'
     | 'Reading'
@@ -4698,7 +4697,6 @@ interface MemberProfile {
   // Work Details
   company?: string;                      // Company name
   departmentAndPosition?: string;        // Department & position
-  industryDetail?: string;               // Specific industry details
   companyIntro?: string;                 // Company operations & role
   
   // Career Development

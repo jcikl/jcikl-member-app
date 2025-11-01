@@ -90,6 +90,10 @@ const MemberListPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all'); // 🆕 标签页状态
   
+  // ⚡ Performance: Cache for tab data (prevents re-fetching on tab switch)
+  const [tabDataCache, setTabDataCache] = useState<Record<string, { data: Member[]; total: number; timestamp: number }>>({});
+  const TAB_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+  
   // New UI States
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -106,6 +110,18 @@ const MemberListPage: React.FC = () => {
   // ========== Data Fetching ==========
   
   const fetchMembers = useCallback(async () => {
+    // ⚡ Performance: Check cache first
+    const cacheKey = `${activeTab}-${pagination.current}-${searchText}-${JSON.stringify(searchParams)}`;
+    const cached = tabDataCache[cacheKey];
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < TAB_CACHE_TTL && !searchText) {
+      console.log('⚡ [Cache] Using cached tab data:', cacheKey);
+      setMembers(cached.data);
+      setPagination(prev => ({ ...prev, total: cached.total }));
+      return;
+    }
+    
     setLoading(true);
     try {
       // 🆕 根据 activeTab 自动设置分类筛选
@@ -170,17 +186,31 @@ const MemberListPage: React.FC = () => {
       }
 
       setMembers(data);
+      const totalCount = (isAlumniTab || isVisitingTab || isHonoraryTab) ? data.length : result.total;
       setPagination(prev => ({
         ...prev,
-        total: (isAlumniTab || isVisitingTab || isHonoraryTab) ? data.length : result.total,
+        total: totalCount,
       }));
+      
+      // ⚡ Performance: Update cache (exclude search queries)
+      if (!searchText) {
+        setTabDataCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data,
+            total: totalCount,
+            timestamp: now,
+          },
+        }));
+        console.log('✅ [Cache] Cached tab data:', cacheKey);
+      }
     } catch (error) {
       message.error('获取会员列表失败');
       console.error(error);
     } finally {
       setLoading(false);
     }
-  }, [pagination.current, pagination.pageSize, searchText, searchParams, activeTab]);
+  }, [pagination.current, pagination.pageSize, searchText, searchParams, activeTab, tabDataCache, TAB_CACHE_TTL]);
   
   const fetchStats = useCallback(async () => {
     try {
@@ -696,9 +726,6 @@ const MemberListPage: React.FC = () => {
             
             <Col span={8}><strong>部门与职位:</strong></Col>
             <Col span={16}>{(selectedMember as any).business?.departmentAndPosition || '-'}</Col>
-            
-            <Col span={8}><strong>行业细分:</strong></Col>
-            <Col span={16}>{(selectedMember as any).business?.industryDetail || '-'}</Col>
             
             <Col span={8}><strong>公司介绍:</strong></Col>
             <Col span={16}>
