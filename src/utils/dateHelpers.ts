@@ -13,31 +13,79 @@ import { globalDateService } from '@/config/globalDateSettings';
  * @returns ISO string
  */
 export const safeTimestampToISO = (timestamp: any): string | undefined => {
+  // Handle null/undefined
+  if (timestamp == null) return undefined;
+  
+  // Handle empty objects
+  if (typeof timestamp === 'object' && Object.keys(timestamp).length === 0) {
+    return undefined;
+  }
+  
   // Handle Firestore Timestamp - 检查 toDate 方法
   if (timestamp?.toDate && typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
+    try {
+      const date = timestamp.toDate();
+      // Check if date is valid before calling toISOString
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
   }
   
   // Handle Firestore Timestamp - 直接通过 seconds 构造(用于序列化的 Timestamp 对象)
   if (timestamp && typeof timestamp === 'object' && 
       'seconds' in timestamp && 'nanoseconds' in timestamp) {
-    const date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
-    return date.toISOString();
+    try {
+      const date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+      // Check if date is valid before calling toISOString
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   // Handle Date object
   if (timestamp instanceof Date) {
-    return timestamp.toISOString();
+    try {
+      // Check if date is valid before calling toISOString
+      if (!isNaN(timestamp.getTime())) {
+        return timestamp.toISOString();
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   // Handle string
-  if (typeof timestamp === 'string') {
-    return new Date(timestamp).toISOString();
+  if (typeof timestamp === 'string' && timestamp.trim()) {
+    try {
+      const date = new Date(timestamp);
+      // Check if date is valid
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    } catch {
+      return undefined;
+    }
   }
 
   // Handle number (timestamp in ms)
   if (typeof timestamp === 'number') {
-    return new Date(timestamp).toISOString();
+    try {
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    } catch {
+      return undefined;
+    }
   }
 
   // Fallback: return undefined (don't default to current time)
