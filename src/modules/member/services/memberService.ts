@@ -123,7 +123,6 @@ const convertToMember = (docId: string, data: DocumentData): Member => {
     companyWebsite: profileRaw.companyWebsite ?? business.companyWebsite,
     departmentAndPosition: profileRaw.departmentAndPosition ?? business.departmentAndPosition,
     ownIndustry: profileRaw.ownIndustry ?? business.ownIndustry,
-    industryDetail: profileRaw.industryDetail ?? business.industryDetail,
     companyIntro: profileRaw.companyIntro ?? business.companyIntro,
     interestedIndustries: profileRaw.interestedIndustries ?? business.interestedIndustries,
     businessCategories: profileRaw.businessCategories ?? business.businessCategories,
@@ -256,15 +255,44 @@ export const getMemberById = async (memberId: string): Promise<Member | null> =>
       console.warn('⚠️ [getMemberById] Invalid memberId, skip fetch:', memberId);
       return null;
     }
+    
+    console.log(`🔍 [getMemberById] Fetching member by ID: ${memberId}`);
+    
     const memberDoc = await retryWithBackoff(
       () => getDoc(doc(db, GLOBAL_COLLECTIONS.MEMBERS, memberId))
     );
     
     if (!memberDoc.exists()) {
+      console.log(`❌ [getMemberById] Document not found: ${memberId}`);
       return null;
     }
     
-    const converted = convertToMember(memberDoc.id, memberDoc.data());
+    const rawData = memberDoc.data();
+    console.log(`📦 [getMemberById] Raw document data keys:`, Object.keys(rawData));
+    console.log(`📋 [getMemberById] Document has:`, {
+      id: memberDoc.id,
+      email: rawData.email,
+      name: rawData.name,
+      hasProfile: !!rawData.profile,
+      hasBusiness: !!rawData.business,
+      hasJciCareer: !!rawData.jciCareer,
+      category: rawData.category,
+      jciCareerCategory: rawData.jciCareer?.category,
+    });
+    
+    const converted = convertToMember(memberDoc.id, rawData);
+    
+    console.log(`✅ [getMemberById] Converted member:`, {
+      id: converted.id,
+      email: converted.email,
+      name: converted.name,
+      hasProfile: !!converted.profile,
+      hasBusiness: !!converted.business,
+      hasJciCareer: !!converted.jciCareer,
+      category: converted.category,
+      jciCareerCategory: converted.jciCareer?.category,
+    });
+    
     await autoUpdateAdhoc(converted);
     return converted;
   } catch (error) {
@@ -767,7 +795,6 @@ export const updateMember = async (
         ...(data.linkedin !== undefined && { 'profile.linkedin': data.linkedin }),
         
         // Business fields
-        ...(data.industryDetail !== undefined && { 'business.industryDetail': data.industryDetail }),
         ...(data.companyWebsite !== undefined && { 'business.companyWebsite': data.companyWebsite }),
         ...(data.companyIntro !== undefined && { 'business.companyIntro': data.companyIntro }),
         ...(data.acceptInternationalBusiness !== undefined && { 'business.acceptInternationalBusiness': data.acceptInternationalBusiness }),

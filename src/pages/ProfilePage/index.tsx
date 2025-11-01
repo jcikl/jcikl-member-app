@@ -39,13 +39,28 @@ const ProfilePage: React.FC = () => {
   const fetchMemberDetail = async () => {
     if (!user?.id) return;
     
+    console.log(`🔵 [ProfilePage] Loading member with user.id: ${user.id}`);
+    console.log(`📧 [ProfilePage] User email: ${user.email}`);
+    
     setLoading(true);
     try {
       const data = await getMemberById(user.id);
       if (!data) {
+        console.log(`❌ [ProfilePage] No member data returned`);
         message.error('未找到会员资料');
         return;
       }
+      
+      console.log(`✅ [ProfilePage] Member loaded:`, {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        category: data.category,
+        hasProfile: !!data.profile,
+        hasBusiness: !!data.business,
+        hasJciCareer: !!data.jciCareer,
+      });
+      
       setMember(data);
     } catch (error) {
       console.error('Failed to load member:', error);

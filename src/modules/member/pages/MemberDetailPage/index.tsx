@@ -41,14 +41,28 @@ const MemberDetailPage: React.FC = () => {
   const fetchMemberDetail = async () => {
     if (!id) return;
     
+    console.log(`🟢 [MemberDetailPage] Loading member with route id: ${id}`);
+    
     setLoading(true);
     try {
       const data = await getMemberById(id);
       if (!data) {
+        console.log(`❌ [MemberDetailPage] No member data returned`);
         message.error('会员不存在');
         navigate('/members');
         return;
       }
+      
+      console.log(`✅ [MemberDetailPage] Member loaded:`, {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        category: data.category,
+        hasProfile: !!data.profile,
+        hasBusiness: !!data.business,
+        hasJciCareer: !!data.jciCareer,
+      });
+      
       setMember(data);
     } catch (error) {
       message.error('获取会员信息失败');
