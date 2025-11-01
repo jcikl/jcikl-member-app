@@ -215,40 +215,14 @@ export const useAuthStore = create<AuthState>()(
             // Step 2: Link Google UID to existing member document
             const existingData = memberDoc.data() as any; // Preserve all Member fields
             
-            console.log(`🔗 [Google Login] Linking Google UID to existing member: ${memberDoc.id}`);
+            console.log(`🔗 [Google Login] Using existing member data: ${memberDoc.id}`);
             console.log(`📊 [Google Login] Existing data keys:`, Object.keys(existingData));
             
-            // Prepare update data (only include defined values)
-            const updateData: any = {
-              googleLinked: true,
-              googleUid: firebaseUser.uid,
-              updatedAt: new Date().toISOString(),
-            };
-            
-            // Only add avatar if we have a valid value
+            // Calculate new avatar
             const newAvatar = firebaseUser.photoURL || existingData.avatar || existingData.profile?.avatar;
-            if (newAvatar) {
-              updateData.avatar = newAvatar;
-            }
             
-            console.log(`📝 [Google Login] Update data:`, updateData);
-            
-            // Clean the data - remove all null/undefined values
-            const cleanedUpdateData = removeNullish(updateData);
-            console.log(`🧹 [Google Login] Cleaned update data:`, cleanedUpdateData);
-            
-            // Use updateDoc instead of setDoc for safer field-level updates
-            try {
-              await updateDoc(memberDocRef, cleanedUpdateData);
-              console.log(`✅ [Google Login] Document updated successfully`);
-            } catch (updateError: any) {
-              console.error(`❌ [Google Login] Update failed:`, updateError);
-              console.log(`⚠️ [Google Login] Falling back to setDoc with merge...`);
-              // Fallback to setDoc if updateDoc fails
-              await setDoc(memberDocRef, cleanedUpdateData, { merge: true });
-            }
-
-            // Use the existing member's data (preserve ALL Member fields)
+            // Use the existing member's data directly (read-only approach)
+            // We don't update the document to avoid permission issues
             userData = {
               id: memberDoc.id,
               ...existingData, // This includes profile, business, jciCareer, etc.
@@ -256,6 +230,9 @@ export const useAuthStore = create<AuthState>()(
               googleUid: firebaseUser.uid,
               ...(newAvatar && { avatar: newAvatar }),
             } as User;
+            
+            console.log(`✅ [Google Login] Using existing member data (read-only mode)`);
+            console.log(`💡 [Google Login] Note: Document not updated to avoid permission issues`);
 
             console.log(`✅ [Google Login] Successfully linked Google account to member: ${existingData.name}`);
             console.log(`📦 [Google Login] User data includes:`, {
