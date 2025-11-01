@@ -15,6 +15,7 @@ import { auth, db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
 import type { User } from '@/types';
+import type { Member } from '@/modules/member/types';
 
 interface AuthState {
   user: User | null;
@@ -121,10 +122,10 @@ export const useAuthStore = create<AuthState>()(
             cleanUndefinedValues(newUser)
           );
 
-          const userData: User = {
+          const userData = {
             id: firebaseUser.uid,
             ...newUser,
-          };
+          } as User;
 
           set({
             user: userData,
@@ -189,20 +190,29 @@ export const useAuthStore = create<AuthState>()(
 
             if (existingMemberDoc) {
               // Step 3: Link Google account to existing member
-              const existingData = existingMemberDoc.data() as User;
+              // Get complete member data (including profile, business, jciCareer, etc.)
+              const existingData = existingMemberDoc.data() as any; // Use any to preserve all Member fields
               
               console.log(`🔗 [Google Login] Linking Google account to existing member: ${existingMemberDoc.id}`);
+              console.log(`📋 [Google Login] Existing member data:`, {
+                name: existingData.name,
+                email: existingData.email,
+                category: existingData.category,
+                hasProfile: !!existingData.profile,
+                hasBusiness: !!existingData.business,
+                hasJciCareer: !!existingData.jciCareer,
+              });
               
-              // Create/update the Google UID document to reference the existing member
-              const linkedUser: Omit<User, 'id'> = {
-                ...existingData,
-                avatar: firebaseUser.photoURL || existingData.avatar,
+              // Create complete linked user data (preserve ALL fields from existing member)
+              const linkedUser = {
+                ...existingData, // Preserve all existing fields (profile, business, jciCareer, etc.)
+                avatar: firebaseUser.photoURL || existingData.avatar || existingData.profile?.avatar,
                 googleLinked: true,
                 googleUid: firebaseUser.uid,
                 updatedAt: new Date().toISOString(),
               };
 
-              // Save under Google UID (for future Google logins)
+              // Save under Google UID (for future Google logins) - with COMPLETE data
               await setDoc(userDocRef, cleanUndefinedValues(linkedUser));
               
               // Also update the original member document
@@ -211,7 +221,10 @@ export const useAuthStore = create<AuthState>()(
                 cleanUndefinedValues({
                   googleLinked: true,
                   googleUid: firebaseUser.uid,
-                  avatar: firebaseUser.photoURL || existingData.avatar,
+                  ...(firebaseUser.photoURL && {
+                    avatar: firebaseUser.photoURL,
+                    'profile.avatar': firebaseUser.photoURL,
+                  }),
                   updatedAt: new Date().toISOString(),
                 }),
                 { merge: true }
@@ -220,9 +233,10 @@ export const useAuthStore = create<AuthState>()(
               userData = {
                 id: firebaseUser.uid,
                 ...linkedUser,
-              };
+              } as User;
 
               console.log(`✅ [Google Login] Successfully linked Google account to member: ${existingData.name}`);
+              console.log(`📦 [Google Login] Linked user data includes profile: ${!!userData.profile}, business: ${!!userData.business}`);
             } else {
               // Step 4: Create completely new user
               isNewGoogleUser = true;
@@ -245,7 +259,7 @@ export const useAuthStore = create<AuthState>()(
               userData = {
                 id: firebaseUser.uid,
                 ...newUser,
-              };
+              } as User;
             }
           } else {
             // User exists with Google UID, get data

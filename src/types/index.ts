@@ -17,6 +17,21 @@ export interface User {
   googleUid?: string;      // Google UID
   createdAt: string;
   updatedAt: string;
+  
+  // Extended Member fields (optional, preserved from Member type)
+  phone?: string;
+  memberId?: string | null;
+  level?: string;
+  accountType?: string;
+  category?: string;
+  membershipCategory?: string;
+  profile?: any;  // Complete MemberProfile
+  business?: any; // Business info
+  jciCareer?: any; // JCI career info
+  joinDate?: string;
+  renewalDate?: string;
+  expiryDate?: string;
+  [key: string]: any; // Allow additional Member fields
 }
 
 // ========== Common Types ==========
