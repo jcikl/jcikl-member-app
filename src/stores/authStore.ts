@@ -173,11 +173,10 @@ export const useAuthStore = create<AuthState>()(
           const normalizedEmail = firebaseUser.email.toLowerCase().trim();
           console.log(`📧 [Google Login] Normalized email: ${normalizedEmail}`);
           
-          // Try exact match first
+          // Search for ALL members with this email (no limit to find duplicates)
           let emailQuery = query(
             collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-            where('email', '==', firebaseUser.email),
-            limit(1)
+            where('email', '==', firebaseUser.email)
           );
           let emailResults = await getDocs(emailQuery);
           
@@ -188,16 +187,48 @@ export const useAuthStore = create<AuthState>()(
             console.log(`🔍 [Google Login] Trying lowercase match...`);
             emailQuery = query(
               collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-              where('email', '==', normalizedEmail),
-              limit(1)
+              where('email', '==', normalizedEmail)
             );
             emailResults = await getDocs(emailQuery);
             console.log(`🔍 [Google Login] Lowercase match query returned ${emailResults.size} results`);
           }
           
           if (!emailResults.empty) {
-            // Found existing member - use their document directly
-            const memberDoc = emailResults.docs[0];
+            // If multiple documents found, select the one with most complete data
+            let memberDoc = emailResults.docs[0];
+            
+            if (emailResults.size > 1) {
+              console.log(`⚠️ [Google Login] Found ${emailResults.size} members with same email, selecting most complete one`);
+              
+              // Score each document based on data completeness
+              const scoredDocs = emailResults.docs.map(doc => {
+                const data = doc.data();
+                let score = 0;
+                if (data.category) score += 10;
+                if (data.profile && Object.keys(data.profile).length > 0) score += 5;
+                if (data.business && Object.keys(data.business).length > 0) score += 5;
+                if (data.jciCareer && Object.keys(data.jciCareer).length > 0) score += 5;
+                if (data.name && data.name !== 'User' && data.name.length > 2) score += 3;
+                if (data.phone) score += 2;
+                
+                console.log(`📊 [Google Login] Document ${doc.id} score: ${score}`, {
+                  category: data.category,
+                  name: data.name,
+                  hasProfile: !!data.profile,
+                  hasBusiness: !!data.business,
+                  hasJciCareer: !!data.jciCareer,
+                });
+                
+                return { doc, score };
+              });
+              
+              // Sort by score and pick the highest
+              scoredDocs.sort((a, b) => b.score - a.score);
+              memberDoc = scoredDocs[0].doc;
+              
+              console.log(`✅ [Google Login] Selected document ${memberDoc.id} with highest score: ${scoredDocs[0].score}`);
+            }
+            
             const existingData = memberDoc.data() as any;
             
             console.log(`✅ [Google Login] Found existing member: ${memberDoc.id}`);
@@ -339,10 +370,11 @@ export const useAuthStore = create<AuthState>()(
                 console.log(`🔍 [CheckAuth] Google user - searching ONLY by email:`, firebaseUser.email);
                 
                 const normalizedEmail = firebaseUser.email.toLowerCase().trim();
+                
+                // Search for ALL members with this email (no limit to find duplicates)
                 let emailQuery = query(
                   collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-                  where('email', '==', firebaseUser.email),
-                  limit(1)
+                  where('email', '==', firebaseUser.email)
                 );
                 let emailResults = await getDocs(emailQuery);
                 
@@ -353,16 +385,48 @@ export const useAuthStore = create<AuthState>()(
                   console.log(`🔍 [CheckAuth] Trying lowercase email match...`);
                   emailQuery = query(
                     collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-                    where('email', '==', normalizedEmail),
-                    limit(1)
+                    where('email', '==', normalizedEmail)
                   );
                   emailResults = await getDocs(emailQuery);
                   console.log(`🔍 [CheckAuth] Lowercase match returned ${emailResults.size} results`);
                 }
                 
                 if (!emailResults.empty) {
-                  userDoc = emailResults.docs[0];
-                  console.log(`✅ [CheckAuth] Found member by email:`, userDoc.id);
+                  // If multiple documents found, select the one with most complete data
+                  if (emailResults.size > 1) {
+                    console.log(`⚠️ [CheckAuth] Found ${emailResults.size} members with same email, selecting most complete one`);
+                    
+                    // Score each document based on data completeness
+                    const scoredDocs = emailResults.docs.map(doc => {
+                      const data = doc.data();
+                      let score = 0;
+                      if (data.category) score += 10;
+                      if (data.profile && Object.keys(data.profile).length > 0) score += 5;
+                      if (data.business && Object.keys(data.business).length > 0) score += 5;
+                      if (data.jciCareer && Object.keys(data.jciCareer).length > 0) score += 5;
+                      if (data.name && data.name !== 'User' && data.name.length > 2) score += 3;
+                      if (data.phone) score += 2;
+                      
+                      console.log(`📊 [CheckAuth] Document ${doc.id} score: ${score}`, {
+                        category: data.category,
+                        name: data.name,
+                        hasProfile: !!data.profile,
+                        hasBusiness: !!data.business,
+                        hasJciCareer: !!data.jciCareer,
+                      });
+                      
+                      return { doc, score };
+                    });
+                    
+                    // Sort by score and pick the highest
+                    scoredDocs.sort((a, b) => b.score - a.score);
+                    userDoc = scoredDocs[0].doc;
+                    
+                    console.log(`✅ [CheckAuth] Selected document ${userDoc.id} with highest score: ${scoredDocs[0].score}`);
+                  } else {
+                    userDoc = emailResults.docs[0];
+                    console.log(`✅ [CheckAuth] Found member by email:`, userDoc.id);
+                  }
                 } else {
                   console.log(`❌ [CheckAuth] No member found with email for Google user`);
                 }
