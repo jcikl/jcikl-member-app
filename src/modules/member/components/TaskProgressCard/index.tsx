@@ -28,46 +28,50 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
    */
   const checkProbationToVotingSteps = () => {
     if (!member) {
-      return [false, false, false, false, false, false];
+      return [false, false, false, false, false, false, false];
     }
     
     const tasks = member.profile.taskCompletions || [];
     const activities = member.profile.activityParticipation || [];
     
-    // 步骤 1: Probation Member (如果当前是 Probation Member 则为 true)
+    // 步骤 1: JCI Friend (默认为 true - 起点)
+    const isJCIFriend = true;
+    
+    // 步骤 2: Probation Member (如果当前是 Probation Member 则为 true)
     const isProbationMember = member.category === 'Probation Member' || member.jciCareer?.category === 'Probation Member';
     
-    // 步骤 2: JCI Discover or New Member Orientation
+    // 步骤 3: JCI Discover or New Member Orientation
     const hasOrientation = tasks.some(t => 
       t.taskName?.includes('JCI Discover') || 
       t.taskName?.includes('New Member Orientation') ||
       t.taskName?.includes('Orientation')
     );
     
-    // 步骤 3: Attended 2+ JCI KL Events
+    // 步骤 4: Attended 2+ JCI KL Events
     const jciKLEvents = activities.filter(a => 
       a.eventName?.includes('JCI KL') || a.eventName?.includes('JCIKL')
     );
     const hasAttended2Events = jciKLEvents.length >= 2;
     
-    // 步骤 4: 1x Project Committee or Organising Chairman
+    // 步骤 5: 1x Project Committee or Organising Chairman
     const hasCommitteeRole = activities.some(a => 
       a.role?.includes('Committee') || 
       a.role?.includes('Chairman') ||
       a.role?.includes('Chairperson')
     );
     
-    // 步骤 5: Attended 1+ BOD Meeting
+    // 步骤 6: Attended 1+ BOD Meeting
     const hasBODMeeting = activities.some(a => 
       a.eventName?.includes('BOD') || 
       a.eventName?.includes('Board') ||
       a.eventName?.includes('Board of Director')
     );
     
-    // 步骤 6: Voting Member (如果当前是 Official Member 则为 true)
+    // 步骤 7: Voting Member (如果当前是 Official Member 则为 true)
     const isVotingMember = member.category === 'Official Member' || member.jciCareer?.category === 'Official Member';
     
     return [
+      isJCIFriend,
       isProbationMember,
       hasOrientation,
       hasAttended2Events,
@@ -82,13 +86,14 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
    */
   const checkLeadershipSteps = () => {
     if (!member) {
-      return Array(9).fill(false);
+      return Array(10).fill(false);
     }
     
     const positions = member.profile.jciPosition?.split(',').map(p => p.trim()) || [];
     const activities = member.profile.activityParticipation || [];
     
     return [
+      true, // JCI Friend - always true (起点)
       true, // New Member - always true if member exists
       positions.some(p => p.includes('Committee')),
       positions.some(p => p.includes('Chairman') || p.includes('Chairperson')),
@@ -106,13 +111,14 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
    */
   const checkTrainerSteps = () => {
     if (!member) {
-      return Array(6).fill(false);
+      return Array(7).fill(false);
     }
     
     const positions = member.profile.jciPosition?.split(',').map(p => p.trim()) || [];
     const tasks = member.profile.taskCompletions || [];
     
     return [
+      true, // JCI Friend - always true (起点)
       true, // New Member - always true if member exists
       positions.some(p => p.includes('Trainer')) || tasks.some(t => t.taskName?.includes('JCI Trainer')),
       tasks.some(t => t.taskName?.includes('Intermediate Trainer')),
@@ -146,7 +152,9 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
               
               {/* All Steps - Using flex to distribute evenly */}
               {[
-                { label: 'Probation Member', activeColor: '#faad14', isStart: true },
+                
+                { label: 'JCI Friend', activeColor: '#faad14', isStart: true },
+                { label: 'Probation Member', activeColor: '#faad14' },
                 { label: 'JCI Discover or New Member Orientation', activeColor: '#1890ff' },
                 { label: 'Attended 2+ JCI KL Events', activeColor: '#1890ff' },
                 { label: '1x Project Committee or Organising Chairman', activeColor: '#1890ff' },
@@ -213,7 +221,8 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
               
               {/* All Steps - Using flex to distribute evenly */}
               {[
-                { label: 'New Member', activeColor: '#faad14', isStart: true },
+                { label: 'JCI Friend', activeColor: '#faad14', isStart: true },
+                { label: 'New Member', activeColor: '#faad14' },
                 { label: 'Project Committee', activeColor: '#ff7a00' },
                 { label: 'Organising Chairperson', activeColor: '#ff7a00' },
                 { label: 'Commission Director', activeColor: '#ff7a00' },
@@ -282,7 +291,9 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
               
               {/* All Steps - Using flex to distribute evenly */}
               {[
-                { label: 'New Member', activeColor: '#faad14', isStart: true },
+                
+                { label: 'JCI Friend', activeColor: '#faad14', isStart: true },
+                { label: 'New Member', activeColor: '#faad14' },
                 { label: 'JCI Trainer', activeColor: '#73d13d' },
                 { label: 'JCI Malaysia Intermediate Trainer', activeColor: '#389e0d' },
                 { label: 'JCI Malaysia Certified Trainer', activeColor: '#13c2c2' },
