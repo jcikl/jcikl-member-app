@@ -368,15 +368,13 @@ export const useAuthStore = create<AuthState>()(
           if (firebaseUser) {
             try {
               console.log(`🔄 [CheckAuth] Checking auth for user:`, firebaseUser.uid);
+              console.log(`📧 [CheckAuth] User email:`, firebaseUser.email);
               
-              // Step 1: Try to get user by UID
-              let userDoc = await getDoc(
-                doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid)
-              );
-
-              // Step 2: If not found and has email, try to find by email
-              if (!userDoc.exists() && firebaseUser.email) {
-                console.log(`🔍 [CheckAuth] User not found by UID, searching by email:`, firebaseUser.email);
+              let userDoc = null;
+              
+              // Step 1: For Google users, prioritize email-based lookup to find original member document
+              if (firebaseUser.email && firebaseUser.providerData.some(p => p.providerId === 'google.com')) {
+                console.log(`🔍 [CheckAuth] Google user detected, searching by email first:`, firebaseUser.email);
                 
                 const normalizedEmail = firebaseUser.email.toLowerCase().trim();
                 let emailQuery = query(
@@ -386,19 +384,37 @@ export const useAuthStore = create<AuthState>()(
                 );
                 let emailResults = await getDocs(emailQuery);
                 
+                console.log(`🔍 [CheckAuth] Email exact match returned ${emailResults.size} results`);
+                
                 // Try lowercase if exact match fails
                 if (emailResults.empty && normalizedEmail !== firebaseUser.email) {
+                  console.log(`🔍 [CheckAuth] Trying lowercase email match...`);
                   emailQuery = query(
                     collection(db, GLOBAL_COLLECTIONS.MEMBERS),
                     where('email', '==', normalizedEmail),
                     limit(1)
                   );
                   emailResults = await getDocs(emailQuery);
+                  console.log(`🔍 [CheckAuth] Lowercase match returned ${emailResults.size} results`);
                 }
                 
                 if (!emailResults.empty) {
                   userDoc = emailResults.docs[0];
                   console.log(`✅ [CheckAuth] Found member by email:`, userDoc.id);
+                } else {
+                  console.log(`⚠️ [CheckAuth] No member found by email, falling back to UID`);
+                }
+              }
+              
+              // Step 2: If not found by email, try UID (for non-Google users or fallback)
+              if (!userDoc) {
+                console.log(`🔍 [CheckAuth] Searching by UID:`, firebaseUser.uid);
+                const uidDoc = await getDoc(
+                  doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid)
+                );
+                if (uidDoc.exists()) {
+                  userDoc = uidDoc;
+                  console.log(`✅ [CheckAuth] Found user by UID:`, userDoc.id);
                 }
               }
 
