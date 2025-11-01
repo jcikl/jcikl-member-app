@@ -47,6 +47,7 @@ import { getTransactions } from '@/modules/finance/services/transactionService';
 import type { MemberFee } from '@/modules/finance/types';
 import type { Transaction } from '@/modules/finance/types';
 import { TaskProgressCard } from '../TaskProgressCard';
+import { getHobbyOptions, updateHobbyOptionsFromSelection, extractMissingOptionsFromMemberData } from '@/services/dynamicOptionsService';
 import './styles.css';
 
 const { TextArea } = Input;
@@ -71,11 +72,68 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
   const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hobbyOptions, setHobbyOptions] = useState<string[]>([]);
+  const [customHobby, setCustomHobby] = useState('');
+  const [sessionNewHobbies, setSessionNewHobbies] = useState<string[]>([]); // 本次会话新增的兴趣爱好
+
+  // ========== Load Dynamic Options ==========
+  useEffect(() => {
+    const loadHobbyOptions = async () => {
+      const options = await getHobbyOptions();
+      setHobbyOptions(options);
+    };
+    loadHobbyOptions();
+  }, []);
 
   // ========== Global Editing Functions ==========
   
-  const handleStartEdit = () => {
+  /**
+   * Safely convert date value to dayjs object
+   */
+  const safeDateToDayjs = (dateValue: any): dayjs.Dayjs | null => {
+    if (!dateValue) return null;
+    // Check for empty object
+    if (typeof dateValue === 'object' && Object.keys(dateValue).length === 0) return null;
+    
+    try {
+      // Handle string
+      if (typeof dateValue === 'string' && dateValue) {
+        const parsed = dayjs(dateValue);
+        return parsed.isValid() ? parsed : null;
+      }
+      // Handle Firestore Timestamp
+      if (typeof dateValue === 'object' && 'seconds' in dateValue) {
+        const parsed = dayjs(dateValue.seconds * 1000);
+        return parsed.isValid() ? parsed : null;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+  
+  const handleStartEdit = async () => {
     if (!member) return;
+    
+    // Extract member's existing hobbies
+    const memberHobbies = (() => {
+      const h = member.profile.hobbies;
+      if (!h) return [];
+      if (Array.isArray(h)) return h;
+      if (typeof h === 'string') {
+        return h.split(',').map((s) => s.trim()).filter((s) => s);
+      }
+      return [];
+    })();
+    
+    // Use service to find hobbies that are in member's data but not in global options
+    if (memberHobbies.length > 0) {
+      const missingHobbies = await extractMissingOptionsFromMemberData(memberHobbies);
+      if (missingHobbies.length > 0) {
+        setSessionNewHobbies(missingHobbies);
+        console.log('📝 [MemberDetailView] 发现会员已有但不在全局选项中的兴趣爱好:', missingHobbies);
+      }
+    }
     
     // Initialize form with current member data
     const formData: any = {
@@ -91,32 +149,81 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
       nricOrPassport: member.profile.nricOrPassport || '',
       gender: member.profile.gender || '',
       alternativePhone: member.profile.alternativePhone || '',
-      whatsappGroup: (member as any).profile?.whatsappGroup || '',
-      nationality: member.profile.nationality || '',
-      birthDate: member.profile.birthDate || '',
+      whatsappGroup: (member as any).profile?.whatsappGroup === 'Yes' || (member as any).profile?.whatsappGroup === true ? 'Yes' : 'No',
+      nationality: member.profile.nationality || 'Malaysia',
+      race: (() => {
+        const r = member.profile.race;
+        if (!r) return '';
+        if (['Chinese', 'Indian', 'Malay'].includes(r)) return r;
+        return 'Other';
+      })(),
+      raceOther: (() => {
+        const r = member.profile.race;
+        if (!r) return '';
+        if (['Chinese', 'Indian', 'Malay'].includes(r)) return '';
+        return r;
+      })(),
+      birthDate: safeDateToDayjs(member.profile.birthDate),
       profilePhotoUrl: member.profile.profilePhotoUrl || '',
       linkedin: member.profile.linkedin || '',
+      hobbies: (() => {
+        const h = member.profile.hobbies;
+        if (!h) return [];
+        if (Array.isArray(h)) return h;
+        if (typeof h === 'string') {
+          // Try to parse if it's a comma-separated string
+          return h.split(',').map((s) => s.trim()).filter((s) => s);
+        }
+        return [];
+      })(),
+      
+      // Address fields
+      address: (() => {
+        const addr = member.profile.address;
+        if (!addr) return '';
+        if (typeof addr === 'string') return addr;
+        if (typeof addr === 'object') {
+          const parts = [
+            addr.street,
+            addr.city,
+            addr.state,
+            addr.postcode,
+            addr.country,
+          ].filter(Boolean);
+          return parts.join(', ');
+        }
+        return '';
+      })(),
+      
+      // Emergency Contact fields
+      emergencyContactName: member.profile.emergencyContact?.name || '',
+      emergencyContactPhone: member.profile.emergencyContact?.phone || '',
+      emergencyContactRelationship: member.profile.emergencyContact?.relationship || '',
+      
+      // Social Media fields
+      facebook: member.profile.socialMedia?.facebook || '',
+      instagram: member.profile.socialMedia?.instagram || '',
+      wechat: member.profile.socialMedia?.wechat || '',
       
       // Business fields
       company: (member as any).business?.company || member.profile.company || '',
       departmentAndPosition: (member as any).business?.departmentAndPosition || member.profile.departmentAndPosition || '',
-      industryDetail: (member as any).business?.industryDetail || '',
       companyWebsite: (member as any).business?.companyWebsite || '',
       companyIntro: (member as any).business?.companyIntro || '',
       acceptInternationalBusiness: (member as any).business?.acceptInternationalBusiness || '',
-      ownIndustry: Array.isArray((member as any).business?.ownIndustry) ? (member as any).business.ownIndustry.join(', ') : '',
-      interestedIndustries: Array.isArray((member as any).business?.interestedIndustries) ? (member as any).business.interestedIndustries.join(', ') : '',
-      businessCategories: Array.isArray((member as any).business?.businessCategories) ? (member as any).business.businessCategories.join(', ') : '',
+      ownIndustry: Array.isArray((member as any).business?.ownIndustry) ? (member as any).business.ownIndustry : [],
+      interestedIndustries: Array.isArray((member as any).business?.interestedIndustries) ? (member as any).business.interestedIndustries : [],
+      businessCategories: Array.isArray((member as any).business?.businessCategories) ? (member as any).business.businessCategories : [],
       
       // JCI Career fields
       memberId: (member as any).jciCareer?.memberId || member.memberId || '',
       category: (member as any).jciCareer?.category || member.category || '',
       chapter: (member as any).jciCareer?.chapter || member.chapter || '',
       chapterId: (member as any).jciCareer?.chapterId || member.chapterId || '',
-      joinDate: (member as any).jciCareer?.joinDate || member.joinDate ? dayjs((member as any).jciCareer?.joinDate || member.joinDate) : null,
-      paymentDate: (member as any).jciCareer?.paymentDate ? dayjs((member as any).jciCareer.paymentDate) : null,
-      paymentVerifiedDate: (member as any).jciCareer?.paymentVerifiedDate ? dayjs((member as any).jciCareer.paymentVerifiedDate) : null,
-      endorsementDate: (member as any).jciCareer?.endorsementDate ? dayjs((member as any).jciCareer.endorsementDate) : null,
+      joinDate: safeDateToDayjs((member as any).jciCareer?.joinDate || member.joinDate),
+      paymentDate: safeDateToDayjs((member as any).jciCareer?.paymentDate),
+      paymentVerifiedDate: safeDateToDayjs((member as any).jciCareer?.paymentVerifiedDate),
+      endorsementDate: safeDateToDayjs((member as any).jciCareer?.endorsementDate),
       senatorId: (member as any).jciCareer?.senatorId || '',
       worldRegion: (member as any).jciCareer?.worldRegion || '',
       countryRegion: (member as any).jciCareer?.countryRegion || '',
@@ -145,6 +252,8 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
   const handleCancelEdit = () => {
     setIsEditing(false);
     form.resetFields();
+    setCustomHobby('');
+    setSessionNewHobbies([]); // 清空本次会话新增的选项
   };
 
   const handleSaveAll = async () => {
@@ -153,6 +262,7 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
     try {
       setSaving(true);
       const values = form.getFieldsValue();
+      console.log('📝 [MemberDetailView] Form values:', values);
       
       // Prepare update data - 使用统一的字段映射，避免重复
       const updateData: any = {};
@@ -173,9 +283,48 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
       if (values.alternativePhone !== undefined) updateData['profile.alternativePhone'] = values.alternativePhone || '';
       if (values.whatsappGroup !== undefined) updateData['profile.whatsappGroup'] = values.whatsappGroup || '';
       if (values.nationality !== undefined) updateData['profile.nationality'] = values.nationality || '';
-      if (values.birthDate !== undefined) updateData['profile.birthDate'] = values.birthDate || '';
+      if (values.race !== undefined) {
+        // If "Other" is selected, use raceOther value; otherwise use race value
+        const raceValue = values.race === 'Other' ? (values.raceOther || 'Other') : values.race;
+        updateData['profile.race'] = raceValue || '';
+      }
+      if (values.birthDate !== undefined && values.birthDate !== null && values.birthDate !== '') {
+        updateData['profile.birthDate'] = values.birthDate.format ? values.birthDate.format('YYYY-MM-DD') : values.birthDate;
+      }
       if (values.profilePhotoUrl !== undefined) updateData['profile.profilePhotoUrl'] = values.profilePhotoUrl || '';
-      if (values.linkedin !== undefined) updateData['profile.linkedin'] = values.linkedin || '';
+      if (values.hobbies !== undefined) {
+        const hobbiesArray = Array.isArray(values.hobbies) ? values.hobbies : [];
+        updateData['profile.hobbies'] = hobbiesArray;
+        
+        // 异步更新全局兴趣爱好选项（不阻塞保存）
+        if (hobbiesArray.length > 0) {
+          updateHobbyOptionsFromSelection(hobbiesArray, hobbyOptions, currentUserId).catch((err) => {
+            console.warn('Failed to update hobby options:', err);
+          });
+        }
+      }
+      
+      // Address field
+      if (values.address !== undefined) updateData['profile.address'] = values.address || '';
+      
+      // Emergency Contact fields
+      if (values.emergencyContactName !== undefined || values.emergencyContactPhone !== undefined || values.emergencyContactRelationship !== undefined) {
+        updateData['profile.emergencyContact'] = {
+          name: values.emergencyContactName || '',
+          phone: values.emergencyContactPhone || '',
+          relationship: values.emergencyContactRelationship || '',
+        };
+      }
+      
+      // Social Media fields
+      if (values.linkedin !== undefined || values.facebook !== undefined || values.instagram !== undefined || values.wechat !== undefined) {
+        updateData['profile.linkedin'] = values.linkedin || '';
+        updateData['profile.socialMedia'] = {
+          facebook: values.facebook || '',
+          instagram: values.instagram || '',
+          wechat: values.wechat || '',
+        };
+      }
       
       // Clothing & Items fields
       if (values.shirtSize !== undefined) updateData['profile.shirtSize'] = values.shirtSize || '';
@@ -191,24 +340,24 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
       if (values.departmentAndPosition !== undefined) {
         updateData['business.departmentAndPosition'] = values.departmentAndPosition || '';
       }
-      if (values.industryDetail !== undefined) updateData['business.industryDetail'] = values.industryDetail || '';
       if (values.companyWebsite !== undefined) updateData['business.companyWebsite'] = values.companyWebsite || '';
       if (values.companyIntro !== undefined) updateData['business.companyIntro'] = values.companyIntro || '';
       if (values.acceptInternationalBusiness !== undefined) updateData['business.acceptInternationalBusiness'] = values.acceptInternationalBusiness || '';
       if (values.ownIndustry !== undefined) {
-        updateData['business.ownIndustry'] = values.ownIndustry ? values.ownIndustry.split(',').map((s: string) => s.trim()).filter((s: string) => s) : [];
+        updateData['business.ownIndustry'] = Array.isArray(values.ownIndustry) ? values.ownIndustry : [];
       }
       if (values.interestedIndustries !== undefined) {
-        updateData['business.interestedIndustries'] = values.interestedIndustries ? values.interestedIndustries.split(',').map((s: string) => s.trim()).filter((s: string) => s) : [];
+        updateData['business.interestedIndustries'] = Array.isArray(values.interestedIndustries) ? values.interestedIndustries : [];
       }
       if (values.businessCategories !== undefined) {
-        updateData['business.businessCategories'] = values.businessCategories ? values.businessCategories.split(',').map((s: string) => s.trim()).filter((s: string) => s) : [];
+        updateData['business.businessCategories'] = Array.isArray(values.businessCategories) ? values.businessCategories : [];
+        console.log('📦 [MemberDetailView] businessCategories:', values.businessCategories, '→', updateData['business.businessCategories']);
       }
       
       // JCI Career fields - 日期字段统一转换为YYYY-MM-DD字符串格式
       if (values.memberId !== undefined) updateData['jciCareer.memberId'] = values.memberId || '';
-      if (values.joinDate !== undefined) {
-        updateData['jciCareer.joinDate'] = values.joinDate ? (values.joinDate.format ? values.joinDate.format('YYYY-MM-DD') : values.joinDate) : '';
+      if (values.joinDate !== undefined && values.joinDate !== null && values.joinDate !== '') {
+        updateData['jciCareer.joinDate'] = values.joinDate.format ? values.joinDate.format('YYYY-MM-DD') : values.joinDate;
       }
       if (values.senatorId !== undefined) updateData['jciCareer.senatorId'] = values.senatorId || '';
       if (values.worldRegion !== undefined) updateData['jciCareer.worldRegion'] = values.worldRegion || '';
@@ -221,22 +370,30 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
       if (values.jciEventInterests !== undefined) updateData['jciCareer.jciEventInterests'] = values.jciEventInterests || '';
       if (values.activeMemberHow !== undefined) updateData['jciCareer.activeMemberHow'] = values.activeMemberHow || '';
       if (values.fiveYearsVision !== undefined) updateData['jciCareer.fiveYearsVision'] = values.fiveYearsVision || '';
-      if (values.paymentDate !== undefined) {
-        updateData['jciCareer.paymentDate'] = values.paymentDate ? (values.paymentDate.format ? values.paymentDate.format('YYYY-MM-DD') : values.paymentDate) : '';
+      if (values.paymentDate !== undefined && values.paymentDate !== null && values.paymentDate !== '') {
+        updateData['jciCareer.paymentDate'] = values.paymentDate.format ? values.paymentDate.format('YYYY-MM-DD') : values.paymentDate;
       }
       if (values.paymentSlipUrl !== undefined) updateData['jciCareer.paymentSlipUrl'] = values.paymentSlipUrl || '';
-      if (values.paymentVerifiedDate !== undefined) {
-        updateData['jciCareer.paymentVerifiedDate'] = values.paymentVerifiedDate ? (values.paymentVerifiedDate.format ? values.paymentVerifiedDate.format('YYYY-MM-DD') : values.paymentVerifiedDate) : '';
+      if (values.paymentVerifiedDate !== undefined && values.paymentVerifiedDate !== null && values.paymentVerifiedDate !== '') {
+        updateData['jciCareer.paymentVerifiedDate'] = values.paymentVerifiedDate.format ? values.paymentVerifiedDate.format('YYYY-MM-DD') : values.paymentVerifiedDate;
       }
-      if (values.endorsementDate !== undefined) {
-        updateData['jciCareer.endorsementDate'] = values.endorsementDate ? (values.endorsementDate.format ? values.endorsementDate.format('YYYY-MM-DD') : values.endorsementDate) : '';
+      if (values.endorsementDate !== undefined && values.endorsementDate !== null && values.endorsementDate !== '') {
+        updateData['jciCareer.endorsementDate'] = values.endorsementDate.format ? values.endorsementDate.format('YYYY-MM-DD') : values.endorsementDate;
       }
       
       console.log('📝 [MemberDetailView] 准备更新数据:', updateData);
       
       const updated = await updateMember(member.id, updateData, currentUserId);
       setIsEditing(false);
+      setCustomHobby('');
+      setSessionNewHobbies([]); // 清空本次会话新增的选项
       message.success('保存成功');
+      
+      // 保存成功后刷新兴趣爱好选项列表（新增选项已被保存到Firestore）
+      if (values.hobbies && Array.isArray(values.hobbies) && values.hobbies.length > 0) {
+        const refreshedOptions = await getHobbyOptions();
+        setHobbyOptions(refreshedOptions);
+      }
       
       if (onUpdate) {
         onUpdate(updated);
@@ -252,17 +409,42 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
   // ========== Helper Functions ==========
   
   /**
+   * Type guard for Firestore Timestamp
+   */
+  const isFirestoreTimestamp = (val: unknown): val is { seconds: number; nanoseconds: number } => {
+    return (
+      val !== null &&
+      val !== undefined &&
+      typeof val === 'object' &&
+      'seconds' in val &&
+      'nanoseconds' in val
+    );
+  };
+
+  /**
    * Render field - editable in edit mode, read-only otherwise
    */
   const renderField = (
     fieldName: string,
     label: string,
-    value: string | undefined,
-    type: 'text' | 'select' | 'textarea' | 'date' = 'text',
-    options?: Array<{ label: string; value: string }>,
+    value: string | undefined | null | any,
+    type: 'text' | 'select' | 'multiselect' | 'tags' | 'textarea' | 'date' | 'buttonGroup' | 'buttonGroupMultiple' = 'text',
+    options?: Array<{ label: string; value: string }> | string[],
     align: 'middle' | 'top' = 'middle'
   ) => {
-    const displayValue = value || '-';
+    // Safely convert value to string
+    let displayValue = '-';
+    if (value !== null && value !== undefined) {
+      if (typeof value === 'string') {
+        displayValue = value || '-';
+      } else if (typeof value === 'number') {
+        displayValue = String(value);
+      } else if (typeof value === 'object' && Object.keys(value).length === 0) {
+        displayValue = '-';
+      } else {
+        displayValue = String(value);
+      }
+    }
 
     if (isEditing) {
       return (
@@ -271,12 +453,120 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
             <span style={{ fontSize: 13, color: '#666' }}>{label}</span>
           </Col>
           <Col flex="auto">
-            {type === 'select' && options ? (
+            {type === 'buttonGroup' && options ? (
+              <div style={{ width: '100%' }}>
+                <Form.Item name={fieldName} hidden>
+                  <Input />
+                </Form.Item>
+                <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues[fieldName] !== currentValues[fieldName]}>
+                  {({ getFieldValue, setFieldValue }) => {
+                    const currentValue = getFieldValue(fieldName);
+                    return (
+                      <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+                        {options.map((option) => (
+                          <Button
+                            key={option.value}
+                            type={currentValue === option.value ? 'primary' : 'default'}
+                            onClick={() => setFieldValue(fieldName, option.value)}
+                            style={{ flex: 1 }}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </Space.Compact>
+                    );
+                  }}
+                </Form.Item>
+              </div>
+            ) : type === 'buttonGroupMultiple' && options ? (
+              <div style={{ width: '100%' }}>
+                <Form.Item name={fieldName} hidden>
+                  <Input />
+                </Form.Item>
+                <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues[fieldName] !== currentValues[fieldName]}>
+                  {({ getFieldValue, setFieldValue }) => {
+                    const currentValue = getFieldValue(fieldName);
+                    const values = Array.isArray(currentValue) ? currentValue : [];
+                    const optionsCount = options.length;
+                    
+                    // For many options (>10), use wrapped layout; for few options (<=10), use compact layout
+                    if (optionsCount > 10) {
+                      return (
+                        <Space wrap size="small" style={{ width: '100%' }}>
+                          {options.map((option) => (
+                            <Button
+                              key={option.value}
+                              type={values.includes(option.value) ? 'primary' : 'default'}
+                              size="small"
+                              onClick={() => {
+                                const newValues = values.includes(option.value)
+                                  ? values.filter((v) => v !== option.value)
+                                  : [...values, option.value];
+                                setFieldValue(fieldName, newValues);
+                              }}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </Space>
+                      );
+                    } else {
+                      return (
+                        <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+                          {options.map((option) => (
+                            <Button
+                              key={option.value}
+                              type={values.includes(option.value) ? 'primary' : 'default'}
+                              onClick={() => {
+                                const newValues = values.includes(option.value)
+                                  ? values.filter((v) => v !== option.value)
+                                  : [...values, option.value];
+                                setFieldValue(fieldName, newValues);
+                              }}
+                              style={{ flex: 1 }}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </Space.Compact>
+                      );
+                    }
+                  }}
+                </Form.Item>
+              </div>
+            ) : type === 'select' && options ? (
               <Form.Item name={fieldName} style={{ marginBottom: 0, width: '100%' }}>
                 <Select
-                  options={options}
+                  options={Array.isArray(options) && options.length > 0 && typeof options[0] === 'string' 
+                    ? options.map((opt) => ({ label: opt, value: opt }))
+                    : options as Array<{ label: string; value: string }>}
                   style={{ width: '100%' }}
                   size="small"
+                />
+              </Form.Item>
+            ) : type === 'multiselect' && options ? (
+              <Form.Item name={fieldName} style={{ marginBottom: 0, width: '100%' }}>
+                <Select
+                  mode="multiple"
+                  options={Array.isArray(options) && options.length > 0 && typeof options[0] === 'string' 
+                    ? options.map((opt) => ({ label: opt, value: opt }))
+                    : options as Array<{ label: string; value: string }>}
+                  style={{ width: '100%' }}
+                  size="small"
+                  placeholder="请选择"
+                />
+              </Form.Item>
+            ) : type === 'tags' && options ? (
+              <Form.Item name={fieldName} style={{ marginBottom: 0, width: '100%' }}>
+                <Select
+                  mode="tags"
+                  options={Array.isArray(options) && options.length > 0 && typeof options[0] === 'string' 
+                    ? options.map((opt) => ({ label: opt, value: opt }))
+                    : options as Array<{ label: string; value: string }>}
+                  style={{ width: '100%' }}
+                  size="small"
+                  placeholder="请选择或输入自定义选项"
+                  maxTagCount="responsive"
                 />
               </Form.Item>
             ) : type === 'textarea' ? (
@@ -319,6 +609,63 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
       } catch {
         // Keep original value if parsing fails
       }
+    }
+    
+    // Handle Firestore Timestamp objects
+    if (isFirestoreTimestamp(value)) {
+      try {
+        const date = dayjs(value.seconds * 1000);
+        if (date.isValid()) {
+          formattedValue = type === 'date' ? date.format('YYYY-MM-DD') : date.format('YYYY-MM-DD HH:mm:ss');
+        } else {
+          formattedValue = '-';
+        }
+      } catch {
+        formattedValue = '-';
+      }
+    }
+
+    // Special rendering for buttonGroupMultiple in view mode
+    if (type === 'buttonGroupMultiple' && options) {
+      // Parse selected values from display string or array
+      let selectedValues: string[] = [];
+      if (Array.isArray(value)) {
+        selectedValues = value;
+      } else if (typeof value === 'string' && value && value !== '-') {
+        selectedValues = value.split(',').map(s => s.trim()).filter(s => s);
+      }
+      
+      return (
+        <Row gutter={[8, 8]} align={align}>
+          <Col flex="120px">
+            <span style={{ fontSize: 13, color: '#666' }}>{label}</span>
+          </Col>
+          <Col flex="auto">
+            <Space wrap size="small">
+              {options.map((option) => {
+                const optionValue = typeof option === 'string' ? option : option.value;
+                const optionLabel = typeof option === 'string' ? option : option.label;
+                const isSelected = selectedValues.includes(optionValue);
+                
+                return (
+                  <Button
+                    key={optionValue}
+                    type={isSelected ? 'primary' : 'default'}
+                    size="small"
+                    disabled={!isSelected}
+                    style={{
+                      opacity: isSelected ? 1 : 0.5,
+                      cursor: 'default',
+                    }}
+                  >
+                    {optionLabel}
+                  </Button>
+                );
+              })}
+            </Space>
+          </Col>
+        </Row>
+      );
     }
 
     return (
@@ -555,61 +902,407 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
               label: '基本信息',
               children: (
                 <Row gutter={ROW_GUTTER} align="stretch">
-                  <Col xs={24} md={16}>
+                  <Col xs={24} md={14}>
       {/* Basic Information */}
                     <Card title="基本信息" bordered={true} style={{ height: '100%' }}>
                       <Form form={form}>
+                        {/* 基本信息 */}
+                        <Divider orientation="left" style={{ margin: '8px 0 16px 0', fontSize: '14px', fontWeight: 'bold' }}>基本信息</Divider>
                         <Row gutter={[12, 12]}>
                           <Col xs={24} md={12}>
                             {renderField('name', '姓名', member.profile.name || member.name)}
                           </Col>
                           <Col xs={24} md={12}>
-                            {renderField('phone', '电话', member.profile.phone)}
-                          </Col>
-                          <Col xs={24} md={12}>
                             {renderField('fullNameNric', '身份证全名', member.profile.fullNameNric)}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('whatsappGroup', 'WhatsApp群组', (member as any).profile?.whatsappGroup)}
                           </Col>
                           <Col xs={24} md={12}>
                             {renderField('nricOrPassport', '身份证(或护照)', member.profile.nricOrPassport)}
                           </Col>
                           <Col xs={24} md={12}>
-                            {renderField('email', '邮箱', member.profile.email || member.email)}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('gender', '性别', member.profile.gender, 'select', [
+                            {renderField('gender', '性别', member.profile.gender, 'buttonGroup', [
                               { label: 'Male', value: 'Male' },
                               { label: 'Female', value: 'Female' },
                             ])}
                           </Col>
+                          <Col xs={24} md={24}>
+                            {renderField('race', '种族', (() => {
+                              const r = member.profile.race;
+                              if (!r) return '';
+                              if (['Chinese', 'Indian', 'Malay'].includes(r)) return r;
+                              return 'Other';
+                            })(), 'buttonGroup', [
+                              { label: 'Chinese', value: 'Chinese' },
+                              { label: 'Indian', value: 'Indian' },
+                              { label: 'Malay', value: 'Malay' },
+                              { label: 'Other', value: 'Other' },
+                            ])}
+                          </Col>
+                          {isEditing && (
+                            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.race !== curr.race}>
+                              {({ getFieldValue }) => {
+                                const raceValue = getFieldValue('race');
+                                if (raceValue === 'Other') {
+                                  return (
+                                    <Col xs={24} md={24}>
+                                      <Row gutter={[8, 8]} align="middle">
+                                        <Col flex="120px">
+                                          <span style={{ fontSize: 13, color: '#666' }}>请输入种族</span>
+                                        </Col>
+                                        <Col flex="auto">
+                                          <Form.Item name="raceOther" style={{ marginBottom: 0, width: '100%' }}>
+                                            <Input
+                                              style={{ width: '100%' }}
+                                              size="small"
+                                              placeholder="请输入具体种族名称"
+                                            />
+                                          </Form.Item>
+                                        </Col>
+                                      </Row>
+                                    </Col>
+                                  );
+                                }
+                                return null;
+                              }}
+                            </Form.Item>
+                          )}
+                          {!isEditing && member.profile.race && !['Chinese', 'Indian', 'Malay'].includes(member.profile.race) && (
+                            <Col xs={24} md={24}>
+                              <Row gutter={[8, 8]} align="middle">
+                                <Col flex="120px">
+                                  <span style={{ fontSize: 13, color: '#666' }}>其他种族</span>
+                                </Col>
+                                <Col flex="auto">
+                                  <span style={{ fontSize: 13, color: '#000' }}>{member.profile.race}</span>
+                                </Col>
+                              </Row>
+                            </Col>
+                          )}
                           <Col xs={24} md={12}>
-                            {renderField('alternativePhone', '备用电话', member.profile.alternativePhone)}
+                            {renderField('nationality', '国籍', member.profile.nationality || 'Malaysia', 'select', [
+                              { label: 'Malaysia', value: 'Malaysia' },
+                              { label: 'Singapore', value: 'Singapore' },
+                              { label: 'China', value: 'China' },
+                              { label: 'Indonesia', value: 'Indonesia' },
+                              { label: 'Thailand', value: 'Thailand' },
+                              { label: 'Philippines', value: 'Philippines' },
+                              { label: 'Vietnam', value: 'Vietnam' },
+                              { label: 'India', value: 'India' },
+                              { label: 'Bangladesh', value: 'Bangladesh' },
+                              { label: 'Myanmar', value: 'Myanmar' },
+                              { label: 'United Kingdom', value: 'United Kingdom' },
+                              { label: 'United States', value: 'United States' },
+                              { label: 'Australia', value: 'Australia' },
+                              { label: 'Canada', value: 'Canada' },
+                              { label: 'Japan', value: 'Japan' },
+                              { label: 'South Korea', value: 'South Korea' },
+                              { label: 'Taiwan', value: 'Taiwan' },
+                              { label: 'Hong Kong', value: 'Hong Kong' },
+                              { label: 'Other', value: 'Other' },
+                            ])}
+                          </Col>
+                          <Col xs={24} md={12}>
+                            {renderField('birthDate', '出生日期', (() => {
+                              const bd = member.profile.birthDate;
+                              if (!bd) return '';
+                              // Check for empty object
+                              if (typeof bd === 'object' && Object.keys(bd).length === 0) return '';
+                              if (typeof bd === 'string') return bd;
+                              if (typeof bd === 'object' && 'seconds' in bd) {
+                                try {
+                                  return dayjs((bd as any).seconds * 1000).format('YYYY-MM-DD');
+                                } catch {
+                                  return '';
+                                }
+                              }
+                              return '';
+                            })(), 'date')}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('hobbies', '兴趣爱好', (() => {
+                              const h = member.profile.hobbies;
+                              if (!h) return '';
+                              if (Array.isArray(h)) return h.join(', ');
+                              if (typeof h === 'string') return h;
+                              return '';
+                            })(), 'buttonGroupMultiple', 
+                            // 合并原始选项和本次会话新增的选项
+                            [...hobbyOptions, ...sessionNewHobbies]
+                              .sort((a, b) => a.localeCompare(b))
+                              .map(opt => ({ label: opt, value: opt }))
+                            )}
+                          </Col>
+                          {isEditing && (
+                            <Col xs={24}>
+                              <Row gutter={[8, 8]} align="middle" style={{ marginTop: 8 }}>
+                                <Col flex="120px">
+                                  <span style={{ fontSize: 13, color: '#666' }}>添加自定义</span>
+                                </Col>
+                                <Col flex="auto">
+                                  <Space.Compact style={{ width: '100%' }}>
+                                    <Input
+                                      size="small"
+                                      placeholder="输入新的兴趣爱好，按回车或点击添加"
+                                      value={customHobby}
+                                      onChange={(e) => setCustomHobby(e.target.value)}
+                                      onPressEnter={() => {
+                                        const trimmedHobby = customHobby.trim();
+                                        if (trimmedHobby) {
+                                          const currentHobbies = form.getFieldValue('hobbies') || [];
+                                          if (!currentHobbies.includes(trimmedHobby)) {
+                                            // 添加到表单
+                                            form.setFieldValue('hobbies', [...currentHobbies, trimmedHobby]);
+                                            
+                                            // 如果不在原始选项列表中，记录为本次会话新增
+                                            if (!hobbyOptions.includes(trimmedHobby) && !sessionNewHobbies.includes(trimmedHobby)) {
+                                              setSessionNewHobbies([...sessionNewHobbies, trimmedHobby]);
+                                            }
+                                            
+                                            setCustomHobby('');
+                                            message.success(`✅ 已添加: ${trimmedHobby}`);
+                                          } else {
+                                            message.warning('该兴趣爱好已在您的选择中');
+                                          }
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      size="small"
+                                      type="primary"
+                                      onClick={() => {
+                                        const trimmedHobby = customHobby.trim();
+                                        if (trimmedHobby) {
+                                          const currentHobbies = form.getFieldValue('hobbies') || [];
+                                          if (!currentHobbies.includes(trimmedHobby)) {
+                                            // 添加到表单
+                                            form.setFieldValue('hobbies', [...currentHobbies, trimmedHobby]);
+                                            
+                                            // 如果不在原始选项列表中，记录为本次会话新增
+                                            if (!hobbyOptions.includes(trimmedHobby) && !sessionNewHobbies.includes(trimmedHobby)) {
+                                              setSessionNewHobbies([...sessionNewHobbies, trimmedHobby]);
+                                            }
+                                            
+                                            setCustomHobby('');
+                                            message.success(`✅ 已添加: ${trimmedHobby}`);
+                                          } else {
+                                            message.warning('该兴趣爱好已在您的选择中');
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      添加
+                                    </Button>
+                                  </Space.Compact>
+                                </Col>
+                              </Row>
+                            </Col>
+                          )}
+                        </Row>
+                        
+                        {/* 职业与商业信息 */}
+                        <Divider orientation="left" style={{ margin: '16px 0', fontSize: '14px', fontWeight: 'bold' }}>职业与商业信息</Divider>
+                        <Row gutter={[12, 12]}>
+                          <Col xs={24} md={12}>
+                            {renderField('company', '公司', (member as any).business?.company || member.profile.company)}
+                          </Col>
+                          <Col xs={24} md={12}>
+                            {renderField('companyWebsite', '公司网站', (member as any).business?.companyWebsite)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('companyIntro', '公司介绍', (member as any).business?.companyIntro, 'textarea', undefined, 'top')}
+                          </Col>
+                          <Col xs={24} md={12}>
+                            {renderField('departmentAndPosition', '部门与职位', (member as any).business?.departmentAndPosition || member.profile.departmentAndPosition)}
+                          </Col>
+                          <Col xs={24} md={12}>
+                            {renderField('acceptInternationalBusiness', '接受国际业务', (member as any).business?.acceptInternationalBusiness, 'buttonGroup', [
+                              { label: 'Yes', value: 'Yes' },
+                              { label: 'No', value: 'No' },
+                              { label: 'Willing to explore', value: 'Willing to explore' },
+                            ])}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('businessCategories', '商业类别', Array.isArray((member as any).business?.businessCategories) ? (member as any).business.businessCategories.join(', ') : '', 'buttonGroupMultiple', [
+                              { label: 'Manufacturer', value: 'Manufacturer' },
+                              { label: 'Distributor', value: 'Distributor' },
+                              { label: 'Service Provider', value: 'Service Provider' },
+                              { label: 'Retailer', value: 'Retailer' },
+                            ])}
+                          </Col>
+                          <Col xs={24} md={12}>
+                            {renderField('ownIndustry', '所属行业', Array.isArray((member as any).business?.ownIndustry) ? (member as any).business.ownIndustry.join(', ') : '', 'multiselect', [
+                              { label: 'Advertising, Marketing & Media', value: 'Advertising, Marketing & Media' },
+                              { label: 'Agriculture & Animals', value: 'Agriculture & Animals' },
+                              { label: 'Architecture, Engineering & Construction', value: 'Architecture, Engineering & Construction' },
+                              { label: 'Art, Entertainment & Design', value: 'Art, Entertainment & Design' },
+                              { label: 'Automotive & Accessories', value: 'Automotive & Accessories' },
+                              { label: 'Food & Beverages', value: 'Food & Beverages' },
+                              { label: 'Computers & IT', value: 'Computers & IT' },
+                              { label: 'Consulting & Professional Services', value: 'Consulting & Professional Services' },
+                              { label: 'Education & Training', value: 'Education & Training' },
+                              { label: 'Event & Hospitality', value: 'Event & Hospitality' },
+                              { label: 'Finance & Insurance', value: 'Finance & Insurance' },
+                              { label: 'Health, Wellness & Beauty', value: 'Health, Wellness & Beauty' },
+                              { label: 'Legal & Accounting', value: 'Legal & Accounting' },
+                              { label: 'Manufacturing', value: 'Manufacturing' },
+                              { label: 'Retail & E-Commerce', value: 'Retail & E-Commerce' },
+                              { label: 'Real Estate & Property Services', value: 'Real Estate & Property Services' },
+                              { label: 'Repair Services', value: 'Repair Services' },
+                              { label: 'Security & Investigation', value: 'Security & Investigation' },
+                              { label: 'Transport & Logistics', value: 'Transport & Logistics' },
+                              { label: 'Travel & Tourism', value: 'Travel & Tourism' },
+                            ])}
+                          </Col>
+                          <Col xs={24} md={12}>
+                            {renderField('interestedIndustries', '感兴趣行业', Array.isArray((member as any).business?.interestedIndustries) ? (member as any).business.interestedIndustries.join(', ') : '', 'multiselect', [
+                              { label: 'Advertising, Marketing & Media', value: 'Advertising, Marketing & Media' },
+                              { label: 'Agriculture & Animals', value: 'Agriculture & Animals' },
+                              { label: 'Architecture, Engineering & Construction', value: 'Architecture, Engineering & Construction' },
+                              { label: 'Art, Entertainment & Design', value: 'Art, Entertainment & Design' },
+                              { label: 'Automotive & Accessories', value: 'Automotive & Accessories' },
+                              { label: 'Food & Beverages', value: 'Food & Beverages' },
+                              { label: 'Computers & IT', value: 'Computers & IT' },
+                              { label: 'Consulting & Professional Services', value: 'Consulting & Professional Services' },
+                              { label: 'Education & Training', value: 'Education & Training' },
+                              { label: 'Event & Hospitality', value: 'Event & Hospitality' },
+                              { label: 'Finance & Insurance', value: 'Finance & Insurance' },
+                              { label: 'Health, Wellness & Beauty', value: 'Health, Wellness & Beauty' },
+                              { label: 'Legal & Accounting', value: 'Legal & Accounting' },
+                              { label: 'Manufacturing', value: 'Manufacturing' },
+                              { label: 'Retail & E-Commerce', value: 'Retail & E-Commerce' },
+                              { label: 'Real Estate & Property Services', value: 'Real Estate & Property Services' },
+                              { label: 'Repair Services', value: 'Repair Services' },
+                              { label: 'Security & Investigation', value: 'Security & Investigation' },
+                              { label: 'Transport & Logistics', value: 'Transport & Logistics' },
+                              { label: 'Travel & Tourism', value: 'Travel & Tourism' },
+                            ])}
                           </Col>
                         </Row>
                       </Form>
                     </Card>
                   </Col>
-                  <Col xs={24} md={8}>
+                  <Col xs={24} md={10}>
+                    {/* 联系信息 */}
+                    <Card title="联系信息" bordered={true} style={{ height: '100%' }}>
+                      <Form form={form}>
+                        {/* 个人联系方式 */}
+                        <Divider orientation="left" style={{ margin: '8px 0 16px 0', fontSize: '14px', fontWeight: 'bold' }}>个人联系方式</Divider>
+                        <Row gutter={[12, 12]}>
+                          <Col xs={24}>
+                            {renderField('phone', '电话', member.profile.phone)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('alternativePhone', '备用电话', member.profile.alternativePhone)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('whatsappGroup', 'WhatsApp群组', (member as any).profile?.whatsappGroup, 'buttonGroup', [
+                              { label: 'Yes', value: 'Yes' },
+                              { label: 'No', value: 'No' },
+                            ])}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('email', '邮箱', member.profile.email || member.email)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('address', '地址', (() => {
+                              const addr = member.profile.address;
+                              if (!addr) return '';
+                              if (typeof addr === 'string') return addr;
+                              if (typeof addr === 'object') {
+                                const parts = [
+                                  addr.street,
+                                  addr.city,
+                                  addr.state,
+                                  addr.postcode,
+                                  addr.country,
+                                ].filter(Boolean);
+                                return parts.join(', ');
+                              }
+                              return '';
+                            })(), 'textarea', undefined, 'top')}
+                          </Col>
+                        </Row>
+                        
+                        {/* 社交媒体 */}
+                        <Divider orientation="left" style={{ margin: '16px 0', fontSize: '14px', fontWeight: 'bold' }}>社交媒体</Divider>
+                        <Row gutter={[12, 12]}>
+                          <Col xs={24}>
+                            {renderField('linkedin', 'LinkedIn', member.profile.linkedin)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('facebook', 'Facebook', member.profile.socialMedia?.facebook)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('instagram', 'Instagram', member.profile.socialMedia?.instagram)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('wechat', '微信', member.profile.socialMedia?.wechat)}
+                          </Col>
+                        </Row>
+                        
+                        {/* 紧急联络人 */}
+                        <Divider orientation="left" style={{ margin: '16px 0', fontSize: '14px', fontWeight: 'bold' }}>紧急联络人</Divider>
+                        <Row gutter={[12, 12]}>
+                          <Col xs={24}>
+                            {renderField('emergencyContactName', '紧急联络人姓名', member.profile.emergencyContact?.name)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('emergencyContactPhone', '紧急联络人电话', member.profile.emergencyContact?.phone)}
+                          </Col>
+                          <Col xs={24}>
+                            {renderField('emergencyContactRelationship', '紧急联络人关系', member.profile.emergencyContact?.relationship)}
+                          </Col>
+                        </Row>
+                      </Form>
+                    </Card>
+                  </Col>
+                  <Col xs={24}>
                     {/* 服装与物品 */}
-                    <Card title="服装与物品" bordered={true} style={{ height: '100%' }}>
+                    <Card title="服装与物品" bordered={true}>
                       <Form form={form}>
                         <Row gutter={[12, 12]}>
-                          <Col xs={24} md={24}>
-                            {renderField('cutting', '裁剪/版型', member.profile.cutting)}
+                          <Col xs={24} md={6}>
+                            {renderField('cutting', '裁剪/版型', member.profile.cutting, 'buttonGroup', [
+                              { label: 'Unisex', value: 'Unisex' },
+                              { label: 'Lady Cut', value: 'Lady Cut' },
+                            ])}
                           </Col>
-                          <Col xs={24} md={24}>
-                            {renderField('shirtSize', 'T恤尺寸', member.profile.shirtSize)}
+                          <Col xs={24} md={6}>
+                            {renderField('shirtSize', 'T恤尺寸', member.profile.shirtSize, 'buttonGroup', [
+                              { label: 'XS', value: 'XS' },
+                              { label: 'S', value: 'S' },
+                              { label: 'M', value: 'M' },
+                              { label: 'L', value: 'L' },
+                              { label: 'XL', value: 'XL' },
+                              { label: '2XL', value: '2XL' },
+                              { label: '3XL', value: '3XL' },
+                              { label: '5XL', value: '5XL' },
+                              { label: '7XL', value: '7XL' },
+                            ])}
                           </Col>
-                          <Col xs={24} md={24}>
-                            {renderField('jacketSize', '夹克尺寸', member.profile.jacketSize)}
+                          <Col xs={24} md={6}>
+                            {renderField('jacketSize', '夹克尺寸', member.profile.jacketSize, 'buttonGroup', [
+                              { label: 'XS', value: 'XS' },
+                              { label: 'S', value: 'S' },
+                              { label: 'M', value: 'M' },
+                              { label: 'L', value: 'L' },
+                              { label: 'XL', value: 'XL' },
+                              { label: '2XL', value: '2XL' },
+                              { label: '3XL', value: '3XL' },
+                              { label: '5XL', value: '5XL' },
+                              { label: '7XL', value: '7XL' },
+                            ])}
                           </Col>
-                          <Col xs={24} md={24}>
+                          <Col xs={24} md={6}>
                             {renderField('nameToBeEmbroidered', '刺绣名称', member.profile.nameToBeEmbroidered)}
                           </Col>
-                          <Col xs={24} md={24}>
-                            {renderField('tshirtReceivingStatus', 'T恤领取状态', member.profile.tshirtReceivingStatus)}
+                          <Col xs={24} md={6}>
+                            {renderField('tshirtReceivingStatus', 'T恤领取状态', member.profile.tshirtReceivingStatus, 'select', [
+                              { label: 'NA', value: 'NA' },
+                              { label: 'Requested', value: 'Requested' },
+                              { label: 'Sent', value: 'Sent' },
+                              { label: 'Delivered', value: 'Delivered' },
+                              { label: 'Received', value: 'Received' },
+                            ])}
                           </Col>
                         </Row>
                       </Form>
@@ -626,7 +1319,20 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
                             </Col>
                             <Col flex="auto">
                               <span style={{ fontSize: 13, color: '#000' }}>
-                                {(member as any).profile?.createdAt ? new Date((member as any).profile.createdAt).toLocaleString('zh-CN') : '-'}
+                                {(() => {
+                                  const createdAt = (member as any).profile?.createdAt;
+                                  if (!createdAt) return '-';
+                                  try {
+                                    // Handle Firestore Timestamp
+                                    if (typeof createdAt === 'object' && 'seconds' in createdAt) {
+                                      return new Date(createdAt.seconds * 1000).toLocaleString('zh-CN');
+                                    }
+                                    // Handle string/number
+                                    return new Date(createdAt).toLocaleString('zh-CN');
+                                  } catch {
+                                    return '-';
+                                  }
+                                })()}
                               </span>
                             </Col>
                           </Row>
@@ -638,7 +1344,20 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
                             </Col>
                             <Col flex="auto">
                               <span style={{ fontSize: 13, color: '#000' }}>
-                                {(member as any).profile?.updatedAt ? new Date((member as any).profile.updatedAt).toLocaleString('zh-CN') : '-'}
+                                {(() => {
+                                  const updatedAt = (member as any).profile?.updatedAt;
+                                  if (!updatedAt) return '-';
+                                  try {
+                                    // Handle Firestore Timestamp
+                                    if (typeof updatedAt === 'object' && 'seconds' in updatedAt) {
+                                      return new Date(updatedAt.seconds * 1000).toLocaleString('zh-CN');
+                                    }
+                                    // Handle string/number
+                                    return new Date(updatedAt).toLocaleString('zh-CN');
+                                  } catch {
+                                    return '-';
+                                  }
+                                })()}
                               </span>
                             </Col>
                           </Row>
@@ -711,56 +1430,6 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
                         </Col>
                       </Row>
                     </Card>
-                  </Col>
-                </Row>
-              ),
-            },
-            {
-              key: 'career-business',
-              label: '职业商业',
-              children: (
-                <Row gutter={ROW_GUTTER}>
-                  <Col xs={24}>
-                    <Card title="职业与商业" bordered={true}>
-                      <Form form={form}>
-                        <Row gutter={[12, 12]}>
-                          <Col xs={24} md={12}>
-                            {renderField('company', '公司', (member as any).business?.company || member.profile.company)}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('departmentAndPosition', '部门与职位', (member as any).business?.departmentAndPosition || member.profile.departmentAndPosition)}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('industryDetail', '行业详情', (member as any).business?.industryDetail, 'textarea', undefined, 'top')}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('companyWebsite', '公司网站', (member as any).business?.companyWebsite)}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('ownIndustry', '所属行业', Array.isArray((member as any).business?.ownIndustry) ? (member as any).business.ownIndustry.join(', ') : '')}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('linkedin', 'LinkedIn', member.profile.linkedin)}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('interestedIndustries', '感兴趣行业', Array.isArray((member as any).business?.interestedIndustries) ? (member as any).business.interestedIndustries.join(', ') : '')}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('businessCategories', '商业类别', Array.isArray((member as any).business?.businessCategories) ? (member as any).business.businessCategories.join(', ') : '')}
-                          </Col>
-                          <Col xs={24} md={12}>
-                            {renderField('acceptInternationalBusiness', '接受国际业务', (member as any).business?.acceptInternationalBusiness, 'select', [
-                              { label: 'Yes', value: 'Yes' },
-                              { label: 'No', value: 'No' },
-                              { label: 'Willing to explore', value: 'Willing to explore' },
-                            ])}
-                          </Col>
-                          <Col xs={24}>
-                            {renderField('companyIntro', '公司介绍', (member as any).business?.companyIntro, 'textarea', undefined, 'top')}
-                          </Col>
-                        </Row>
-                      </Form>
-      </Card>
                   </Col>
                 </Row>
               ),
