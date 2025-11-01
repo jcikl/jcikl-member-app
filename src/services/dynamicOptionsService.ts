@@ -23,7 +23,7 @@ const DEFAULT_HOBBY_OPTIONS = [
   'Golf',
   'Hiking',
   'Leadership',
-  'Liquor/ Wine Tasting',
+  'Liquor/ Wine tasting',
   'Make Up',
   'Movie',
   'Other E-Sport',
