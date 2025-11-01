@@ -264,23 +264,21 @@ const DataFieldSwapPage: React.FC = () => {
           affectedCount++;
           affectedIds.push(docSnapshot.id); // 🆕 记录所有受影响的ID
           
-          // 只显示前100条预览
-          if (preview.length < 100) {
-            const firstMapping = swapMappings[0];
-            const currentFieldValue = getNestedValue(memberData, firstMapping.currentField);
-            const targetFieldValue = firstMapping.operationType === 'swap' 
-              ? getNestedValue(memberData, firstMapping.targetField) 
-              : null;
-            
-            preview.push({
-              memberId: docSnapshot.id,
-              memberName: (memberData as any).name || (memberData as any).profile?.name || '未知',
-              operationType: firstMapping.operationType,
-              currentFieldValue,
-              targetFieldValue,
-              willSwap: true,
-            });
-          }
+          // 显示所有受影响的记录（移除数量限制）
+          const firstMapping = swapMappings[0];
+          const currentFieldValue = getNestedValue(memberData, firstMapping.currentField);
+          const targetFieldValue = firstMapping.operationType === 'swap' 
+            ? getNestedValue(memberData, firstMapping.targetField) 
+            : null;
+          
+          preview.push({
+            memberId: docSnapshot.id,
+            memberName: (memberData as any).name || (memberData as any).profile?.name || '未知',
+            operationType: firstMapping.operationType,
+            currentFieldValue,
+            targetFieldValue,
+            willSwap: true,
+          });
         }
       });
 
@@ -303,6 +301,7 @@ const DataFieldSwapPage: React.FC = () => {
         if (hasSwap && hasRemove) msg += '对调和移除字段';
         else if (hasSwap) msg += '对调字段';
         else msg += '移除字段';
+        msg += `（已加载全部 ${preview.length} 条预览记录）`;
         message.success(msg);
       }
     } catch (error) {
@@ -705,7 +704,10 @@ const DataFieldSwapPage: React.FC = () => {
         <Modal
           title={
             <Space>
-              <span>预览字段对调 - {stats.affectedMembers} 位会员受影响</span>
+              <span>预览操作结果 - {stats.affectedMembers} 位会员受影响</span>
+              {previewData.length < stats.affectedMembers && (
+                <Tag color="orange">显示 {previewData.length}/{stats.affectedMembers} 条</Tag>
+              )}
               {selectedRowKeys.length > 0 && (
                 <Tag color="blue">已选 {selectedRowKeys.length} 条</Tag>
               )}
@@ -732,7 +734,7 @@ const DataFieldSwapPage: React.FC = () => {
                 disabled={selectedRowKeys.length === 0}
                 onClick={handleExecuteSelectedSwap}
               >
-                对调选中记录 ({selectedRowKeys.length})
+                执行选中记录 ({selectedRowKeys.length})
               </Button>
               <Button
                 type="primary"
@@ -741,7 +743,7 @@ const DataFieldSwapPage: React.FC = () => {
                 loading={executing}
                 onClick={handleExecuteAllSwap}
               >
-                对调所有记录 ({stats.affectedMembers})
+                执行所有记录 ({stats.affectedMembers})
               </Button>
             </Space>
           }
@@ -757,9 +759,22 @@ const DataFieldSwapPage: React.FC = () => {
             message="使用说明"
             description={
               <div>
-                <p><strong>步骤1（测试）：</strong>先勾选1-2条记录，点击"对调选中记录"进行测试</p>
-                <p><strong>步骤2（全量）：</strong>确认测试无误后，点击"对调所有记录"批量处理</p>
-                <p>当前字段: {AVAILABLE_FIELDS.find(f => f.value === swapMappings[0]?.currentField)?.label || '未选择'} ↔ 目标字段: {AVAILABLE_FIELDS.find(f => f.value === swapMappings[0]?.targetField)?.label || '未选择'}</p>
+                <p><strong>步骤1（测试）：</strong>先勾选1-2条记录，点击"执行选中记录"进行测试</p>
+                <p><strong>步骤2（全量）：</strong>确认测试无误后，点击"执行所有记录"批量处理</p>
+                <p><strong>操作详情：</strong>
+                  {swapMappings.map((m, i) => {
+                    const current = AVAILABLE_FIELDS.find(f => f.value === m.currentField)?.label || '未选择';
+                    const target = m.operationType === 'swap' 
+                      ? AVAILABLE_FIELDS.find(f => f.value === m.targetField)?.label || '未选择'
+                      : 'null';
+                    return (
+                      <span key={m.id} style={{ display: 'block', marginTop: i > 0 ? 4 : 0 }}>
+                        {i + 1}. {m.operationType === 'swap' ? '对调' : '移除'}: {current} 
+                        {m.operationType === 'swap' ? ` ↔ ${target}` : ' → null'}
+                      </span>
+                    );
+                  })}
+                </p>
               </div>
             }
             type="info"
@@ -784,15 +799,25 @@ const DataFieldSwapPage: React.FC = () => {
               pageSize: 20,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条记录`,
+              pageSizeOptions: ['10', '20', '50', '100', '200'],
             }}
             size="small"
             scroll={{ y: 400 }}
           />
           
-          {previewData.length >= 100 && (
+          {stats.affectedMembers > 0 && (
             <Alert
-              message={`显示前100条，共 ${stats.affectedMembers} 条记录需要对调`}
-              type="warning"
+              message={
+                <div>
+                  <strong>已加载全部 {previewData.length} 条预览记录</strong>
+                  {previewData.length > 50 && (
+                    <span style={{ marginLeft: 8, color: '#faad14' }}>
+                      · 建议先测试少量记录，确认无误后再执行全部
+                    </span>
+                  )}
+                </div>
+              }
+              type="success"
               showIcon
               style={{ marginTop: 16 }}
             />
