@@ -10,10 +10,10 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config';
-import { cleanUndefinedValues } from '@/utils/dataHelpers';
+import { cleanUndefinedValues, removeNullish } from '@/utils/dataHelpers';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -216,6 +216,7 @@ export const useAuthStore = create<AuthState>()(
             const existingData = memberDoc.data() as any; // Preserve all Member fields
             
             console.log(`🔗 [Google Login] Linking Google UID to existing member: ${memberDoc.id}`);
+            console.log(`📊 [Google Login] Existing data keys:`, Object.keys(existingData));
             
             // Prepare update data (only include defined values)
             const updateData: any = {
@@ -232,12 +233,20 @@ export const useAuthStore = create<AuthState>()(
             
             console.log(`📝 [Google Login] Update data:`, updateData);
             
-            // Update existing member document with Google info (merge to preserve all fields)
-            await setDoc(
-              memberDocRef,
-              cleanUndefinedValues(updateData),
-              { merge: true }
-            );
+            // Clean the data - remove all null/undefined values
+            const cleanedUpdateData = removeNullish(updateData);
+            console.log(`🧹 [Google Login] Cleaned update data:`, cleanedUpdateData);
+            
+            // Use updateDoc instead of setDoc for safer field-level updates
+            try {
+              await updateDoc(memberDocRef, cleanedUpdateData);
+              console.log(`✅ [Google Login] Document updated successfully`);
+            } catch (updateError: any) {
+              console.error(`❌ [Google Login] Update failed:`, updateError);
+              console.log(`⚠️ [Google Login] Falling back to setDoc with merge...`);
+              // Fallback to setDoc if updateDoc fails
+              await setDoc(memberDocRef, cleanedUpdateData, { merge: true });
+            }
 
             // Use the existing member's data (preserve ALL Member fields)
             userData = {
@@ -250,11 +259,16 @@ export const useAuthStore = create<AuthState>()(
 
             console.log(`✅ [Google Login] Successfully linked Google account to member: ${existingData.name}`);
             console.log(`📦 [Google Login] User data includes:`, {
+              id: userData.id,
+              email: userData.email,
+              name: userData.name,
               hasProfile: !!userData.profile,
               hasBusiness: !!userData.business,
               hasJciCareer: !!userData.jciCareer,
               category: userData.category,
               status: userData.status,
+              googleLinked: userData.googleLinked,
+              googleUid: userData.googleUid,
             });
           } else {
             // Step 3: Check if Google UID already exists (user previously logged in with Google)
