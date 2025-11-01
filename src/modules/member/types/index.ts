@@ -218,6 +218,54 @@ export interface Member extends BaseEntity {
   // Profile
   profile: MemberProfile;
   
+  // Business (optional namespace)
+  business?: {
+    company?: string;
+    companyWebsite?: string;
+    departmentAndPosition?: string;
+    industryDetail?: string;
+    companyIntro?: string;
+    acceptInternationalBusiness?: 'Yes' | 'No' | 'Willing to explore';
+    ownIndustry?: IndustryType[];
+    interestedIndustries?: IndustryType[];
+    businessCategories?: BusinessCategory[];
+  };
+  
+  // JCI Career (optional namespace)
+  jciCareer?: {
+    memberId?: string;
+    category?: MemberCategoryType;
+    membershipCategory?: string;
+    chapter?: string;
+    chapterId?: string;
+    worldRegion?: string;
+    countryRegion?: string;
+    country?: string;
+    jciPosition?: string;
+    introducerId?: string;
+    introducerName?: string;
+    senatorId?: string;
+    senatorScore?: number;
+    senatorVerified?: boolean;
+    joinDate?: string;
+    termStartDate?: string;
+    termEndDate?: string;
+    positionStartDate?: string;
+    positionEndDate?: string;
+    vpDivision?: string;
+    isActingPosition?: boolean;
+    actingForPosition?: string;
+    isCurrentTerm?: boolean;
+    jciEventInterests?: string;
+    jciBenefitsExpectation?: string;
+    fiveYearsVision?: string;
+    activeMemberHow?: string;
+    paymentDate?: string;
+    paymentSlipUrl?: string;
+    paymentVerifiedDate?: string;
+    endorsementDate?: string;
+  };
+  
   // Dates
   joinDate: string;               // ISO 8601 format
   renewalDate?: string;           // Next renewal date
@@ -335,6 +383,43 @@ export interface MemberFormData {
   nameToBeEmbroidered?: string;
   tshirtReceivingStatus?: string;
   cutting?: string;
+  
+  // Business fields (扁平化访问)
+  industryDetail?: string;
+  companyWebsite?: string;
+  companyIntro?: string;
+  acceptInternationalBusiness?: 'Yes' | 'No' | 'Willing to explore';
+  ownIndustry?: IndustryType[];
+  interestedIndustries?: IndustryType[];
+  businessCategories?: BusinessCategory[];
+  
+  // JCI Career fields (扁平化访问)
+  worldRegion?: string;
+  countryRegion?: string;
+  country?: string;
+  introducerId?: string;
+  introducerName?: string;
+  jciPosition?: string;
+  membershipCategory?: string;
+  senatorId?: string;
+  senatorScore?: number;
+  senatorVerified?: boolean;
+  termStartDate?: string;
+  termEndDate?: string;
+  positionStartDate?: string;
+  positionEndDate?: string;
+  vpDivision?: string;
+  isActingPosition?: boolean;
+  actingForPosition?: string;
+  isCurrentTerm?: boolean;
+  jciEventInterests?: string;
+  jciBenefitsExpectation?: string;
+  fiveYearsVision?: string;
+  activeMemberHow?: string;
+  paymentDate?: string;
+  paymentSlipUrl?: string;
+  paymentVerifiedDate?: string;
+  endorsementDate?: string;
   
   // Dates
   joinDate?: string;
