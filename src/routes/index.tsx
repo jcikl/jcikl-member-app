@@ -4,6 +4,7 @@ import AuthLayout from '@/layouts/AuthLayout';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import DashboardPage from '@/pages/DashboardPage';
+import ProfilePage from '@/pages/ProfilePage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import GlobalSettingsPage from '@/modules/system/pages/GlobalSettingsPage';
 import FinancialCategoryManagementPage from '@/modules/system/pages/FinancialCategoryManagementPage';
@@ -129,6 +130,11 @@ export const router = createBrowserRouter(
       //   path: 'update-financial-records-payer-info',
       //   element: <UpdateFinancialRecordsPayerInfoPage />,
       // },
+      // Profile Route
+      {
+        path: 'profile',
+        element: <ProfilePage />,
+      },
       // Member Module Routes
       {
         path: 'members',
@@ -141,12 +147,11 @@ export const router = createBrowserRouter(
             path: 'create',
             element: <MemberCreatePage />,
           },
+          {
+            path: ':id',
+            element: <MemberDetailPage />,
+          },
         ],
-      },
-      // Member Profile Route (独立路由)
-      {
-        path: 'profile/:id',
-        element: <MemberDetailPage />,
       },
       // Event Module Routes
       {

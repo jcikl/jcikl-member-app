@@ -58,6 +58,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       label: '仪表板',
     },
     {
+      key: '/profile',
+      icon: <UserOutlined />,
+      label: '个人资料',
+    },
+    {
       key: 'members-menu',
       icon: <UserOutlined />,
       label: '会员管理',
