@@ -20,6 +20,70 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
 
   return (
     <Row gutter={ROW_GUTTER}>
+      {/* Probation to Voting Member Pathway */}
+      <Col xs={24}>
+        <Card title="Probation Member to Voting Member Pathway" bordered={true} style={{ marginBottom: 16 }}>
+          <div style={{ position: 'relative', padding: '40px 12px 20px' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              {/* Connecting Line - from first dot center to last dot center */}
+              <div style={{
+                position: 'absolute',
+                left: 'calc(100% / 12)',
+                right: 'calc(100% / 12)',
+                top: 12,
+                height: 3,
+                backgroundColor: '#52c41a',
+                zIndex: 1,
+              }} />
+              
+              {/* All Steps - Using flex to distribute evenly */}
+              {[
+                { label: 'Probation Member', color: '#faad14', isStart: true },
+                { label: 'JCI Discover or New Member Orientation', color: '#1890ff' },
+                { label: 'Attended 2+ JCI KL Events', color: '#1890ff' },
+                { label: '1x Project Committee or Organising Chairman', color: '#1890ff' },
+                { label: 'Attended 1+ BOD Meeting', color: '#1890ff' },
+                { label: 'Voting Member', color: '#52c41a', isEnd: true },
+              ].map((step, index) => (
+                <div key={index} style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  flex: 1,
+                  minWidth: 0,
+                  position: 'relative',
+                  zIndex: 10,
+                }}>
+                  <div style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    backgroundColor: step.color,
+                    border: '3px solid #fff',
+                    boxShadow: step.isStart || step.isEnd ? '0 0 0 2px #52c41a' : '0 0 0 2px #52c41a',
+                    position: 'relative',
+                    zIndex: 10,
+                  }} />
+                  <div style={{ 
+                    marginTop: 8, 
+                    fontSize: 10, 
+                    color: '#666', 
+                    textAlign: 'center', 
+                    width: '100%',
+                    lineHeight: 1.2,
+                    fontWeight: (step.isStart || step.isEnd) ? 600 : 400,
+                    wordBreak: 'break-word',
+                    padding: '0 2px',
+                  }}>
+                    {step.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </Col>
+
       <Col xs={24} lg={layout === 'horizontal' ? 12 : 24}>
         <Card title="Leadership Development Pathway" bordered={true} style={{ marginBottom: layout === 'vertical' ? 16 : 0, height: '100%' }}>
           <div style={{ position: 'relative', padding: '40px 12px 20px' }}>
