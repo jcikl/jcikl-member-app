@@ -217,15 +217,25 @@ export const useAuthStore = create<AuthState>()(
             
             console.log(`🔗 [Google Login] Linking Google UID to existing member: ${memberDoc.id}`);
             
+            // Prepare update data (only include defined values)
+            const updateData: any = {
+              googleLinked: true,
+              googleUid: firebaseUser.uid,
+              updatedAt: new Date().toISOString(),
+            };
+            
+            // Only add avatar if we have a valid value
+            const newAvatar = firebaseUser.photoURL || existingData.avatar || existingData.profile?.avatar;
+            if (newAvatar) {
+              updateData.avatar = newAvatar;
+            }
+            
+            console.log(`📝 [Google Login] Update data:`, updateData);
+            
             // Update existing member document with Google info (merge to preserve all fields)
             await setDoc(
               memberDocRef,
-              cleanUndefinedValues({
-                googleLinked: true,
-                googleUid: firebaseUser.uid,
-                avatar: firebaseUser.photoURL || existingData.avatar || existingData.profile?.avatar,
-                updatedAt: new Date().toISOString(),
-              }),
+              cleanUndefinedValues(updateData),
               { merge: true }
             );
 
@@ -235,7 +245,7 @@ export const useAuthStore = create<AuthState>()(
               ...existingData, // This includes profile, business, jciCareer, etc.
               googleLinked: true,
               googleUid: firebaseUser.uid,
-              avatar: firebaseUser.photoURL || existingData.avatar || existingData.profile?.avatar,
+              ...(newAvatar && { avatar: newAvatar }),
             } as User;
 
             console.log(`✅ [Google Login] Successfully linked Google account to member: ${existingData.name}`);
