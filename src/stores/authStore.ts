@@ -302,6 +302,14 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('账号已被停用');
           }
 
+          console.log(`🎯 [Google Login] Setting auth state with user data:`, {
+            userId: userData.id,
+            email: userData.email,
+            name: userData.name,
+            category: userData.category,
+            hasAllFields: Object.keys(userData).length,
+          });
+
           set({
             user: userData,
             firebaseUser,
@@ -309,6 +317,8 @@ export const useAuthStore = create<AuthState>()(
             loading: false,
             error: null,
           });
+          
+          console.log(`✅ [Google Login] Auth state updated successfully`);
         } catch (error: any) {
           // Handle specific Google login errors
           let errorMessage = '登录失败';
@@ -357,16 +367,53 @@ export const useAuthStore = create<AuthState>()(
         onAuthStateChanged(auth, async firebaseUser => {
           if (firebaseUser) {
             try {
-              // Get user data
-              const userDoc = await getDoc(
+              console.log(`🔄 [CheckAuth] Checking auth for user:`, firebaseUser.uid);
+              
+              // Step 1: Try to get user by UID
+              let userDoc = await getDoc(
                 doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid)
               );
+
+              // Step 2: If not found and has email, try to find by email
+              if (!userDoc.exists() && firebaseUser.email) {
+                console.log(`🔍 [CheckAuth] User not found by UID, searching by email:`, firebaseUser.email);
+                
+                const normalizedEmail = firebaseUser.email.toLowerCase().trim();
+                let emailQuery = query(
+                  collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+                  where('email', '==', firebaseUser.email),
+                  limit(1)
+                );
+                let emailResults = await getDocs(emailQuery);
+                
+                // Try lowercase if exact match fails
+                if (emailResults.empty && normalizedEmail !== firebaseUser.email) {
+                  emailQuery = query(
+                    collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+                    where('email', '==', normalizedEmail),
+                    limit(1)
+                  );
+                  emailResults = await getDocs(emailQuery);
+                }
+                
+                if (!emailResults.empty) {
+                  userDoc = emailResults.docs[0];
+                  console.log(`✅ [CheckAuth] Found member by email:`, userDoc.id);
+                }
+              }
 
               if (userDoc.exists()) {
                 const userData = {
                   id: userDoc.id,
                   ...userDoc.data(),
                 } as User;
+
+                console.log(`✅ [CheckAuth] User data loaded:`, {
+                  id: userData.id,
+                  email: userData.email,
+                  name: userData.name,
+                  category: userData.category,
+                });
 
                 set({
                   user: userData,
@@ -375,6 +422,7 @@ export const useAuthStore = create<AuthState>()(
                   loading: false,
                 });
               } else {
+                console.log(`❌ [CheckAuth] No member found for:`, firebaseUser.email);
                 set({
                   user: null,
                   firebaseUser: null,
@@ -383,6 +431,7 @@ export const useAuthStore = create<AuthState>()(
                 });
               }
             } catch (error) {
+              console.error(`❌ [CheckAuth] Error:`, error);
               set({
                 user: null,
                 firebaseUser: null,
