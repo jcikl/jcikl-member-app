@@ -56,7 +56,7 @@ import { getMemberFeesByMemberId } from '@/modules/finance/services/memberFeeSer
 import { getTransactions } from '@/modules/finance/services/transactionService';
 import type { MemberFee } from '@/modules/finance/types';
 import type { Transaction } from '@/modules/finance/types';
-import '../MemberDetailPage/styles.css';
+import '@/modules/member/pages/MemberDetailPage/styles.css';
 
 const { Title, Text } = Typography;
 
