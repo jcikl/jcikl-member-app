@@ -139,6 +139,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           key: '/settings/data-field-swap',
           label: '字段数据对调',
         },
+        {
+          key: '/settings/duplicate-email-cleanup',
+          label: '重复邮箱清理',
+        },
       ],
     },
   ];
