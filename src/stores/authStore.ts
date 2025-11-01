@@ -177,10 +177,24 @@ export const useAuthStore = create<AuthState>()(
           const allMembersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
           const allMembersSnapshot = await getDocs(allMembersRef);
           
+          console.log(`📚 [Google Login] Total members in collection: ${allMembersSnapshot.size}`);
+          
           // Filter by email (case-insensitive)
           const matchingDocs = allMembersSnapshot.docs.filter(doc => {
-            const docEmail = (doc.data().email || '').toLowerCase().trim();
-            return docEmail === normalizedEmail;
+            const data = doc.data();
+            const docEmail = (data.email || '').toLowerCase().trim();
+            const matches = docEmail === normalizedEmail;
+            
+            if (matches) {
+              console.log(`🎯 [Google Login] Matched document:`, {
+                id: doc.id,
+                email: data.email,
+                normalizedDocEmail: docEmail,
+                searchingFor: normalizedEmail,
+              });
+            }
+            
+            return matches;
           });
           
           console.log(`🔍 [Google Login] Found ${matchingDocs.length} members with email (case-insensitive)`);
@@ -369,10 +383,24 @@ export const useAuthStore = create<AuthState>()(
                 const allMembersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
                 const allMembersSnapshot = await getDocs(allMembersRef);
                 
+                console.log(`📚 [CheckAuth] Total members in collection: ${allMembersSnapshot.size}`);
+                
                 // Filter by email (case-insensitive)
                 const matchingDocs = allMembersSnapshot.docs.filter(doc => {
-                  const docEmail = (doc.data().email || '').toLowerCase().trim();
-                  return docEmail === normalizedEmail;
+                  const data = doc.data();
+                  const docEmail = (data.email || '').toLowerCase().trim();
+                  const matches = docEmail === normalizedEmail;
+                  
+                  if (matches) {
+                    console.log(`🎯 [CheckAuth] Matched document:`, {
+                      id: doc.id,
+                      email: data.email,
+                      normalizedDocEmail: docEmail,
+                      searchingFor: normalizedEmail,
+                    });
+                  }
+                  
+                  return matches;
                 });
                 
                 console.log(`🔍 [CheckAuth] Found ${matchingDocs.length} members with email (case-insensitive)`);

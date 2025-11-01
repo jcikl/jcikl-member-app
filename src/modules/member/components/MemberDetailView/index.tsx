@@ -1388,7 +1388,7 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
                               <span style={{ fontSize: 13, color: '#666' }}>会员ID</span>
                             </Col>
                             <Col flex="auto">
-                              <span style={{ fontSize: 13, color: '#000' }}>{member.jciCareer.memberId || '-'}</span>
+                              <span style={{ fontSize: 13, color: '#000' }}>{member.jciCareer?.memberId || '-'}</span>
                             </Col>
                           </Row>
                         </Col>
