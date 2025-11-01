@@ -79,7 +79,9 @@ const DataFieldSwapPage: React.FC = () => {
     { id: '1', currentField: '', targetField: '' }
   ]);
   const [previewData, setPreviewData] = useState<PreviewItem[]>([]);
+  const [allAffectedMemberIds, setAllAffectedMemberIds] = useState<string[]>([]); // 🆕 所有受影响的会员ID
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]); // 🆕 选中的记录
   const [stats, setStats] = useState({
     totalMembers: 0,
     affectedMembers: 0,
@@ -156,6 +158,7 @@ const DataFieldSwapPage: React.FC = () => {
       const snapshot = await getDocs(membersRef);
       
       const preview: PreviewItem[] = [];
+      const affectedIds: string[] = []; // 🆕 存储所有受影响的会员ID
       let affectedCount = 0;
 
       snapshot.forEach(docSnapshot => {
@@ -175,9 +178,10 @@ const DataFieldSwapPage: React.FC = () => {
 
         if (hasSwap) {
           affectedCount++;
+          affectedIds.push(docSnapshot.id); // 🆕 记录所有受影响的ID
           
-          // 只显示前50条预览
-          if (preview.length < 50) {
+          // 只显示前100条预览（增加预览数量以便测试）
+          if (preview.length < 100) {
             const currentFieldValue = getNestedValue(memberData, swapMappings[0].currentField);
             const targetFieldValue = getNestedValue(memberData, swapMappings[0].targetField);
             
@@ -193,6 +197,8 @@ const DataFieldSwapPage: React.FC = () => {
       });
 
       setPreviewData(preview);
+      setAllAffectedMemberIds(affectedIds); // 🆕 保存所有受影响的ID
+      setSelectedRowKeys([]); // 🆕 清空选择
       setStats(prev => ({ 
         ...prev, 
         affectedMembers: affectedCount,
@@ -213,85 +219,122 @@ const DataFieldSwapPage: React.FC = () => {
     }
   };
 
-  // 执行对调
-  const handleExecuteSwap = async () => {
+  // 🆕 执行对调（通用函数）
+  const executeSwap = async (memberIds: string[], totalCount: number) => {
+    setExecuting(true);
+    setProgress(0);
+    
+    try {
+      const membersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
+      const snapshot = await getDocs(membersRef);
+      
+      const batch = writeBatch(db);
+      let processedCount = 0;
+      let batchCount = 0;
+      const maxBatchSize = 500; // Firestore batch limit
+      
+      // 创建ID集合以快速查找
+      const targetIds = new Set(memberIds);
+
+      for (const docSnapshot of snapshot.docs) {
+        // 🆕 只处理指定的会员ID
+        if (!targetIds.has(docSnapshot.id)) {
+          continue;
+        }
+        
+        const memberData = { id: docSnapshot.id, ...docSnapshot.data() };
+        let needsUpdate = false;
+        const updates: any = {};
+
+        // 对每个映射执行对调
+        swapMappings.forEach(mapping => {
+          const currentValue = getNestedValue(memberData, mapping.currentField);
+          const targetValue = getNestedValue(memberData, mapping.targetField);
+          
+          // 只有当值不同时才对调
+          if (currentValue !== targetValue && (currentValue || targetValue)) {
+            needsUpdate = true;
+            // 将目标字段的值写入当前字段
+            updates[mapping.currentField] = targetValue ?? null;
+            // 将当前字段的值写入目标字段
+            updates[mapping.targetField] = currentValue ?? null;
+          }
+        });
+
+        if (needsUpdate) {
+          const memberDocRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, docSnapshot.id);
+          batch.update(memberDocRef, updates);
+          processedCount++;
+          batchCount++;
+          
+          // 每500条提交一次
+          if (batchCount >= maxBatchSize) {
+            await batch.commit();
+            batchCount = 0;
+            console.log(`✅ 已处理 ${processedCount} 位会员`);
+          }
+          
+          // 更新进度
+          setProgress(Math.round((processedCount / totalCount) * 100));
+        }
+      }
+
+      // 提交剩余的批次
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      setProgress(100);
+      message.success(`成功对调 ${processedCount} 位会员的字段数据！`);
+      setPreviewVisible(false);
+      
+      // 重新加载预览
+      setTimeout(() => {
+        handlePreview();
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to execute swap:', error);
+      message.error('执行对调失败: ' + (error as Error).message);
+    } finally {
+      setExecuting(false);
+      setProgress(0);
+    }
+  };
+
+  // 🆕 对调选中的记录
+  const handleExecuteSelectedSwap = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要对调的记录');
+      return;
+    }
+
     Modal.confirm({
-      title: '确认执行字段对调？',
-      content: `即将对调 ${stats.affectedMembers} 位会员的 ${stats.swapCount} 个字段，此操作不可逆，请确认！`,
+      title: '确认对调选中记录？',
+      content: `即将对调选中的 ${selectedRowKeys.length} 位会员的 ${stats.swapCount} 个字段，此操作不可逆，请确认！`,
       okText: '确认执行',
       cancelText: '取消',
       okType: 'danger',
       onOk: async () => {
-        setExecuting(true);
-        setProgress(0);
-        
-        try {
-          const membersRef = collection(db, GLOBAL_COLLECTIONS.MEMBERS);
-          const snapshot = await getDocs(membersRef);
-          
-          const batch = writeBatch(db);
-          let processedCount = 0;
-          let batchCount = 0;
-          const maxBatchSize = 500; // Firestore batch limit
+        await executeSwap(selectedRowKeys as string[], selectedRowKeys.length);
+      },
+    });
+  };
 
-          for (const docSnapshot of snapshot.docs) {
-            const memberData = { id: docSnapshot.id, ...docSnapshot.data() };
-            let needsUpdate = false;
-            const updates: any = {};
-
-            // 对每个映射执行对调
-            swapMappings.forEach(mapping => {
-              const currentValue = getNestedValue(memberData, mapping.currentField);
-              const targetValue = getNestedValue(memberData, mapping.targetField);
-              
-              // 只有当值不同时才对调
-              if (currentValue !== targetValue && (currentValue || targetValue)) {
-                needsUpdate = true;
-                // 将目标字段的值写入当前字段
-                updates[mapping.currentField] = targetValue ?? null;
-                // 将当前字段的值写入目标字段
-                updates[mapping.targetField] = currentValue ?? null;
-              }
-            });
-
-            if (needsUpdate) {
-              const memberDocRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, docSnapshot.id);
-              batch.update(memberDocRef, updates);
-              processedCount++;
-              batchCount++;
-              
-              // 每500条提交一次
-              if (batchCount >= maxBatchSize) {
-                await batch.commit();
-                batchCount = 0;
-                console.log(`✅ 已处理 ${processedCount} 位会员`);
-              }
-              
-              // 更新进度
-              setProgress(Math.round((processedCount / stats.affectedMembers) * 100));
-            }
-          }
-
-          // 提交剩余的批次
-          if (batchCount > 0) {
-            await batch.commit();
-          }
-
-          setProgress(100);
-          message.success(`成功对调 ${processedCount} 位会员的字段数据！`);
-          setPreviewVisible(false);
-          
-          // 重新加载预览
-          setTimeout(() => {
-            handlePreview();
-          }, 1000);
-        } catch (error) {
-          console.error('Failed to execute swap:', error);
-          message.error('执行对调失败: ' + (error as Error).message);
-        } finally {
-          setExecuting(false);
-          setProgress(0);
-        }
+  // 🆕 对调所有记录
+  const handleExecuteAllSwap = async () => {
+    Modal.confirm({
+      title: '确认对调所有记录？',
+      content: (
+        <div>
+          <p>即将对调 <Text strong style={{ color: '#ff4d4f' }}>{stats.affectedMembers}</Text> 位会员的 {stats.swapCount} 个字段。</p>
+          <p style={{ color: '#ff4d4f', fontWeight: 'bold' }}>⚠️ 此操作不可逆，请确保已测试选中记录无误！</p>
+        </div>
+      ),
+      okText: '确认执行全部',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: async () => {
+        await executeSwap(allAffectedMemberIds, stats.affectedMembers);
       },
     });
   };
@@ -501,21 +544,45 @@ const DataFieldSwapPage: React.FC = () => {
 
         {/* 预览模态框 */}
         <Modal
-          title={`预览字段对调 - ${stats.affectedMembers} 位会员受影响`}
+          title={
+            <Space>
+              <span>预览字段对调 - {stats.affectedMembers} 位会员受影响</span>
+              {selectedRowKeys.length > 0 && (
+                <Tag color="blue">已选 {selectedRowKeys.length} 条</Tag>
+              )}
+            </Space>
+          }
           open={previewVisible}
-          onCancel={() => setPreviewVisible(false)}
-          width={1000}
+          onCancel={() => {
+            setPreviewVisible(false);
+            setSelectedRowKeys([]);
+          }}
+          width={1200}
           footer={
             <Space>
-              <Button onClick={() => setPreviewVisible(false)}>取消</Button>
+              <Button onClick={() => {
+                setPreviewVisible(false);
+                setSelectedRowKeys([]);
+              }}>
+                取消
+              </Button>
+              <Button
+                type="primary"
+                icon={<SwapOutlined />}
+                loading={executing}
+                disabled={selectedRowKeys.length === 0}
+                onClick={handleExecuteSelectedSwap}
+              >
+                对调选中记录 ({selectedRowKeys.length})
+              </Button>
               <Button
                 type="primary"
                 danger
                 icon={<SwapOutlined />}
                 loading={executing}
-                onClick={handleExecuteSwap}
+                onClick={handleExecuteAllSwap}
               >
-                确认执行对调
+                对调所有记录 ({stats.affectedMembers})
               </Button>
             </Space>
           }
@@ -528,8 +595,14 @@ const DataFieldSwapPage: React.FC = () => {
           )}
           
           <Alert
-            message="预览说明"
-            description={`以下显示前50条需要对调的记录。当前字段: ${AVAILABLE_FIELDS.find(f => f.value === swapMappings[0]?.currentField)?.label || '未选择'} ↔ 目标字段: ${AVAILABLE_FIELDS.find(f => f.value === swapMappings[0]?.targetField)?.label || '未选择'}`}
+            message="使用说明"
+            description={
+              <div>
+                <p><strong>步骤1（测试）：</strong>先勾选1-2条记录，点击"对调选中记录"进行测试</p>
+                <p><strong>步骤2（全量）：</strong>确认测试无误后，点击"对调所有记录"批量处理</p>
+                <p>当前字段: {AVAILABLE_FIELDS.find(f => f.value === swapMappings[0]?.currentField)?.label || '未选择'} ↔ 目标字段: {AVAILABLE_FIELDS.find(f => f.value === swapMappings[0]?.targetField)?.label || '未选择'}</p>
+              </div>
+            }
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
@@ -539,14 +612,27 @@ const DataFieldSwapPage: React.FC = () => {
             columns={previewColumns}
             dataSource={previewData}
             rowKey="memberId"
-            pagination={false}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: setSelectedRowKeys,
+              selections: [
+                Table.SELECTION_ALL,
+                Table.SELECTION_INVERT,
+                Table.SELECTION_NONE,
+              ],
+            }}
+            pagination={{
+              pageSize: 20,
+              showSizeChanger: true,
+              showTotal: (total) => `共 ${total} 条记录`,
+            }}
             size="small"
             scroll={{ y: 400 }}
           />
           
-          {previewData.length >= 50 && (
+          {previewData.length >= 100 && (
             <Alert
-              message={`显示前50条，共 ${stats.affectedMembers} 条记录需要对调`}
+              message={`显示前100条，共 ${stats.affectedMembers} 条记录需要对调`}
               type="warning"
               showIcon
               style={{ marginTop: 16 }}
