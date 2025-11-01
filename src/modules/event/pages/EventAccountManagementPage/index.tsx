@@ -109,6 +109,7 @@ const EventAccountManagementPage: React.FC = () => {
   const [selectedTxId, setSelectedTxId] = useState<string>('');
   const [availableBankTxns, setAvailableBankTxns] = useState<BankTransaction[]>([]);
   const [activeInnerTab, setActiveInnerTab] = useState<string>('financial-plan');
+  const [activeTab, setActiveTab] = useState<string>('overview'); // 🆕 顶层标签页状态
   
   // 🆕 新增筛选状态
   const [selectedYear, setSelectedYear] = useState<string>('all');
@@ -1062,6 +1063,123 @@ const EventAccountManagementPage: React.FC = () => {
 
   // 旧的进度计算已移除（统计卡片已删除）
 
+  // 🆕 渲染概览标签页内容
+  const renderOverviewTab = () => (
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      {/* 对比统计卡片 */}
+      {consolidationData && (
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={8}>
+            <Card size="small" className="comparison-stat-card">
+              <Statistic
+                title="📊 收入对比"
+                value={consolidationData.totalIncomeActual}
+                precision={2}
+                prefix={<RiseOutlined style={{ color: '#52c41a' }} />}
+                valueStyle={{ color: '#52c41a', fontSize: '20px' }}
+                suffix="RM"
+              />
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                  <span style={{ minWidth: 72 }}>预测</span>
+                  <span>RM {consolidationData.totalIncomeForecast.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                  <span style={{ minWidth: 72 }}>差异</span>
+                  <span>
+                    {consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '+' : ''}RM {(consolidationData.totalIncomeActual - consolidationData.totalIncomeForecast).toFixed(2)} {' '}
+                    ({(consolidationData.totalIncomeForecast > 0 ? ((consolidationData.totalIncomeActual / consolidationData.totalIncomeForecast) * 100).toFixed(1) : '0.0')}%)
+                  </span>
+                </div>
+                <Divider style={{ margin: '8px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                  <span style={{ minWidth: 72 }}>银行交易</span>
+                  <span>RM {(consolidationData.bankIncomeTotal ?? 0).toFixed(2)} （{consolidationData.bankIncomeCount ?? 0} 笔）</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
+                  <span style={{ minWidth: 72 }}>未核对</span>
+                  <span>RM {(consolidationData.eventIncomeUnreconciledTotal ?? 0).toFixed(2)}（{consolidationData.eventIncomeUnreconciledCount ?? 0} 笔）</span>
+                </div>
+              </div>
+            </Card>
+          </Col>
+
+          <Col xs={24} md={8}>
+            <Card size="small" className="comparison-stat-card">
+              <Statistic
+                title="📊 支出对比"
+                value={consolidationData.totalExpenseActual}
+                precision={2}
+                prefix={<FallOutlined style={{ color: '#ff4d4f' }} />}
+                valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
+                suffix="RM"
+              />
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                  <span style={{ minWidth: 72 }}>预算</span>
+                  <span>RM {consolidationData.totalExpenseForecast.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                  <span style={{ minWidth: 72 }}>差异</span>
+                  <span>
+                    {consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '-' : '+'}RM {Math.abs(consolidationData.totalExpenseActual - consolidationData.totalExpenseForecast).toFixed(2)} {' '}
+                    ({(consolidationData.totalExpenseForecast > 0 ? ((consolidationData.totalExpenseActual / consolidationData.totalExpenseForecast) * 100).toFixed(1) : '0.0')}%)
+                  </span>
+                </div>
+                <Divider style={{ margin: '8px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                  <span style={{ minWidth: 72 }}>银行交易</span>
+                  <span>RM {(consolidationData.bankExpenseTotal ?? 0).toFixed(2)} （{consolidationData.bankExpenseCount ?? 0} 笔）</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
+                  <span style={{ minWidth: 72 }}>未核对</span>
+                  <span>RM {(consolidationData.eventExpenseUnreconciledTotal ?? 0).toFixed(2)} （{consolidationData.eventExpenseUnreconciledCount ?? 0} 笔）</span>
+                </div>
+                
+              </div>
+            </Card>
+          </Col>
+
+          <Col xs={24} md={8}>
+            <Card size="small" className="comparison-stat-card">
+              <Statistic
+                title="📊 净利润对比"
+                value={consolidationData.profitActual}
+                precision={2}
+                valueStyle={{ 
+                  color: consolidationData.profitActual >= 0 ? '#52c41a' : '#ff4d4f',
+                  fontSize: '20px'
+                }}
+                suffix="RM"
+              />
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                  <span style={{ minWidth: 72 }}>预测</span>
+                  <span>RM {consolidationData.profitForecast.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.profitActual >= consolidationData.profitForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                  <span style={{ minWidth: 72 }}>差异</span>
+                  <span>{consolidationData.profitActual >= consolidationData.profitForecast ? '+' : ''}RM {(consolidationData.profitActual - consolidationData.profitForecast).toFixed(2)}</span>
+                </div>
+                <Divider style={{ margin: '8px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
+                  <span style={{ minWidth: 72 }}>银行净额</span>
+                  <span>RM {((consolidationData.bankIncomeTotal ?? 0) - (consolidationData.bankExpenseTotal ?? 0)).toFixed(2)}（收入 {consolidationData.bankIncomeCount ?? 0} 笔 / 支出 {consolidationData.bankExpenseCount ?? 0} 笔）</span>
+                </div>
+                {(consolidationData.eventIncomeUnreconciledTotal !== undefined && consolidationData.eventExpenseUnreconciledTotal !== undefined) && (
+                  <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
+                    <span style={{ minWidth: 72 }}>未核对净额</span>
+                    <span>RM {((consolidationData.eventIncomeUnreconciledTotal ?? 0) - (consolidationData.eventExpenseUnreconciledTotal ?? 0)).toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      )}
+    </Space>
+  );
+
   return (
     <ErrorBoundary>
       <div className="event-account-management-page">
@@ -1126,135 +1244,25 @@ const EventAccountManagementPage: React.FC = () => {
           }
         />
 
-        {/* 财务预测与管理 */}
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* 对比统计卡片 */}
-          {consolidationData && (
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={8}>
-                <Card size="small" className="comparison-stat-card">
-                  <Statistic
-                    title="📊 收入对比"
-                    value={consolidationData.totalIncomeActual}
-                    precision={2}
-                    prefix={<RiseOutlined style={{ color: '#52c41a' }} />}
-                    valueStyle={{ color: '#52c41a', fontSize: '20px' }}
-                    suffix="RM"
-                  />
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
-                      <span style={{ minWidth: 72 }}>预测</span>
-                      <span>RM {consolidationData.totalIncomeForecast.toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
-                      <span style={{ minWidth: 72 }}>差异</span>
-                      <span>
-                        {consolidationData.totalIncomeActual >= consolidationData.totalIncomeForecast ? '+' : ''}RM {(consolidationData.totalIncomeActual - consolidationData.totalIncomeForecast).toFixed(2)} {' '}
-                        ({(consolidationData.totalIncomeForecast > 0 ? ((consolidationData.totalIncomeActual / consolidationData.totalIncomeForecast) * 100).toFixed(1) : '0.0')}%)
-                      </span>
-                    </div>
-                    <Divider style={{ margin: '8px 0' }} />
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
-                      <span style={{ minWidth: 72 }}>银行交易</span>
-                      <span>RM {(consolidationData.bankIncomeTotal ?? 0).toFixed(2)} （{consolidationData.bankIncomeCount ?? 0} 笔）</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
-                      <span style={{ minWidth: 72 }}>未核对</span>
-                      <span>RM {(consolidationData.eventIncomeUnreconciledTotal ?? 0).toFixed(2)}（{consolidationData.eventIncomeUnreconciledCount ?? 0} 笔）</span>
-                    </div>
-                  </div>
-                </Card>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Card size="small" className="comparison-stat-card">
-                  <Statistic
-                    title="📊 支出对比"
-                    value={consolidationData.totalExpenseActual}
-                    precision={2}
-                    prefix={<FallOutlined style={{ color: '#ff4d4f' }} />}
-                    valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
-                    suffix="RM"
-                  />
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
-                      <span style={{ minWidth: 72 }}>预算</span>
-                      <span>RM {consolidationData.totalExpenseForecast.toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
-                      <span style={{ minWidth: 72 }}>差异</span>
-                      <span>
-                        {consolidationData.totalExpenseActual <= consolidationData.totalExpenseForecast ? '-' : '+'}RM {Math.abs(consolidationData.totalExpenseActual - consolidationData.totalExpenseForecast).toFixed(2)} {' '}
-                        ({(consolidationData.totalExpenseForecast > 0 ? ((consolidationData.totalExpenseActual / consolidationData.totalExpenseForecast) * 100).toFixed(1) : '0.0')}%)
-                      </span>
-                    </div>
-                    <Divider style={{ margin: '8px 0' }} />
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
-                      <span style={{ minWidth: 72 }}>银行交易</span>
-                      <span>RM {(consolidationData.bankExpenseTotal ?? 0).toFixed(2)} （{consolidationData.bankExpenseCount ?? 0} 笔）</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
-                      <span style={{ minWidth: 72 }}>未核对</span>
-                      <span>RM {(consolidationData.eventExpenseUnreconciledTotal ?? 0).toFixed(2)} （{consolidationData.eventExpenseUnreconciledCount ?? 0} 笔）</span>
-                    </div>
-                    
-                  </div>
-                </Card>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Card size="small" className="comparison-stat-card">
-                  <Statistic
-                    title="📊 净利润对比"
-                    value={consolidationData.profitActual}
-                    precision={2}
-                    valueStyle={{ 
-                      color: consolidationData.profitActual >= 0 ? '#52c41a' : '#ff4d4f',
-                      fontSize: '20px'
-                    }}
-                    suffix="RM"
-                  />
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
-                      <span style={{ minWidth: 72 }}>预测</span>
-                      <span>RM {consolidationData.profitForecast.toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', fontVariantNumeric: 'tabular-nums' as any, color: consolidationData.profitActual >= consolidationData.profitForecast ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
-                      <span style={{ minWidth: 72 }}>差异</span>
-                      <span>{consolidationData.profitActual >= consolidationData.profitForecast ? '+' : ''}RM {(consolidationData.profitActual - consolidationData.profitForecast).toFixed(2)}</span>
-                    </div>
-                    <Divider style={{ margin: '8px 0' }} />
-                    <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' as any }}>
-                      <span style={{ minWidth: 72 }}>银行净额</span>
-                      <span>RM {((consolidationData.bankIncomeTotal ?? 0) - (consolidationData.bankExpenseTotal ?? 0)).toFixed(2)}（收入 {consolidationData.bankIncomeCount ?? 0} 笔 / 支出 {consolidationData.bankExpenseCount ?? 0} 笔）</span>
-                    </div>
-                    {(consolidationData.eventIncomeUnreconciledTotal !== undefined && consolidationData.eventExpenseUnreconciledTotal !== undefined) && (
-                      <div style={{ display: 'flex', justifyContent: 'left', fontSize: '13px', color: '#fa8c16', fontWeight: 500, fontVariantNumeric: 'tabular-nums' as any }}>
-                        <span style={{ minWidth: 72 }}>未核对净额</span>
-                        <span>RM {((consolidationData.eventIncomeUnreconciledTotal ?? 0) - (consolidationData.eventExpenseUnreconciledTotal ?? 0)).toFixed(2)}</span>
-                      </div>
-                    )}
-                    
-                    
-                  </div>
-                </Card>
-              </Col>
-            </Row>
-          )}
-          
-          {/* 财务计划与银行交易记录使用标签页显示 */}
+        {/* 🆕 顶层标签页 */}
+        <Card>
           <Tabs
-            defaultActiveKey="financial-plan"
+            activeKey={activeTab}
             onChange={(key) => {
-              setActiveInnerTab(key as string);
+              setActiveTab(key);
               if (key === 'all-event-transactions') {
                 loadAllUnreconciledEventTransactions();
               }
             }}
             items={[
               {
+                key: 'overview',
+                label: '📊 财务概览',
+                children: renderOverviewTab(),
+              },
+              {
                 key: 'financial-plan',
-                label: '📋 活动财务预算（Project Budget）',
+                label: '📋 活动财务预算',
                 children: (
                   <ActivityFinancialPlan
                     accountId={account?.id || ''}
@@ -1269,17 +1277,17 @@ const EventAccountManagementPage: React.FC = () => {
               },
               {
                 key: 'event-transactions',
-                label: '📊 活动账目记录（Event Transactions）',
+                label: '📊 活动账目记录',
                 children: (
                   <ActivityFinancialPlan
                     accountId={account?.id || ''}
                     items={convertedEventTransactions}
-                    additionalItems={planItems} // 🆕 继承活动财务预算的类别
-                    reconciliationMap={reconciliationMap} // 🆕 对账状态
-                    matchedBankTransactions={matchedBankTransactions} // 🆕 匹配的银行交易记录
-                    onReconcile={handleOpenReconcile} // 🆕 手动核对
-                    onCancelReconcile={handleCancelReconcile} // 🆕 取消核对
-                    onAutoReconcile={handleAutoReconcile} // 🆕 自动核对
+                    additionalItems={planItems}
+                    reconciliationMap={reconciliationMap}
+                    matchedBankTransactions={matchedBankTransactions}
+                    onReconcile={handleOpenReconcile}
+                    onCancelReconcile={handleCancelReconcile}
+                    onAutoReconcile={handleAutoReconcile}
                     loading={planLoading}
                     onAdd={handleAddEventTransaction}
                     onUpdate={handleUpdateEventTransaction}
@@ -1290,7 +1298,7 @@ const EventAccountManagementPage: React.FC = () => {
               },
               {
                 key: 'all-event-transactions',
-                label: '📊 总活动账目记录（All Event Transactions）',
+                label: '📊 总活动账目记录',
                 children: (
                   <ActivityFinancialPlan
                     accountId={account?.id || ''}
@@ -1312,7 +1320,7 @@ const EventAccountManagementPage: React.FC = () => {
               },
               {
                 key: 'bank-transactions',
-                label: '💰 银行交易记录（Bank Transaction Records）',
+                label: '💰 银行交易记录',
                 children: (
                   <BankTransactionList
                     accountId={account?.id || ''}
@@ -1325,7 +1333,7 @@ const EventAccountManagementPage: React.FC = () => {
               },
               {
                 key: 'account-consolidation',
-                label: '🔄 户口核对（Account Consolidation）',
+                label: '🔄 户口核对',
                 children: consolidationData ? (
                   <AccountConsolidation
                     data={consolidationData}
@@ -1347,7 +1355,7 @@ const EventAccountManagementPage: React.FC = () => {
               },
             ]}
           />
-        </Space>
+        </Card>
 
         {/* Add Transaction Modal */}
         <Modal
