@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge } from 'antd';
+import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge, Tabs } from 'antd';
 import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined, TeamOutlined, FilterOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -361,40 +361,48 @@ const DashboardPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 会员生日列表：单独一行置顶 */}
+      {/* 会员信息总览卡片 - 整合4个卡片 */}
       <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-        <Col xs={24} sm={24} md={24} lg={24}>
+        <Col xs={24}>
           <Card 
-            title={
-              <span>
-                <GiftOutlined style={{ marginRight: 8, color: '#f5222d' }} />
-                会员生日列表
-              </span>
-            } 
+            title="会员信息总览"
             className="content-card"
-            extra={
-              <Select
-                size="small"
-                value={birthdayViewMode === 'upcoming' ? 'upcoming' : selectedMonth}
-                onChange={(value) => {
-                  if (value === 'upcoming') {
-                    setBirthdayViewMode('upcoming');
-                  } else {
-                    setBirthdayViewMode('month');
-                    setSelectedMonth(value as number);
-                  }
-                }}
-                style={{ width: 140 }}
-              >
-                <Option value="upcoming">即将到来</Option>
-                {monthOptions.map(opt => (
-                  <Option key={opt.value} value={opt.value}>
-                    {opt.label.split(' ')[0]}
-                  </Option>
-                ))}
-              </Select>
-            }
           >
+            <Tabs
+              defaultActiveKey="birthdays"
+              items={[
+                {
+                  key: 'birthdays',
+                  label: (
+                    <span>
+                      <GiftOutlined style={{ marginRight: 8 }} />
+                      会员生日列表
+                    </span>
+                  ),
+                  children: (
+                    <div>
+                      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Select
+                          size="small"
+                          value={birthdayViewMode === 'upcoming' ? 'upcoming' : selectedMonth}
+                          onChange={(value) => {
+                            if (value === 'upcoming') {
+                              setBirthdayViewMode('upcoming');
+                            } else {
+                              setBirthdayViewMode('month');
+                              setSelectedMonth(value as number);
+                            }
+                          }}
+                          style={{ width: 140 }}
+                        >
+                          <Option value="upcoming">即将到来</Option>
+                          {monthOptions.map(opt => (
+                            <Option key={opt.value} value={opt.value}>
+                              {opt.label.split(' ')[0]}
+                            </Option>
+                          ))}
+                        </Select>
+                      </div>
             <div style={{
               maxHeight: 160,
               overflowX: 'auto',
@@ -456,54 +464,48 @@ const DashboardPage: React.FC = () => {
                 💡 共找到 {upcomingBirthdays.length} 位会员，显示前 10 位
               </div>
             )}
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 会员行业分布、兴趣分布、会员列表：三卡片同排 */}
-      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-        {/* 会员行业分布 */}
-        <Col xs={8} sm={8} md={8} lg={8}>
-          <Card 
-            title={
-              <span>
-                <ShopOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-                会员行业分布
-              </span>
-            } 
-            className="content-card"
-            extra={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Select
-                  size="small"
-                  placeholder="跨境业务"
-                  style={{ width: 130 }}
-                  value={(selectedAcceptIntl ?? 'ALL') as any}
-                  onChange={(val) => {
-                    if (val === 'ALL') {
-                      setSelectedAcceptIntl(null);
-                    } else {
-                      setSelectedAcceptIntl(val as any);
-                    }
-                  }}
-                  options={[
-                    { label: 'All', value: 'ALL' },
-                    { label: 'Yes', value: 'Yes' },
-                    { label: 'No', value: 'No' },
-                    { label: 'Willing to explore', value: 'Willing to explore' },
-                  ]}
-                />
-              <Badge 
-                count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
-                offset={[-5, 5]}
-              >
-                  <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                    {selectedAcceptIntl ? `筛: ${selectedAcceptIntl}` : '全部'}
-                  </span>
-              </Badge>
-              </div>
-            }
-          >
+                    </div>
+                  ),
+                },
+                {
+                  key: 'industry',
+                  label: (
+                    <span>
+                      <ShopOutlined style={{ marginRight: 8 }} />
+                      会员行业分布
+                    </span>
+                  ),
+                  children: (
+                    <div>
+                      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                        <Select
+                          size="small"
+                          placeholder="跨境业务"
+                          style={{ width: 130 }}
+                          value={(selectedAcceptIntl ?? 'ALL') as any}
+                          onChange={(val) => {
+                            if (val === 'ALL') {
+                              setSelectedAcceptIntl(null);
+                            } else {
+                              setSelectedAcceptIntl(val as any);
+                            }
+                          }}
+                          options={[
+                            { label: 'All', value: 'ALL' },
+                            { label: 'Yes', value: 'Yes' },
+                            { label: 'No', value: 'No' },
+                            { label: 'Willing to explore', value: 'Willing to explore' },
+                          ]}
+                        />
+                        <Badge 
+                          count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
+                          offset={[-5, 5]}
+                        >
+                          <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                            {selectedAcceptIntl ? `筛: ${selectedAcceptIntl}` : '全部'}
+                          </span>
+                        </Badge>
+                      </div>
             <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
             <List
               loading={listsLoading}
@@ -550,28 +552,27 @@ const DashboardPage: React.FC = () => {
               )}
             />
             </div>
-          </Card>
-        </Col>
-
-        {/* 会员兴趣分布 */}
-        <Col xs={8} sm={8} md={8} lg={8}>
-          <Card 
-            title={
-              <span>
-                <HeartOutlined style={{ marginRight: 8, color: '#52c41a' }} />
-                会员兴趣分布
-              </span>
-            } 
-            className="content-card"
-            extra={
-              <Badge 
-                count={selectedInterest ? <FilterOutlined style={{ color: '#52c41a' }} /> : 0}
-                offset={[-5, 5]}
-              >
-                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>
-              </Badge>
-            }
-          >
+                    </div>
+                  ),
+                },
+                {
+                  key: 'interest',
+                  label: (
+                    <span>
+                      <HeartOutlined style={{ marginRight: 8 }} />
+                      会员兴趣分布
+                    </span>
+                  ),
+                  children: (
+                    <div>
+                      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Badge 
+                          count={selectedInterest ? <FilterOutlined style={{ color: '#52c41a' }} /> : 0}
+                          offset={[-5, 5]}
+                        >
+                          <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>
+                        </Badge>
+                      </div>
             <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
             <List
               loading={listsLoading}
@@ -618,36 +619,36 @@ const DashboardPage: React.FC = () => {
               )}
             />
             </div>
-          </Card>
-        </Col>
-      {/* 🆕 会员列表卡片 */}
-        <Col xs={8} sm={8} md={8} lg={8}>
-          <Card 
-            title={
-              <span>
-                <TeamOutlined style={{ marginRight: 8, color: '#722ed1' }} />
-                会员列表
-                {(selectedIndustry || selectedInterest || selectedMemberId) && (
-                  <Tag color="blue" style={{ marginLeft: 12 }}>
-                    已筛选 {filteredMembers.length} / {members.length}
-                  </Tag>
-                )}
-              </span>
-            } 
-            className="content-card"
-            extra={
-              (selectedIndustry || selectedInterest || selectedMemberId) ? (
-                <Button 
-                  type="link" 
-                  size="small" 
-                  icon={<CloseCircleOutlined />}
-                  onClick={handleClearFilters}
-                >
-                  清除筛选
-                </Button>
-              ) : null
-            }
-          >
+                    </div>
+                  ),
+                },
+                {
+                  key: 'members',
+                  label: (
+                    <span>
+                      <TeamOutlined style={{ marginRight: 8 }} />
+                      会员列表
+                      {(selectedIndustry || selectedInterest || selectedMemberId) && (
+                        <Tag color="blue" style={{ marginLeft: 8 }}>
+                          已筛选 {filteredMembers.length} / {members.length}
+                        </Tag>
+                      )}
+                    </span>
+                  ),
+                  children: (
+                    <div>
+                      {(selectedIndustry || selectedInterest || selectedMemberId) && (
+                        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                          <Button 
+                            type="link" 
+                            size="small" 
+                            icon={<CloseCircleOutlined />}
+                            onClick={handleClearFilters}
+                          >
+                            清除筛选
+                          </Button>
+                        </div>
+                      )}
             {/* 筛选条件显示 */}
             {(selectedIndustry || selectedInterest) && (
               <div style={{ 
@@ -759,6 +760,11 @@ const DashboardPage: React.FC = () => {
                 💡 共找到 {filteredMembers.length} 位会员，显示前 20 位
               </div>
             )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
           </Card>
         </Col>
       </Row>
