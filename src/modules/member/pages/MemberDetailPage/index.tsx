@@ -938,149 +938,127 @@ const MemberDetailPage: React.FC = () => {
                 <Row gutter={ROW_GUTTER}>
                   <Col xs={24}>
                     <Card title="Leadership Development Pathway" bordered={true} style={{ marginBottom: 16 }}>
-                      <div style={{ position: 'relative', padding: '40px 20px 20px', overflowX: 'auto' }}>
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', minWidth: 'fit-content' }}>
-                          {/* Connecting Line - positioned at the center of dots (12px from top of 24px dot) */}
+                      <div style={{ position: 'relative', padding: '40px 12px 20px' }}>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                          {/* Connecting Line - positioned at the center of dots */}
                           <div style={{
                             position: 'absolute',
-                            left: 24,
-                            right: 12,
+                            left: '4%',
+                            right: '4%',
                             top: 12,
                             height: 3,
                             backgroundColor: '#1890ff',
                             zIndex: 1,
                           }} />
                           
-                          {/* New Member Starting Point */}
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-                            <div style={{
-                              width: 24,
-                              height: 24,
-                              borderRadius: '50%',
-                              backgroundColor: '#faad14',
-                              border: '3px solid #fff',
-                              boxShadow: '0 0 0 2px #1890ff',
-                            }} />
-                            <div style={{ marginTop: 8, fontSize: 12, color: '#666', textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 500 }}>
-                              New Member
-                            </div>
-                          </div>
-                          
-                          {/* Leadership Steps */}
-                          <div style={{ display: 'flex', alignItems: 'flex-start', marginLeft: 30, position: 'relative', zIndex: 2 }}>
-                            {[
-                              { label: 'Project Committee', color: '#ff7a00' },
-                              { label: 'Organising Chairperson', color: '#ff7a00' },
-                              { label: 'Commission Director', color: '#ff7a00' },
-                              { label: 'Board of Director', color: '#ff4d4f' },
-                              { label: 'Local President', color: '#ff4d4f' },
-                              { label: 'Area Officer', color: '#eb2f96' },
-                              { label: 'National Officer', color: '#722ed1' },
-                              { label: 'International Officer', color: '#722ed1' },
-                            ].map((step, index) => (
-                              <div key={index} style={{ 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center',
-                                width: 140,
-                                marginRight: 30,
+                          {/* All Steps - Using flex to distribute evenly */}
+                          {[
+                            { label: 'New Member', color: '#faad14', isStart: true },
+                            { label: 'Project Committee', color: '#ff7a00' },
+                            { label: 'Organising Chairperson', color: '#ff7a00' },
+                            { label: 'Commission Director', color: '#ff7a00' },
+                            { label: 'Board of Director', color: '#ff4d4f' },
+                            { label: 'Local President', color: '#ff4d4f' },
+                            { label: 'Area Officer', color: '#eb2f96' },
+                            { label: 'National Officer', color: '#722ed1' },
+                            { label: 'International Officer', color: '#722ed1' },
+                          ].map((step, index) => (
+                            <div key={index} style={{ 
+                              display: 'flex', 
+                              flexDirection: 'column', 
+                              alignItems: 'center',
+                              flex: 1,
+                              minWidth: 0,
+                              position: 'relative',
+                              zIndex: 10,
+                            }}>
+                              <div style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: '50%',
+                                backgroundColor: step.color,
+                                border: '3px solid #fff',
+                                boxShadow: step.isStart ? '0 0 0 2px #1890ff' : '0 0 0 2px #1890ff',
+                                position: 'relative',
+                                zIndex: 10,
+                              }} />
+                              <div style={{ 
+                                marginTop: 8, 
+                                fontSize: 10, 
+                                color: '#666', 
+                                textAlign: 'center', 
+                                width: '100%',
+                                lineHeight: 1.2,
+                                fontWeight: step.isStart ? 500 : 400,
+                                wordBreak: 'break-word',
+                                padding: '0 2px',
                               }}>
-                                <div style={{
-                                  width: 24,
-                                  height: 24,
-                                  borderRadius: '50%',
-                                  backgroundColor: step.color,
-                                  border: '3px solid #fff',
-                                  boxShadow: '0 0 0 2px #1890ff',
-                                  position: 'relative',
-                                  zIndex: 10,
-                                }} />
-                                <div style={{ 
-                                  marginTop: 8, 
-                                  fontSize: 11, 
-                                  color: '#666', 
-                                  textAlign: 'center', 
-                                  width: '100%',
-                                  lineHeight: 1.3,
-                                }}>
-                                  {step.label}
-                                </div>
+                                {step.label}
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
       </Card>
                   </Col>
                   <Col xs={24}>
                     <Card title="Trainer Development Pathway" bordered={true}>
-                      <div style={{ position: 'relative', padding: '40px 20px 20px', overflowX: 'auto' }}>
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', minWidth: 'fit-content' }}>
-                          {/* Connecting Line - positioned at the center of dots (12px from top of 24px dot) */}
+                      <div style={{ position: 'relative', padding: '40px 12px 20px' }}>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                          {/* Connecting Line - positioned at the center of dots */}
                           <div style={{
                             position: 'absolute',
-                            left: 24,
-                            right: 12,
+                            left: '6%',
+                            right: '6%',
                             top: 12,
                             height: 3,
                             backgroundColor: '#1890ff',
                             zIndex: 1,
                           }} />
                           
-                          {/* New Member Starting Point */}
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-                            <div style={{
-                              width: 24,
-                              height: 24,
-                              borderRadius: '50%',
-                              backgroundColor: '#faad14',
-                              border: '3px solid #fff',
-                              boxShadow: '0 0 0 2px #1890ff',
-                            }} />
-                            <div style={{ marginTop: 8, fontSize: 12, color: '#666', textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 500 }}>
-                              New Member
-                            </div>
-                          </div>
-                          
-                          {/* Trainer Steps */}
-                          <div style={{ display: 'flex', alignItems: 'flex-start', marginLeft: 30, position: 'relative', zIndex: 2 }}>
-                            {[
-                              { label: 'JCI Trainer', color: '#73d13d' },
-                              { label: 'JCI Malaysia Intermediate Trainer', color: '#389e0d' },
-                              { label: 'JCI Malaysia Certified Trainer', color: '#13c2c2' },
-                              { label: 'JCI Malaysia Principal Trainer', color: '#40a9ff' },
-                              { label: 'JCI Malaysia Master Trainer', color: '#40a9ff' },
-                            ].map((step, index) => (
-                              <div key={index} style={{ 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center',
-                                width: 160,
-                                marginRight: 30,
+                          {/* All Steps - Using flex to distribute evenly */}
+                          {[
+                            { label: 'New Member', color: '#faad14', isStart: true },
+                            { label: 'JCI Trainer', color: '#73d13d' },
+                            { label: 'JCI Malaysia Intermediate Trainer', color: '#389e0d' },
+                            { label: 'JCI Malaysia Certified Trainer', color: '#13c2c2' },
+                            { label: 'JCI Malaysia Principal Trainer', color: '#40a9ff' },
+                            { label: 'JCI Malaysia Master Trainer', color: '#40a9ff' },
+                          ].map((step, index) => (
+                            <div key={index} style={{ 
+                              display: 'flex', 
+                              flexDirection: 'column', 
+                              alignItems: 'center',
+                              flex: 1,
+                              minWidth: 0,
+                              position: 'relative',
+                              zIndex: 10,
+                            }}>
+                              <div style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: '50%',
+                                backgroundColor: step.color,
+                                border: '3px solid #fff',
+                                boxShadow: step.isStart ? '0 0 0 2px #1890ff' : '0 0 0 2px #1890ff',
+                                position: 'relative',
+                                zIndex: 10,
+                              }} />
+                              <div style={{ 
+                                marginTop: 8, 
+                                fontSize: 10, 
+                                color: '#666', 
+                                textAlign: 'center', 
+                                width: '100%',
+                                lineHeight: 1.2,
+                                fontWeight: step.isStart ? 500 : 400,
+                                wordBreak: 'break-word',
+                                padding: '0 2px',
                               }}>
-                                <div style={{
-                                  width: 24,
-                                  height: 24,
-                                  borderRadius: '50%',
-                                  backgroundColor: step.color,
-                                  border: '3px solid #fff',
-                                  boxShadow: '0 0 0 2px #1890ff',
-                                  position: 'relative',
-                                  zIndex: 10,
-                                }} />
-                                <div style={{ 
-                                  marginTop: 8, 
-                                  fontSize: 11, 
-                                  color: '#666', 
-                                  textAlign: 'center', 
-                                  width: '100%',
-                                  lineHeight: 1.3,
-                                }}>
-                                  {step.label}
-                                </div>
+                                {step.label}
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </Card>
