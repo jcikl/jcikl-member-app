@@ -14,6 +14,7 @@ import QuickAddEventTransactionPage from '@/pages/QuickAddEventTransactionPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
 import DataFieldSwapPage from '@/pages/DataFieldSwapPage';
+import DuplicateEmailCleanupPage from '@/pages/DuplicateEmailCleanupPage';
  
 // import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage'; // 已删除
 
@@ -104,6 +105,10 @@ export const router = createBrowserRouter(
           {
             path: 'data-field-swap',
             element: <DataFieldSwapPage />,
+          },
+          {
+            path: 'duplicate-email-cleanup',
+            element: <DuplicateEmailCleanupPage />,
           },
         ],
       },
