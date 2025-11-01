@@ -1177,6 +1177,63 @@ const EventAccountManagementPage: React.FC = () => {
           </Col>
         </Row>
       )}
+
+      {/* 🆕 嵌套标签页：财务详细数据 */}
+      <Tabs
+        activeKey={activeInnerTab}
+        onChange={(key) => setActiveInnerTab(key)}
+        items={[
+          {
+            key: 'financial-plan',
+            label: '📋 活动财务预算',
+            children: (
+              <ActivityFinancialPlan
+                accountId={account?.id || ''}
+                items={planItems}
+                loading={planLoading}
+                onAdd={handleAddPlan}
+                onUpdate={handleUpdatePlan}
+                onDelete={handleDeletePlan}
+                onRefresh={loadPlans}
+              />
+            ),
+          },
+          {
+            key: 'event-transactions',
+            label: '📊 活动账目记录',
+            children: (
+              <ActivityFinancialPlan
+                accountId={account?.id || ''}
+                items={convertedEventTransactions}
+                additionalItems={planItems}
+                reconciliationMap={reconciliationMap}
+                matchedBankTransactions={matchedBankTransactions}
+                onReconcile={handleOpenReconcile}
+                onCancelReconcile={handleCancelReconcile}
+                onAutoReconcile={handleAutoReconcile}
+                loading={planLoading}
+                onAdd={handleAddEventTransaction}
+                onUpdate={handleUpdateEventTransaction}
+                onDelete={handleDeleteEventTransaction}
+                onRefresh={loadEventTransactions}
+              />
+            ),
+          },
+          {
+            key: 'bank-transactions',
+            label: '💰 银行交易记录',
+            children: (
+              <BankTransactionList
+                accountId={account?.id || ''}
+                transactions={bankTransactions}
+                loading={loading}
+                onRefresh={loadBankTransactions}
+                onExport={() => message.info('导出功能开发中...')}
+              />
+            ),
+          },
+        ]}
+      />
     </Space>
   );
 
@@ -1261,42 +1318,6 @@ const EventAccountManagementPage: React.FC = () => {
                 children: renderOverviewTab(),
               },
               {
-                key: 'financial-plan',
-                label: '📋 活动财务预算',
-                children: (
-                  <ActivityFinancialPlan
-                    accountId={account?.id || ''}
-                    items={planItems}
-                    loading={planLoading}
-                    onAdd={handleAddPlan}
-                    onUpdate={handleUpdatePlan}
-                    onDelete={handleDeletePlan}
-                    onRefresh={loadPlans}
-                  />
-                ),
-              },
-              {
-                key: 'event-transactions',
-                label: '📊 活动账目记录',
-                children: (
-                  <ActivityFinancialPlan
-                    accountId={account?.id || ''}
-                    items={convertedEventTransactions}
-                    additionalItems={planItems}
-                    reconciliationMap={reconciliationMap}
-                    matchedBankTransactions={matchedBankTransactions}
-                    onReconcile={handleOpenReconcile}
-                    onCancelReconcile={handleCancelReconcile}
-                    onAutoReconcile={handleAutoReconcile}
-                    loading={planLoading}
-                    onAdd={handleAddEventTransaction}
-                    onUpdate={handleUpdateEventTransaction}
-                    onDelete={handleDeleteEventTransaction}
-                    onRefresh={loadEventTransactions}
-                  />
-                ),
-              },
-              {
                 key: 'all-event-transactions',
                 label: '📊 总活动账目记录',
                 children: (
@@ -1315,19 +1336,6 @@ const EventAccountManagementPage: React.FC = () => {
                     onUpdate={handleUpdateEventTransaction}
                     onDelete={handleDeleteEventTransaction}
                     onRefresh={loadAllUnreconciledEventTransactions}
-                  />
-                ),
-              },
-              {
-                key: 'bank-transactions',
-                label: '💰 银行交易记录',
-                children: (
-                  <BankTransactionList
-                    accountId={account?.id || ''}
-                    transactions={bankTransactions}
-                    loading={loading}
-                    onRefresh={loadBankTransactions}
-                    onExport={() => message.info('导出功能开发中...')}
                   />
                 ),
               },
