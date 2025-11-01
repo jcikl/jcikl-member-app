@@ -22,12 +22,14 @@ import {
   Tag,
   Progress,
   Typography,
+  Radio,
 } from 'antd';
 import {
   SwapOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   ReloadOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -40,33 +42,102 @@ import { db } from '@/services/firebase';
 const { Option } = Select;
 const { Text, Title } = Typography;
 
-// 可用的字段映射
+// 可用的字段映射 - 根据Member Collection完整结构
 const AVAILABLE_FIELDS = [
+  // === Profile Fields (个人信息) ===
+  { value: 'profile.name', label: '姓名 (profile.name)' },
+  { value: 'profile.email', label: '邮箱 (profile.email)' },
+  { value: 'profile.phone', label: '电话 (profile.phone)' },
+  { value: 'profile.alternativePhone', label: '备用电话 (profile.alternativePhone)' },
+  { value: 'profile.fullNameNric', label: '身份证全名 (profile.fullNameNric)' },
+  { value: 'profile.nricOrPassport', label: 'NRIC/护照 (profile.nricOrPassport)' },
+  { value: 'profile.gender', label: '性别 (profile.gender)' },
+  { value: 'profile.birthDate', label: '生日 (profile.birthDate)' },
+  { value: 'profile.nationality', label: '国籍 (profile.nationality)' },
+  { value: 'profile.race', label: '种族 (profile.race)' },
+  { value: 'profile.avatar', label: '头像 (profile.avatar)' },
+  { value: 'profile.profilePhotoUrl', label: '个人照片URL (profile.profilePhotoUrl)' },
+  { value: 'profile.linkedin', label: 'LinkedIn (profile.linkedin)' },
+  { value: 'profile.whatsappGroup', label: 'WhatsApp群组 (profile.whatsappGroup)' },
+  { value: 'profile.address', label: '地址 (profile.address)' },
+  
+  // === Clothing & Items (服装与物品) ===
   { value: 'profile.shirtSize', label: 'T恤尺寸 (profile.shirtSize)' },
   { value: 'profile.jacketSize', label: '夹克尺寸 (profile.jacketSize)' },
   { value: 'profile.nameToBeEmbroidered', label: '刺绣名称 (profile.nameToBeEmbroidered)' },
   { value: 'profile.tshirtReceivingStatus', label: 'T恤领取状态 (profile.tshirtReceivingStatus)' },
   { value: 'profile.cutting', label: '裁剪 (profile.cutting)' },
-  { value: 'profile.fullNameNric', label: '身份证全名 (profile.fullNameNric)' },
-  { value: 'profile.whatsappGroup', label: 'WhatsApp群组 (profile.whatsappGroup)' },
-  { value: 'profile.nricOrPassport', label: 'NRIC/护照 (profile.nricOrPassport)' },
-  { value: 'profile.alternativePhone', label: '备用电话 (profile.alternativePhone)' },
+  
+  // === Business Fields (商业信息) ===
   { value: 'business.company', label: '公司名称 (business.company)' },
+  { value: 'business.companyWebsite', label: '公司网站 (business.companyWebsite)' },
   { value: 'business.departmentAndPosition', label: '部门与职位 (business.departmentAndPosition)' },
+  { value: 'business.industryDetail', label: '行业详情 (business.industryDetail)' },
+  { value: 'business.companyIntro', label: '公司简介 (business.companyIntro)' },
+  { value: 'business.acceptInternationalBusiness', label: '接受国际业务 (business.acceptInternationalBusiness)' },
+  { value: 'business.ownIndustry', label: '所属行业 (business.ownIndustry)' },
+  { value: 'business.interestedIndustries', label: '感兴趣行业 (business.interestedIndustries)' },
+  { value: 'business.businessCategories', label: '业务类别 (business.businessCategories)' },
+  
+  // === JCI Career Fields (JCI会籍与发展) ===
   { value: 'jciCareer.memberId', label: '会员编号 (jciCareer.memberId)' },
-  { value: 'jciCareer.chapter', label: '分会 (jciCareer.chapter)' },
   { value: 'jciCareer.category', label: '会员类别 (jciCareer.category)' },
+  { value: 'jciCareer.membershipCategory', label: '会籍类别 (jciCareer.membershipCategory)' },
+  { value: 'jciCareer.chapter', label: '分会 (jciCareer.chapter)' },
+  { value: 'jciCareer.chapterId', label: '分会ID (jciCareer.chapterId)' },
+  { value: 'jciCareer.worldRegion', label: '世界地区 (jciCareer.worldRegion)' },
+  { value: 'jciCareer.countryRegion', label: '国家地区 (jciCareer.countryRegion)' },
+  { value: 'jciCareer.country', label: '国家 (jciCareer.country)' },
+  { value: 'jciCareer.jciPosition', label: 'JCI职位 (jciCareer.jciPosition)' },
+  { value: 'jciCareer.introducerId', label: '介绍人ID (jciCareer.introducerId)' },
+  { value: 'jciCareer.introducerName', label: '介绍人姓名 (jciCareer.introducerName)' },
+  { value: 'jciCareer.senatorId', label: '参议员编号 (jciCareer.senatorId)' },
+  { value: 'jciCareer.senatorScore', label: '参议员分数 (jciCareer.senatorScore)' },
+  { value: 'jciCareer.senatorVerified', label: '参议员验证状态 (jciCareer.senatorVerified)' },
+  { value: 'jciCareer.joinDate', label: '加入日期 (jciCareer.joinDate)' },
+  { value: 'jciCareer.termStartDate', label: '任期开始 (jciCareer.termStartDate)' },
+  { value: 'jciCareer.termEndDate', label: '任期结束 (jciCareer.termEndDate)' },
+  { value: 'jciCareer.positionStartDate', label: '职位开始 (jciCareer.positionStartDate)' },
+  { value: 'jciCareer.positionEndDate', label: '职位结束 (jciCareer.positionEndDate)' },
+  { value: 'jciCareer.vpDivision', label: 'VP部门 (jciCareer.vpDivision)' },
+  { value: 'jciCareer.isActingPosition', label: '是否代理职位 (jciCareer.isActingPosition)' },
+  { value: 'jciCareer.actingForPosition', label: '代理职位 (jciCareer.actingForPosition)' },
+  { value: 'jciCareer.isCurrentTerm', label: '是否当前任期 (jciCareer.isCurrentTerm)' },
+  { value: 'jciCareer.jciEventInterests', label: 'JCI活动兴趣 (jciCareer.jciEventInterests)' },
+  { value: 'jciCareer.jciBenefitsExpectation', label: 'JCI利益期望 (jciCareer.jciBenefitsExpectation)' },
+  { value: 'jciCareer.fiveYearsVision', label: '五年愿景 (jciCareer.fiveYearsVision)' },
+  { value: 'jciCareer.activeMemberHow', label: '成为活跃会员方式 (jciCareer.activeMemberHow)' },
+  
+  // === Payment & Endorsement (支付与背书) ===
+  { value: 'jciCareer.paymentDate', label: '付款日期 (jciCareer.paymentDate)' },
+  { value: 'jciCareer.paymentSlipUrl', label: '付款凭证URL (jciCareer.paymentSlipUrl)' },
+  { value: 'jciCareer.paymentVerifiedDate', label: '付款验证日期 (jciCareer.paymentVerifiedDate)' },
+  { value: 'jciCareer.endorsementDate', label: '背书日期 (jciCareer.endorsementDate)' },
+  
+  // === Top-level Fields (顶级字段) ===
+  { value: 'name', label: '姓名-顶级 (name)' },
+  { value: 'email', label: '邮箱-顶级 (email)' },
+  { value: 'phone', label: '电话-顶级 (phone)' },
+  { value: 'status', label: '状态 (status)' },
+  { value: 'level', label: '级别 (level)' },
+  { value: 'category', label: '类别-顶级 (category)' },
+  { value: 'accountType', label: '账户类型 (accountType)' },
+  { value: 'hobbies', label: '爱好 (hobbies)' },
 ];
+
+type OperationType = 'swap' | 'remove';
 
 interface SwapMapping {
   id: string;
+  operationType: OperationType; // 🆕 操作类型：对调 或 移除
   currentField: string;
-  targetField: string;
+  targetField: string; // 对调时使用，移除时可为空
 }
 
 interface PreviewItem {
   memberId: string;
   memberName: string;
+  operationType: OperationType; // 🆕 操作类型
   currentFieldValue: any;
   targetFieldValue: any;
   willSwap: boolean;
@@ -76,7 +147,7 @@ const DataFieldSwapPage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [swapMappings, setSwapMappings] = useState<SwapMapping[]>([
-    { id: '1', currentField: '', targetField: '' }
+    { id: '1', operationType: 'swap', currentField: '', targetField: '' }
   ]);
   const [previewData, setPreviewData] = useState<PreviewItem[]>([]);
   const [allAffectedMemberIds, setAllAffectedMemberIds] = useState<string[]>([]); // 🆕 所有受影响的会员ID
@@ -107,7 +178,7 @@ const DataFieldSwapPage: React.FC = () => {
   const addSwapMapping = () => {
     setSwapMappings([
       ...swapMappings,
-      { id: Date.now().toString(), currentField: '', targetField: '' }
+      { id: Date.now().toString(), operationType: 'swap', currentField: '', targetField: '' }
     ]);
   };
 
@@ -115,7 +186,7 @@ const DataFieldSwapPage: React.FC = () => {
     setSwapMappings(swapMappings.filter(m => m.id !== id));
   };
 
-  const updateSwapMapping = (id: string, field: 'currentField' | 'targetField', value: string) => {
+  const updateSwapMapping = (id: string, field: 'currentField' | 'targetField' | 'operationType', value: string) => {
     setSwapMappings(swapMappings.map(m => 
       m.id === id ? { ...m, [field]: value } : m
     ));
@@ -135,20 +206,26 @@ const DataFieldSwapPage: React.FC = () => {
   // 生成预览
   const handlePreview = async () => {
     // 验证映射配置
-    const invalidMappings = swapMappings.filter(m => !m.currentField || !m.targetField);
+    const invalidMappings = swapMappings.filter(m => {
+      if (!m.currentField) return true;
+      // 对调操作需要targetField，移除操作不需要
+      if (m.operationType === 'swap' && !m.targetField) return true;
+      return false;
+    });
+    
     if (invalidMappings.length > 0) {
-      message.error('请完整配置所有字段映射');
+      message.error('请完整配置所有操作');
       return;
     }
 
-    // 检查是否有重复映射
-    const currentFields = swapMappings.map(m => m.currentField);
-    const targetFields = swapMappings.map(m => m.targetField);
-    const hasDuplicates = new Set(currentFields).size !== currentFields.length || 
-                         new Set(targetFields).size !== targetFields.length;
+    // 检查是否有重复的字段（同一字段不能被多个操作使用）
+    const allFields = swapMappings.flatMap(m => 
+      m.operationType === 'swap' ? [m.currentField, m.targetField] : [m.currentField]
+    );
+    const hasDuplicates = new Set(allFields).size !== allFields.length;
     
     if (hasDuplicates) {
-      message.error('存在重复的字段映射');
+      message.error('存在重复的字段操作');
       return;
     }
 
@@ -164,30 +241,41 @@ const DataFieldSwapPage: React.FC = () => {
       snapshot.forEach(docSnapshot => {
         const memberData = { id: docSnapshot.id, ...docSnapshot.data() };
         
-        // 检查是否有任何字段需要对调
-        let hasSwap = false;
+        // 检查是否有任何字段需要操作
+        let hasOperation = false;
         swapMappings.forEach(mapping => {
           const currentValue = getNestedValue(memberData, mapping.currentField);
-          const targetValue = getNestedValue(memberData, mapping.targetField);
           
-          // 只有当值不同时才需要对调
-          if (currentValue !== targetValue && (currentValue || targetValue)) {
-            hasSwap = true;
+          if (mapping.operationType === 'swap') {
+            const targetValue = getNestedValue(memberData, mapping.targetField);
+            // 对调：只有当值不同时才需要操作
+            if (currentValue !== targetValue && (currentValue || targetValue)) {
+              hasOperation = true;
+            }
+          } else if (mapping.operationType === 'remove') {
+            // 移除：只要字段有值就需要操作
+            if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+              hasOperation = true;
+            }
           }
         });
 
-        if (hasSwap) {
+        if (hasOperation) {
           affectedCount++;
           affectedIds.push(docSnapshot.id); // 🆕 记录所有受影响的ID
           
-          // 只显示前100条预览（增加预览数量以便测试）
+          // 只显示前100条预览
           if (preview.length < 100) {
-            const currentFieldValue = getNestedValue(memberData, swapMappings[0].currentField);
-            const targetFieldValue = getNestedValue(memberData, swapMappings[0].targetField);
+            const firstMapping = swapMappings[0];
+            const currentFieldValue = getNestedValue(memberData, firstMapping.currentField);
+            const targetFieldValue = firstMapping.operationType === 'swap' 
+              ? getNestedValue(memberData, firstMapping.targetField) 
+              : null;
             
             preview.push({
               memberId: docSnapshot.id,
-              memberName: memberData.name || '未知',
+              memberName: (memberData as any).name || (memberData as any).profile?.name || '未知',
+              operationType: firstMapping.operationType,
               currentFieldValue,
               targetFieldValue,
               willSwap: true,
@@ -207,9 +295,15 @@ const DataFieldSwapPage: React.FC = () => {
       setPreviewVisible(true);
       
       if (affectedCount === 0) {
-        message.info('没有需要对调的数据');
+        message.info('没有需要操作的数据');
       } else {
-        message.success(`找到 ${affectedCount} 位会员需要对调字段`);
+        const hasSwap = swapMappings.some(m => m.operationType === 'swap');
+        const hasRemove = swapMappings.some(m => m.operationType === 'remove');
+        let msg = `找到 ${affectedCount} 位会员需要`;
+        if (hasSwap && hasRemove) msg += '对调和移除字段';
+        else if (hasSwap) msg += '对调字段';
+        else msg += '移除字段';
+        message.success(msg);
       }
     } catch (error) {
       console.error('Failed to preview swap:', error);
@@ -246,18 +340,24 @@ const DataFieldSwapPage: React.FC = () => {
         let needsUpdate = false;
         const updates: any = {};
 
-        // 对每个映射执行对调
+        // 对每个映射执行操作
         swapMappings.forEach(mapping => {
           const currentValue = getNestedValue(memberData, mapping.currentField);
-          const targetValue = getNestedValue(memberData, mapping.targetField);
           
-          // 只有当值不同时才对调
-          if (currentValue !== targetValue && (currentValue || targetValue)) {
-            needsUpdate = true;
-            // 将目标字段的值写入当前字段
-            updates[mapping.currentField] = targetValue ?? null;
-            // 将当前字段的值写入目标字段
-            updates[mapping.targetField] = currentValue ?? null;
+          if (mapping.operationType === 'swap') {
+            const targetValue = getNestedValue(memberData, mapping.targetField);
+            // 对调：只有当值不同时才操作
+            if (currentValue !== targetValue && (currentValue || targetValue)) {
+              needsUpdate = true;
+              updates[mapping.currentField] = targetValue ?? null;
+              updates[mapping.targetField] = currentValue ?? null;
+            }
+          } else if (mapping.operationType === 'remove') {
+            // 移除：只要字段有值就清空
+            if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+              needsUpdate = true;
+              updates[mapping.currentField] = null;
+            }
           }
         });
 
@@ -285,7 +385,14 @@ const DataFieldSwapPage: React.FC = () => {
       }
 
       setProgress(100);
-      message.success(`成功对调 ${processedCount} 位会员的字段数据！`);
+      const hasSwap = swapMappings.some(m => m.operationType === 'swap');
+      const hasRemove = swapMappings.some(m => m.operationType === 'remove');
+      let msg = `成功`;
+      if (hasSwap && hasRemove) msg += '对调和移除';
+      else if (hasSwap) msg += '对调';
+      else msg += '移除';
+      msg += ` ${processedCount} 位会员的字段数据！`;
+      message.success(msg);
       setPreviewVisible(false);
       
       // 重新加载预览
@@ -304,13 +411,17 @@ const DataFieldSwapPage: React.FC = () => {
   // 🆕 对调选中的记录
   const handleExecuteSelectedSwap = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('请先选择要对调的记录');
+      message.warning('请先选择要操作的记录');
       return;
     }
 
+    const hasSwap = swapMappings.some(m => m.operationType === 'swap');
+    const hasRemove = swapMappings.some(m => m.operationType === 'remove');
+    let actionText = hasSwap && hasRemove ? '对调和移除' : (hasSwap ? '对调' : '移除');
+
     Modal.confirm({
-      title: '确认对调选中记录？',
-      content: `即将对调选中的 ${selectedRowKeys.length} 位会员的 ${stats.swapCount} 个字段，此操作不可逆，请确认！`,
+      title: `确认${actionText}选中记录？`,
+      content: `即将${actionText}选中的 ${selectedRowKeys.length} 位会员的 ${stats.swapCount} 个字段，此操作不可逆，请确认！`,
       okText: '确认执行',
       cancelText: '取消',
       okType: 'danger',
@@ -320,13 +431,17 @@ const DataFieldSwapPage: React.FC = () => {
     });
   };
 
-  // 🆕 对调所有记录
+  // 🆕 对调/移除所有记录
   const handleExecuteAllSwap = async () => {
+    const hasSwap = swapMappings.some(m => m.operationType === 'swap');
+    const hasRemove = swapMappings.some(m => m.operationType === 'remove');
+    let actionText = hasSwap && hasRemove ? '对调和移除' : (hasSwap ? '对调' : '移除');
+
     Modal.confirm({
-      title: '确认对调所有记录？',
+      title: `确认${actionText}所有记录？`,
       content: (
         <div>
-          <p>即将对调 <Text strong style={{ color: '#ff4d4f' }}>{stats.affectedMembers}</Text> 位会员的 {stats.swapCount} 个字段。</p>
+          <p>即将{actionText} <Text strong style={{ color: '#ff4d4f' }}>{stats.affectedMembers}</Text> 位会员的 {stats.swapCount} 个字段。</p>
           <p style={{ color: '#ff4d4f', fontWeight: 'bold' }}>⚠️ 此操作不可逆，请确保已测试选中记录无误！</p>
         </div>
       ),
@@ -352,6 +467,18 @@ const DataFieldSwapPage: React.FC = () => {
       width: 120,
     },
     {
+      title: '操作类型',
+      dataIndex: 'operationType',
+      width: 100,
+      align: 'center',
+      render: (type: OperationType) => 
+        type === 'swap' ? (
+          <Tag color="blue">对调</Tag>
+        ) : (
+          <Tag color="orange">移除</Tag>
+        ),
+    },
+    {
       title: '当前字段值',
       dataIndex: 'currentFieldValue',
       width: 150,
@@ -361,24 +488,36 @@ const DataFieldSwapPage: React.FC = () => {
       title: '对调方向',
       width: 80,
       align: 'center',
-      render: () => <SwapOutlined style={{ fontSize: 16, color: '#1890ff' }} />,
+      render: (_, record) => 
+        record.operationType === 'swap' ? (
+          <SwapOutlined style={{ fontSize: 16, color: '#1890ff' }} />
+        ) : (
+          <Text type="danger">→ null</Text>
+        ),
     },
     {
       title: '目标字段值',
       dataIndex: 'targetFieldValue',
       width: 150,
-      render: (val) => <Tag color="green">{val || '-'}</Tag>,
+      render: (val, record) => 
+        record.operationType === 'swap' ? (
+          <Tag color="green">{val || '-'}</Tag>
+        ) : (
+          <Tag color="default">-</Tag>
+        ),
     },
     {
       title: '状态',
       dataIndex: 'willSwap',
-      width: 100,
+      width: 120,
       align: 'center',
-      render: (willSwap) => 
+      render: (willSwap, record) => 
         willSwap ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>将对调</Tag>
+          <Tag color="success" icon={<CheckCircleOutlined />}>
+            {record.operationType === 'swap' ? '将对调' : '将移除'}
+          </Tag>
         ) : (
-          <Tag>无需对调</Tag>
+          <Tag>无需操作</Tag>
         ),
     },
   ];
@@ -387,18 +526,18 @@ const DataFieldSwapPage: React.FC = () => {
     <ErrorBoundary>
       <div className="data-field-swap-page">
         <PageHeader
-          title="字段数据对调工具"
-          subtitle="Data Field Swap Tool"
+          title="字段数据操作工具"
+          subtitle="Data Field Operation Tool"
           breadcrumbs={[
             { title: '首页', path: '/' },
             { title: '系统设置', path: '/settings' },
-            { title: '字段数据对调' },
+            { title: '字段数据操作' },
           ]}
         />
 
         <Alert
           message="⚠️ 临时工具 - 谨慎使用"
-          description="此工具用于修复数据迁移中的字段对调错误。执行对调操作不可逆，请务必先预览确认后再执行！"
+          description="此工具用于批量操作会员字段数据（对调/移除）。所有操作不可逆，请务必先测试选中记录，确认无误后再执行全部！"
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
@@ -428,7 +567,7 @@ const DataFieldSwapPage: React.FC = () => {
           <Col xs={24} sm={8}>
             <Card>
               <Statistic
-                title="对调字段数"
+                title="操作字段数"
                 value={stats.swapCount}
                 prefix={<SwapOutlined />}
               />
@@ -440,66 +579,86 @@ const DataFieldSwapPage: React.FC = () => {
         <Card title="字段映射配置" style={{ marginBottom: 24 }}>
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             {swapMappings.map((mapping, index) => (
-              <Row key={mapping.id} gutter={16} align="middle">
-                <Col xs={24} sm={1}>
-                  <Text strong>{index}.</Text>
-                </Col>
-                <Col xs={24} sm={10}>
-                  <Select
-                    style={{ width: '100%' }}
-                    placeholder="选择当前字段"
-                    value={mapping.currentField}
-                    onChange={(value) => updateSwapMapping(mapping.id, 'currentField', value)}
-                    showSearch
-                    filterOption={(input, option) =>
-                      String(option?.label).toLowerCase().includes(input.toLowerCase())
-                    }
-                  >
-                    {AVAILABLE_FIELDS.map(field => (
-                      <Option key={field.value} value={field.value} label={field.label}>
-                        {field.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-                <Col xs={24} sm={2} style={{ textAlign: 'center' }}>
-                  <SwapOutlined style={{ fontSize: 20, color: '#1890ff' }} />
-                </Col>
-                <Col xs={24} sm={10}>
-                  <Select
-                    style={{ width: '100%' }}
-                    placeholder="选择目标字段"
-                    value={mapping.targetField}
-                    onChange={(value) => updateSwapMapping(mapping.id, 'targetField', value)}
-                    showSearch
-                    filterOption={(input, option) =>
-                      String(option?.label).toLowerCase().includes(input.toLowerCase())
-                    }
-                  >
-                    {AVAILABLE_FIELDS.map(field => (
-                      <Option key={field.value} value={field.value} label={field.label}>
-                        {field.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-                <Col xs={24} sm={1}>
-                  {swapMappings.length > 1 && (
-                    <Button
-                      type="text"
-                      danger
-                      onClick={() => removeSwapMapping(mapping.id)}
+              <Card key={mapping.id} size="small" style={{ marginBottom: 8 }}>
+                <Row gutter={16} align="middle">
+                  <Col xs={24} sm={24} style={{ marginBottom: 8 }}>
+                    <Space>
+                      <Text strong>操作 {index + 1}:</Text>
+                      <Radio.Group
+                        value={mapping.operationType}
+                        onChange={(e) => updateSwapMapping(mapping.id, 'operationType', e.target.value)}
+                        buttonStyle="solid"
+                        size="small"
+                      >
+                        <Radio.Button value="swap">
+                          <SwapOutlined /> 对调字段
+                        </Radio.Button>
+                        <Radio.Button value="remove">
+                          <DeleteOutlined /> 移除字段
+                        </Radio.Button>
+                      </Radio.Group>
+                      {swapMappings.length > 1 && (
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          onClick={() => removeSwapMapping(mapping.id)}
+                        >
+                          删除操作
+                        </Button>
+                      )}
+                    </Space>
+                  </Col>
+                  <Col xs={24} sm={mapping.operationType === 'swap' ? 11 : 23}>
+                    <Select
+                      style={{ width: '100%' }}
+                      placeholder={mapping.operationType === 'swap' ? "选择字段A" : "选择要移除的字段"}
+                      value={mapping.currentField}
+                      onChange={(value) => updateSwapMapping(mapping.id, 'currentField', value)}
+                      showSearch
+                      filterOption={(input, option) =>
+                        String(option?.label).toLowerCase().includes(input.toLowerCase())
+                      }
                     >
-                      删除
-                    </Button>
+                      {AVAILABLE_FIELDS.map(field => (
+                        <Option key={field.value} value={field.value} label={field.label}>
+                          {field.label}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Col>
+                  {mapping.operationType === 'swap' && (
+                    <>
+                      <Col xs={24} sm={2} style={{ textAlign: 'center' }}>
+                        <SwapOutlined style={{ fontSize: 20, color: '#1890ff' }} />
+                      </Col>
+                      <Col xs={24} sm={11}>
+                        <Select
+                          style={{ width: '100%' }}
+                          placeholder="选择字段B"
+                          value={mapping.targetField}
+                          onChange={(value) => updateSwapMapping(mapping.id, 'targetField', value)}
+                          showSearch
+                          filterOption={(input, option) =>
+                            String(option?.label).toLowerCase().includes(input.toLowerCase())
+                          }
+                        >
+                          {AVAILABLE_FIELDS.map(field => (
+                            <Option key={field.value} value={field.value} label={field.label}>
+                              {field.label}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Col>
+                    </>
                   )}
-                </Col>
-              </Row>
+                </Row>
+              </Card>
             ))}
 
             <Space>
               <Button onClick={addSwapMapping}>
-                + 添加映射
+                + 添加操作
               </Button>
               <Button
                 type="primary"
@@ -507,7 +666,7 @@ const DataFieldSwapPage: React.FC = () => {
                 loading={loading}
                 onClick={handlePreview}
               >
-                预览对调
+                预览操作
               </Button>
             </Space>
           </Space>
@@ -531,8 +690,8 @@ const DataFieldSwapPage: React.FC = () => {
               size="small"
               onClick={() => {
                 setSwapMappings([
-                  { id: '1', currentField: 'profile.shirtSize', targetField: 'profile.nameToBeEmbroidered' },
-                  { id: '2', currentField: 'profile.nameToBeEmbroidered', targetField: 'profile.shirtSize' },
+                  { id: '1', operationType: 'swap' as OperationType, currentField: 'profile.shirtSize', targetField: 'profile.nameToBeEmbroidered' },
+                  { id: '2', operationType: 'swap' as OperationType, currentField: 'profile.nameToBeEmbroidered', targetField: 'profile.shirtSize' },
                 ]);
                 message.success('已应用快捷配置');
               }}
