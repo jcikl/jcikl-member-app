@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge, message, Tabs, Empty } from 'antd';
+import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge, message, Tabs, Empty, Skeleton } from 'antd';
 import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined, TeamOutlined, FilterOutlined, CloseCircleOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -27,59 +27,6 @@ import type { Member, IndustryType } from '@/modules/member/types';
 import type { Event } from '@/modules/event/types';
 
 const { Option } = Select;
-
-// 🆕 缓存配置
-const CACHE_CONFIG = {
-  EVENT_FINANCIALS_KEY: 'dashboard_event_financials',
-  TTL: 10 * 60 * 1000, // 10分钟缓存过期时间
-};
-
-// 🆕 缓存工具函数
-const cacheUtils = {
-  // 保存到缓存
-  set: (key: string, data: any) => {
-    try {
-      const cacheData = {
-        data,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(key, JSON.stringify(cacheData));
-    } catch (error) {
-      console.warn('Failed to save cache:', error);
-    }
-  },
-  
-  // 从缓存获取
-  get: (key: string, ttl: number) => {
-    try {
-      const cached = localStorage.getItem(key);
-      if (!cached) return null;
-      
-      const cacheData = JSON.parse(cached);
-      const age = Date.now() - cacheData.timestamp;
-      
-      // 检查是否过期
-      if (age > ttl) {
-        localStorage.removeItem(key);
-        return null;
-      }
-      
-      return cacheData.data;
-    } catch (error) {
-      console.warn('Failed to read cache:', error);
-      return null;
-    }
-  },
-  
-  // 清除缓存
-  clear: (key: string) => {
-    try {
-      localStorage.removeItem(key);
-    } catch (error) {
-      console.warn('Failed to clear cache:', error);
-    }
-  },
-};
 
 /**
  * Dashboard Page
@@ -135,8 +82,9 @@ const DashboardPage: React.FC = () => {
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [selectedEventYear, setSelectedEventYear] = useState<string>(dayjs().year().toString());
-  const [cacheUsed, setCacheUsed] = useState(false);
-  const [cacheAge, setCacheAge] = useState<number>(0);
+  const [eventFinancialsLoaded, setEventFinancialsLoaded] = useState(false);
+  const [eventFinancialsLoading, setEventFinancialsLoading] = useState(false);
+  const [activeEventTab, setActiveEventTab] = useState<string>('upcoming');
 
   // 🆕 活动财务数据
   const [eventFinancials, setEventFinancials] = useState<Map<string, {
@@ -336,8 +284,8 @@ const DashboardPage: React.FC = () => {
         setUpcomingEvents(upcoming);
         setPastEvents(past);
 
-        // 加载所有活动的财务数据
-        await loadEventFinancials([...upcoming, ...past]);
+        // 🚀 优化: 不在初始加载时加载财务数据（懒加载）
+        // 财务数据会在用户首次查看活动数据中心时加载
       } catch (error) {
         console.error('Failed to fetch events:', error);
       } finally {
@@ -348,44 +296,64 @@ const DashboardPage: React.FC = () => {
     loadEvents();
   }, []);
 
-  // 🆕 加载活动财务数据（带缓存）
-  const loadEventFinancials = async (events: Event[], forceRefresh = false) => {
+  // 🆕 懒加载：首次显示活动数据时才加载财务数据
+  useEffect(() => {
+    const shouldLoadFinancials = 
+      !eventFinancialsLoaded && 
+      !eventFinancialsLoading &&
+      (upcomingEvents.length > 0 || pastEvents.length > 0);
+
+    if (shouldLoadFinancials) {
+      const loadFinancials = async () => {
+        setEventFinancialsLoading(true);
+        try {
+          await loadEventFinancials([...upcomingEvents, ...pastEvents]);
+          setEventFinancialsLoaded(true);
+        } finally {
+          setEventFinancialsLoading(false);
+        }
+      };
+      loadFinancials();
+    }
+  }, [upcomingEvents, pastEvents, eventFinancialsLoaded, eventFinancialsLoading]);
+
+  // 🆕 加载活动财务数据（批量优化版 + 缓存）
+  const loadEventFinancials = async (events: Event[]) => {
     try {
-      // 🆕 尝试从缓存读取
-      if (!forceRefresh) {
-        const cachedItem = localStorage.getItem(CACHE_CONFIG.EVENT_FINANCIALS_KEY);
-        if (cachedItem) {
-          try {
-            const cacheData = JSON.parse(cachedItem);
-            const age = Date.now() - cacheData.timestamp;
-            
-            // 检查是否过期
-            if (age <= CACHE_CONFIG.TTL) {
-              console.log(`✅ 从缓存加载活动财务数据 (${Math.floor(age / 1000)}秒前)`);
-              setEventFinancials(new Map(Object.entries(cacheData.data)));
-              setCacheUsed(true);
-              setCacheAge(age);
-              
-              // 🆕 后台静默刷新（检查缓存年龄，如果超过5分钟则后台更新）
-              if (age > 5 * 60 * 1000) {
-                console.log('🔄 缓存超过5分钟，后台静默刷新...');
-                setTimeout(() => loadEventFinancials(events, true), 2000);
-              }
-              return;
-            } else {
-              // 缓存过期，清除
-              localStorage.removeItem(CACHE_CONFIG.EVENT_FINANCIALS_KEY);
-              console.log('⏰ 缓存已过期，重新加载');
-            }
-          } catch (error) {
-            console.warn('缓存数据解析失败:', error);
+      const startTime = performance.now();
+      console.log(`⏱️ [优化] 开始加载 ${events.length} 个活动的财务数据...`);
+
+      // 🚀 优化4: 尝试从缓存加载
+      const cacheKey = 'dashboard_event_financials';
+      const cacheTimeKey = 'dashboard_event_financials_time';
+      const cacheTTL = 5 * 60 * 1000; // 5分钟缓存
+      
+      try {
+        const cachedData = sessionStorage.getItem(cacheKey);
+        const cachedTime = sessionStorage.getItem(cacheTimeKey);
+        
+        if (cachedData && cachedTime) {
+          const cacheAge = Date.now() - parseInt(cachedTime);
+          if (cacheAge < cacheTTL) {
+            const parsedData = JSON.parse(cachedData) as Record<string, {
+              budgetTotal: number;
+              accountIncomeTotal: number;
+              accountExpenseTotal: number;
+              bankIncomeTotal: number;
+              bankExpenseTotal: number;
+              netProfit: number;
+            }>;
+            const financialsMap = new Map(Object.entries(parsedData));
+            setEventFinancials(financialsMap);
+            console.log(`✅ [优化] 从缓存加载财务数据，缓存年龄: ${(cacheAge / 1000).toFixed(1)}秒`);
+            return;
+          } else {
+            console.log(`⏱️ [优化] 缓存已过期（${(cacheAge / 1000).toFixed(1)}秒 > ${cacheTTL / 1000}秒），重新加载...`);
           }
         }
+      } catch (err) {
+        console.warn('Failed to load from cache:', err);
       }
-
-      console.log('🔄 从服务器加载活动财务数据...');
-      setCacheUsed(false);
-      setCacheAge(0);
 
       const financialsMap = new Map<string, {
         budgetTotal: number;
@@ -396,7 +364,21 @@ const DashboardPage: React.FC = () => {
         netProfit: number;
       }>();
 
-      // 为每个活动并行加载财务数据
+      // 🚀 优化1: 批量查询所有 event-finance 银行交易（一次性）
+      let allEventFinanceTransactions: any[] = [];
+      try {
+        const eventFinanceResult = await getTransactions({
+          page: 1,
+          limit: 10000,
+          category: 'event-finance',
+        });
+        allEventFinanceTransactions = eventFinanceResult.data;
+        console.log(`✅ [优化] 批量加载 event-finance 交易: ${allEventFinanceTransactions.length} 笔`);
+      } catch (err) {
+        console.error('Failed to batch load event-finance transactions:', err);
+      }
+
+      // 🚀 优化2: 为每个活动并行加载财务数据
       await Promise.all(
         events.map(async (event) => {
           try {
@@ -418,43 +400,29 @@ const DashboardPage: React.FC = () => {
             });
 
             // 3. 获取银行交易记录
-            // 🆕 修复：使用 financialAccount 而不是 event.id
             const financialAccountId = event.financialAccount || event.id;
             let bankTransactions = await getTransactionsByEventId(financialAccountId);
             
-            // 方式2: 如果没有结果，通过 category='event-finance' 和 txAccount 查询
-            if (bankTransactions.length === 0) {
-              try {
-                const eventFinanceResult = await getTransactions({
-                  page: 1,
-                  limit: 10000,
-                  category: 'event-finance',
-                });
-                
-                // 客户端过滤：通过 txAccount 或 metadata.eventId 匹配
-                bankTransactions = eventFinanceResult.data.filter(tx => {
-                  const matchByAccount = tx.txAccount === event.name;
-                  const matchByMetadataId = (tx.metadata as any)?.eventId === event.id;
-                  const matchByMetadataName = (tx.metadata as any)?.eventName === event.name;
-                  return matchByAccount || matchByMetadataId || matchByMetadataName;
-                });
-              } catch (err) {
-                console.error('Failed to query event-finance transactions:', err);
-              }
+            // 🚀 优化3: 如果没有结果，从批量加载的数据中过滤（不再重新查询）
+            if (bankTransactions.length === 0 && allEventFinanceTransactions.length > 0) {
+              bankTransactions = allEventFinanceTransactions.filter(tx => {
+                const matchByAccount = tx.txAccount === event.name;
+                const matchByMetadataId = (tx.metadata as any)?.eventId === event.id;
+                const matchByMetadataName = (tx.metadata as any)?.eventName === event.name;
+                return matchByAccount || matchByMetadataId || matchByMetadataName;
+              });
             }
             
             let bankIncomeTotal = 0;
             let bankExpenseTotal = 0;
 
             bankTransactions.forEach(tx => {
-              // 🆕 跳过虚拟交易（子交易），避免重复计算
-              // 拆分交易：父交易已被拆分，实际金额由子交易体现
+              // 跳过虚拟交易（子交易），避免重复计算
               if (tx.isVirtual || tx.parentTransactionId) {
                 return;
               }
 
-              // 🆕 统计所有交易（不区分 pending/completed）
-              // 原因：仪表板应该显示所有财务活动，无论批准状态
+              // 统计所有交易（不区分 pending/completed）
               if (tx.transactionType === 'income') {
                 bankIncomeTotal += tx.amount;
               } else if (tx.transactionType === 'expense') {
@@ -490,12 +458,18 @@ const DashboardPage: React.FC = () => {
 
       setEventFinancials(financialsMap);
       
-      // 🆕 保存到缓存
-      const cacheData = Object.fromEntries(financialsMap);
-      cacheUtils.set(CACHE_CONFIG.EVENT_FINANCIALS_KEY, cacheData);
-      setCacheUsed(true);
-      setCacheAge(0);
-      console.log('💾 活动财务数据已缓存（10分钟有效）');
+      // 🚀 优化4: 保存到缓存
+      try {
+        const cacheData = Object.fromEntries(financialsMap);
+        sessionStorage.setItem('dashboard_event_financials', JSON.stringify(cacheData));
+        sessionStorage.setItem('dashboard_event_financials_time', Date.now().toString());
+        console.log(`💾 [优化] 财务数据已缓存（TTL: 5分钟）`);
+      } catch (err) {
+        console.warn('Failed to cache financial data:', err);
+      }
+      
+      const endTime = performance.now();
+      console.log(`✅ [优化] 财务数据加载完成，耗时: ${((endTime - startTime) / 1000).toFixed(2)}秒`);
     } catch (error) {
       console.error('Failed to load event financials:', error);
     }
@@ -587,58 +561,10 @@ const DashboardPage: React.FC = () => {
     setSelectedMemberId(null);
   };
 
-  // 🆕 刷新活动数据（活动数据中心专用）
-  const handleRefreshEvents = async () => {
-    setEventsLoading(true);
-    
-    // 🆕 清除缓存
-    cacheUtils.clear(CACHE_CONFIG.EVENT_FINANCIALS_KEY);
-    console.log('🗑️ 已清除活动财务缓存');
-    
-    try {
-      const now = new Date();
-      
-      // 重新加载活动
-      const result = await getEvents({
-        page: 1,
-        limit: 1000,
-      });
-
-      const upcoming: Event[] = [];
-      const past: Event[] = [];
-
-      result.data.forEach(event => {
-        const eventDate = new Date(event.startDate);
-        if (eventDate > now) {
-          upcoming.push(event);
-        } else {
-          past.push(event);
-        }
-      });
-
-      upcoming.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-      past.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-
-      setUpcomingEvents(upcoming);
-      setPastEvents(past);
-
-      // 强制刷新财务数据
-      await loadEventFinancials([...upcoming, ...past], true);
-      
-      message.success('活动数据已刷新');
-    } catch (error) {
-      console.error('刷新活动数据失败:', error);
-      message.error('刷新失败');
-    } finally {
-      setEventsLoading(false);
-    }
-  };
-
-  // 🆕 刷新所有数据（会员数据中心专用）
+  // 🆕 刷新所有数据
   const handleRefreshAll = async () => {
     setListsLoading(true);
     setMembersLoading(true);
-    
     try {
       // 刷新生日数据
       const birthdaysPromise = (async () => {
@@ -720,7 +646,7 @@ const DashboardPage: React.FC = () => {
     return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a)); // 降序排列
   }, [upcomingEvents, pastEvents]);
 
-  // 🆕 根据年份过滤 Past Events（useMemo 缓存）
+  // 🆕 根据年份过滤 Past Events
   const filteredPastEvents = React.useMemo(() => {
     if (selectedEventYear === 'all') {
       return pastEvents;
@@ -730,15 +656,6 @@ const DashboardPage: React.FC = () => {
       return eventYear === selectedEventYear;
     });
   }, [pastEvents, selectedEventYear]);
-
-  // 🆕 缓存活动统计计算
-  const eventStats = React.useMemo(() => {
-    return {
-      totalUpcoming: upcomingEvents.length,
-      totalPast: pastEvents.length,
-      totalFilteredPast: filteredPastEvents.length,
-    };
-  }, [upcomingEvents.length, pastEvents.length, filteredPastEvents.length]);
 
   return (
     <PermissionGuard permissions="DASHBOARD_VIEW">
@@ -809,18 +726,24 @@ const DashboardPage: React.FC = () => {
                 <Option key={year} value={year}>{year}</Option>
               ))}
             </Select>
-            {cacheUsed && (
-              <Tooltip title={`缓存有效期: ${Math.floor((CACHE_CONFIG.TTL - cacheAge) / 60000)}分钟`}>
-                <Tag color="green" style={{ margin: 0 }}>
-                  <span style={{ fontSize: 11 }}>💾 缓存加速</span>
-                </Tag>
-              </Tooltip>
-            )}
             <Button
               size="small"
               icon={<ReloadOutlined />}
-              onClick={handleRefreshEvents}
-              loading={eventsLoading}
+              loading={eventFinancialsLoading}
+              onClick={async () => {
+                // 清除缓存并重新加载
+                sessionStorage.removeItem('dashboard_event_financials');
+                sessionStorage.removeItem('dashboard_event_financials_time');
+                setEventFinancialsLoaded(false);
+                setEventFinancialsLoading(true);
+                try {
+                  await loadEventFinancials([...upcomingEvents, ...pastEvents]);
+                  setEventFinancialsLoaded(true);
+                  message.success('活动财务数据已刷新');
+                } finally {
+                  setEventFinancialsLoading(false);
+                }
+              }}
             >
               刷新
             </Button>
@@ -907,7 +830,17 @@ const DashboardPage: React.FC = () => {
                                     </div>
 
                                     {/* 右侧：财务对比 */}
-                                    {financial && (
+                                    {eventFinancialsLoading || !financial ? (
+                                      <div style={{
+                                        minWidth: 320,
+                                        padding: '12px 16px',
+                                        background: '#f0f5ff',
+                                        borderRadius: 6,
+                                        border: '1px solid #d9d9d9',
+                                      }}>
+                                        <Skeleton active paragraph={{ rows: 3 }} title={false} />
+                                      </div>
+                                    ) : (
                                       <div style={{
                                         minWidth: 320,
                                         padding: '12px 16px',
@@ -955,7 +888,8 @@ const DashboardPage: React.FC = () => {
                                           </div>
                                         </div>
                                       </div>
-                                    )}
+                                    )
+                                    }
                                   </div>
                                 </List.Item>
                               );
@@ -1045,7 +979,17 @@ const DashboardPage: React.FC = () => {
                                     </div>
 
                                     {/* 右侧：财务对比 */}
-                                    {financial && (
+                                    {eventFinancialsLoading || !financial ? (
+                                      <div style={{
+                                        minWidth: 320,
+                                        padding: '12px 16px',
+                                        background: '#fff7e6',
+                                        borderRadius: 6,
+                                        border: '1px solid #d9d9d9',
+                                      }}>
+                                        <Skeleton active paragraph={{ rows: 3 }} title={false} />
+                                      </div>
+                                    ) : (
                                       <div style={{
                                         minWidth: 320,
                                         padding: '12px 16px',
