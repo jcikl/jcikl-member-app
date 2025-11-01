@@ -7,16 +7,124 @@
 
 import React from 'react';
 import { Card, Row, Col } from 'antd';
+import type { Member } from '../../types';
 
 interface TaskProgressCardProps {
   layout?: 'horizontal' | 'vertical';
+  member?: Member | null;
 }
 
 /**
  * Task Progress Card Component
  */
-export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 'vertical' }) => {
+export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 'vertical', member }) => {
   const ROW_GUTTER: [number, number] = [16, 16];
+  
+  // 灰色（未完成状态）
+  const INACTIVE_COLOR = '#d9d9d9';
+  
+  /**
+   * 检查 Probation to Voting Member 步骤是否完成
+   */
+  const checkProbationToVotingSteps = () => {
+    if (!member) {
+      return [false, false, false, false, false, false];
+    }
+    
+    const tasks = member.profile.taskCompletions || [];
+    const activities = member.profile.activityParticipation || [];
+    
+    // 步骤 1: Probation Member (如果当前是 Probation Member 则为 true)
+    const isProbationMember = member.category === 'Probation Member' || member.jciCareer?.category === 'Probation Member';
+    
+    // 步骤 2: JCI Discover or New Member Orientation
+    const hasOrientation = tasks.some(t => 
+      t.taskName?.includes('JCI Discover') || 
+      t.taskName?.includes('New Member Orientation') ||
+      t.taskName?.includes('Orientation')
+    );
+    
+    // 步骤 3: Attended 2+ JCI KL Events
+    const jciKLEvents = activities.filter(a => 
+      a.eventName?.includes('JCI KL') || a.eventName?.includes('JCIKL')
+    );
+    const hasAttended2Events = jciKLEvents.length >= 2;
+    
+    // 步骤 4: 1x Project Committee or Organising Chairman
+    const hasCommitteeRole = activities.some(a => 
+      a.role?.includes('Committee') || 
+      a.role?.includes('Chairman') ||
+      a.role?.includes('Chairperson')
+    );
+    
+    // 步骤 5: Attended 1+ BOD Meeting
+    const hasBODMeeting = activities.some(a => 
+      a.eventName?.includes('BOD') || 
+      a.eventName?.includes('Board') ||
+      a.eventName?.includes('Board of Director')
+    );
+    
+    // 步骤 6: Voting Member (如果当前是 Official Member 则为 true)
+    const isVotingMember = member.category === 'Official Member' || member.jciCareer?.category === 'Official Member';
+    
+    return [
+      isProbationMember,
+      hasOrientation,
+      hasAttended2Events,
+      hasCommitteeRole,
+      hasBODMeeting,
+      isVotingMember
+    ];
+  };
+  
+  /**
+   * 检查 Leadership 步骤是否完成
+   */
+  const checkLeadershipSteps = () => {
+    if (!member) {
+      return Array(9).fill(false);
+    }
+    
+    const positions = member.profile.jciPosition?.split(',').map(p => p.trim()) || [];
+    const activities = member.profile.activityParticipation || [];
+    
+    return [
+      true, // New Member - always true if member exists
+      positions.some(p => p.includes('Committee')),
+      positions.some(p => p.includes('Chairman') || p.includes('Chairperson')),
+      positions.some(p => p.includes('Director') && !p.includes('Board')),
+      positions.some(p => p.includes('Board') || p.includes('BOD')),
+      positions.some(p => p.includes('President')),
+      positions.some(p => p.includes('Area')),
+      positions.some(p => p.includes('National')),
+      positions.some(p => p.includes('International') || p.includes('JCI World')),
+    ];
+  };
+  
+  /**
+   * 检查 Trainer 步骤是否完成
+   */
+  const checkTrainerSteps = () => {
+    if (!member) {
+      return Array(6).fill(false);
+    }
+    
+    const positions = member.profile.jciPosition?.split(',').map(p => p.trim()) || [];
+    const tasks = member.profile.taskCompletions || [];
+    
+    return [
+      true, // New Member - always true if member exists
+      positions.some(p => p.includes('Trainer')) || tasks.some(t => t.taskName?.includes('JCI Trainer')),
+      tasks.some(t => t.taskName?.includes('Intermediate Trainer')),
+      tasks.some(t => t.taskName?.includes('Certified Trainer')),
+      tasks.some(t => t.taskName?.includes('Principal Trainer')),
+      tasks.some(t => t.taskName?.includes('Master Trainer')),
+    ];
+  };
+  
+  const probationSteps = checkProbationToVotingSteps();
+  const leadershipSteps = checkLeadershipSteps();
+  const trainerSteps = checkTrainerSteps();
 
   return (
     <Row gutter={ROW_GUTTER}>
@@ -38,13 +146,16 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
               
               {/* All Steps - Using flex to distribute evenly */}
               {[
-                { label: 'Probation Member', color: '#faad14', isStart: true },
-                { label: 'JCI Discover or New Member Orientation', color: '#1890ff' },
-                { label: 'Attended 2+ JCI KL Events', color: '#1890ff' },
-                { label: '1x Project Committee or Organising Chairman', color: '#1890ff' },
-                { label: 'Attended 1+ BOD Meeting', color: '#1890ff' },
-                { label: 'Voting Member', color: '#52c41a', isEnd: true },
-              ].map((step, index) => (
+                { label: 'Probation Member', activeColor: '#faad14', isStart: true },
+                { label: 'JCI Discover or New Member Orientation', activeColor: '#1890ff' },
+                { label: 'Attended 2+ JCI KL Events', activeColor: '#1890ff' },
+                { label: '1x Project Committee or Organising Chairman', activeColor: '#1890ff' },
+                { label: 'Attended 1+ BOD Meeting', activeColor: '#1890ff' },
+                { label: 'Voting Member', activeColor: '#52c41a', isEnd: true },
+              ].map((step, index) => {
+                const isCompleted = probationSteps[index];
+                const dotColor = isCompleted ? step.activeColor : INACTIVE_COLOR;
+                return (
                 <div key={index} style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
@@ -58,27 +169,28 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
                     width: 24,
                     height: 24,
                     borderRadius: '50%',
-                    backgroundColor: step.color,
+                    backgroundColor: dotColor,
                     border: '3px solid #fff',
-                    boxShadow: step.isStart || step.isEnd ? '0 0 0 2px #52c41a' : '0 0 0 2px #52c41a',
+                    boxShadow: (step.isStart || step.isEnd) && isCompleted ? '0 0 0 2px #52c41a' : '0 0 0 2px #e8e8e8',
                     position: 'relative',
                     zIndex: 10,
                   }} />
                   <div style={{ 
                     marginTop: 8, 
                     fontSize: 10, 
-                    color: '#666', 
+                    color: isCompleted ? '#666' : '#bfbfbf', 
                     textAlign: 'center', 
                     width: '100%',
                     lineHeight: 1.2,
-                    fontWeight: (step.isStart || step.isEnd) ? 600 : 400,
+                    fontWeight: (step.isStart || step.isEnd) && isCompleted ? 600 : 400,
                     wordBreak: 'break-word',
                     padding: '0 2px',
                   }}>
                     {step.label}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         </Card>
@@ -101,16 +213,19 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
               
               {/* All Steps - Using flex to distribute evenly */}
               {[
-                { label: 'New Member', color: '#faad14', isStart: true },
-                { label: 'Project Committee', color: '#ff7a00' },
-                { label: 'Organising Chairperson', color: '#ff7a00' },
-                { label: 'Commission Director', color: '#ff7a00' },
-                { label: 'Board of Director', color: '#ff4d4f' },
-                { label: 'Local President', color: '#ff4d4f' },
-                { label: 'Area Officer', color: '#eb2f96' },
-                { label: 'National Officer', color: '#722ed1' },
-                { label: 'International Officer', color: '#722ed1' },
-              ].map((step, index) => (
+                { label: 'New Member', activeColor: '#faad14', isStart: true },
+                { label: 'Project Committee', activeColor: '#ff7a00' },
+                { label: 'Organising Chairperson', activeColor: '#ff7a00' },
+                { label: 'Commission Director', activeColor: '#ff7a00' },
+                { label: 'Board of Director', activeColor: '#ff4d4f' },
+                { label: 'Local President', activeColor: '#ff4d4f' },
+                { label: 'Area Officer', activeColor: '#eb2f96' },
+                { label: 'National Officer', activeColor: '#722ed1' },
+                { label: 'International Officer', activeColor: '#722ed1' },
+              ].map((step, index) => {
+                const isCompleted = leadershipSteps[index];
+                const dotColor = isCompleted ? step.activeColor : INACTIVE_COLOR;
+                return (
                 <div key={index} style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
@@ -124,27 +239,28 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
                     width: 24,
                     height: 24,
                     borderRadius: '50%',
-                    backgroundColor: step.color,
+                    backgroundColor: dotColor,
                     border: '3px solid #fff',
-                    boxShadow: step.isStart ? '0 0 0 2px #1890ff' : '0 0 0 2px #1890ff',
+                    boxShadow: isCompleted ? '0 0 0 2px #1890ff' : '0 0 0 2px #e8e8e8',
                     position: 'relative',
                     zIndex: 10,
                   }} />
                   <div style={{ 
                     marginTop: 8, 
                     fontSize: 10, 
-                    color: '#666', 
+                    color: isCompleted ? '#666' : '#bfbfbf', 
                     textAlign: 'center', 
                     width: '100%',
                     lineHeight: 1.2,
-                    fontWeight: step.isStart ? 500 : 400,
+                    fontWeight: step.isStart && isCompleted ? 500 : 400,
                     wordBreak: 'break-word',
                     padding: '0 2px',
                   }}>
                     {step.label}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         </Card>
@@ -166,13 +282,16 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
               
               {/* All Steps - Using flex to distribute evenly */}
               {[
-                { label: 'New Member', color: '#faad14', isStart: true },
-                { label: 'JCI Trainer', color: '#73d13d' },
-                { label: 'JCI Malaysia Intermediate Trainer', color: '#389e0d' },
-                { label: 'JCI Malaysia Certified Trainer', color: '#13c2c2' },
-                { label: 'JCI Malaysia Principal Trainer', color: '#40a9ff' },
-                { label: 'JCI Malaysia Master Trainer', color: '#40a9ff' },
-              ].map((step, index) => (
+                { label: 'New Member', activeColor: '#faad14', isStart: true },
+                { label: 'JCI Trainer', activeColor: '#73d13d' },
+                { label: 'JCI Malaysia Intermediate Trainer', activeColor: '#389e0d' },
+                { label: 'JCI Malaysia Certified Trainer', activeColor: '#13c2c2' },
+                { label: 'JCI Malaysia Principal Trainer', activeColor: '#40a9ff' },
+                { label: 'JCI Malaysia Master Trainer', activeColor: '#40a9ff' },
+              ].map((step, index) => {
+                const isCompleted = trainerSteps[index];
+                const dotColor = isCompleted ? step.activeColor : INACTIVE_COLOR;
+                return (
                 <div key={index} style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
@@ -186,27 +305,28 @@ export const TaskProgressCard: React.FC<TaskProgressCardProps> = ({ layout = 've
                     width: 24,
                     height: 24,
                     borderRadius: '50%',
-                    backgroundColor: step.color,
+                    backgroundColor: dotColor,
                     border: '3px solid #fff',
-                    boxShadow: step.isStart ? '0 0 0 2px #1890ff' : '0 0 0 2px #1890ff',
+                    boxShadow: isCompleted ? '0 0 0 2px #1890ff' : '0 0 0 2px #e8e8e8',
                     position: 'relative',
                     zIndex: 10,
                   }} />
                   <div style={{ 
                     marginTop: 8, 
                     fontSize: 10, 
-                    color: '#666', 
+                    color: isCompleted ? '#666' : '#bfbfbf', 
                     textAlign: 'center', 
                     width: '100%',
                     lineHeight: 1.2,
-                    fontWeight: step.isStart ? 500 : 400,
+                    fontWeight: step.isStart && isCompleted ? 500 : 400,
                     wordBreak: 'break-word',
                     padding: '0 2px',
                   }}>
                     {step.label}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         </Card>

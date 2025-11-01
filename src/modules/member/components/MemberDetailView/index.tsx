@@ -1534,7 +1534,7 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
             {
               key: 'tasks',
               label: '任务',
-              children: <TaskProgressCard />,
+              children: <TaskProgressCard member={member} />,
             },
             {
               key: 'member-fees',
