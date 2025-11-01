@@ -23,6 +23,7 @@ import {
   Progress,
   Typography,
   Radio,
+  Input,
 } from 'antd';
 import {
   SwapOutlined,
@@ -30,6 +31,8 @@ import {
   ExclamationCircleOutlined,
   ReloadOutlined,
   DeleteOutlined,
+  CheckOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -125,13 +128,14 @@ const AVAILABLE_FIELDS = [
   { value: 'hobbies', label: '爱好 (hobbies)' },
 ];
 
-type OperationType = 'swap' | 'remove';
+type OperationType = 'swap' | 'remove' | 'write';
 
 interface SwapMapping {
   id: string;
-  operationType: OperationType; // 🆕 操作类型：对调 或 移除
+  operationType: OperationType; // 🆕 操作类型：对调、移除、写入
   currentField: string;
-  targetField: string; // 对调时使用，移除时可为空
+  targetField: string; // 对调时使用，移除/写入时可为空
+  writeValue?: string; // 🆕 写入时使用的值
 }
 
 interface PreviewItem {
@@ -140,6 +144,7 @@ interface PreviewItem {
   operationType: OperationType; // 🆕 操作类型
   currentFieldValue: any;
   targetFieldValue: any;
+  writeValue?: string; // 🆕 写入值
   willSwap: boolean;
 }
 
@@ -147,7 +152,7 @@ const DataFieldSwapPage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [swapMappings, setSwapMappings] = useState<SwapMapping[]>([
-    { id: '1', operationType: 'swap', currentField: '', targetField: '' }
+    { id: '1', operationType: 'swap', currentField: '', targetField: '', writeValue: '' }
   ]);
   const [previewData, setPreviewData] = useState<PreviewItem[]>([]);
   const [allAffectedMemberIds, setAllAffectedMemberIds] = useState<string[]>([]); // 🆕 所有受影响的会员ID
@@ -178,7 +183,7 @@ const DataFieldSwapPage: React.FC = () => {
   const addSwapMapping = () => {
     setSwapMappings([
       ...swapMappings,
-      { id: Date.now().toString(), operationType: 'swap', currentField: '', targetField: '' }
+      { id: Date.now().toString(), operationType: 'swap', currentField: '', targetField: '', writeValue: '' }
     ]);
   };
 
@@ -186,7 +191,7 @@ const DataFieldSwapPage: React.FC = () => {
     setSwapMappings(swapMappings.filter(m => m.id !== id));
   };
 
-  const updateSwapMapping = (id: string, field: 'currentField' | 'targetField' | 'operationType', value: string) => {
+  const updateSwapMapping = (id: string, field: 'currentField' | 'targetField' | 'operationType' | 'writeValue', value: string) => {
     setSwapMappings(swapMappings.map(m => 
       m.id === id ? { ...m, [field]: value } : m
     ));
@@ -208,8 +213,10 @@ const DataFieldSwapPage: React.FC = () => {
     // 验证映射配置
     const invalidMappings = swapMappings.filter(m => {
       if (!m.currentField) return true;
-      // 对调操作需要targetField，移除操作不需要
+      // 对调操作需要targetField
       if (m.operationType === 'swap' && !m.targetField) return true;
+      // 写入操作需要writeValue
+      if (m.operationType === 'write' && (m.writeValue === undefined || m.writeValue === '')) return true;
       return false;
     });
     
@@ -257,6 +264,11 @@ const DataFieldSwapPage: React.FC = () => {
             if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
               hasOperation = true;
             }
+          } else if (mapping.operationType === 'write') {
+            // 写入：只要当前值与要写入的值不同就需要操作
+            if (String(currentValue || '') !== String(mapping.writeValue || '')) {
+              hasOperation = true;
+            }
           }
         });
 
@@ -277,6 +289,7 @@ const DataFieldSwapPage: React.FC = () => {
             operationType: firstMapping.operationType,
             currentFieldValue,
             targetFieldValue,
+            writeValue: firstMapping.writeValue,
             willSwap: true,
           });
         }
@@ -297,11 +310,13 @@ const DataFieldSwapPage: React.FC = () => {
       } else {
         const hasSwap = swapMappings.some(m => m.operationType === 'swap');
         const hasRemove = swapMappings.some(m => m.operationType === 'remove');
-        let msg = `找到 ${affectedCount} 位会员需要`;
-        if (hasSwap && hasRemove) msg += '对调和移除字段';
-        else if (hasSwap) msg += '对调字段';
-        else msg += '移除字段';
-        msg += `（已加载全部 ${preview.length} 条预览记录）`;
+        const hasWrite = swapMappings.some(m => m.operationType === 'write');
+        const operations = [
+          hasSwap && '对调',
+          hasRemove && '移除',
+          hasWrite && '写入'
+        ].filter(Boolean).join('和');
+        let msg = `找到 ${affectedCount} 位会员需要${operations}字段（已加载全部 ${preview.length} 条预览记录）`;
         message.success(msg);
       }
     } catch (error) {
@@ -357,6 +372,29 @@ const DataFieldSwapPage: React.FC = () => {
               needsUpdate = true;
               updates[mapping.currentField] = null;
             }
+          } else if (mapping.operationType === 'write') {
+            // 写入：只要当前值与要写入的值不同就操作
+            const writeVal = mapping.writeValue || '';
+            if (String(currentValue || '') !== writeVal) {
+              needsUpdate = true;
+              // 处理特殊类型（数组、布尔值等）
+              let finalValue: any = writeVal;
+              
+              // 如果字段名包含这些关键词，尝试转换为数组
+              if (mapping.currentField.includes('Industry') || mapping.currentField.includes('Categories')) {
+                finalValue = writeVal ? writeVal.split(',').map(s => s.trim()).filter(s => s) : [];
+              }
+              // 布尔值处理
+              else if (writeVal === 'true' || writeVal === 'false') {
+                finalValue = writeVal === 'true';
+              }
+              // 数字处理
+              else if (!isNaN(Number(writeVal)) && writeVal !== '') {
+                finalValue = Number(writeVal);
+              }
+              
+              updates[mapping.currentField] = finalValue;
+            }
           }
         });
 
@@ -386,12 +424,13 @@ const DataFieldSwapPage: React.FC = () => {
       setProgress(100);
       const hasSwap = swapMappings.some(m => m.operationType === 'swap');
       const hasRemove = swapMappings.some(m => m.operationType === 'remove');
-      let msg = `成功`;
-      if (hasSwap && hasRemove) msg += '对调和移除';
-      else if (hasSwap) msg += '对调';
-      else msg += '移除';
-      msg += ` ${processedCount} 位会员的字段数据！`;
-      message.success(msg);
+      const hasWrite = swapMappings.some(m => m.operationType === 'write');
+      const operations = [
+        hasSwap && '对调',
+        hasRemove && '移除',
+        hasWrite && '写入'
+      ].filter(Boolean).join('和');
+      message.success(`成功${operations} ${processedCount} 位会员的字段数据！`);
       setPreviewVisible(false);
       
       // 重新加载预览
@@ -416,11 +455,16 @@ const DataFieldSwapPage: React.FC = () => {
 
     const hasSwap = swapMappings.some(m => m.operationType === 'swap');
     const hasRemove = swapMappings.some(m => m.operationType === 'remove');
-    let actionText = hasSwap && hasRemove ? '对调和移除' : (hasSwap ? '对调' : '移除');
+    const hasWrite = swapMappings.some(m => m.operationType === 'write');
+    const operations = [
+      hasSwap && '对调',
+      hasRemove && '移除',
+      hasWrite && '写入'
+    ].filter(Boolean).join('和');
 
     Modal.confirm({
-      title: `确认${actionText}选中记录？`,
-      content: `即将${actionText}选中的 ${selectedRowKeys.length} 位会员的 ${stats.swapCount} 个字段，此操作不可逆，请确认！`,
+      title: `确认${operations}选中记录？`,
+      content: `即将${operations}选中的 ${selectedRowKeys.length} 位会员的 ${stats.swapCount} 个字段，此操作不可逆，请确认！`,
       okText: '确认执行',
       cancelText: '取消',
       okType: 'danger',
@@ -430,17 +474,22 @@ const DataFieldSwapPage: React.FC = () => {
     });
   };
 
-  // 🆕 对调/移除所有记录
+  // 🆕 对调/移除/写入所有记录
   const handleExecuteAllSwap = async () => {
     const hasSwap = swapMappings.some(m => m.operationType === 'swap');
     const hasRemove = swapMappings.some(m => m.operationType === 'remove');
-    let actionText = hasSwap && hasRemove ? '对调和移除' : (hasSwap ? '对调' : '移除');
+    const hasWrite = swapMappings.some(m => m.operationType === 'write');
+    const operations = [
+      hasSwap && '对调',
+      hasRemove && '移除',
+      hasWrite && '写入'
+    ].filter(Boolean).join('和');
 
     Modal.confirm({
-      title: `确认${actionText}所有记录？`,
+      title: `确认${operations}所有记录？`,
       content: (
         <div>
-          <p>即将{actionText} <Text strong style={{ color: '#ff4d4f' }}>{stats.affectedMembers}</Text> 位会员的 {stats.swapCount} 个字段。</p>
+          <p>即将{operations} <Text strong style={{ color: '#ff4d4f' }}>{stats.affectedMembers}</Text> 位会员的 {stats.swapCount} 个字段。</p>
           <p style={{ color: '#ff4d4f', fontWeight: 'bold' }}>⚠️ 此操作不可逆，请确保已测试选中记录无误！</p>
         </div>
       ),
@@ -473,8 +522,10 @@ const DataFieldSwapPage: React.FC = () => {
       render: (type: OperationType) => 
         type === 'swap' ? (
           <Tag color="blue">对调</Tag>
-        ) : (
+        ) : type === 'remove' ? (
           <Tag color="orange">移除</Tag>
+        ) : (
+          <Tag color="green">写入</Tag>
         ),
     },
     {
@@ -484,26 +535,32 @@ const DataFieldSwapPage: React.FC = () => {
       render: (val) => <Tag color="blue">{val || '-'}</Tag>,
     },
     {
-      title: '对调方向',
-      width: 80,
+      title: '操作方向',
+      width: 100,
       align: 'center',
-      render: (_, record) => 
-        record.operationType === 'swap' ? (
-          <SwapOutlined style={{ fontSize: 16, color: '#1890ff' }} />
-        ) : (
-          <Text type="danger">→ null</Text>
-        ),
+      render: (_, record) => {
+        if (record.operationType === 'swap') {
+          return <SwapOutlined style={{ fontSize: 16, color: '#1890ff' }} />;
+        } else if (record.operationType === 'remove') {
+          return <Text type="danger">→ null</Text>;
+        } else {
+          return <Text type="success">→ 写入</Text>;
+        }
+      },
     },
     {
-      title: '目标字段值',
+      title: '目标/写入值',
       dataIndex: 'targetFieldValue',
       width: 150,
-      render: (val, record) => 
-        record.operationType === 'swap' ? (
-          <Tag color="green">{val || '-'}</Tag>
-        ) : (
-          <Tag color="default">-</Tag>
-        ),
+      render: (val, record) => {
+        if (record.operationType === 'swap') {
+          return <Tag color="green">{val || '-'}</Tag>;
+        } else if (record.operationType === 'write') {
+          return <Tag color="cyan">{record.writeValue || '-'}</Tag>;
+        } else {
+          return <Tag color="default">-</Tag>;
+        }
+      },
     },
     {
       title: '状态',
@@ -513,7 +570,7 @@ const DataFieldSwapPage: React.FC = () => {
       render: (willSwap, record) => 
         willSwap ? (
           <Tag color="success" icon={<CheckCircleOutlined />}>
-            {record.operationType === 'swap' ? '将对调' : '将移除'}
+            {record.operationType === 'swap' ? '将对调' : record.operationType === 'remove' ? '将移除' : '将写入'}
           </Tag>
         ) : (
           <Tag>无需操作</Tag>
@@ -536,7 +593,7 @@ const DataFieldSwapPage: React.FC = () => {
 
         <Alert
           message="⚠️ 临时工具 - 谨慎使用"
-          description="此工具用于批量操作会员字段数据（对调/移除）。所有操作不可逆，请务必先测试选中记录，确认无误后再执行全部！"
+          description="此工具用于批量操作会员字段数据（对调/移除/写入）。所有操作不可逆，请务必先测试选中记录，确认无误后再执行全部！"
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
@@ -595,6 +652,9 @@ const DataFieldSwapPage: React.FC = () => {
                         <Radio.Button value="remove">
                           <DeleteOutlined /> 移除字段
                         </Radio.Button>
+                        <Radio.Button value="write">
+                          <CheckOutlined /> 写入字段
+                        </Radio.Button>
                       </Radio.Group>
                       {swapMappings.length > 1 && (
                         <Button
@@ -608,10 +668,14 @@ const DataFieldSwapPage: React.FC = () => {
                       )}
                     </Space>
                   </Col>
-                  <Col xs={24} sm={mapping.operationType === 'swap' ? 11 : 23}>
+                  <Col xs={24} sm={mapping.operationType === 'swap' ? 11 : 11}>
                     <Select
                       style={{ width: '100%' }}
-                      placeholder={mapping.operationType === 'swap' ? "选择字段A" : "选择要移除的字段"}
+                      placeholder={
+                        mapping.operationType === 'swap' ? "选择字段A" : 
+                        mapping.operationType === 'remove' ? "选择要移除的字段" :
+                        "选择要写入的字段"
+                      }
                       value={mapping.currentField}
                       onChange={(value) => updateSwapMapping(mapping.id, 'currentField', value)}
                       showSearch
@@ -648,6 +712,22 @@ const DataFieldSwapPage: React.FC = () => {
                             </Option>
                           ))}
                         </Select>
+                      </Col>
+                    </>
+                  )}
+                  {mapping.operationType === 'write' && (
+                    <>
+                      <Col xs={24} sm={2} style={{ textAlign: 'center' }}>
+                        <EditOutlined style={{ fontSize: 20, color: '#52c41a' }} />
+                      </Col>
+                      <Col xs={24} sm={11}>
+                        <Input
+                          style={{ width: '100%' }}
+                          placeholder="输入要写入的值"
+                          value={mapping.writeValue}
+                          onChange={(e) => updateSwapMapping(mapping.id, 'writeValue', e.target.value)}
+                          addonBefore="写入值"
+                        />
                       </Col>
                     </>
                   )}
@@ -765,13 +845,20 @@ const DataFieldSwapPage: React.FC = () => {
                 <p><strong>操作详情：</strong>
                   {swapMappings.map((m, i) => {
                     const current = AVAILABLE_FIELDS.find(f => f.value === m.currentField)?.label || '未选择';
-                    const target = m.operationType === 'swap' 
-                      ? AVAILABLE_FIELDS.find(f => f.value === m.targetField)?.label || '未选择'
-                      : 'null';
+                    let operationText = '';
+                    
+                    if (m.operationType === 'swap') {
+                      const target = AVAILABLE_FIELDS.find(f => f.value === m.targetField)?.label || '未选择';
+                      operationText = `对调: ${current} ↔ ${target}`;
+                    } else if (m.operationType === 'remove') {
+                      operationText = `移除: ${current} → null`;
+                    } else if (m.operationType === 'write') {
+                      operationText = `写入: ${current} → "${m.writeValue || ''}"`;
+                    }
+                    
                     return (
                       <span key={m.id} style={{ display: 'block', marginTop: i > 0 ? 4 : 0 }}>
-                        {i + 1}. {m.operationType === 'swap' ? '对调' : '移除'}: {current} 
-                        {m.operationType === 'swap' ? ` ↔ ${target}` : ' → null'}
+                        {i + 1}. {operationText}
                       </span>
                     );
                   })}
