@@ -15,7 +15,6 @@ import { auth, db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
 import type { User } from '@/types';
-import type { Member } from '@/modules/member/types';
 
 interface AuthState {
   user: User | null;
@@ -122,10 +121,10 @@ export const useAuthStore = create<AuthState>()(
             cleanUndefinedValues(newUser)
           );
 
-          const userData = {
+          const userData: User = {
             id: firebaseUser.uid,
             ...newUser,
-          } as User;
+          };
 
           set({
             user: userData,
@@ -161,85 +160,82 @@ export const useAuthStore = create<AuthState>()(
           const result = await signInWithPopup(auth, provider);
           const firebaseUser = result.user;
 
-          // Step 1: Check if user exists by Google UID
-          const userDocRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid);
-          let userDoc = await getDoc(userDocRef);
-
+          // Step 1: Try to find existing member by email first
+          let memberDocRef = null;
+          let memberDoc = null;
           let userData: User;
-          let isNewGoogleUser = false;
 
-          if (!userDoc.exists()) {
-            // Step 2: Try to find existing member by email
-            let existingMemberDoc = null;
+          if (firebaseUser.email) {
+            console.log(`🔍 [Google Login] Searching for existing member with email: ${firebaseUser.email}`);
             
-            if (firebaseUser.email) {
-              console.log(`🔍 [Google Login] Searching for existing member with email: ${firebaseUser.email}`);
-              
-              const emailQuery = query(
-                collection(db, GLOBAL_COLLECTIONS.MEMBERS),
-                where('email', '==', firebaseUser.email),
-                limit(1)
-              );
-              const emailResults = await getDocs(emailQuery);
-              
-              if (!emailResults.empty) {
-                existingMemberDoc = emailResults.docs[0];
-                console.log(`✅ [Google Login] Found existing member: ${existingMemberDoc.id}`);
-              }
+            const emailQuery = query(
+              collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+              where('email', '==', firebaseUser.email),
+              limit(1)
+            );
+            const emailResults = await getDocs(emailQuery);
+            
+            if (!emailResults.empty) {
+              memberDoc = emailResults.docs[0];
+              memberDocRef = memberDoc.ref;
+              console.log(`✅ [Google Login] Found existing member: ${memberDoc.id}`);
             }
+          }
 
-            if (existingMemberDoc) {
-              // Step 3: Link Google account to existing member
-              // Get complete member data (including profile, business, jciCareer, etc.)
-              const existingData = existingMemberDoc.data() as any; // Use any to preserve all Member fields
-              
-              console.log(`🔗 [Google Login] Linking Google account to existing member: ${existingMemberDoc.id}`);
-              console.log(`📋 [Google Login] Existing member data:`, {
-                name: existingData.name,
-                email: existingData.email,
-                category: existingData.category,
-                hasProfile: !!existingData.profile,
-                hasBusiness: !!existingData.business,
-                hasJciCareer: !!existingData.jciCareer,
-              });
-              
-              // Create complete linked user data (preserve ALL fields from existing member)
-              const linkedUser = {
-                ...existingData, // Preserve all existing fields (profile, business, jciCareer, etc.)
-                avatar: firebaseUser.photoURL || existingData.avatar || existingData.profile?.avatar,
+          if (memberDoc && memberDocRef) {
+            // Step 2: Link Google UID to existing member document
+            const existingData = memberDoc.data() as User;
+            
+            console.log(`🔗 [Google Login] Linking Google UID to existing member: ${memberDoc.id}`);
+            
+            // Update existing member document with Google info
+            await setDoc(
+              memberDocRef,
+              cleanUndefinedValues({
                 googleLinked: true,
                 googleUid: firebaseUser.uid,
+                avatar: firebaseUser.photoURL || existingData.avatar,
                 updatedAt: new Date().toISOString(),
-              };
+              }),
+              { merge: true }
+            );
 
-              // Save under Google UID (for future Google logins) - with COMPLETE data
-              await setDoc(userDocRef, cleanUndefinedValues(linkedUser));
-              
-              // Also update the original member document
-              await setDoc(
-                doc(db, GLOBAL_COLLECTIONS.MEMBERS, existingMemberDoc.id),
-                cleanUndefinedValues({
-                  googleLinked: true,
-                  googleUid: firebaseUser.uid,
-                  ...(firebaseUser.photoURL && {
-                    avatar: firebaseUser.photoURL,
-                    'profile.avatar': firebaseUser.photoURL,
-                  }),
-                  updatedAt: new Date().toISOString(),
-                }),
-                { merge: true }
-              );
+            // Use the existing member's data
+            userData = {
+              id: memberDoc.id,
+              ...existingData,
+              googleLinked: true,
+              googleUid: firebaseUser.uid,
+              avatar: firebaseUser.photoURL || existingData.avatar,
+            };
 
+            console.log(`✅ [Google Login] Successfully linked Google account to member: ${existingData.name}`);
+          } else {
+            // Step 3: Check if Google UID already exists (user previously logged in with Google)
+            const googleDocRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid);
+            const googleDoc = await getDoc(googleDocRef);
+
+            if (googleDoc.exists()) {
+              // Existing Google user
               userData = {
-                id: firebaseUser.uid,
-                ...linkedUser,
+                id: googleDoc.id,
+                ...googleDoc.data(),
               } as User;
 
-              console.log(`✅ [Google Login] Successfully linked Google account to member: ${existingData.name}`);
-              console.log(`📦 [Google Login] Linked user data includes profile: ${!!userData.profile}, business: ${!!userData.business}`);
+              // Update avatar if changed
+              if (firebaseUser.photoURL && firebaseUser.photoURL !== userData.avatar) {
+                await setDoc(
+                  googleDocRef,
+                  cleanUndefinedValues({ 
+                    avatar: firebaseUser.photoURL,
+                    updatedAt: new Date().toISOString(),
+                  }),
+                  { merge: true }
+                );
+                userData.avatar = firebaseUser.photoURL;
+              }
             } else {
-              // Step 4: Create completely new user
-              isNewGoogleUser = true;
+              // Step 4: Create completely new user with Google UID as document ID
               console.log(`🆕 [Google Login] Creating new member with Google account`);
               
               const newUser: Omit<User, 'id'> = {
@@ -254,31 +250,12 @@ export const useAuthStore = create<AuthState>()(
                 updatedAt: new Date().toISOString(),
               };
 
-              await setDoc(userDocRef, cleanUndefinedValues(newUser));
+              await setDoc(googleDocRef, cleanUndefinedValues(newUser));
 
               userData = {
                 id: firebaseUser.uid,
                 ...newUser,
-              } as User;
-            }
-          } else {
-            // User exists with Google UID, get data
-            userData = {
-              id: userDoc.id,
-              ...userDoc.data(),
-            } as User;
-
-            // Update avatar if changed
-            if (firebaseUser.photoURL && firebaseUser.photoURL !== userData.avatar) {
-              await setDoc(
-                userDocRef,
-                cleanUndefinedValues({ 
-                  avatar: firebaseUser.photoURL,
-                  updatedAt: new Date().toISOString(),
-                }),
-                { merge: true }
-              );
-              userData.avatar = firebaseUser.photoURL;
+              };
             }
           }
 
