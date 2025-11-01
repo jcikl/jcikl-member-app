@@ -46,6 +46,7 @@ import { getMemberFeesByMemberId } from '@/modules/finance/services/memberFeeSer
 import { getTransactions } from '@/modules/finance/services/transactionService';
 import type { MemberFee } from '@/modules/finance/types';
 import type { Transaction } from '@/modules/finance/types';
+import { TaskProgressCard } from '../TaskProgressCard';
 import './styles.css';
 
 const { TextArea } = Input;
@@ -668,7 +669,7 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
                               <span style={{ fontSize: 13, color: '#666' }}>会员ID</span>
                             </Col>
                             <Col flex="auto">
-                              <span style={{ fontSize: 13, color: '#000' }}>{member.profile.memberId || '-'}</span>
+                              <span style={{ fontSize: 13, color: '#000' }}>{member.jciCareer.memberId || '-'}</span>
                             </Col>
                           </Row>
                         </Col>
@@ -864,137 +865,7 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
             {
               key: 'tasks',
               label: '任务',
-              children: (
-                <Row gutter={ROW_GUTTER}>
-                  <Col xs={24}>
-                    <Card title="Leadership Development Pathway" bordered={true} style={{ marginBottom: 16 }}>
-                      <div style={{ position: 'relative', padding: '40px 12px 20px' }}>
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                          {/* Connecting Line - positioned at the center of dots */}
-                          <div style={{
-                            position: 'absolute',
-                            left: '4%',
-                            right: '4%',
-                            top: 12,
-                            height: 3,
-                            backgroundColor: '#1890ff',
-                            zIndex: 1,
-                          }} />
-                          
-                          {/* All Steps - Using flex to distribute evenly */}
-                          {[
-                            { label: 'New Member', color: '#faad14', isStart: true },
-                            { label: 'Project Committee', color: '#ff7a00' },
-                            { label: 'Organising Chairperson', color: '#ff7a00' },
-                            { label: 'Commission Director', color: '#ff7a00' },
-                            { label: 'Board of Director', color: '#ff4d4f' },
-                            { label: 'Local President', color: '#ff4d4f' },
-                            { label: 'Area Officer', color: '#eb2f96' },
-                            { label: 'National Officer', color: '#722ed1' },
-                            { label: 'International Officer', color: '#722ed1' },
-                          ].map((step, index) => (
-                            <div key={index} style={{ 
-                              display: 'flex', 
-                              flexDirection: 'column', 
-                              alignItems: 'center',
-                              flex: 1,
-                              minWidth: 0,
-                              position: 'relative',
-                              zIndex: 10,
-                            }}>
-                              <div style={{
-                                width: 24,
-                                height: 24,
-                                borderRadius: '50%',
-                                backgroundColor: step.color,
-                                border: '3px solid #fff',
-                                boxShadow: step.isStart ? '0 0 0 2px #1890ff' : '0 0 0 2px #1890ff',
-                                position: 'relative',
-                                zIndex: 10,
-                              }} />
-                              <div style={{ 
-                                marginTop: 8, 
-                                fontSize: 10, 
-                                color: '#666', 
-                                textAlign: 'center', 
-                                width: '100%',
-                                lineHeight: 1.2,
-                                fontWeight: step.isStart ? 500 : 400,
-                                wordBreak: 'break-word',
-                                padding: '0 2px',
-                              }}>
-                                {step.label}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-      </Card>
-                  </Col>
-                  <Col xs={24}>
-                    <Card title="Trainer Development Pathway" bordered={true}>
-                      <div style={{ position: 'relative', padding: '40px 12px 20px' }}>
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                          {/* Connecting Line - positioned at the center of dots */}
-                          <div style={{
-                            position: 'absolute',
-                            left: '6%',
-                            right: '6%',
-                            top: 12,
-                            height: 3,
-                            backgroundColor: '#1890ff',
-                            zIndex: 1,
-                          }} />
-                          
-                          {/* All Steps - Using flex to distribute evenly */}
-                          {[
-                            { label: 'New Member', color: '#faad14', isStart: true },
-                            { label: 'JCI Trainer', color: '#73d13d' },
-                            { label: 'JCI Malaysia Intermediate Trainer', color: '#389e0d' },
-                            { label: 'JCI Malaysia Certified Trainer', color: '#13c2c2' },
-                            { label: 'JCI Malaysia Principal Trainer', color: '#40a9ff' },
-                            { label: 'JCI Malaysia Master Trainer', color: '#40a9ff' },
-                          ].map((step, index) => (
-                            <div key={index} style={{ 
-                              display: 'flex', 
-                              flexDirection: 'column', 
-                              alignItems: 'center',
-                              flex: 1,
-                              minWidth: 0,
-                              position: 'relative',
-                              zIndex: 10,
-                            }}>
-                              <div style={{
-                                width: 24,
-                                height: 24,
-                                borderRadius: '50%',
-                                backgroundColor: step.color,
-                                border: '3px solid #fff',
-                                boxShadow: step.isStart ? '0 0 0 2px #1890ff' : '0 0 0 2px #1890ff',
-                                position: 'relative',
-                                zIndex: 10,
-                              }} />
-                              <div style={{ 
-                                marginTop: 8, 
-                                fontSize: 10, 
-                                color: '#666', 
-                                textAlign: 'center', 
-                                width: '100%',
-                                lineHeight: 1.2,
-                                fontWeight: step.isStart ? 500 : 400,
-                                wordBreak: 'break-word',
-                                padding: '0 2px',
-                              }}>
-                                {step.label}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </Card>
-                  </Col>
-                </Row>
-              ),
+              children: <TaskProgressCard />,
             },
             {
               key: 'member-fees',

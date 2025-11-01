@@ -218,7 +218,7 @@ const MemberListPage: React.FC = () => {
   };
   
   const handleView = (memberId: string) => {
-    navigate(`/profile/${memberId}`);
+    navigate(`/members/${memberId}`);
   };
   
   const handleDelete = async (memberId: string, memberName: string) => {

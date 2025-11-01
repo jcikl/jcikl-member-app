@@ -7,6 +7,13 @@
 .metric-card {
   border-radius: 8px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+}
+
+.metric-card .ant-card-body {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .metric-card:hover {
@@ -27,6 +34,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 140px;
+  justify-content: space-between;
 }
 
 /* 标题 */

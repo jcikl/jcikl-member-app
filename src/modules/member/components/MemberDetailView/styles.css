@@ -1,0 +1,34 @@
+/**
+ * Member Detail View Styles
+ * 会员详情视图样式
+ */
+
+.member-detail-view {
+  padding: 0;
+}
+
+.member-detail-view .profile-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.member-detail-view .profile-card .ant-card-body {
+  padding: 32px;
+}
+
+.member-detail-view .profile-card h2 {
+  color: white;
+  margin-bottom: 16px;
+}
+
+.member-detail-view .profile-card .ant-typography {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.member-detail-view .profile-card .anticon {
+  color: rgba(255, 255, 255, 0.9);
+  margin-right: 8px;
+}
+

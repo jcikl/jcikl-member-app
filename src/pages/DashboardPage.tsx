@@ -21,6 +21,9 @@ import { getOrCreateEventAccount, getEventAccountTransactions } from '@/modules/
 import { getEventAccountPlans } from '@/modules/event/services/eventAccountPlanService';
 import { getTransactionsByEventId, getTransactions } from '@/modules/finance/services/transactionService';
 import { globalDateService } from '@/config/globalDateSettings';
+import { useAuthStore } from '@/stores/authStore';
+import { getMemberById } from '@/modules/member/services/memberService';
+import { TaskProgressCard } from '@/modules/member/components';
 
 // Types
 import type { Member, IndustryType } from '@/modules/member/types';
@@ -33,6 +36,10 @@ const { Option } = Select;
  * 仪表板页面
  */
 const DashboardPage: React.FC = () => {
+  const { user } = useAuthStore();
+  const [currentUserMember, setCurrentUserMember] = useState<Member | null>(null);
+  const [userMemberLoading, setUserMemberLoading] = useState(false);
+  
   const [stats, setStats] = useState({
     totalMembers: 0,
     totalEvents: 0,
@@ -111,6 +118,25 @@ const DashboardPage: React.FC = () => {
     { label: '十一月 (November)', value: 10 },
     { label: '十二月 (December)', value: 11 },
   ];
+
+  // 加载当前用户会员信息
+  useEffect(() => {
+    const fetchCurrentUserMember = async () => {
+      if (!user?.id) return;
+      
+      setUserMemberLoading(true);
+      try {
+        const memberData = await getMemberById(user.id);
+        setCurrentUserMember(memberData);
+      } catch (error) {
+        console.error('Failed to fetch current user member data:', error);
+      } finally {
+        setUserMemberLoading(false);
+      }
+    };
+
+    fetchCurrentUserMember();
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -920,6 +946,21 @@ const DashboardPage: React.FC = () => {
         </Row>
       </Card>
 
+      {/* 我的任务进度 */}
+      {currentUserMember && !userMemberLoading && (
+        <Card
+          title={
+            <span>
+              ✅ 我的任务进度
+            </span>
+          }
+          style={{ marginBottom: 24 }}
+          loading={userMemberLoading}
+        >
+          <TaskProgressCard layout="horizontal" />
+        </Card>
+      )}
+
       {/* 活动数据中心 */}
       <Card
         title={
@@ -1374,7 +1415,7 @@ const DashboardPage: React.FC = () => {
                           <Tag color="blue">{item.day}日</Tag>
                         )}
                       </div>
-                        <div style={{ fontSize: 12, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.birthDate}</div>
+                        <div style={{ fontSize: 12, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dayjs(item.birthDate).format('DD-MMM')}</div>
                       </div>
                     </div>
                   ))
