@@ -13,8 +13,7 @@ import MemberCategoryBackfillPage from '@/modules/system/pages/MemberCategoryBac
 import QuickAddEventTransactionPage from '@/pages/QuickAddEventTransactionPage';
 import FirebaseTestPage from '@/pages/FirebaseTestPage';
 import FinancialRecordsDebugPage from '@/pages/FinancialRecordsDebugPage';
-import DataFixPage from '@/pages/DataFixPage';
-import TransactionDateFormatFixPage from '@/pages/TransactionDateFormatFixPage';
+import DataFieldSwapPage from '@/pages/DataFieldSwapPage';
  
 // import UpdateFinancialRecordsPayerInfoPage from '@/pages/UpdateFinancialRecordsPayerInfoPage'; // 已删除
 
@@ -95,10 +94,6 @@ export const router = createBrowserRouter(
             element: <FinancialCategoryManagementPage />,
           },
           {
-            path: 'data-fix',
-            element: <DataFixPage />,
-          },
-          {
             path: 'member-data-migration',
             element: <MemberDataMigrationPage />,
           },
@@ -107,10 +102,9 @@ export const router = createBrowserRouter(
             element: <MemberCategoryBackfillPage />,
           },
           {
-            path: 'transaction-date-format-fix',
-            element: <TransactionDateFormatFixPage />,
+            path: 'data-field-swap',
+            element: <DataFieldSwapPage />,
           },
-          
         ],
       },
       {

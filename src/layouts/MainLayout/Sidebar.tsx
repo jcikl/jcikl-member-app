@@ -63,15 +63,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       label: '个人资料',
     },
     {
-      key: 'members-menu',
+      key: '/members',
       icon: <UserOutlined />,
       label: '会员管理',
-      children: [
-        {
-          key: '/members',
-          label: '会员列表',
-        },
-      ],
     },
     {
       key: 'events-menu',
@@ -138,18 +132,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       label: '工具',
       children: [
         {
-          key: '/settings/data-fix',
-          label: '数据修复',
-        },
-        {
-          key: '/settings/transaction-date-format-fix',
-          label: '财务交易日期格式修复',
-        },
-        {
           key: '/settings/member-data-migration',
           label: '成员数据迁移',
         },
-        
+        {
+          key: '/settings/data-field-swap',
+          label: '字段数据对调',
+        },
       ],
     },
   ];
@@ -209,4 +198,5 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
 };
 
 export default Sidebar;
+
 
