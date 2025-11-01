@@ -13,6 +13,8 @@ export interface User {
   avatar?: string;
   role: string;
   status: 'active' | 'inactive' | 'suspended' | 'pending';
+  googleLinked?: boolean;  // 是否已关联 Google 账号
+  googleUid?: string;      // Google UID
   createdAt: string;
   updatedAt: string;
 }

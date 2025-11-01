@@ -10,7 +10,7 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from '@/services/firebase';
 import { GLOBAL_COLLECTIONS } from '@/config';
 import { cleanUndefinedValues } from '@/utils/dataHelpers';
@@ -160,32 +160,95 @@ export const useAuthStore = create<AuthState>()(
           const result = await signInWithPopup(auth, provider);
           const firebaseUser = result.user;
 
-          // Check if user exists in Firestore
+          // Step 1: Check if user exists by Google UID
           const userDocRef = doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
+          let userDoc = await getDoc(userDocRef);
 
           let userData: User;
+          let isNewGoogleUser = false;
 
           if (!userDoc.exists()) {
-            // Create new user in Firestore
-            const newUser: Omit<User, 'id'> = {
-              email: firebaseUser.email || '',
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              avatar: firebaseUser.photoURL || undefined,
-              role: 'member',
-              status: 'pending',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
+            // Step 2: Try to find existing member by email
+            let existingMemberDoc = null;
+            
+            if (firebaseUser.email) {
+              console.log(`🔍 [Google Login] Searching for existing member with email: ${firebaseUser.email}`);
+              
+              const emailQuery = query(
+                collection(db, GLOBAL_COLLECTIONS.MEMBERS),
+                where('email', '==', firebaseUser.email),
+                limit(1)
+              );
+              const emailResults = await getDocs(emailQuery);
+              
+              if (!emailResults.empty) {
+                existingMemberDoc = emailResults.docs[0];
+                console.log(`✅ [Google Login] Found existing member: ${existingMemberDoc.id}`);
+              }
+            }
 
-            await setDoc(userDocRef, cleanUndefinedValues(newUser));
+            if (existingMemberDoc) {
+              // Step 3: Link Google account to existing member
+              const existingData = existingMemberDoc.data() as User;
+              
+              console.log(`🔗 [Google Login] Linking Google account to existing member: ${existingMemberDoc.id}`);
+              
+              // Create/update the Google UID document to reference the existing member
+              const linkedUser: Omit<User, 'id'> = {
+                ...existingData,
+                avatar: firebaseUser.photoURL || existingData.avatar,
+                googleLinked: true,
+                googleUid: firebaseUser.uid,
+                updatedAt: new Date().toISOString(),
+              };
 
-            userData = {
-              id: firebaseUser.uid,
-              ...newUser,
-            };
+              // Save under Google UID (for future Google logins)
+              await setDoc(userDocRef, cleanUndefinedValues(linkedUser));
+              
+              // Also update the original member document
+              await setDoc(
+                doc(db, GLOBAL_COLLECTIONS.MEMBERS, existingMemberDoc.id),
+                cleanUndefinedValues({
+                  googleLinked: true,
+                  googleUid: firebaseUser.uid,
+                  avatar: firebaseUser.photoURL || existingData.avatar,
+                  updatedAt: new Date().toISOString(),
+                }),
+                { merge: true }
+              );
+
+              userData = {
+                id: firebaseUser.uid,
+                ...linkedUser,
+              };
+
+              console.log(`✅ [Google Login] Successfully linked Google account to member: ${existingData.name}`);
+            } else {
+              // Step 4: Create completely new user
+              isNewGoogleUser = true;
+              console.log(`🆕 [Google Login] Creating new member with Google account`);
+              
+              const newUser: Omit<User, 'id'> = {
+                email: firebaseUser.email || '',
+                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                avatar: firebaseUser.photoURL || undefined,
+                role: 'member',
+                status: 'pending',
+                googleLinked: true,
+                googleUid: firebaseUser.uid,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+
+              await setDoc(userDocRef, cleanUndefinedValues(newUser));
+
+              userData = {
+                id: firebaseUser.uid,
+                ...newUser,
+              };
+            }
           } else {
-            // User exists, get data
+            // User exists with Google UID, get data
             userData = {
               id: userDoc.id,
               ...userDoc.data(),
@@ -195,7 +258,10 @@ export const useAuthStore = create<AuthState>()(
             if (firebaseUser.photoURL && firebaseUser.photoURL !== userData.avatar) {
               await setDoc(
                 userDocRef,
-                cleanUndefinedValues({ avatar: firebaseUser.photoURL }),
+                cleanUndefinedValues({ 
+                  avatar: firebaseUser.photoURL,
+                  updatedAt: new Date().toISOString(),
+                }),
                 { merge: true }
               );
               userData.avatar = firebaseUser.photoURL;
