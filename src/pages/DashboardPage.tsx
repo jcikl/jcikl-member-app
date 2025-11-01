@@ -177,17 +177,53 @@ const DashboardPage: React.FC = () => {
     fetchLists();
   }, [selectedAcceptIntl, members]);
 
-  // 加载生日数据
+  // 加载生日数据（优化版 + 缓存）
   useEffect(() => {
     const loadBirthdays = async () => {
       setListsLoading(true);
       try {
+        // 🚀 优化: 按视图模式分别缓存
+        const cacheKey = birthdayViewMode === 'upcoming' 
+          ? 'dashboard_birthdays_upcoming' 
+          : `dashboard_birthdays_month_${selectedMonth}`;
+        const cacheTimeKey = `${cacheKey}_time`;
+        const cacheTTL = 10 * 60 * 1000; // 10分钟缓存（生日数据不常变）
+        
+        // 尝试从缓存加载
+        try {
+          const cachedData = sessionStorage.getItem(cacheKey);
+          const cachedTime = sessionStorage.getItem(cacheTimeKey);
+          
+          if (cachedData && cachedTime) {
+            const cacheAge = Date.now() - parseInt(cachedTime);
+            if (cacheAge < cacheTTL) {
+              const birthdays = JSON.parse(cachedData);
+              setUpcomingBirthdays(birthdays);
+              console.log(`✅ [生日优化] 从缓存加载，缓存年龄: ${(cacheAge / 1000).toFixed(1)}秒`);
+              setListsLoading(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to load birthdays from cache:', err);
+        }
+        
+        // 从服务器加载
+        let birthdays;
         if (birthdayViewMode === 'upcoming') {
-          const birthdays = await getUpcomingBirthdays(30);
-          setUpcomingBirthdays(birthdays);
+          birthdays = await getUpcomingBirthdays(30);
         } else {
-          const birthdays = await getBirthdaysByMonth(selectedMonth);
-          setUpcomingBirthdays(birthdays);
+          birthdays = await getBirthdaysByMonth(selectedMonth);
+        }
+        setUpcomingBirthdays(birthdays);
+        
+        // 保存到缓存
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(birthdays));
+          sessionStorage.setItem(cacheTimeKey, Date.now().toString());
+          console.log(`💾 [生日优化] 已缓存 ${birthdays.length} 条生日数据`);
+        } catch (err) {
+          console.warn('Failed to cache birthdays:', err);
         }
       } catch (error) {
         console.error('Failed to fetch birthdays:', error);
@@ -199,52 +235,135 @@ const DashboardPage: React.FC = () => {
     loadBirthdays();
   }, [birthdayViewMode, selectedMonth]);
 
-  // 🆕 加载会员列表
+  // 🆕 加载会员列表（优化版 + 缓存）
   useEffect(() => {
     const loadMembers = async () => {
+      const startTime = performance.now();
+      console.log(`⏱️ [会员优化] 开始加载会员数据...`);
+      
       setMembersLoading(true);
       try {
-        // 加载全量会员以与行业分布统计口径一致 (Firestore最大limit为10000)
-        const result = await getMembers({
-          page: 1,
-          limit: 10000, // Firestore最大限制
-        });
-        setMembers(result.data);
-
-        // 默认视图：基于“当前年-新会员费(YYYY-new-member-fee)”的已缴成员集合
+        // 🚀 优化1: 尝试从缓存加载会员数据
+        const memberCacheKey = 'dashboard_members';
+        const memberCacheTimeKey = 'dashboard_members_time';
+        const feeCacheKey = 'dashboard_member_fees';
+        const feeCacheTimeKey = 'dashboard_member_fees_time';
+        const cacheTTL = 3 * 60 * 1000; // 3分钟缓存（会员数据变化较频繁）
+        
+        let membersData: Member[] = [];
+        let fromCache = false;
+        
+        // 尝试从缓存加载会员
         try {
-          const fy = globalDateService.getCurrentFiscalYearRange();
-          const currentYearStr = globalDateService.formatDate(new Date(), 'year');
-          const fees = await getMemberFees({ page: 1, limit: 10000 });
-          const ids = new Set<string>();
-          fees.data.forEach(f => {
-            const paid = Number((f as any).paidAmount || 0) > 0;
-            const pd = (f as any).paymentDate as string | undefined;
-            if (!paid || !pd) return;
-            const d = new Date(pd);
-            // 优先：按txAccount匹配“YYYY-new-member-fee”
-            const txa = (f as any).txAccount as string | undefined;
-            const matchByTx = !!txa && txa.startsWith(`${currentYearStr}-new-member-fee`);
-            // 兼容：若无txAccount则按财年范围兜底
-            if (matchByTx || (d >= fy.start && d <= fy.end)) {
-              ids.add((f as any).memberId);
+          const cachedMembers = sessionStorage.getItem(memberCacheKey);
+          const cachedMembersTime = sessionStorage.getItem(memberCacheTimeKey);
+          
+          if (cachedMembers && cachedMembersTime) {
+            const cacheAge = Date.now() - parseInt(cachedMembersTime);
+            if (cacheAge < cacheTTL) {
+              membersData = JSON.parse(cachedMembers);
+              fromCache = true;
+              console.log(`✅ [会员优化] 从缓存加载会员数据: ${membersData.length} 位，缓存年龄: ${(cacheAge / 1000).toFixed(1)}秒`);
             }
-          });
-          setFiscalNewMemberIds(ids);
-          // 无筛选时默认展示当前财年新会员
-          if (!selectedIndustry && !selectedInterest && !selectedMemberId) {
-            setFilteredMembers(result.data.filter(m => ids.has(m.id)));
-          } else {
-            setFilteredMembers(result.data);
           }
-        } catch {
-          // 回退：无法读取会费则显示全量
-        setFilteredMembers(result.data);
+        } catch (err) {
+          console.warn('Failed to load members from cache:', err);
+        }
+        
+        // 如果缓存未命中，从服务器加载
+        if (!fromCache) {
+          const result = await getMembers({
+            page: 1,
+            limit: 10000,
+          });
+          membersData = result.data;
+          
+          // 🚀 保存到缓存
+          try {
+            sessionStorage.setItem(memberCacheKey, JSON.stringify(membersData));
+            sessionStorage.setItem(memberCacheTimeKey, Date.now().toString());
+            console.log(`💾 [会员优化] 会员数据已缓存: ${membersData.length} 位`);
+          } catch (err) {
+            console.warn('Failed to cache members:', err);
+          }
+        }
+        
+        setMembers(membersData);
+
+        // 🚀 优化2: 缓存会员费数据
+        let feesData: any[] = [];
+        let feesFromCache = false;
+        
+        try {
+          const cachedFees = sessionStorage.getItem(feeCacheKey);
+          const cachedFeesTime = sessionStorage.getItem(feeCacheTimeKey);
+          
+          if (cachedFees && cachedFeesTime) {
+            const cacheAge = Date.now() - parseInt(cachedFeesTime);
+            if (cacheAge < cacheTTL) {
+              feesData = JSON.parse(cachedFees);
+              feesFromCache = true;
+              console.log(`✅ [会员优化] 从缓存加载会费数据: ${feesData.length} 条，缓存年龄: ${(cacheAge / 1000).toFixed(1)}秒`);
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to load fees from cache:', err);
+        }
+        
+        if (!feesFromCache) {
+          try {
+            const feesResult = await getMemberFees({ page: 1, limit: 10000 });
+            feesData = feesResult.data;
+            
+            // 🚀 保存到缓存
+            try {
+              sessionStorage.setItem(feeCacheKey, JSON.stringify(feesData));
+              sessionStorage.setItem(feeCacheTimeKey, Date.now().toString());
+              console.log(`💾 [会员优化] 会费数据已缓存: ${feesData.length} 条`);
+            } catch (err) {
+              console.warn('Failed to cache fees:', err);
+            }
+          } catch {
+            console.warn('Failed to load member fees');
+          }
+        }
+
+        // 计算当前财年新会员
+        if (feesData.length > 0) {
+          try {
+            const fy = globalDateService.getCurrentFiscalYearRange();
+            const currentYearStr = globalDateService.formatDate(new Date(), 'year');
+            const ids = new Set<string>();
+            feesData.forEach(f => {
+              const paid = Number((f as any).paidAmount || 0) > 0;
+              const pd = (f as any).paymentDate as string | undefined;
+              if (!paid || !pd) return;
+              const d = new Date(pd);
+              const txa = (f as any).txAccount as string | undefined;
+              const matchByTx = !!txa && txa.startsWith(`${currentYearStr}-new-member-fee`);
+              if (matchByTx || (d >= fy.start && d <= fy.end)) {
+                ids.add((f as any).memberId);
+              }
+            });
+            setFiscalNewMemberIds(ids);
+            
+            if (!selectedIndustry && !selectedInterest && !selectedMemberId) {
+              setFilteredMembers(membersData.filter(m => ids.has(m.id)));
+            } else {
+              setFilteredMembers(membersData);
+            }
+          } catch {
+            setFilteredMembers(membersData);
+          }
+        } else {
+          setFilteredMembers(membersData);
         }
       } catch (error) {
         console.error('Failed to fetch members:', error);
       } finally {
         setMembersLoading(false);
+        const endTime = performance.now();
+        console.log(`✅ [会员优化] 会员数据加载完成，耗时: ${((endTime - startTime) / 1000).toFixed(2)}秒`);
       }
     };
 
@@ -561,19 +680,50 @@ const DashboardPage: React.FC = () => {
     setSelectedMemberId(null);
   };
 
-  // 🆕 刷新所有数据
+  // 🆕 刷新所有数据（智能清除缓存）
   const handleRefreshAll = async () => {
+    const startTime = performance.now();
+    console.log(`⏱️ [刷新] 开始刷新会员数据中心...`);
+    
     setListsLoading(true);
     setMembersLoading(true);
+    
     try {
+      // 🚀 优化: 清除所有会员相关缓存
+      const memberCacheKeys = [
+        'dashboard_members',
+        'dashboard_members_time',
+        'dashboard_member_fees',
+        'dashboard_member_fees_time',
+        'dashboard_birthdays_upcoming',
+        'dashboard_birthdays_upcoming_time',
+      ];
+      
+      // 清除所有月份的生日缓存
+      for (let i = 0; i < 12; i++) {
+        memberCacheKeys.push(`dashboard_birthdays_month_${i}`);
+        memberCacheKeys.push(`dashboard_birthdays_month_${i}_time`);
+      }
+      
+      memberCacheKeys.forEach(key => sessionStorage.removeItem(key));
+      console.log(`🗑️ [刷新] 已清除 ${memberCacheKeys.length} 个缓存项`);
+
       // 刷新生日数据
       const birthdaysPromise = (async () => {
         if (birthdayViewMode === 'upcoming') {
           const birthdays = await getUpcomingBirthdays(30);
           setUpcomingBirthdays(birthdays);
+          
+          // 重新缓存
+          sessionStorage.setItem('dashboard_birthdays_upcoming', JSON.stringify(birthdays));
+          sessionStorage.setItem('dashboard_birthdays_upcoming_time', Date.now().toString());
         } else {
           const birthdays = await getBirthdaysByMonth(selectedMonth);
           setUpcomingBirthdays(birthdays);
+          
+          // 重新缓存
+          sessionStorage.setItem(`dashboard_birthdays_month_${selectedMonth}`, JSON.stringify(birthdays));
+          sessionStorage.setItem(`dashboard_birthdays_month_${selectedMonth}_time`, Date.now().toString());
         }
       })();
 
@@ -594,11 +744,20 @@ const DashboardPage: React.FC = () => {
           limit: 10000,
         });
         setMembers(result.data);
+        
+        // 重新缓存会员
+        sessionStorage.setItem('dashboard_members', JSON.stringify(result.data));
+        sessionStorage.setItem('dashboard_members_time', Date.now().toString());
 
         // 重新计算财年新会员
         const fy = globalDateService.getCurrentFiscalYearRange();
         const currentYearStr = globalDateService.formatDate(new Date(), 'year');
         const fees = await getMemberFees({ page: 1, limit: 10000 });
+        
+        // 重新缓存会费
+        sessionStorage.setItem('dashboard_member_fees', JSON.stringify(fees.data));
+        sessionStorage.setItem('dashboard_member_fees_time', Date.now().toString());
+        
         const ids = new Set<string>();
         fees.data.forEach(f => {
           const paid = Number((f as any).paidAmount || 0) > 0;
@@ -621,6 +780,9 @@ const DashboardPage: React.FC = () => {
       })();
 
       await Promise.all([birthdaysPromise, distributionsPromise, membersPromise]);
+      
+      const endTime = performance.now();
+      console.log(`✅ [刷新] 会员数据刷新完成，耗时: ${((endTime - startTime) / 1000).toFixed(2)}秒`);
       message.success('数据已刷新');
     } catch (error) {
       console.error('刷新失败:', error);
@@ -1066,6 +1228,7 @@ const DashboardPage: React.FC = () => {
             <Button
               size="small"
               icon={<ReloadOutlined />}
+              loading={membersLoading || listsLoading}
               onClick={handleRefreshAll}
             >
               刷新
