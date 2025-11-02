@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 // Components
 import { MetricCard, PermissionGuard } from '@/components';
 import { OptimizedEventImage } from '@/components/OptimizedImage';
+import { DashboardEventCards } from './DashboardPage_EventCards';
 
 // Services
 import { 
@@ -1028,170 +1029,16 @@ const DashboardPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <Row gutter={[16, 16]} align="stretch">
-                  <Col xs={24}>
-                    <Card 
-                      title={`即将举办的活动列表 (${upcomingEvents.length})`}
-                      className="content-card"
-                      style={{ height: '100%' }}
-                    >
-                      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                        {eventsLoading ? (
-                          <div style={{ padding: 40, textAlign: 'center' }}>
-                            <div>加载中...</div>
-                          </div>
-                        ) : upcomingEvents.length === 0 ? (
-                          <Empty
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            description="暂无即将举办的活动"
-                          />
-                        ) : (
-                          <List
-                            dataSource={upcomingEvents}
-                            renderItem={(event) => {
-                              const chairman = event.committeeMembers?.find(m => m.position === '筹委主席');
-                              const priceRange = event.isFree 
-                                ? 'FREE' 
-                                : `RM ${event.pricing.committeePrice} - RM ${event.pricing.regularPrice}`;
-                              const financial = eventFinancials.get(event.id);
-                              
-                              return (
-                                <List.Item style={{ padding: '12px 0', display: 'block' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                                    {/* 左侧：海报 + 活动基本信息 */}
-                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12, alignItems: 'stretch' }}>
-                                      {/* 活动海报缩略图 */}
-                                      {event.posterImage ? (
-                                        <div style={{ 
-                                          width: 100,
-                                          flexShrink: 0,
-                                          borderRadius: 6,
-                                          overflow: 'hidden',
-                                          border: '1px solid #e8e8e8',
-                                          alignSelf: 'stretch',
-                                        }}>
-                                          <OptimizedEventImage
-                                            src={event.posterImage}
-                                            alt={event.name}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div style={{ 
-                                          width: 100,
-                                          flexShrink: 0,
-                                          borderRadius: 6,
-                                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          fontSize: 32,
-                                          alignSelf: 'stretch',
-                                        }}>
-                                          📅
-                                        </div>
-                                      )}
-                                      
-                                      {/* 活动信息 */}
-                                      <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                          <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</span>
-                                          <Tag color="blue">{event.level}</Tag>
-                                        </div>
-                                        <div style={{ fontSize: 12 }}>
-                                          <div style={{ marginTop: 4 }}>
-                                            <CalendarOutlined style={{ marginRight: 6 }} />
-                                            {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
-                                          </div>
-                                          {event.boardMember && (
-                                            <div style={{ marginTop: 4 }}>
-                                              <UserOutlined style={{ marginRight: 6 }} />
-                                              负责理事: {event.boardMember}
-                                            </div>
-                                          )}
-                                          <div style={{ marginTop: 4 }}>
-                                            <TeamOutlined style={{ marginRight: 6 }} />
-                                            筹委主席: {chairman?.name || '-'}
-                                          </div>
-                                          <div style={{ marginTop: 4 }}>
-                                            <DollarOutlined style={{ marginRight: 6 }} />
-                                            {priceRange}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* 右侧：财务对比 */}
-                                    {eventFinancialsLoading || !financial ? (
-                                      <div style={{
-                                        minWidth: 320,
-                                        padding: '12px 16px',
-                                        background: '#f0f5ff',
-                                        borderRadius: 6,
-                                        border: '1px solid #d9d9d9',
-                                      }}>
-                                        <Skeleton active paragraph={{ rows: 3 }} title={false} />
-                                      </div>
-                                    ) : (
-                                      <div style={{
-                                        minWidth: 320,
-                                        padding: '12px 16px',
-                                        background: '#f0f5ff',
-                                        borderRadius: 6,
-                                        border: '1px solid #d9d9d9',
-                                      }}>
-                                        {/*<div style={{ fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 10 }}>💰 财务对比</div>*/}
-                                        <div style={{ display: 'flex', gap: 24 }}>
-                                          {/* 左列 */}
-                                          <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                              <span style={{ fontSize: 10, color: '#8c8c8c' }}>预算</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600 }}>RM {financial.budgetTotal.toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                              <span style={{ fontSize: 10, color: '#52c41a' }}>账户收入</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#52c41a' }}>RM {financial.accountIncomeTotal.toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                              <span style={{ fontSize: 10, color: '#1890ff' }}>银行收入</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#1890ff' }}>RM {financial.bankIncomeTotal.toFixed(2)}</span>
-                                            </div>
-                                          </div>
-                                          {/* 右列 */}
-                                          <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                              <span style={{ fontSize: 10, color: '#8c8c8c' }}>净利润</span>
-                                              <span style={{ 
-                                                fontSize: 12, 
-                                                fontWeight: 600,
-                                                color: financial.netProfit >= 0 ? '#52c41a' : '#ff4d4f'
-                                              }}>
-                                                RM {financial.netProfit.toFixed(2)}
-                                              </span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                              <span style={{ fontSize: 10, color: '#ff4d4f' }}>账户支出</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#ff4d4f' }}>RM {financial.accountExpenseTotal.toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                              <span style={{ fontSize: 10, color: '#fa8c16' }}>银行支出</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#fa8c16' }}>RM {financial.bankExpenseTotal.toFixed(2)}</span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )
-                                    }
-                                  </div>
-                                </List.Item>
-                              );
-                            }}
-                          />
-                        )}
-                      </div>
-                    </Card>
-                  </Col>
-                </Row>
+                <DashboardEventCards
+                  events={upcomingEvents}
+                  eventFinancials={eventFinancials}
+                  eventFinancialsLoaded={eventFinancialsLoaded}
+                  eventsLoading={eventsLoading}
+                  emptyDescription="暂无即将举办的活动"
+                  cardColor="blue"
+                  gradientColors={['#667eea', '#764ba2']}
+                  icon={<CalendarOutlined />}
+                />
               ),
             },
             {
@@ -1203,619 +1050,270 @@ const DashboardPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <Row gutter={[16, 16]} align="stretch">
-                  <Col xs={24}>
-                    <Card 
-                      title={
-                        <span>
-                          已结束的活动列表 ({filteredPastEvents.length})
-                          {selectedEventYear !== 'all' && (
-                            <Tag color="blue" style={{ marginLeft: 8 }}>
-                              {selectedEventYear}年
-                            </Tag>
-                          )}
-                        </span>
-                      }
-                      className="content-card"
-                      style={{ height: '100%' }}
-                    >
-                      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                        {eventsLoading ? (
-                          <div style={{ padding: 40, textAlign: 'center' }}>
-                            <div>加载中...</div>
-                          </div>
-                        ) : filteredPastEvents.length === 0 ? (
-                          <Empty
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            description={selectedEventYear !== 'all' ? `${selectedEventYear}年暂无已结束的活动` : '暂无已结束的活动'}
-                          />
-                        ) : (
-                          <List
-                            dataSource={filteredPastEvents}
-                            renderItem={(event) => {
-                              const chairman = event.committeeMembers?.find(m => m.position === '筹委主席');
-                              const priceRange = event.isFree 
-                                ? 'FREE' 
-                                : `RM ${event.pricing.committeePrice} - RM ${event.pricing.regularPrice}`;
-                              const financial = eventFinancials.get(event.id);
-                              
-                              return (
-                                <List.Item style={{ padding: '12px 0', display: 'block' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                                    {/* 左侧：海报 + 活动基本信息 */}
-                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12, alignItems: 'stretch' }}>
-                                      {/* 活动海报缩略图 */}
-                                      {event.posterImage ? (
-                                        <div style={{ 
-                                          width: 100,
-                                          flexShrink: 0,
-                                          borderRadius: 6,
-                                          overflow: 'hidden',
-                                          border: '1px solid #e8e8e8',
-                                          alignSelf: 'stretch',
-                                        }}>
-                                          <OptimizedEventImage
-                                            src={event.posterImage}
-                                            alt={event.name}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div style={{ 
-                                          width: 100,
-                                          flexShrink: 0,
-                                          borderRadius: 6,
-                                          background: 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          fontSize: 32,
-                                          alignSelf: 'stretch',
-                                        }}>
-                                          📆
-                                        </div>
-                                      )}
-                                      
-                                      {/* 活动信息 */}
-                                      <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                          <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</span>
-                                          <Tag color="orange">{event.level}</Tag>
-                                        </div>
-                                        <div style={{ fontSize: 12 }}>
-                                          <div style={{ marginTop: 4 }}>
-                                            <CalendarOutlined style={{ marginRight: 6 }} />
-                                            {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
-                                          </div>
-                                          {event.boardMember && (
-                                            <div style={{ marginTop: 4 }}>
-                                              <UserOutlined style={{ marginRight: 6 }} />
-                                              负责理事: {event.boardMember}
-                                            </div>
-                                          )}
-                                          <div style={{ marginTop: 4 }}>
-                                            <TeamOutlined style={{ marginRight: 6 }} />
-                                            筹委主席: {chairman?.name || '-'}
-                                          </div>
-                                          <div style={{ marginTop: 4 }}>
-                                            <DollarOutlined style={{ marginRight: 6 }} />
-                                            {priceRange}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* 右侧：财务对比 */}
-                                    {eventFinancialsLoading || !financial ? (
-                                      <div style={{
-                                        minWidth: 320,
-                                        padding: '12px 16px',
-                                        background: '#fff7e6',
-                                        borderRadius: 6,
-                                        border: '1px solid #d9d9d9',
-                                      }}>
-                                        <Skeleton active paragraph={{ rows: 3 }} title={false} />
-                                      </div>
-                                    ) : (
-                                      <div style={{
-                                        minWidth: 320,
-                                        padding: '12px 16px',
-                                        background: '#fff7e6',
-                                        borderRadius: 6,
-                                        border: '1px solid #d9d9d9',
-                                      }}>
-                                        {/*<div style={{ fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 10 }}>💰 财务对比</div>*/}
-                                        <div style={{ display: 'flex', gap: 24 }}>
-                                          {/* 左列 */}
-                                          <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                              <span style={{ fontSize: 10, color: '#8c8c8c' }}>预算</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600 }}>RM {financial.budgetTotal.toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                              <span style={{ fontSize: 10, color: '#52c41a' }}>账户收入</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#52c41a' }}>RM {financial.accountIncomeTotal.toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                              <span style={{ fontSize: 10, color: '#1890ff' }}>银行收入</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#1890ff' }}>RM {financial.bankIncomeTotal.toFixed(2)}</span>
-                                            </div>
-                                          </div>
-                                          {/* 右列 */}
-                                          <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                              <span style={{ fontSize: 10, color: '#8c8c8c' }}>净利润</span>
-                                              <span style={{ 
-                                                fontSize: 12, 
-                                                fontWeight: 600,
-                                                color: financial.netProfit >= 0 ? '#52c41a' : '#ff4d4f'
-                                              }}>
-                                                RM {financial.netProfit.toFixed(2)}
-                                              </span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                              <span style={{ fontSize: 10, color: '#ff4d4f' }}>账户支出</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#ff4d4f' }}>RM {financial.accountExpenseTotal.toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                              <span style={{ fontSize: 10, color: '#fa8c16' }}>银行支出</span>
-                                              <span style={{ fontSize: 12, fontWeight: 600, color: '#fa8c16' }}>RM {financial.bankExpenseTotal.toFixed(2)}</span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </List.Item>
-                              );
-                            }}
-                          />
-                        )}
-                      </div>
-                    </Card>
-                  </Col>
-                </Row>
+                <DashboardEventCards
+                  events={filteredPastEvents}
+                  eventFinancials={eventFinancials}
+                  eventFinancialsLoaded={eventFinancialsLoaded}
+                  eventsLoading={eventsLoading}
+                  emptyDescription={selectedEventYear !== 'all' ? `${selectedEventYear}年暂无已结束的活动` : '暂无已结束的活动'}
+                  cardColor="orange"
+                  gradientColors={['#ff9a9e', '#fad0c4']}
+                  icon={<TrophyOutlined />}
+                />
               ),
             },
           ]}
         />
       </Card>
 
-      {/* 会员数据中心：包裹4个子卡片 */}
+      {/* 兴趣与行业分布 */}
       <Card
         title={
           <span>
-            🎯 会员数据中心
+            📊 兴趣与行业分布
           </span>
         }
-        extra={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button
-              size="small"
-              icon={<ReloadOutlined />}
-              loading={membersLoading || listsLoading}
-              onClick={handleRefreshAll}
-            >
-              刷新
-            </Button>
-            <Button
-              size="small"
-              icon={<DownloadOutlined />}
-              onClick={handleExport}
-            >
-              导出
-            </Button>
-          </div>
-        }
         style={{ marginTop: 12 }}
-        styles={{ body: { padding: '16px' } }}
       >
-        {/* 会员生日列表：单独一行置顶 */}
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={24} md={24} lg={24}>
+          {/* 左侧：行业分布 */}
+          <Col xs={24} md={12}>
             <Card 
-            title={
-              <span>
-                <GiftOutlined style={{ marginRight: 8, color: '#f5222d' }} />
-                会员生日列表
-              </span>
-            } 
-            className="content-card"
-            extra={
-              <Select
-                size="small"
-                value={birthdayViewMode === 'upcoming' ? 'upcoming' : selectedMonth}
-                onChange={(value) => {
-                  if (value === 'upcoming') {
-                    setBirthdayViewMode('upcoming');
-                  } else {
-                    setBirthdayViewMode('month');
-                    setSelectedMonth(value as number);
-                  }
-                }}
-                style={{ width: 140 }}
-              >
-                <Option value="upcoming">即将到来</Option>
-                {monthOptions.map(opt => (
-                  <Option key={opt.value} value={opt.value}>
-                    {opt.label.split(' ')[0]}
-                  </Option>
-                ))}
-              </Select>
-            }
-          >
-            <div style={{
-              maxHeight: 160,
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              paddingBottom: 4,
-              msOverflowStyle: 'none',
-              scrollbarWidth: 'none'
-            }}>
-              <div style={{ display: 'flex', gap: 12 }}>
-                {(!listsLoading && upcomingBirthdays.length === 0) ? (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#8c8c8c' }}>
-                    <div>{birthdayViewMode === 'upcoming' ? '未来30天无生日会员' : '本月无生日会员'}</div>
-                    <div style={{ fontSize: '12px', marginTop: '8px' }}>
-                      💡 请在会员管理中录入会员出生日期
-                    </div>
-                  </div>
+              title="行业分布 Top 10"
+              className="content-card"
+              style={{ height: '100%' }}
+            >
+              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                {listsLoading ? (
+                  <Skeleton active paragraph={{ rows: 6 }} />
+                ) : industryDistribution.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="暂无数据"
+                  />
                 ) : (
-                  upcomingBirthdays.slice(0, 10).map((item) => (
-                    <div key={`${item.id}-${item.birthDate}`} style={{
-                      minWidth: 220,
-                      maxWidth: 260,
-                      padding: '8px 10px',
-                      border: '1px solid #f0f0f0',
-                      borderRadius: 6,
-                      background: '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                    }}>
-                      <Avatar src={item.avatar} icon={<UserOutlined />} size={32} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                        {birthdayViewMode === 'upcoming' ? (
-                          <Tag color={item.daysUntilBirthday === 0 ? 'red' : item.daysUntilBirthday! <= 7 ? 'orange' : 'blue'}>
-                            {item.daysUntilBirthday === 0 ? '今天' : `${item.daysUntilBirthday}天后`}
-                          </Tag>
-                        ) : (
-                          <Tag color="blue">{item.day}日</Tag>
-                        )}
+                  industryDistribution.map((item, index) => (
+                    <div 
+                      key={index}
+                      style={{ 
+                        marginBottom: 12,
+                        padding: 8,
+                        borderRadius: 4,
+                        border: '1px solid #f0f0f0',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        background: selectedIndustry === item.industry ? '#e6f7ff' : 'transparent',
+                      }}
+                      onClick={() => {
+                        if (selectedIndustry === item.industry) {
+                          setSelectedIndustry(null);
+                          setFilteredMembers(members);
+                        } else {
+                          setSelectedIndustry(item.industry as IndustryType);
+                          const filtered = members.filter(m => m.business?.industry === item.industry);
+                          setFilteredMembers(filtered);
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontWeight: 500 }}>
+                          <ShopOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                          {item.industry}
+                        </span>
+                        <Badge 
+                          count={item.count} 
+                          style={{ backgroundColor: '#52c41a' }}
+                          overflowCount={999}
+                        />
                       </div>
-                        <div style={{ fontSize: 12, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dayjs(item.birthDate).format('DD-MMM')}</div>
-                      </div>
+                      <Progress 
+                        percent={item.percentage} 
+                        size="small"
+                        strokeColor="#1890ff"
+                        format={(percent) => `${percent?.toFixed(1)}%`}
+                      />
                     </div>
                   ))
-              )}
-              </div>
-            </div>
-            {upcomingBirthdays.length > 0 && (
-              <div style={{ 
-                marginTop: 12, 
-                padding: '8px 12px', 
-                backgroundColor: '#f0f5ff', 
-                borderRadius: 4,
-                fontSize: '12px',
-                color: '#595959'
-              }}>
-                💡 共找到 {upcomingBirthdays.length} 位会员，显示前 10 位
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 会员行业分布、兴趣分布、会员列表：三卡片同排 */}
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
-        {/* 会员行业分布 */}
-        <Col xs={8} sm={8} md={8} lg={8}>
-          <Card 
-            title={
-              <span>
-                <ShopOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-                会员行业分布
-              </span>
-            } 
-            className="content-card"
-            style={{ height: '100%' }}
-            extra={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Select
-                  size="small"
-                  placeholder="跨境业务"
-                  style={{ width: 130 }}
-                  value={(selectedAcceptIntl ?? 'ALL') as any}
-                  onChange={(val) => {
-                    if (val === 'ALL') {
-                      setSelectedAcceptIntl(null);
-                    } else {
-                      setSelectedAcceptIntl(val as any);
-                    }
-                  }}
-                  options={[
-                    { label: 'All', value: 'ALL' },
-                    { label: 'Yes', value: 'Yes' },
-                    { label: 'No', value: 'No' },
-                    { label: 'Willing to explore', value: 'Willing to explore' },
-                  ]}
-                />
-              <Badge 
-                count={selectedIndustry ? <FilterOutlined style={{ color: '#1890ff' }} /> : 0}
-                offset={[-5, 5]}
-              >
-                  <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                    {selectedAcceptIntl ? `筛: ${selectedAcceptIntl}` : '全部'}
-                  </span>
-              </Badge>
-              </div>
-            }
-          >
-            <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-            <List
-              loading={listsLoading}
-              dataSource={industryDistribution}
-              locale={{ emptyText: '暂无行业数据' }}
-              renderItem={item => (
-                <List.Item 
-                  style={{ 
-                    padding: '8px 0', 
-                    display: 'block',
-                    cursor: 'pointer',
-                    backgroundColor: selectedIndustry === item.industry ? '#e6f7ff' : 'transparent',
-                    borderRadius: 4,
-                    paddingLeft: selectedIndustry === item.industry ? 8 : 0,
-                    paddingRight: selectedIndustry === item.industry ? 8 : 0,
-                    transition: 'all 0.3s',
-                  }}
-                  onClick={() => handleIndustryClick(item.industry)}
-                >
-                  <div style={{ marginBottom: 4 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Tooltip title="点击筛选会员">
-                        <span style={{ 
-                          fontSize: '13px', 
-                          color: selectedIndustry === item.industry ? '#1890ff' : '#262626',
-                          fontWeight: selectedIndustry === item.industry ? 600 : 400,
-                        }}>
-                          {selectedIndustry === item.industry && '👉 '}
-                          {item.industry}
-                        </span>
-                      </Tooltip>
-                      <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                        {item.count} 人
-                      </span>
-                    </div>
-                  </div>
-                  <Progress 
-                    percent={item.percentage} 
-                    size="small" 
-                    strokeColor={selectedIndustry === item.industry ? '#1890ff' : '#91d5ff'}
-                    showInfo={false}
-                  />
-                </List.Item>
-              )}
-            />
-            </div>
-          </Card>
-        </Col>
-
-        {/* 会员兴趣分布 */}
-        <Col xs={8} sm={8} md={8} lg={8}>
-          <Card 
-            title={
-              <span>
-                <HeartOutlined style={{ marginRight: 8, color: '#52c41a' }} />
-                会员兴趣分布
-              </span>
-            } 
-            className="content-card"
-            style={{ height: '100%' }}
-            extra={
-              <Badge 
-                count={selectedInterest ? <FilterOutlined style={{ color: '#52c41a' }} /> : 0}
-                offset={[-5, 5]}
-              >
-                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>Top 10</span>
-              </Badge>
-            }
-          >
-            <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-            <List
-              loading={listsLoading}
-              dataSource={interestDistribution}
-              locale={{ emptyText: '暂无兴趣数据' }}
-              renderItem={item => (
-                <List.Item 
-                  style={{ 
-                    padding: '8px 0', 
-                    display: 'block',
-                    cursor: 'pointer',
-                    backgroundColor: selectedInterest === item.industry ? '#f6ffed' : 'transparent',
-                    borderRadius: 4,
-                    paddingLeft: selectedInterest === item.industry ? 8 : 0,
-                    paddingRight: selectedInterest === item.industry ? 8 : 0,
-                    transition: 'all 0.3s',
-                  }}
-                  onClick={() => handleInterestClick(item.industry)}
-                >
-                  <div style={{ marginBottom: 4 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Tooltip title="点击筛选会员">
-                        <span style={{ 
-                          fontSize: '13px', 
-                          color: selectedInterest === item.industry ? '#52c41a' : '#262626',
-                          fontWeight: selectedInterest === item.industry ? 600 : 400,
-                        }}>
-                          {selectedInterest === item.industry && '👉 '}
-                          {item.industry}
-                        </span>
-                      </Tooltip>
-                      <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                        {item.count} 人
-                      </span>
-                    </div>
-                  </div>
-                  <Progress 
-                    percent={item.percentage} 
-                    size="small" 
-                    strokeColor={selectedInterest === item.industry ? '#52c41a' : '#95de64'}
-                    showInfo={false}
-                  />
-                </List.Item>
-              )}
-            />
-            </div>
-          </Card>
-        </Col>
-      {/* 🆕 会员列表卡片 */}
-        <Col xs={8} sm={8} md={8} lg={8}>
-          <Card 
-            title={
-              <span>
-                <TeamOutlined style={{ marginRight: 8, color: '#722ed1' }} />
-                会员列表
-                {(selectedIndustry || selectedInterest || selectedMemberId) && (
-                  <Tag color="blue" style={{ marginLeft: 12 }}>
-                    已筛选 {filteredMembers.length} / {members.length}
-                  </Tag>
                 )}
-              </span>
-            } 
-            className="content-card"
-            style={{ height: '100%' }}
-            extra={
-              (selectedIndustry || selectedInterest || selectedMemberId) ? (
-                <Button 
-                  type="link" 
-                  size="small" 
+              </div>
+            </Card>
+          </Col>
+
+          {/* 右侧：兴趣分布 */}
+          <Col xs={24} md={12}>
+            <Card 
+              title="兴趣爱好分布 Top 10"
+              className="content-card"
+              style={{ height: '100%' }}
+            >
+              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                {listsLoading ? (
+                  <Skeleton active paragraph={{ rows: 6 }} />
+                ) : interestDistribution.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="暂无数据"
+                  />
+                ) : (
+                  interestDistribution.map((item, index) => (
+                    <div 
+                      key={index}
+                      style={{ 
+                        marginBottom: 12,
+                        padding: 8,
+                        borderRadius: 4,
+                        border: '1px solid #f0f0f0',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        background: selectedInterest === item.industry ? '#fff7e6' : 'transparent',
+                      }}
+                      onClick={() => {
+                        if (selectedInterest === item.industry) {
+                          setSelectedInterest(null);
+                          setFilteredMembers(members);
+                        } else {
+                          setSelectedInterest(item.industry as IndustryType);
+                          const filtered = members.filter(m => 
+                            m.profile?.hobbies?.includes(item.industry)
+                          );
+                          setFilteredMembers(filtered);
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontWeight: 500 }}>
+                          <HeartOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
+                          {item.industry}
+                        </span>
+                        <Badge 
+                          count={item.count} 
+                          style={{ backgroundColor: '#fa8c16' }}
+                          overflowCount={999}
+                        />
+                      </div>
+                      <Progress 
+                        percent={item.percentage} 
+                        size="small"
+                        strokeColor="#fa8c16"
+                        format={(percent) => `${percent?.toFixed(1)}%`}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* 会员列表 */}
+      <Card
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>
+              👥 会员列表
+            </span>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {(selectedIndustry || selectedAcceptIntl || selectedInterest) && (
+                <Button
+                  size="small"
                   icon={<CloseCircleOutlined />}
-                  onClick={handleClearFilters}
+                  onClick={() => {
+                    setSelectedIndustry(null);
+                    setSelectedAcceptIntl(null);
+                    setSelectedInterest(null);
+                    setFilteredMembers(members);
+                  }}
                 >
                   清除筛选
                 </Button>
-              ) : null
-            }
-          >
-            {/* 筛选条件显示 */}
-            {(selectedIndustry || selectedInterest) && (
-              <div style={{ 
-                marginBottom: 16, 
-                padding: '12px 16px', 
-                backgroundColor: '#f0f5ff', 
-                borderRadius: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FilterOutlined style={{ color: '#1890ff' }} />
-                <span style={{ fontSize: '13px', color: '#595959' }}>当前筛选：</span>
-                </div>
-                {selectedIndustry && (
-                  <Tag color="blue" closable onClose={() => setSelectedIndustry(null)}>
-                    行业：{selectedIndustry}
-                  </Tag>
-                )}
-                {selectedInterest && (
-                  <Tag color="green" closable onClose={() => setSelectedInterest(null)}>
-                    兴趣：{selectedInterest}
-                  </Tag>
-                )}
-              </div>
-            )}
-
-            <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+              )}
+              <Button
+                size="small"
+                icon={<FilterOutlined />}
+                onClick={() => {
+                  message.info('筛选功能开发中');
+                }}
+              >
+                筛选
+              </Button>
+            </div>
+          </div>
+        }
+        style={{ marginTop: 12 }}
+      >
+        <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+          {membersLoading ? (
+            <div style={{ padding: 40, textAlign: 'center' }}>
+              <div>加载中...</div>
+            </div>
+          ) : filteredMembers.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="暂无会员数据"
+            />
+          ) : (
             <List
-              loading={membersLoading}
-              dataSource={filteredMembers.slice(0, 20)} // 只显示前20个
-              locale={{ emptyText: '暂无会员数据' }}
-              itemLayout="horizontal"
-              renderItem={member => (
+              dataSource={filteredMembers}
+              renderItem={(member) => (
                 <List.Item
-                    style={{
-                    padding: '8px 4px',
-                      cursor: 'pointer',
-                    backgroundColor: selectedMemberId === member.id ? '#fff7e6' : 'transparent',
-                    borderRadius: selectedMemberId === member.id ? 4 : 0,
-                    transition: 'background-color 0.2s ease',
-                    }}
-                    onClick={() => handleMemberClick(member)}
-                  >
+                  style={{ cursor: 'pointer', padding: '12px 0' }}
+                  onClick={() => setSelectedMemberId(member.id)}
+                  className={selectedMemberId === member.id ? 'selected-member' : ''}
+                >
                   <List.Item.Meta
                     avatar={
-                      <Avatar 
-                        src={member.profile?.avatar} 
-                        icon={<UserOutlined />}
-                        size={40}
-                      />
+                      <Badge dot={fiscalNewMemberIds.has(member.id)} color="#52c41a">
+                        <Avatar src={member.profile?.avatar} icon={<UserOutlined />} />
+                      </Badge>
                     }
                     title={
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
-                        <span style={{
-                        fontSize: '13px', 
-                        fontWeight: 600, 
-                        color: '#262626',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                          paddingRight: 8,
-                      }}>
-                        {member.name}
-                        </span>
-                        <span>
-                          {member.category && (
-                            <Tag 
-                              color={
-                                member.category === 'Official Member' ? 'blue' :
-                                member.category === 'Probation Member' ? 'green' :
-                                member.category === 'Alumni' ? 'orange' : 'default'
-                              }
-                              style={{ fontSize: '10px', lineHeight: '16px', height: 18 }}
-                            >
-                              {member.category}
-                            </Tag>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{member.profile?.name || '未设置姓名'}</span>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <Tag color={
+                            member.category === 'Voting Member' ? 'blue' :
+                            member.category === 'Probation Member' ? 'orange' :
+                            member.category === 'Honorary Member' ? 'purple' :
+                            member.category === 'Visiting Member' ? 'cyan' :
+                            'default'
+                          }>
+                            {member.category}
+                          </Tag>
+                          {member.business?.industry && (
+                            <Tag color="green">{member.business.industry}</Tag>
                           )}
-                        </span>
+                        </div>
                       </div>
                     }
                     description={
-                      <div style={{ 
-                        fontSize: '11px', 
-                        color: '#8c8c8c',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {member.profile?.ownIndustry?.[0] || '未设置行业'}
+                      <div>
+                        <div>{member.profile?.email || '未设置邮箱'}</div>
+                        {member.business?.companyName && (
+                          <div style={{ marginTop: 4 }}>
+                            <ShopOutlined style={{ marginRight: 6 }} />
+                            {member.business.companyName}
+                          </div>
+                        )}
+                        {member.profile?.hobbies && member.profile.hobbies.length > 0 && (
+                          <div style={{ marginTop: 4 }}>
+                            <HeartOutlined style={{ marginRight: 6 }} />
+                            {Array.isArray(member.profile.hobbies) 
+                              ? member.profile.hobbies.slice(0, 3).join(', ')
+                              : member.profile.hobbies}
+                            {Array.isArray(member.profile.hobbies) && member.profile.hobbies.length > 3 && '...'}
+                          </div>
+                        )}
                       </div>
                     }
                   />
                 </List.Item>
               )}
             />
-            </div>
-            {filteredMembers.length > 20 && (
-              <div style={{ 
-                marginTop: 16, 
-                padding: '8px 12px', 
-                backgroundColor: '#f0f5ff', 
-                borderRadius: 4,
-                fontSize: '12px',
-                color: '#595959',
-                textAlign: 'center',
-              }}>
-                💡 共找到 {filteredMembers.length} 位会员，显示前 20 位
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
+          )}
+        </div>
       </Card>
-      </div>
+    </div>
     </PermissionGuard>
   );
 };
