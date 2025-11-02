@@ -1059,28 +1059,26 @@ const DashboardPage: React.FC = () => {
                                 <List.Item style={{ padding: '12px 0', display: 'block' }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
                                     {/* 左侧：海报 + 活动基本信息 */}
-                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12 }}>
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12, alignItems: 'stretch' }}>
                                       {/* 活动海报缩略图 */}
                                       {event.posterImage ? (
                                         <div style={{ 
-                                          width: 80, 
-                                          height: 80, 
+                                          width: 100,
                                           flexShrink: 0,
                                           borderRadius: 6,
                                           overflow: 'hidden',
                                           border: '1px solid #e8e8e8',
+                                          alignSelf: 'stretch',
                                         }}>
                                           <OptimizedEventImage
                                             src={event.posterImage}
                                             alt={event.name}
-                                            aspectRatio={1}
-                                            style={{ width: '100%', height: '100%' }}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                           />
                                         </div>
                                       ) : (
                                         <div style={{ 
-                                          width: 80, 
-                                          height: 80, 
+                                          width: 100,
                                           flexShrink: 0,
                                           borderRadius: 6,
                                           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -1088,6 +1086,7 @@ const DashboardPage: React.FC = () => {
                                           alignItems: 'center',
                                           justifyContent: 'center',
                                           fontSize: 32,
+                                          alignSelf: 'stretch',
                                         }}>
                                           📅
                                         </div>
@@ -1244,28 +1243,26 @@ const DashboardPage: React.FC = () => {
                                 <List.Item style={{ padding: '12px 0', display: 'block' }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
                                     {/* 左侧：海报 + 活动基本信息 */}
-                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12 }}>
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12, alignItems: 'stretch' }}>
                                       {/* 活动海报缩略图 */}
                                       {event.posterImage ? (
                                         <div style={{ 
-                                          width: 80, 
-                                          height: 80, 
+                                          width: 100,
                                           flexShrink: 0,
                                           borderRadius: 6,
                                           overflow: 'hidden',
                                           border: '1px solid #e8e8e8',
+                                          alignSelf: 'stretch',
                                         }}>
                                           <OptimizedEventImage
                                             src={event.posterImage}
                                             alt={event.name}
-                                            aspectRatio={1}
-                                            style={{ width: '100%', height: '100%' }}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                           />
                                         </div>
                                       ) : (
                                         <div style={{ 
-                                          width: 80, 
-                                          height: 80, 
+                                          width: 100,
                                           flexShrink: 0,
                                           borderRadius: 6,
                                           background: 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)',
@@ -1273,6 +1270,7 @@ const DashboardPage: React.FC = () => {
                                           alignItems: 'center',
                                           justifyContent: 'center',
                                           fontSize: 32,
+                                          alignSelf: 'stretch',
                                         }}>
                                           📆
                                         </div>
