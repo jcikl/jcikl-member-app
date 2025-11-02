@@ -300,7 +300,7 @@ const DashboardPage: React.FC = () => {
         if (!fromCache) {
           const result = await getMembers({
             page: 1,
-            limit: 10000,
+            limit: 1000,  // Firestore max limit is 10000, use 1000 for safety
           });
           membersData = result.data;
           
@@ -338,7 +338,7 @@ const DashboardPage: React.FC = () => {
         
         if (!feesFromCache) {
           try {
-            const feesResult = await getMemberFees({ page: 1, limit: 10000 });
+            const feesResult = await getMemberFees({ page: 1, limit: 1000 });
             feesData = feesResult.data;
             
             // 🚀 保存到缓存
@@ -514,7 +514,7 @@ const DashboardPage: React.FC = () => {
       try {
         const eventFinanceResult = await getTransactions({
           page: 1,
-          limit: 10000,
+          limit: 5000,  // Reduce to avoid Firestore limit issues
           category: 'event-finance',
         });
         allEventFinanceTransactions = eventFinanceResult.data;
@@ -790,7 +790,7 @@ const DashboardPage: React.FC = () => {
       const membersPromise = (async () => {
         const result = await getMembers({
           page: 1,
-          limit: 10000,
+          limit: 1000,  // Reduce to avoid Firestore limit issues
         });
         setMembers(result.data);
         
@@ -801,7 +801,7 @@ const DashboardPage: React.FC = () => {
         // 重新计算财年新会员
         const fy = globalDateService.getCurrentFiscalYearRange();
         const currentYearStr = globalDateService.formatDate(new Date(), 'year');
-        const fees = await getMemberFees({ page: 1, limit: 10000 });
+        const fees = await getMemberFees({ page: 1, limit: 1000 });
         
         // 重新缓存会费
         sessionStorage.setItem('dashboard_member_fees', JSON.stringify(fees.data));

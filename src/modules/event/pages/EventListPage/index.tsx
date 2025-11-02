@@ -15,6 +15,11 @@ import {
   Select,
   Table,
   Card,
+  Avatar,
+  Divider,
+  Typography,
+  Empty,
+  Pagination,
 } from 'antd';
 import {
   PlusOutlined,
@@ -24,7 +29,13 @@ import {
   ReloadOutlined,
   CalendarOutlined,
   DownloadOutlined,
+  UserOutlined,
+  TeamOutlined,
+  EnvironmentOutlined,
+  ClockCircleOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
+import { OptimizedEventImage } from '@/components/OptimizedImage';
 import { useNavigate } from 'react-router-dom';
 import { 
   PageHeader, 
@@ -776,8 +787,163 @@ const EventListPage: React.FC = () => {
         onDeselectAll={() => setSelectedRowKeys([])}
       />
 
-      {/* 🆕 按负责理事分组显示 */}
-      <Card>
+      {/* 🆕 卡牌显示模式 */}
+      {loading ? (
+        <Row gutter={[16, 16]}>
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <Col xs={24} sm={12} lg={8} xl={6} key={i}>
+              <Card loading={true} />
+            </Col>
+          ))}
+        </Row>
+      ) : events.length === 0 ? (
+        <Card>
+          <Empty description="暂无活动数据" />
+        </Card>
+      ) : (
+        <>
+          <Row gutter={[16, 16]}>
+            {events
+              .filter((event: any) => !event.isGroupHeader)
+              .map((event: Event) => (
+                <Col xs={24} sm={12} lg={8} xl={6} key={event.id}>
+                  <Card
+                    hoverable
+                    className="event-card"
+                    cover={
+                      event.coverImage ? (
+                        <OptimizedEventImage
+                          src={event.coverImage}
+                          alt={event.name}
+                          aspectRatio={16/9}
+                        />
+                      ) : (
+                        <div style={{
+                          height: 180,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: 48,
+                        }}>
+                          <CalendarOutlined />
+                        </div>
+                      )
+                    }
+                    actions={[
+                      <Button
+                        type="text"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleView(event.id)}
+                      >
+                        查看
+                      </Button>,
+                      <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEdit(event.id)}
+                      >
+                        编辑
+                      </Button>,
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleDelete(event.id)}
+                      >
+                        删除
+                      </Button>,
+                    ]}
+                  >
+                    <Card.Meta
+                      title={
+                        <div>
+                          <Typography.Title level={5} style={{ margin: 0, marginBottom: 8 }}>
+                            {event.name}
+                          </Typography.Title>
+                          <Space size="small">
+                            {event.status === 'published' && <Tag color="green">已发布</Tag>}
+                            {event.status === 'draft' && <Tag color="default">草稿</Tag>}
+                            {event.status === 'cancelled' && <Tag color="red">已取消</Tag>}
+                            {event.isFree && <Tag color="blue">免费</Tag>}
+                            {event.isOnline && <Tag color="cyan">线上</Tag>}
+                          </Space>
+                        </div>
+                      }
+                      description={
+                        <div style={{ marginTop: 12 }}>
+                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                            <div>
+                              <ClockCircleOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
+                              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                                {globalDateService.formatDate(event.startDate, 'display')}
+                              </Typography.Text>
+                            </div>
+                            {!event.isOnline && event.location && (
+                              <div>
+                                <EnvironmentOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
+                                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                                  {event.location}
+                                </Typography.Text>
+                              </div>
+                            )}
+                            {event.boardMember && (
+                              <div>
+                                <UserOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
+                                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                                  {event.boardMember}
+                                </Typography.Text>
+                              </div>
+                            )}
+                            {event.maxParticipants && (
+                              <div>
+                                <TeamOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
+                                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                                  上限 {event.maxParticipants} 人
+                                </Typography.Text>
+                              </div>
+                            )}
+                            {event.pricing && !event.isFree && (
+                              <div>
+                                <DollarOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
+                                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                                  会员 RM {event.pricing.memberPrice} | 访客 RM {event.pricing.regularPrice}
+                                </Typography.Text>
+                              </div>
+                            )}
+                          </Space>
+                        </div>
+                      }
+                    />
+                  </Card>
+                </Col>
+              ))}
+          </Row>
+          
+          {/* Pagination */}
+          <Row justify="end" style={{ marginTop: 24 }}>
+            <Pagination
+              current={pagination.current}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              showSizeChanger
+              showQuickJumper
+              showTotal={(total) => `共 ${total} 个活动`}
+              onChange={(page, pageSize) => {
+                setPagination(prev => ({
+                  ...prev,
+                  current: page,
+                  pageSize: pageSize || prev.pageSize,
+                }));
+              }}
+            />
+          </Row>
+        </>
+      )}
+
+      {/* Legacy Table (Hidden, for reference) */}
+      <div style={{ display: 'none' }}>
         <Table
           columns={columns}
           dataSource={events}
@@ -788,61 +954,17 @@ const EventListPage: React.FC = () => {
           rowSelection={{
             selectedRowKeys,
             onChange: (keys) => {
-              // 过滤掉分组标题行的ID
               const filteredKeys = keys.filter(key => !String(key).startsWith('group-'));
               setSelectedRowKeys(filteredKeys);
             },
             getCheckboxProps: (record: any) => ({
-              disabled: record.isGroupHeader, // 分组标题行不可选
+              disabled: record.isGroupHeader,
             }),
           }}
           scroll={{ x: 1500 }}
           rowClassName={(record: any) => record.isGroupHeader ? 'group-header-row' : ''}
         />
-        
-        {/* 🆕 自定义分页控件 */}
-        <div style={{ 
-          marginTop: 16, 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          padding: '16px 0'
-        }}>
-          <div style={{ color: '#666' }}>
-            显示第 {(pagination.current - 1) * pagination.pageSize + 1} - {Math.min(pagination.current * pagination.pageSize, pagination.total)} 条，共 {pagination.total} 条活动
-          </div>
-          <Space>
-            <span>每页显示：</span>
-            <Select
-              value={pagination.pageSize}
-              onChange={(value) => handleTableChange({ current: 1, pageSize: value }, null, null)}
-              style={{ width: 100 }}
-            >
-              <Select.Option value={10}>10 条</Select.Option>
-              <Select.Option value={20}>20 条</Select.Option>
-              <Select.Option value={50}>50 条</Select.Option>
-              <Select.Option value={100}>100 条</Select.Option>
-            </Select>
-            <Button.Group>
-              <Button
-                onClick={() => handleTableChange({ current: pagination.current - 1, pageSize: pagination.pageSize }, null, null)}
-                disabled={pagination.current === 1}
-              >
-                上一页
-              </Button>
-              <Button disabled>
-                {pagination.current} / {Math.ceil(pagination.total / pagination.pageSize)}
-              </Button>
-              <Button
-                onClick={() => handleTableChange({ current: pagination.current + 1, pageSize: pagination.pageSize }, null, null)}
-                disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
-              >
-                下一页
-              </Button>
-            </Button.Group>
-          </Space>
-        </div>
-      </Card>
+      </div>
       
       <style>{`
         /* 🆕 分组标题行样式 */
