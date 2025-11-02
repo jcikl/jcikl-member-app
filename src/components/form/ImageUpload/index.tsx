@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, message, Image, Space } from 'antd';
-import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
+import { PlusOutlined, LoadingOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload';
 import { globalSystemService } from '@/config';
 import { cloudinaryService } from '@/services/cloudinaryService';
@@ -141,36 +141,24 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
               }
             ) => (
               <Space size={12} className="toolbar-wrapper">
-                <button
-                  type="button"
+                <ZoomOutOutlined
                   onClick={onZoomOut}
                   style={{
-                    background: 'rgba(0, 0, 0, 0.1)',
-                    border: 'none',
+                    fontSize: '24px',
                     color: 'white',
-                    fontSize: '18px',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
                     cursor: 'pointer',
+                    padding: '8px',
                   }}
-                >
-                  🔍-
-                </button>
-                <button
-                  type="button"
+                />
+                <ZoomInOutlined
                   onClick={onZoomIn}
                   style={{
-                    background: 'rgba(0, 0, 0, 0.1)',
-                    border: 'none',
+                    fontSize: '24px',
                     color: 'white',
-                    fontSize: '18px',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
                     cursor: 'pointer',
+                    padding: '8px',
                   }}
-                >
-                  🔍+
-                </button>
+                />
               </Space>
             ),
           }}

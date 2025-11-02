@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Typography, Tag, Space, Divider, Image, List, Avatar } from 'antd';
-import { CalendarOutlined, EnvironmentOutlined, UserOutlined, TeamOutlined } from '@ant-design/icons';
+import { CalendarOutlined, EnvironmentOutlined, UserOutlined, TeamOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons';
 import type { Event } from '../../types';
 import { EVENT_STATUS_OPTIONS, EVENT_LEVEL_OPTIONS } from '../../types';
 import { globalDateService } from '@/config/globalDateSettings';
@@ -53,36 +53,28 @@ const EventPreview: React.FC<EventPreviewProps> = ({ event }) => {
                 }
               ) => (
                 <Space size={12} className="toolbar-wrapper">
-                  <button
-                    type="button"
+                  <ZoomOutOutlined 
                     onClick={onZoomOut}
-                    style={{
-                      background: 'rgba(0, 0, 0, 0.1)',
-                      border: 'none',
-                      color: 'white',
-                      fontSize: '18px',
-                      padding: '8px 12px',
-                      borderRadius: '4px',
+                    style={{ 
+                      fontSize: 20, 
                       cursor: 'pointer',
+                      color: 'white',
+                      padding: '8px',
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      borderRadius: '4px',
                     }}
-                  >
-                    🔍-
-                  </button>
-                  <button
-                    type="button"
+                  />
+                  <ZoomInOutlined 
                     onClick={onZoomIn}
-                    style={{
-                      background: 'rgba(0, 0, 0, 0.1)',
-                      border: 'none',
-                      color: 'white',
-                      fontSize: '18px',
-                      padding: '8px 12px',
-                      borderRadius: '4px',
+                    style={{ 
+                      fontSize: 20, 
                       cursor: 'pointer',
+                      color: 'white',
+                      padding: '8px',
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      borderRadius: '4px',
                     }}
-                  >
-                    🔍+
-                  </button>
+                  />
                 </Space>
               ),
             }}
