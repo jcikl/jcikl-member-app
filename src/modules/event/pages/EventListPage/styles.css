@@ -92,7 +92,15 @@
 }
 
 .event-card .ant-card-meta {
-  margin-bottom: 0 !important; /* 移除默认的 margin-bottom，确保高度一致 */
+  margin: 0 !important; /* 移除所有默认 margin，确保高度一致 */
+}
+
+.event-card .ant-card-meta-title {
+  margin-bottom: 8px; /* 保持标题和描述之间的间距 */
+}
+
+.event-card .ant-card-meta-description {
+  margin: 0 !important; /* 移除 description 的默认 margin */
 }
 
 .event-card .ant-card-actions {
