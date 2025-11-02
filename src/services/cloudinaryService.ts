@@ -1,13 +1,26 @@
 /**
  * Cloudinary Service
- * Cloudinary 图片上传服务
+ * Cloudinary 图片上传服务（使用 Signed Upload + Firebase Cloud Functions）
  */
+
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface CloudinaryConfig {
   cloudName: string;
   uploadPreset: string;
   apiKey: string;
   folder: string;
+}
+
+interface SignatureResponse {
+  signature: string;
+  timestamp: number;
+  apiKey: string;
+  cloudName: string;
+  publicId?: string;
+  folder?: string;
+  overwrite?: boolean;
+  invalidate?: boolean;
 }
 
 interface UploadResult {
@@ -75,44 +88,86 @@ class CloudinaryService {
   }
 
   /**
-   * Upload image to Cloudinary
-   * 如果提供 oldUrl，将覆盖原图片以节省存储空间
+   * Get signature from Firebase Cloud Function
+   * 从 Firebase Cloud Function 获取签名
+   */
+  private async getSignature(publicId?: string, folder?: string): Promise<SignatureResponse> {
+    try {
+      console.log(`🔐 [Cloudinary] Requesting signature from Cloud Function:`, {
+        publicId,
+        folder,
+      });
+
+      const functions = getFunctions();
+      const generateSignature = httpsCallable<
+        { publicId?: string; folder?: string },
+        SignatureResponse
+      >(functions, 'generateCloudinarySignature');
+
+      const result = await generateSignature({ publicId, folder });
+
+      console.log(`✅ [Cloudinary] Signature received:`, {
+        timestamp: result.data.timestamp,
+        hasSignature: !!result.data.signature,
+        publicId: result.data.publicId,
+        folder: result.data.folder,
+      });
+
+      return result.data;
+    } catch (error: any) {
+      console.error(`❌ [Cloudinary] Failed to get signature:`, error);
+      throw new Error(`Signature generation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Upload image to Cloudinary using Signed Upload
+   * 使用签名上传到 Cloudinary（如果提供 oldUrl，将覆盖原图片以节省存储空间）
    */
   async uploadImage(file: File, folder?: string, oldUrl?: string): Promise<UploadResult> {
     try {
       // 尝试从旧 URL 提取 publicId
       const oldPublicId = oldUrl ? this.extractPublicId(oldUrl) : null;
       
-      console.log(`☁️ [Cloudinary] Starting upload:`, {
+      console.log(`☁️ [Cloudinary] Starting signed upload:`, {
         fileName: file.name,
         fileSize: `${(file.size / 1024).toFixed(2)} KB`,
         fileType: file.type,
         targetFolder: folder || this.config.folder,
-        cloudName: this.config.cloudName,
         willOverwrite: !!oldPublicId,
         oldPublicId,
       });
 
+      // 🔐 Step 1: Get signature from Cloud Function
+      const signatureData = await this.getSignature(
+        oldPublicId || undefined,
+        oldPublicId ? undefined : (folder || this.config.folder)
+      );
+
+      // 🆕 Step 2: Build FormData with signature
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_preset', this.config.uploadPreset);
+      formData.append('api_key', signatureData.apiKey);
+      formData.append('timestamp', signatureData.timestamp.toString());
+      formData.append('signature', signatureData.signature);
       
-      // 🆕 如果有旧的 publicId，使用它来覆盖（节省存储空间）
-      // Note: 依赖 Signed Upload Preset 中的 overwrite: true 配置
-      if (oldPublicId) {
-        formData.append('public_id', oldPublicId);
-        // ❌ 不要显式添加 overwrite 参数（Signed Preset 中已配置）
-        // formData.append('overwrite', 'true');  
-        // formData.append('invalidate', 'true');
-        console.log(`♻️ [Cloudinary] Will overwrite existing image (via Signed Preset):`, oldPublicId);
-      } else {
-        formData.append('folder', folder || this.config.folder);
+      // Add upload parameters
+      if (signatureData.publicId) {
+        formData.append('public_id', signatureData.publicId);
+        formData.append('overwrite', 'true');
+        formData.append('invalidate', 'true');
+        console.log(`♻️ [Cloudinary] Will overwrite existing image:`, signatureData.publicId);
+      } else if (signatureData.folder) {
+        formData.append('folder', signatureData.folder);
+        console.log(`📁 [Cloudinary] Will upload to folder:`, signatureData.folder);
       }
 
-      console.log(`📤 [Cloudinary] Sending request to:`, `https://api.cloudinary.com/v1_1/${this.config.cloudName}/image/upload`);
+      console.log(`📤 [Cloudinary] Sending signed request to:`, 
+        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`);
 
+      // 🚀 Step 3: Upload to Cloudinary
       const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${this.config.cloudName}/image/upload`,
+        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
         {
           method: 'POST',
           body: formData,
@@ -133,7 +188,7 @@ class CloudinaryService {
 
       const data = await response.json();
 
-      console.log(`✅ [Cloudinary] Upload successful:`, {
+      console.log(`✅ [Cloudinary] Signed upload successful:`, {
         url: data.secure_url,
         publicId: data.public_id,
         format: data.format,

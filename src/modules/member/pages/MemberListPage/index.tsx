@@ -201,7 +201,7 @@ const MemberListPage: React.FC = () => {
             total: totalCount,
             timestamp: now,
           },
-        }));
+      }));
         console.log('✅ [Cache] Cached tab data:', cacheKey);
       }
     } catch (error) {

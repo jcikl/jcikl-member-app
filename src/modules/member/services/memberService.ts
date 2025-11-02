@@ -691,7 +691,7 @@ export const createMember = async (
       hasProfileAvatar: !!(memberData as any).profile?.avatar,
       profileAvatarUrl: (memberData as any).profile?.avatar,
     });
-
+    
     // Add to Firestore with retry
     const docRef = await retryWithBackoff(
       () => addDoc(getMembersRef(), memberData)
@@ -701,7 +701,7 @@ export const createMember = async (
       memberId: docRef.id,
       name: memberData.name,
     });
-
+    
     // Fetch and return the created member
     const createdMember = await getMemberById(docRef.id);
     

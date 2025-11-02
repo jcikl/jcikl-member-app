@@ -323,7 +323,7 @@ export const useAuthStore = create<AuthState>()(
               id: firebaseUser.uid,
               ...newUser,
             } as User;
-            
+
             console.log(`✅ [Google Login] Created new member: ${userData.id}`);
           }
 
@@ -512,8 +512,8 @@ export const useAuthStore = create<AuthState>()(
                 // For non-Google users: search by UID
                 console.log(`🔍 [CheckAuth] Non-Google user - searching by UID:`, firebaseUser.uid);
                 const uidDoc = await getDoc(
-                  doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid)
-                );
+                doc(db, GLOBAL_COLLECTIONS.MEMBERS, firebaseUser.uid)
+              );
                 if (uidDoc.exists()) {
                   userDoc = uidDoc;
                   console.log(`✅ [CheckAuth] Found user by UID:`, userDoc.id);

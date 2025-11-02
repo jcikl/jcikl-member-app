@@ -420,7 +420,7 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
       'nanoseconds' in val
     );
   };
-
+  
   /**
    * Render field - editable in edit mode, read-only otherwise
    */
@@ -825,7 +825,7 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
     avatarUrl: member.profile?.avatar,
     isCloudinaryAvatar: member.profile?.avatar?.includes('cloudinary.com'),
   });
-
+  
   return (
     <div className="member-detail-view">
       {/* Profile Card */}
@@ -1445,7 +1445,7 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
                           </Row>
                         </Col>
                       </Row>
-                    </Card>
+      </Card>
                   </Col>
                 </Row>
               ),
