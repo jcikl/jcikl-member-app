@@ -37,21 +37,34 @@ class CloudinaryService {
     try {
       if (!url.includes('cloudinary.com')) return null;
       
-      // URL format: https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{public_id}.{format}
+      // URL format: https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{folder}/{filename}.{format}
+      // Or with transformations: .../upload/{transformations}/v{version}/{folder}/{filename}.{format}
       const parts = url.split('/upload/');
       if (parts.length !== 2) return null;
       
-      // Remove version and transformations
-      const pathParts = parts[1].split('/');
-      const lastSegments = pathParts.slice(-2); // Get folder and filename
+      const afterUpload = parts[1];
       
-      // Remove file extension
-      const filename = lastSegments[1].split('.')[0];
-      const publicId = `${lastSegments[0]}/${filename}`;
+      // Remove transformations if present (they don't start with 'v')
+      const segments = afterUpload.split('/');
+      const versionIndex = segments.findIndex(s => s.startsWith('v') && /^v\d+$/.test(s));
+      
+      // Get everything after version (or from start if no version)
+      const pathAfterVersion = versionIndex >= 0 
+        ? segments.slice(versionIndex + 1) 
+        : segments;
+      
+      // Remove file extension from last segment
+      const lastSegment = pathAfterVersion[pathAfterVersion.length - 1];
+      const filenameWithoutExt = lastSegment.split('.')[0];
+      
+      // Reconstruct publicId (folder + filename without extension)
+      pathAfterVersion[pathAfterVersion.length - 1] = filenameWithoutExt;
+      const publicId = pathAfterVersion.join('/');
       
       console.log(`🔍 [Cloudinary] Extracted publicId:`, {
         originalUrl: url,
         publicId,
+        segments: pathAfterVersion,
       });
       
       return publicId;
@@ -85,11 +98,13 @@ class CloudinaryService {
       formData.append('upload_preset', this.config.uploadPreset);
       
       // 🆕 如果有旧的 publicId，使用它来覆盖（节省存储空间）
+      // Note: 依赖 Signed Upload Preset 中的 overwrite: true 配置
       if (oldPublicId) {
         formData.append('public_id', oldPublicId);
-        formData.append('overwrite', 'true');
-        formData.append('invalidate', 'true'); // 清除 CDN 缓存
-        console.log(`♻️ [Cloudinary] Will overwrite existing image:`, oldPublicId);
+        // ❌ 不要显式添加 overwrite 参数（Signed Preset 中已配置）
+        // formData.append('overwrite', 'true');  
+        // formData.append('invalidate', 'true');
+        console.log(`♻️ [Cloudinary] Will overwrite existing image (via Signed Preset):`, oldPublicId);
       } else {
         formData.append('folder', folder || this.config.folder);
       }
