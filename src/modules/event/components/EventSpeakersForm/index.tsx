@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Space, Card, Table, Popconfirm, Upload, message } from 'antd';
-import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Space, Card, Table, Popconfirm } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { Event, Speaker } from '../../types';
-import { cloudinaryService } from '@/services/cloudinaryService';
-import type { RcFile } from 'antd/es/upload';
 
 interface Props {
   initialValues: Event;
@@ -90,54 +88,6 @@ const EventSpeakersForm: React.FC<Props> = ({ initialValues, onSubmit, loading }
           rows={2}
         />
       ),
-    },
-    {
-      title: '照片',
-      dataIndex: 'photo',
-      key: 'photo',
-      width: 120,
-      render: (photo: string, record: Speaker) => {
-        const [uploading, setUploading] = useState(false);
-
-        const handleUpload = async (file: RcFile) => {
-          setUploading(true);
-          try {
-            const result = await cloudinaryService.uploadImage(file, 'events/speakers');
-            if (result.success && result.url) {
-              updateSpeaker(record.id, 'photo', result.url);
-              message.success('照片上传成功');
-            } else {
-              message.error(result.error || '上传失败');
-            }
-          } catch (error) {
-            message.error('上传失败，请重试');
-          } finally {
-            setUploading(false);
-          }
-          return false;
-        };
-
-        return (
-          <Upload
-            listType="picture-card"
-            showUploadList={false}
-            beforeUpload={handleUpload}
-            accept="image/*"
-            disabled={uploading}
-          >
-            {photo ? (
-              <img src={photo} alt="speaker" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div>
-                {uploading ? <UploadOutlined spin /> : <UploadOutlined />}
-                <div style={{ marginTop: 8, fontSize: 12 }}>
-                  {uploading ? '上传中...' : '上传'}
-                </div>
-              </div>
-            )}
-          </Upload>
-        );
-      },
     },
     {
       title: '联系方式',
