@@ -46,7 +46,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     if (!isImage) {
       console.error(`❌ [ImageUpload] Invalid file type: ${file.type}`);
       message.error('只能上传图片文件！');
-      return false;
+      return Upload.LIST_IGNORE;  // Reject but don't upload
     }
 
     // Validate file size
@@ -55,11 +55,11 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       const maxSizeMB = (maxSize || globalSystemService.getConfig('MAX_IMAGE_SIZE')) / 1024 / 1024;
       console.error(`❌ [ImageUpload] File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB > ${maxSizeMB}MB`);
       message.error(`图片大小不能超过 ${maxSizeMB}MB！`);
-      return false;
+      return Upload.LIST_IGNORE;  // Reject but don't upload
     }
 
-    console.log(`✅ [ImageUpload] File validation passed`);
-    return false; // Prevent default upload, handle manually
+    console.log(`✅ [ImageUpload] File validation passed, will trigger customRequest`);
+    return true;  // Allow upload to trigger customRequest
   };
 
   const handleUpload = async (file: RcFile) => {
