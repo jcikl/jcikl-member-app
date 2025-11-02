@@ -71,18 +71,32 @@
 }
 
 .event-card .ant-card-cover {
-  height: 180px;
+  height: 180px !important; /* 强制固定高度 */
+  min-height: 180px; /* 最小高度 */
+  max-height: 180px; /* 最大高度 */
   overflow: hidden;
+  position: relative; /* 为绝对定位的子元素提供定位上下文 */
 }
 
-.event-card .ant-card-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.event-card .ant-card-cover img,
+.event-card .ant-card-cover .optimized-event-image-container,
+.event-card .ant-card-cover .lazy-load-image-background,
+.event-card .ant-card-cover .lazy-load-image-background img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
   transition: transform 0.3s ease;
 }
 
-.event-card:hover .ant-card-cover img {
+/* 确保所有嵌套的 div 也是 100% 高度 */
+.event-card .ant-card-cover > div,
+.event-card .ant-card-cover > div > div {
+  width: 100%;
+  height: 100%;
+}
+
+.event-card:hover .ant-card-cover img,
+.event-card:hover .ant-card-cover .lazy-load-image-background img {
   transform: scale(1.05);
 }
 
