@@ -1015,7 +1015,7 @@ const DashboardPage: React.FC = () => {
           </div>
         }
         style={{ marginTop: 12 }}
-        styles={{ body: { padding: '16px' } }}
+        styles={{ body: { padding: '24px' } }}
       >
         <Tabs
           defaultActiveKey="upcoming"

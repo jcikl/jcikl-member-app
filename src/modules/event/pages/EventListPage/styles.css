@@ -57,16 +57,12 @@
 
 /* Event Card Styles */
 .event-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
   border-radius: 8px;
   overflow: hidden;
-}
-
-.event-card > .ant-card-body {
-  padding: 16px !important; /* 统一上下左右 padding */
+  /* 移除 height: 100%，让卡片根据内容自然高度，避免拉伸造成不均匀的空白 */
 }
 
 .event-card:hover {
@@ -80,7 +76,6 @@
   max-height: 180px; /* 最大高度 */
   overflow: hidden;
   position: relative; /* 为绝对定位的子元素提供定位上下文 */
-  margin-bottom: 0 !important; /* 移除 cover 和 body 之间的默认间距 */
 }
 
 .event-card .ant-card-cover img,
@@ -106,8 +101,8 @@
 }
 
 .event-card .ant-card-body {
-  flex: 1;
   padding: 16px;
+  /* 移除 flex: 1，让高度根据内容自然适配，避免底部出现大空白 */
 }
 
 .event-card .ant-card-meta {
@@ -124,11 +119,10 @@
 
 .event-card .ant-card-actions {
   background: #fafafa;
-  padding: 8px 0 !important; /* 统一上下 padding，与 body 保持一致的视觉平衡 */
 }
 
 .event-card .ant-card-actions > li {
-  margin: 0 !important; /* 移除 li 的 margin，由 actions 的 padding 控制 */
+  margin: 8px 0;
 }
 
 .event-card .ant-card-actions > li > span {

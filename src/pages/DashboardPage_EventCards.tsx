@@ -153,7 +153,8 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                     {/* 财务数据（如果已加载） */}
                     {eventFinancialsLoaded && financial && (
                       <div style={{ 
-                        margin: '8px 0', 
+                        marginTop: 8,
+                        marginBottom: 0,
                         padding: '10px 12px', 
                         background: '#f0f5ff', 
                         borderRadius: 4,
