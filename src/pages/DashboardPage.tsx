@@ -17,6 +17,7 @@ import {
   getInterestDistribution,
   getMembers
 } from '@/modules/member/services/memberService';
+import { getHobbyOptions } from '@/services/dynamicOptionsService';
 import { getMemberFees } from '@/modules/finance/services/memberFeeService';
 import { getEvents } from '@/modules/event/services/eventService';
 import { getOrCreateEventAccount, getEventAccountTransactions } from '@/modules/event/services/eventAccountService';
@@ -166,13 +167,38 @@ const DashboardPage: React.FC = () => {
     const fetchLists = async () => {
       setListsLoading(true);
       try {
-        const [industries, interests] = await Promise.all([
+        // 获取全局兴趣爱好选项和行业分布
+        const [industries, globalHobbies] = await Promise.all([
           getIndustryDistribution(selectedAcceptIntl || undefined),
-          getInterestDistribution(),
+          getHobbyOptions(), // 获取全局 hobby options
         ]);
 
+        // 基于全局 hobby options 统计每个爱好的使用次数
+        const hobbyStats: Record<string, number> = {};
+        let totalWithHobbies = 0;
+        
+        members.forEach((member) => {
+          const hobbies = member.profile?.hobbies;
+          if (hobbies && Array.isArray(hobbies) && hobbies.length > 0) {
+            totalWithHobbies++;
+            hobbies.forEach((hobby: string) => {
+              hobbyStats[hobby] = (hobbyStats[hobby] || 0) + 1;
+            });
+          }
+        });
+
+        // 为每个全局 hobby 创建统计项（包括未使用的）
+        const interestsWithAll = globalHobbies.map((hobby) => ({
+          industry: hobby,
+          count: hobbyStats[hobby] || 0,
+          percentage: totalWithHobbies > 0 ? ((hobbyStats[hobby] || 0) / totalWithHobbies) * 100 : 0,
+        }));
+
+        // 按使用次数降序排序
+        const sortedInterests = interestsWithAll.sort((a, b) => b.count - a.count);
+
         setIndustryDistribution(industries);
-        setInterestDistribution(interests);
+        setInterestDistribution(sortedInterests);
 
         // Compare with client-side recompute for diagnostics
         try {
@@ -780,12 +806,37 @@ const DashboardPage: React.FC = () => {
 
       // 刷新行业和兴趣分布
       const distributionsPromise = (async () => {
-        const [industries, interests] = await Promise.all([
+        const [industries, globalHobbies] = await Promise.all([
           getIndustryDistribution(selectedAcceptIntl || undefined),
-          getInterestDistribution(),
+          getHobbyOptions(), // 获取全局 hobby options
         ]);
+        
+        // 基于全局 hobby options 统计每个爱好的使用次数
+        const hobbyStats: Record<string, number> = {};
+        let totalWithHobbies = 0;
+        
+        members.forEach((member) => {
+          const hobbies = member.profile?.hobbies;
+          if (hobbies && Array.isArray(hobbies) && hobbies.length > 0) {
+            totalWithHobbies++;
+            hobbies.forEach((hobby: string) => {
+              hobbyStats[hobby] = (hobbyStats[hobby] || 0) + 1;
+            });
+          }
+        });
+
+        // 为每个全局 hobby 创建统计项（包括未使用的）
+        const interestsWithAll = globalHobbies.map((hobby) => ({
+          industry: hobby,
+          count: hobbyStats[hobby] || 0,
+          percentage: totalWithHobbies > 0 ? ((hobbyStats[hobby] || 0) / totalWithHobbies) * 100 : 0,
+        }));
+
+        // 按使用次数降序排序
+        const sortedInterests = interestsWithAll.sort((a, b) => b.count - a.count);
+        
         setIndustryDistribution(industries);
-        setInterestDistribution(interests);
+        setInterestDistribution(sortedInterests);
       })();
 
       // 刷新会员列表
