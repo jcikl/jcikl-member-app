@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, message } from 'antd';
 import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload';
@@ -32,6 +32,16 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     hasInitialValue: !!value,
     initialUrl: value,
   });
+
+  // 🔧 FIX: Sync imageUrl with value prop changes
+  useEffect(() => {
+    console.log(`🔄 [ImageUpload] Value changed:`, {
+      newValue: value,
+      currentImageUrl: imageUrl,
+      willUpdate: value !== imageUrl,
+    });
+    setImageUrl(value);
+  }, [value]);
 
   const beforeUpload = (file: File) => {
     console.log(`📤 [ImageUpload] File selected:`, {
