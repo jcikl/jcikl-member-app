@@ -41,7 +41,7 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
 
   if (eventsLoading) {
     return (
-      <Row gutter={[16, 16]}>
+      <Row gutter={16}>
         {[1, 2, 3, 4].map(i => (
           <Col xs={24} sm={12} lg={8} xl={6} key={i}>
             <Card>
@@ -59,7 +59,7 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
 
   return (
     <>
-      <Row gutter={[16, 16]}>
+      <Row gutter={16}>
         {displayedEvents.map((event) => {
         const chairman = event.committeeMembers?.find(m => m.position === '筹委主席');
         const priceRange = event.isFree 
@@ -153,8 +153,7 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                     {/* 财务数据（如果已加载） */}
                     {eventFinancialsLoaded && financial && (
                       <div style={{ 
-                        marginTop: 8,
-                        marginBottom: 0,
+                        marginTop: 8, 
                         padding: '10px 12px', 
                         background: '#f0f5ff', 
                         borderRadius: 4,
