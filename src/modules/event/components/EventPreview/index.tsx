@@ -44,6 +44,48 @@ const EventPreview: React.FC<EventPreviewProps> = ({ event }) => {
             src={event.posterImage}
             alt={event.name}
             style={{ width: '100%', height: 200, objectFit: 'cover' }}
+            preview={{
+              toolbarRender: (
+                _,
+                {
+                  transform: { scale },
+                  actions: { onZoomOut, onZoomIn },
+                }
+              ) => (
+                <Space size={12} className="toolbar-wrapper">
+                  <button
+                    type="button"
+                    onClick={onZoomOut}
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.1)',
+                      border: 'none',
+                      color: 'white',
+                      fontSize: '18px',
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🔍-
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onZoomIn}
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.1)',
+                      border: 'none',
+                      color: 'white',
+                      fontSize: '18px',
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🔍+
+                  </button>
+                </Space>
+              ),
+            }}
             fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
           />
         </Card>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, message } from 'antd';
+import { Upload, message, Image, Space } from 'antd';
 import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload';
 import { globalSystemService } from '@/config';
@@ -128,7 +128,53 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       accept={accept}
     >
       {imageUrl ? (
-        <img src={imageUrl} alt="upload" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <Image
+          src={imageUrl}
+          alt="upload"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          preview={{
+            toolbarRender: (
+              _,
+              {
+                transform: { scale },
+                actions: { onZoomOut, onZoomIn },
+              }
+            ) => (
+              <Space size={12} className="toolbar-wrapper">
+                <button
+                  type="button"
+                  onClick={onZoomOut}
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.1)',
+                    border: 'none',
+                    color: 'white',
+                    fontSize: '18px',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🔍-
+                </button>
+                <button
+                  type="button"
+                  onClick={onZoomIn}
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.1)',
+                    border: 'none',
+                    color: 'white',
+                    fontSize: '18px',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🔍+
+                </button>
+              </Space>
+            ),
+          }}
+        />
       ) : (
         uploadButton
       )}
