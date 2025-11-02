@@ -187,8 +187,8 @@ class CloudinaryService {
       } else {
         // ⚠️ Fallback to Unsigned Upload (no overwrite)
         console.warn(`⚠️ [Cloudinary] Using unsigned upload (fallback - overwrite disabled)`);
-        formData.append('upload_preset', this.config.uploadPreset);
-        formData.append('folder', folder || this.config.folder);
+      formData.append('upload_preset', this.config.uploadPreset);
+      formData.append('folder', folder || this.config.folder);
       }
 
       const cloudName = signatureData?.cloudName || this.config.cloudName;
@@ -321,7 +321,7 @@ class CloudinaryService {
       // In development, treat errors as success (UI-only deletion)
       if (import.meta.env.DEV) {
         console.warn('⚠️ [Cloudinary] Dev mode: Treating as success (UI-only deletion)');
-        return true;
+      return true;
       }
       
       return false;

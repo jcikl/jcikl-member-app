@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge, message, Tabs, Empty, Skeleton } from 'antd';
+import { Card, Row, Col, List, Avatar, Tag, Progress, Select, Button, Tooltip, Badge, message, Tabs, Empty, Skeleton, Radio } from 'antd';
 import { UserOutlined, CalendarOutlined, DollarOutlined, TrophyOutlined, GiftOutlined, ShopOutlined, HeartOutlined, TeamOutlined, FilterOutlined, CloseCircleOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -1164,11 +1164,28 @@ const DashboardPage: React.FC = () => {
         style={{ marginTop: 12 }}
         styles={{ body: { padding: '16px' } }}
       >
-        <Row gutter={[24, 24]} align="stretch">
-          {/* 左侧：行业分布 */}
-          <Col xs={24} sm={8} md={8} lg={8}>
+        <Row gutter={[16, 16]} align="stretch">
+          {/* 左侧：行业分布 + 兴趣爱好分布（上下排列） */}
+          <Col xs={24} sm={12} md={12} lg={12}>
+            <Row gutter={[0, 16]}>
+              {/* 行业分布 */}
+              <Col span={24}>
             <Card 
-              title="行业分布 Top 10"
+              title="行业分布"
+              extra={
+                <Radio.Group
+                  size="small"
+                  value={selectedAcceptIntl}
+                  onChange={(e) => setSelectedAcceptIntl(e.target.value)}
+                  buttonStyle="solid"
+                  style={{ fontSize: 11 }}
+                >
+                  <Radio.Button value={null}>全部</Radio.Button>
+                  <Radio.Button value="Yes">是</Radio.Button>
+                  <Radio.Button value="No">否</Radio.Button>
+                  <Radio.Button value="Willing to explore">待探索</Radio.Button>
+                </Radio.Group>
+              }
               className="content-card"
               style={{ height: '100%' }}
             >
@@ -1226,10 +1243,10 @@ const DashboardPage: React.FC = () => {
                 )}
               </div>
             </Card>
-          </Col>
+              </Col>
 
-          {/* 右侧：兴趣分布 */}
-          <Col xs={24} sm={8} md={8} lg={8}>
+              {/* 兴趣爱好分布 */}
+              <Col span={24}>
             <Card 
               title={
                 <span>
@@ -1252,41 +1269,39 @@ const DashboardPage: React.FC = () => {
             >
               <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                 {listsLoading ? (
-                  <Row gutter={8}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                      <Col span={6} key={i}>
-                        <Skeleton.Button active block style={{ height: 64, marginBottom: 8 }} />
-                      </Col>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(5, 1fr)', 
+                    gap: 8 
+                  }}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+                      <Skeleton.Button active block style={{ height: 64 }} key={i} />
                     ))}
-                  </Row>
+                  </div>
                 ) : interestDistribution.length === 0 ? (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description="暂无数据"
                   />
                 ) : (
-                  <Row gutter={8}>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(5, 1fr)', 
+                    gap: 8 
+                  }}>
                     {interestDistribution.map((item, index) => {
-                      // 判断文字长度，决定卡片占用宽度和高度
-                      const isLongText = item.industry.length > 15; // 降低阈值至15字符
-                      const colSpan = isLongText ? 12 : 6; // 长文字占2个位置，短文字占1个位置
-                      const cardHeight = 64; // 统一高度64px
-                      
-                      // 调试日志
-                      console.log(`🎴 [HobbyCard] ${item.industry}:`, {
-                        length: item.industry.length,
-                        isLongText,
-                        colSpan,
-                      });
+                      // 判断文字长度，决定卡片占用宽度
+                      const isLongText = item.industry.length > 15;
+                      const gridColumn = isLongText ? 'span 2' : 'span 1'; // 长文字占2列
                       
                       return (
-                      <Col xs={12} sm={colSpan} md={colSpan} lg={colSpan} key={index}>
+                      <div style={{ gridColumn }} key={index}>
                         <Card
                           size="small"
                           hoverable
                           style={{ 
-                            marginBottom: 8,
-                            height: cardHeight,
+                            height: 64,
+                            margin: 0, // ← 强制移除所有默认margin，确保间距完全由CSS Grid的gap控制
                             cursor: 'pointer',
                             transition: 'all 0.3s',
                             background: selectedInterest === item.industry ? '#fff7e6' : '#fafafa',
@@ -1321,17 +1336,19 @@ const DashboardPage: React.FC = () => {
                             </div>
                           </div>
                         </Card>
-                      </Col>
+                      </div>
                       );
                     })}
-                  </Row>
+                  </div>
                 )}
               </div>
             </Card>
+              </Col>
+            </Row>
           </Col>
 
-          {/* 🆕 会员列表卡片 */}
-          <Col xs={24} sm={8} md={8} lg={8}>
+          {/* 右侧：会员列表卡片 */}
+          <Col xs={24} sm={12} md={12} lg={12}>
             <Card 
               title={
                 <span>
@@ -1365,7 +1382,7 @@ const DashboardPage: React.FC = () => {
                 ) : null
               }
             >
-              <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+              <div style={{ height: 780, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           {membersLoading ? (
             <div style={{ padding: 40, textAlign: 'center' }}>
               <div>加载中...</div>
@@ -1408,8 +1425,8 @@ const DashboardPage: React.FC = () => {
                       <div>
                         {/* 公司名字和行业同排显示 */}
                         {(member.business?.company || member.business?.ownIndustry?.[0]) && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
                               {member.business?.company && (
                                 <>
                                   <ShopOutlined style={{ marginRight: 6 }} />
@@ -1418,7 +1435,11 @@ const DashboardPage: React.FC = () => {
                               )}
                             </div>
                             {member.business?.ownIndustry?.[0] && (
-                              <Tag color="green">{member.business.ownIndustry[0]}</Tag>
+                              <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                                <Tag color="green" style={{ whiteSpace: 'normal', textAlign: 'right' }}>
+                                  {member.business.ownIndustry[0]}
+                                </Tag>
+                              </div>
                             )}
                           </div>
                         )}

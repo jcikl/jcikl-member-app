@@ -71,7 +71,6 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
         return (
           <Col xs={24} sm={12} lg={8} xl={6} key={event.id}>
             <Card
-              hoverable
               className="event-card"
               cover={
                 imageUrl ? (
@@ -99,16 +98,11 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                   type="text"
                   size="small"
                   icon={<EyeOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/events/${event.id}`);
-                  }}
+                  onClick={() => navigate(`/events/${event.id}`)}
                 >
                   查看
                 </Button>,
               ]}
-              onClick={() => navigate(`/events/${event.id}`)}
-              style={{ cursor: 'pointer' }}
             >
               <Card.Meta
                 title={
@@ -153,15 +147,11 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                     {/* 财务数据（如果已加载） */}
                     {eventFinancialsLoaded && financial && (
                       <div style={{ 
-                        marginTop: 8,
-                        marginLeft: 1,
-                        marginRight: 1,
-                        marginBottom: 1,
+                        marginTop: 8, 
                         padding: '10px 12px', 
                         background: '#f0f5ff', 
                         borderRadius: 4,
                         border: '1px solid #d9d9d9',
-                        boxSizing: 'border-box',
                       }}>
                         <div style={{ fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 8 }}>💰 财务对比</div>
                         
