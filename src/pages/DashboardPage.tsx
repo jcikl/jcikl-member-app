@@ -1255,7 +1255,7 @@ const DashboardPage: React.FC = () => {
                   <Row gutter={8}>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                       <Col span={6} key={i}>
-                        <Skeleton.Button active block style={{ height: 56, marginBottom: 8 }} />
+                        <Skeleton.Button active block style={{ marginBottom: 8 }} />
                       </Col>
                     ))}
                   </Row>
@@ -1273,13 +1273,12 @@ const DashboardPage: React.FC = () => {
                           hoverable
                           style={{ 
                             marginBottom: 8,
-                            height: 56,
                             cursor: 'pointer',
                             transition: 'all 0.3s',
                             background: selectedInterest === item.industry ? '#fff7e6' : '#fafafa',
                             borderColor: selectedInterest === item.industry ? '#fa8c16' : '#f0f0f0',
                           }}
-                          bodyStyle={{ padding: '8px 10px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          bodyStyle={{ padding: '8px 10px' }}
                           onClick={() => {
                             if (selectedInterest === item.industry) {
                               setSelectedInterest(null);
