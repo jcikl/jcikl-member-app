@@ -213,6 +213,21 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
         src={optimizedSrc}
         alt={alt}
         effect="blur"
+        placeholder={
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <span style={{ color: '#999', fontSize: '14px' }}>加载中...</span>
+          </div>
+        }
         style={{
           position: 'absolute',
           top: 0,
@@ -221,10 +236,17 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
           height: '100%',
           objectFit: 'cover',
         }}
-        onError={() => {
+        beforeLoad={() => {
+          console.log(`⏳ [OptimizedEventImage] Image starting to load:`, {
+            src: optimizedSrc,
+            alt,
+          });
+        }}
+        onError={(error) => {
           console.error(`❌ [OptimizedEventImage] Image failed to load:`, {
             src: optimizedSrc,
             alt,
+            error,
           });
         }}
         afterLoad={() => {
