@@ -154,6 +154,7 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                     {eventFinancialsLoaded && financial && (
                       <div style={{ 
                         marginTop: 8, 
+                        marginBottom: -8,
                         padding: '10px 12px', 
                         background: '#f0f5ff', 
                         borderRadius: 4,
