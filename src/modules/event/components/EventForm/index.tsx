@@ -25,6 +25,7 @@ import {
 } from '../../types';
 import { globalComponentService } from '@/config/globalComponentSettings';
 import { GLOBAL_VALIDATION_CONFIG } from '@/config/globalValidationSettings';
+import { ImageUpload } from '@/components/form/ImageUpload';
 // Removed date/pricing controls for Basic tab only
 
 const { TextArea } = Input;
@@ -133,40 +134,11 @@ const EventForm: React.FC<EventFormProps> = ({
         </Form.Item>
 
         <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) => 
-            prevValues.posterImage !== currentValues.posterImage
-          }
+          label="活动海报"
+          name="posterImage"
+          tooltip="推荐尺寸: 1200x630 px，支持 JPG/PNG，最大 5MB"
         >
-          {({ getFieldValue, setFieldsValue }) => (
-            <Form.Item
-              label="活动海报"
-              name="posterImage"
-            >
-              <Upload
-                listType="picture-card"
-                showUploadList={true}
-                beforeUpload={() => false}
-                onChange={(info) => {
-                  if (info.file) {
-                    // 这里应该上传到云存储并获取URL
-                    setFieldsValue({ posterImage: info.file.name });
-                  }
-                }}
-                fileList={getFieldValue('posterImage') ? [{
-                  uid: '1',
-                  name: getFieldValue('posterImage'),
-                  status: 'done',
-                  url: getFieldValue('posterImage'),
-                }] : []}
-              >
-                <div>
-                  <UploadOutlined />
-                  <div style={{ marginTop: 8 }}>上传海报</div>
-                </div>
-              </Upload>
-            </Form.Item>
-          )}
+          <ImageUpload folder="events/posters" />
         </Form.Item>
 
         <Row gutter={16}>
