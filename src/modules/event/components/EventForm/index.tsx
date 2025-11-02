@@ -154,7 +154,7 @@ const EventForm: React.FC<EventFormProps> = ({
           name="posterImage"
           tooltip="推荐尺寸: 1200x630 px，支持 JPG/PNG，最大 5MB"
         >
-          <ImageUpload folder="events/posters" />
+          <ImageUpload folder="project poster" />
         </Form.Item>
 
         <Row gutter={16}>
