@@ -30,22 +30,69 @@ class CloudinaryService {
   }
 
   /**
-   * Upload image to Cloudinary
+   * Extract publicId from Cloudinary URL
+   * 从 Cloudinary URL 中提取 publicId
    */
-  async uploadImage(file: File, folder?: string): Promise<UploadResult> {
+  extractPublicId(url: string): string | null {
     try {
+      if (!url.includes('cloudinary.com')) return null;
+      
+      // URL format: https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{public_id}.{format}
+      const parts = url.split('/upload/');
+      if (parts.length !== 2) return null;
+      
+      // Remove version and transformations
+      const pathParts = parts[1].split('/');
+      const lastSegments = pathParts.slice(-2); // Get folder and filename
+      
+      // Remove file extension
+      const filename = lastSegments[1].split('.')[0];
+      const publicId = `${lastSegments[0]}/${filename}`;
+      
+      console.log(`🔍 [Cloudinary] Extracted publicId:`, {
+        originalUrl: url,
+        publicId,
+      });
+      
+      return publicId;
+    } catch (error) {
+      console.error(`❌ [Cloudinary] Failed to extract publicId:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Upload image to Cloudinary
+   * 如果提供 oldUrl，将覆盖原图片以节省存储空间
+   */
+  async uploadImage(file: File, folder?: string, oldUrl?: string): Promise<UploadResult> {
+    try {
+      // 尝试从旧 URL 提取 publicId
+      const oldPublicId = oldUrl ? this.extractPublicId(oldUrl) : null;
+      
       console.log(`☁️ [Cloudinary] Starting upload:`, {
         fileName: file.name,
         fileSize: `${(file.size / 1024).toFixed(2)} KB`,
         fileType: file.type,
         targetFolder: folder || this.config.folder,
         cloudName: this.config.cloudName,
+        willOverwrite: !!oldPublicId,
+        oldPublicId,
       });
 
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', this.config.uploadPreset);
-      formData.append('folder', folder || this.config.folder);
+      
+      // 🆕 如果有旧的 publicId，使用它来覆盖（节省存储空间）
+      if (oldPublicId) {
+        formData.append('public_id', oldPublicId);
+        formData.append('overwrite', 'true');
+        formData.append('invalidate', 'true'); // 清除 CDN 缓存
+        console.log(`♻️ [Cloudinary] Will overwrite existing image:`, oldPublicId);
+      } else {
+        formData.append('folder', folder || this.config.folder);
+      }
 
       console.log(`📤 [Cloudinary] Sending request to:`, `https://api.cloudinary.com/v1_1/${this.config.cloudName}/image/upload`);
 
@@ -78,6 +125,7 @@ class CloudinaryService {
         width: data.width,
         height: data.height,
         bytes: data.bytes,
+        wasOverwritten: !!oldPublicId,
       });
 
       return {

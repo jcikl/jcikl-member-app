@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, message, Image, Space } from 'antd';
-import { PlusOutlined, LoadingOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons';
+import { Upload, message } from 'antd';
+import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload';
 import { globalSystemService } from '@/config';
 import { cloudinaryService } from '@/services/cloudinaryService';
@@ -78,10 +78,13 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       console.log(`⏳ [ImageUpload] Starting upload to Cloudinary...`, {
         fileName: file.name,
         folder: folder || 'default',
+        hasOldImage: !!value,
+        oldImageUrl: value,
+        willOverwrite: !!value,
       });
 
-      // Upload to Cloudinary
-      const result = await cloudinaryService.uploadImage(file, folder);
+      // 🆕 Upload to Cloudinary, pass old URL for overwriting (save storage)
+      const result = await cloudinaryService.uploadImage(file, folder, value);
 
       console.log(`📡 [ImageUpload] Cloudinary response:`, result);
 
@@ -90,13 +93,14 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           url: result.url,
           publicId: result.publicId,
           folder,
+          overwrittenOldImage: !!value,
         });
         
         setImageUrl(result.url);
         onChange?.(result.url);
         
         console.log(`🔄 [ImageUpload] onChange callback triggered with URL:`, result.url);
-        message.success('图片上传成功');
+        message.success(value ? '图片已更新（覆盖旧图片）' : '图片上传成功');
       } else {
         console.error(`❌ [ImageUpload] Upload failed:`, result.error);
         message.error(result.error || '上传失败');
@@ -128,41 +132,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       accept={accept}
     >
       {imageUrl ? (
-        <Image
-          src={imageUrl}
-          alt="upload"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          preview={{
-            toolbarRender: (
-              _,
-              {
-                transform: { scale },
-                actions: { onZoomOut, onZoomIn },
-              }
-            ) => (
-              <Space size={12} className="toolbar-wrapper">
-                <ZoomOutOutlined
-                  onClick={onZoomOut}
-                  style={{
-                    fontSize: '24px',
-                    color: 'white',
-                    cursor: 'pointer',
-                    padding: '8px',
-                  }}
-                />
-                <ZoomInOutlined
-                  onClick={onZoomIn}
-                  style={{
-                    fontSize: '24px',
-                    color: 'white',
-                    cursor: 'pointer',
-                    padding: '8px',
-                  }}
-                />
-              </Space>
-            ),
-          }}
-        />
+        <img src={imageUrl} alt="upload" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
         uploadButton
       )}
