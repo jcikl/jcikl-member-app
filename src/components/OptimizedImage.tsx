@@ -204,7 +204,7 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
       style={{ 
         position: 'relative',
         width: '100%',
-        paddingTop: `${(1 / aspectRatio) * 100}%`,
+        height: '100%',
         overflow: 'hidden',
         ...style,
       }}
@@ -215,9 +215,6 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
         effect="blur"
         placeholder={
           <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
             width: '100%',
             height: '100%',
             background: 'linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%)',
@@ -229,12 +226,10 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
           </div>
         }
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
           width: '100%',
           height: '100%',
           objectFit: 'cover',
+          display: 'block',
         }}
         beforeLoad={() => {
           console.log(`⏳ [OptimizedEventImage] Image starting to load:`, {
