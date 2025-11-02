@@ -1391,30 +1391,35 @@ const DashboardPage: React.FC = () => {
                       </Badge>
                     }
                     title={
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>{member.profile?.name || '未设置姓名'}</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                          <Tag color={
-                            member.category === 'Official Member' ? 'blue' :
-                            member.category === 'Probation Member' ? 'orange' :
-                            member.category === 'Honorary Member' ? 'purple' :
-                            member.category === 'Visiting Member' ? 'cyan' :
-                            'default'
-                          }>
-                            {member.category}
-                          </Tag>
-                          {member.business?.ownIndustry?.[0] && (
-                            <Tag color="green">{member.business.ownIndustry[0]}</Tag>
-                          )}
-                        </div>
+                        <Tag color={
+                          member.category === 'Official Member' ? 'blue' :
+                          member.category === 'Probation Member' ? 'orange' :
+                          member.category === 'Honorary Member' ? 'purple' :
+                          member.category === 'Visiting Member' ? 'cyan' :
+                          'default'
+                        }>
+                          {member.category}
+                        </Tag>
                       </div>
                     }
                     description={
                       <div>
-                        {member.business?.company && (
-                          <div>
-                            <ShopOutlined style={{ marginRight: 6 }} />
-                            {member.business.company}
+                        {/* 公司名字和行业同排显示 */}
+                        {(member.business?.company || member.business?.ownIndustry?.[0]) && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              {member.business?.company && (
+                                <>
+                                  <ShopOutlined style={{ marginRight: 6 }} />
+                                  {member.business.company}
+                                </>
+                              )}
+                            </div>
+                            {member.business?.ownIndustry?.[0] && (
+                              <Tag color="green">{member.business.ownIndustry[0]}</Tag>
+                            )}
                           </div>
                         )}
                         {member.profile?.hobbies && member.profile.hobbies.length > 0 && (
