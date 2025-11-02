@@ -1255,7 +1255,7 @@ const DashboardPage: React.FC = () => {
                   <Row gutter={8}>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                       <Col span={6} key={i}>
-                        <Skeleton.Button active block style={{ marginBottom: 8 }} />
+                        <Skeleton.Button active block style={{ height: 56, marginBottom: 8 }} />
                       </Col>
                     ))}
                   </Row>
@@ -1267,9 +1267,10 @@ const DashboardPage: React.FC = () => {
                 ) : (
                   <Row gutter={8}>
                     {interestDistribution.map((item, index) => {
-                      // 判断文字长度，决定卡片占用宽度
+                      // 判断文字长度，决定卡片占用宽度和高度
                       const isLongText = item.industry.length > 20;
                       const colSpan = isLongText ? 12 : 6; // 长文字占2个位置，短文字占1个位置
+                      const cardHeight = isLongText ? 56 : 56; // 统一高度56px
                       
                       return (
                       <Col xs={12} sm={colSpan} md={colSpan} lg={colSpan} key={index}>
@@ -1278,12 +1279,13 @@ const DashboardPage: React.FC = () => {
                           hoverable
                           style={{ 
                             marginBottom: 8,
+                            height: cardHeight,
                             cursor: 'pointer',
                             transition: 'all 0.3s',
                             background: selectedInterest === item.industry ? '#fff7e6' : '#fafafa',
                             borderColor: selectedInterest === item.industry ? '#fa8c16' : '#f0f0f0',
                           }}
-                          bodyStyle={{ padding: '8px 10px' }}
+                          bodyStyle={{ padding: '8px 10px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           onClick={() => {
                             if (selectedInterest === item.industry) {
                               setSelectedInterest(null);
