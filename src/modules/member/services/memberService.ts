@@ -1363,31 +1363,37 @@ export const getInterestDistribution = async (): Promise<Array<{
     const snapshot = await getDocs(getMembersRef());
     const members = snapshot.docs.map(doc => convertToMember(doc.id, doc.data()));
     
-    
     const interestCount: Record<string, number> = {};
     let totalWithInterest = 0;
     
-    members.forEach((member, idx) => {
-      const raw = (member as any)?.profile?.interestedIndustries ?? (member as any)?.business?.interestedIndustries ?? [];
+    members.forEach((member) => {
+      // ✅ 修正：读取 profile.hobbies（爱好）而不是 interestedIndustries
+      const raw = (member as any)?.profile?.hobbies;
+      
+      // 规范化为字符串数组
       let interests: string[] = [];
       if (Array.isArray(raw)) {
+        // 处理数组格式
         interests = (raw as unknown[]).filter((v): v is string => typeof v === 'string' && !!v);
       } else if (raw && typeof raw === 'object') {
+        // 处理对象格式（将对象值转为数组）
         interests = Object.values(raw as Record<string, unknown>).filter((v): v is string => typeof v === 'string' && !!v);
       } else if (typeof raw === 'string' && raw) {
+        // 处理单个字符串格式
         interests = [raw];
       }
 
+      // 只计算有爱好的会员
       if (interests.length > 0) {
         totalWithInterest++;
+        // 统计每个爱好的出现次数
         interests.forEach(interest => {
           interestCount[interest] = (interestCount[interest] || 0) + 1;
         });
       }
-
-      
     });
     
+    // 计算分布（百分比基于有爱好的会员数）
     const distribution = Object.entries(interestCount)
       .map(([industry, count]) => ({
         industry,
@@ -1395,13 +1401,12 @@ export const getInterestDistribution = async (): Promise<Array<{
         percentage: totalWithInterest > 0 ? (count / totalWithInterest) * 100 : 0,
       }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // Top 10 interests
-    
+      .slice(0, 10); // Top 10 hobbies
     
     return distribution;
   } catch (error) {
     console.error('Error fetching interest distribution:', error);
-    throw new Error('获取兴趣分布失败');
+    throw new Error('获取爱好分布失败');
   }
 };
 
