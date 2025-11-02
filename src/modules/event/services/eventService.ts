@@ -446,6 +446,14 @@ export const updateEvent = async (
   currentUserId: string
 ): Promise<void> => {
   try {
+    console.log(`💾 [updateEvent] Updating event:`, {
+      eventId,
+      eventName: formData.name,
+      hasPosterImage: !!formData.posterImage,
+      posterImageUrl: formData.posterImage,
+      isCloudinaryUrl: formData.posterImage?.includes('cloudinary.com'),
+    });
+
     const updateData: any = {
       updatedAt: Timestamp.now(),
       updatedBy: currentUserId,
@@ -466,7 +474,13 @@ export const updateEvent = async (
     if ((formData as any).isFree !== undefined) updateData.isFree = (formData as any).isFree || false;
     if (formData.coOrganizers !== undefined) updateData.coOrganizers = formData.coOrganizers || [];
     if (formData.boardMember !== undefined) updateData.boardMember = formData.boardMember; // 🆕 负责理事
-    if (formData.posterImage !== undefined) updateData.posterImage = formData.posterImage ?? null;
+    if (formData.posterImage !== undefined) {
+      updateData.posterImage = formData.posterImage ?? null;
+      console.log(`🖼️ [updateEvent] PosterImage will be updated:`, {
+        value: updateData.posterImage,
+        isCloudinary: updateData.posterImage?.includes('cloudinary.com'),
+      });
+    }
     if ((formData as any).agendaItems !== undefined) updateData.agendaItems = (formData as any).agendaItems || [];
     if ((formData as any).committeeMembers !== undefined) {
       updateData.committeeMembers = (formData as any).committeeMembers || [];
@@ -524,7 +538,18 @@ export const updateEvent = async (
       doc(db, GLOBAL_COLLECTIONS.EVENTS, eventId),
       cleanUndefinedValues(updateData)
     );
+
+    console.log(`✅ [updateEvent] Event updated successfully:`, {
+      eventId,
+      updatedPosterImage: updateData.posterImage,
+      isCloudinaryPoster: updateData.posterImage?.includes('cloudinary.com'),
+    });
   } catch (error) {
+    console.error(`❌ [updateEvent] Failed to update event:`, {
+      eventId,
+      error,
+      posterImage: formData.posterImage,
+    });
     handleFirebaseError(error, {
       customMessage: '更新活动失败',
       showNotification: true,
