@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 
 // Components
 import { MetricCard, PermissionGuard } from '@/components';
+import { OptimizedEventImage } from '@/components/OptimizedImage';
 
 // Services
 import { 
@@ -1057,30 +1058,66 @@ const DashboardPage: React.FC = () => {
                               return (
                                 <List.Item style={{ padding: '12px 0', display: 'block' }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                                    {/* 左侧：活动基本信息 */}
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                        <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</span>
-                                        <Tag color="blue">{event.level}</Tag>
-                                      </div>
-                                      <div style={{ fontSize: 12 }}>
-                                        <div style={{ marginTop: 4 }}>
-                                          <CalendarOutlined style={{ marginRight: 6 }} />
-                                          {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
+                                    {/* 左侧：海报 + 活动基本信息 */}
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12 }}>
+                                      {/* 活动海报缩略图 */}
+                                      {event.posterImage ? (
+                                        <div style={{ 
+                                          width: 80, 
+                                          height: 80, 
+                                          flexShrink: 0,
+                                          borderRadius: 6,
+                                          overflow: 'hidden',
+                                          border: '1px solid #e8e8e8',
+                                        }}>
+                                          <OptimizedEventImage
+                                            src={event.posterImage}
+                                            alt={event.name}
+                                            aspectRatio={1}
+                                            style={{ width: '100%', height: '100%' }}
+                                          />
                                         </div>
-                                        {event.boardMember && (
+                                      ) : (
+                                        <div style={{ 
+                                          width: 80, 
+                                          height: 80, 
+                                          flexShrink: 0,
+                                          borderRadius: 6,
+                                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontSize: 32,
+                                        }}>
+                                          📅
+                                        </div>
+                                      )}
+                                      
+                                      {/* 活动信息 */}
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                          <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</span>
+                                          <Tag color="blue">{event.level}</Tag>
+                                        </div>
+                                        <div style={{ fontSize: 12 }}>
                                           <div style={{ marginTop: 4 }}>
-                                            <UserOutlined style={{ marginRight: 6 }} />
-                                            负责理事: {event.boardMember}
+                                            <CalendarOutlined style={{ marginRight: 6 }} />
+                                            {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
                                           </div>
-                                        )}
-                                        <div style={{ marginTop: 4 }}>
-                                          <TeamOutlined style={{ marginRight: 6 }} />
-                                          筹委主席: {chairman?.name || '-'}
-                                        </div>
-                                        <div style={{ marginTop: 4 }}>
-                                          <DollarOutlined style={{ marginRight: 6 }} />
-                                          {priceRange}
+                                          {event.boardMember && (
+                                            <div style={{ marginTop: 4 }}>
+                                              <UserOutlined style={{ marginRight: 6 }} />
+                                              负责理事: {event.boardMember}
+                                            </div>
+                                          )}
+                                          <div style={{ marginTop: 4 }}>
+                                            <TeamOutlined style={{ marginRight: 6 }} />
+                                            筹委主席: {chairman?.name || '-'}
+                                          </div>
+                                          <div style={{ marginTop: 4 }}>
+                                            <DollarOutlined style={{ marginRight: 6 }} />
+                                            {priceRange}
+                                          </div>
                                         </div>
                                       </div>
                                     </div>
@@ -1206,30 +1243,66 @@ const DashboardPage: React.FC = () => {
                               return (
                                 <List.Item style={{ padding: '12px 0', display: 'block' }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                                    {/* 左侧：活动基本信息 */}
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                        <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</span>
-                                        <Tag color="orange">{event.level}</Tag>
-                                      </div>
-                                      <div style={{ fontSize: 12 }}>
-                                        <div style={{ marginTop: 4 }}>
-                                          <CalendarOutlined style={{ marginRight: 6 }} />
-                                          {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
+                                    {/* 左侧：海报 + 活动基本信息 */}
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 12 }}>
+                                      {/* 活动海报缩略图 */}
+                                      {event.posterImage ? (
+                                        <div style={{ 
+                                          width: 80, 
+                                          height: 80, 
+                                          flexShrink: 0,
+                                          borderRadius: 6,
+                                          overflow: 'hidden',
+                                          border: '1px solid #e8e8e8',
+                                        }}>
+                                          <OptimizedEventImage
+                                            src={event.posterImage}
+                                            alt={event.name}
+                                            aspectRatio={1}
+                                            style={{ width: '100%', height: '100%' }}
+                                          />
                                         </div>
-                                        {event.boardMember && (
+                                      ) : (
+                                        <div style={{ 
+                                          width: 80, 
+                                          height: 80, 
+                                          flexShrink: 0,
+                                          borderRadius: 6,
+                                          background: 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontSize: 32,
+                                        }}>
+                                          📆
+                                        </div>
+                                      )}
+                                      
+                                      {/* 活动信息 */}
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                          <span style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</span>
+                                          <Tag color="orange">{event.level}</Tag>
+                                        </div>
+                                        <div style={{ fontSize: 12 }}>
                                           <div style={{ marginTop: 4 }}>
-                                            <UserOutlined style={{ marginRight: 6 }} />
-                                            负责理事: {event.boardMember}
+                                            <CalendarOutlined style={{ marginRight: 6 }} />
+                                            {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
                                           </div>
-                                        )}
-                                        <div style={{ marginTop: 4 }}>
-                                          <TeamOutlined style={{ marginRight: 6 }} />
-                                          筹委主席: {chairman?.name || '-'}
-                                        </div>
-                                        <div style={{ marginTop: 4 }}>
-                                          <DollarOutlined style={{ marginRight: 6 }} />
-                                          {priceRange}
+                                          {event.boardMember && (
+                                            <div style={{ marginTop: 4 }}>
+                                              <UserOutlined style={{ marginRight: 6 }} />
+                                              负责理事: {event.boardMember}
+                                            </div>
+                                          )}
+                                          <div style={{ marginTop: 4 }}>
+                                            <TeamOutlined style={{ marginRight: 6 }} />
+                                            筹委主席: {chairman?.name || '-'}
+                                          </div>
+                                          <div style={{ marginTop: 4 }}>
+                                            <DollarOutlined style={{ marginRight: 6 }} />
+                                            {priceRange}
+                                          </div>
                                         </div>
                                       </div>
                                     </div>
