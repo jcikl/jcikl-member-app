@@ -121,21 +121,20 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                 }
                 description={
                   <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                    <div>
-                      <CalendarOutlined style={{ marginRight: 6 }} />
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
-                      </Typography.Text>
-                    </div>
-                    
-                    {event.boardMember && (
-                      <div>
-                        <UserOutlined style={{ marginRight: 6 }} />
+                    {/* 日期 + 负责理事（同排） */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <CalendarOutlined style={{ marginRight: 6 }} />
                         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          {event.boardMember}
+                          {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
                         </Typography.Text>
                       </div>
-                    )}
+                      {event.boardMember && (
+                        <Tag color="purple" style={{ fontSize: 11, margin: 0 }}>
+                          {event.boardMember}
+                        </Tag>
+                      )}
+                    </div>
                     
                     <div>
                       <TeamOutlined style={{ marginRight: 6 }} />
