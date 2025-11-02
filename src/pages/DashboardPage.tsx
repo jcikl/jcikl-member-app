@@ -1273,12 +1273,13 @@ const DashboardPage: React.FC = () => {
                           hoverable
                           style={{ 
                             marginBottom: 8,
+                            height: 56,
                             cursor: 'pointer',
                             transition: 'all 0.3s',
                             background: selectedInterest === item.industry ? '#fff7e6' : '#fafafa',
                             borderColor: selectedInterest === item.industry ? '#fa8c16' : '#f0f0f0',
                           }}
-                          bodyStyle={{ padding: '8px 10px' }}
+                          bodyStyle={{ padding: '8px 10px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           onClick={() => {
                             if (selectedInterest === item.industry) {
                               setSelectedInterest(null);
@@ -1292,15 +1293,11 @@ const DashboardPage: React.FC = () => {
                             }
                           }}
                         >
-                          <div style={{ textAlign: 'center' }}>
+                          <div style={{ textAlign: 'center', width: '100%' }}>
                             <div style={{ 
                               fontSize: 11, 
                               fontWeight: 600,
                               marginBottom: 4,
-                              minHeight: 32,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
                               wordBreak: 'break-word',
                               color: selectedInterest === item.industry ? '#fa8c16' : '#262626',
                             }}>
@@ -1380,9 +1377,9 @@ const DashboardPage: React.FC = () => {
                       </Badge>
                     }
                     title={
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <span>{member.profile?.name || '未设置姓名'}</span>
-                        <div style={{ display: 'flex', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                           <Tag color={
                             member.category === 'Official Member' ? 'blue' :
                             member.category === 'Probation Member' ? 'orange' :
@@ -1400,9 +1397,8 @@ const DashboardPage: React.FC = () => {
                     }
                     description={
                       <div>
-                        <div>{member.profile?.email || '未设置邮箱'}</div>
                         {member.business?.company && (
-                          <div style={{ marginTop: 4 }}>
+                          <div>
                             <ShopOutlined style={{ marginRight: 6 }} />
                             {member.business.company}
                           </div>
