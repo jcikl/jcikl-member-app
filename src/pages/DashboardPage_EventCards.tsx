@@ -148,23 +148,53 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                     {eventFinancialsLoaded && financial && (
                       <div style={{ 
                         marginTop: 8, 
-                        padding: '8px', 
+                        padding: '10px 12px', 
                         background: '#f0f5ff', 
                         borderRadius: 4,
+                        border: '1px solid #d9d9d9',
                       }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 4 }}>💰 财务概览</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 11 }}>
-                          <Typography.Text type="secondary">预算</Typography.Text>
-                          <Typography.Text strong>RM {financial.budgetTotal.toFixed(0)}</Typography.Text>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 8 }}>💰 财务对比</div>
+                        
+                        {/* 预算行 */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, color: '#8c8c8c' }}>预算</span>
+                          <span style={{ fontSize: 11, fontWeight: 600 }}>RM {financial.budgetTotal.toFixed(2)}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                          <Typography.Text type="secondary">净利润</Typography.Text>
-                          <Typography.Text 
-                            strong 
-                            style={{ color: financial.netProfit >= 0 ? '#52c41a' : '#ff4d4f' }}
-                          >
-                            RM {financial.netProfit.toFixed(0)}
-                          </Typography.Text>
+                        
+                        {/* 净利润行（突出显示） */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, paddingBottom: 6, borderBottom: '1px dashed #d9d9d9' }}>
+                          <span style={{ fontSize: 10, color: '#8c8c8c' }}>净利润</span>
+                          <span style={{ 
+                            fontSize: 11, 
+                            fontWeight: 600,
+                            color: financial.netProfit >= 0 ? '#52c41a' : '#ff4d4f'
+                          }}>
+                            RM {financial.netProfit.toFixed(2)}
+                          </span>
+                        </div>
+                        
+                        {/* 收入 */}
+                        <div style={{ marginBottom: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <span style={{ fontSize: 10, color: '#52c41a' }}>账户收入</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#52c41a' }}>RM {financial.accountIncomeTotal.toFixed(2)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 10, color: '#1890ff' }}>银行收入</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#1890ff' }}>RM {financial.bankIncomeTotal.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        
+                        {/* 支出 */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <span style={{ fontSize: 10, color: '#ff4d4f' }}>账户支出</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#ff4d4f' }}>RM {financial.accountExpenseTotal.toFixed(2)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 10, color: '#fa8c16' }}>银行支出</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#fa8c16' }}>RM {financial.bankExpenseTotal.toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
                     )}
