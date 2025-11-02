@@ -1164,7 +1164,7 @@ const DashboardPage: React.FC = () => {
         style={{ marginTop: 12 }}
         styles={{ body: { padding: '16px' } }}
       >
-        <Row gutter={[16, 16]} align="stretch">
+        <Row gutter={[24, 24]} align="stretch">
           {/* 左侧：行业分布 */}
           <Col xs={24} sm={8} md={8} lg={8}>
             <Card 
@@ -1229,7 +1229,7 @@ const DashboardPage: React.FC = () => {
           </Col>
 
           {/* 右侧：兴趣分布 */}
-          <Col xs={24} md={12}>
+          <Col xs={24} sm={8} md={8} lg={8}>
             <Card 
               title={
                 <span>
@@ -1253,8 +1253,8 @@ const DashboardPage: React.FC = () => {
               <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                 {listsLoading ? (
                   <Row gutter={8}>
-                    {[1, 2, 3, 4, 5, 6].map(i => (
-                      <Col span={8} key={i}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                      <Col span={6} key={i}>
                         <Skeleton.Button active block style={{ height: 60, marginBottom: 8 }} />
                       </Col>
                     ))}
@@ -1267,7 +1267,7 @@ const DashboardPage: React.FC = () => {
                 ) : (
                   <Row gutter={8}>
                     {interestDistribution.map((item, index) => (
-                      <Col xs={12} sm={8} md={12} lg={8} key={index}>
+                      <Col xs={12} sm={6} md={6} lg={6} key={index}>
                         <Card
                           size="small"
                           hoverable
