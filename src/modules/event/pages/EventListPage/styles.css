@@ -91,6 +91,10 @@
   padding: 16px;
 }
 
+.event-card .ant-card-meta {
+  margin-bottom: 0 !important; /* 移除默认的 margin-bottom，确保高度一致 */
+}
+
 .event-card .ant-card-actions {
   background: #fafafa;
 }
