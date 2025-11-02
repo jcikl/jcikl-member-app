@@ -1121,24 +1121,58 @@ const DashboardPage: React.FC = () => {
         />
       </Card>
 
-      {/* 兴趣与行业分布 */}
+      {/* 会员数据中心：行业分布、兴趣分布、会员列表 */}
       <Card
         title={
           <span>
-            📊 兴趣与行业分布
+            🎯 会员数据中心
           </span>
         }
+        extra={
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(selectedIndustry || selectedAcceptIntl || selectedInterest) && (
+              <Button
+                size="small"
+                icon={<CloseCircleOutlined />}
+                onClick={() => {
+                  setSelectedIndustry(null);
+                  setSelectedAcceptIntl(null);
+                  setSelectedInterest(null);
+                  setFilteredMembers(members);
+                }}
+              >
+                清除筛选
+              </Button>
+            )}
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              loading={membersLoading || listsLoading}
+              onClick={handleRefreshAll}
+            >
+              刷新
+            </Button>
+            <Button
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={handleExport}
+            >
+              导出
+            </Button>
+          </div>
+        }
         style={{ marginTop: 12 }}
+        styles={{ body: { padding: '16px' } }}
       >
-        <Row gutter={[16, 16]}>
+        <Row gutter={[16, 16]} align="stretch">
           {/* 左侧：行业分布 */}
-          <Col xs={24} md={12}>
+          <Col xs={24} sm={8} md={8} lg={8}>
             <Card 
               title="行业分布 Top 10"
               className="content-card"
               style={{ height: '100%' }}
             >
-              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                 {listsLoading ? (
                   <Skeleton active paragraph={{ rows: 6 }} />
                 ) : industryDistribution.length === 0 ? (
@@ -1216,7 +1250,7 @@ const DashboardPage: React.FC = () => {
               className="content-card"
               style={{ height: '100%' }}
             >
-              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                 {listsLoading ? (
                   <Row gutter={8}>
                     {[1, 2, 3, 4, 5, 6].map(i => (
@@ -1296,46 +1330,43 @@ const DashboardPage: React.FC = () => {
               </div>
             </Card>
           </Col>
-        </Row>
-      </Card>
 
-      {/* 会员列表 */}
-      <Card
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>
-              👥 会员列表
-            </span>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              {(selectedIndustry || selectedAcceptIntl || selectedInterest) && (
-                <Button
-                  size="small"
-                  icon={<CloseCircleOutlined />}
-                  onClick={() => {
-                    setSelectedIndustry(null);
-                    setSelectedAcceptIntl(null);
-                    setSelectedInterest(null);
-                    setFilteredMembers(members);
-                  }}
-                >
-                  清除筛选
-                </Button>
-              )}
-              <Button
-                size="small"
-                icon={<FilterOutlined />}
-                onClick={() => {
-                  message.info('筛选功能开发中');
-                }}
-              >
-                筛选
-              </Button>
-            </div>
-          </div>
-        }
-        style={{ marginTop: 12 }}
-      >
-        <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+          {/* 🆕 会员列表卡片 */}
+          <Col xs={24} sm={8} md={8} lg={8}>
+            <Card 
+              title={
+                <span>
+                  <TeamOutlined style={{ marginRight: 8, color: '#722ed1' }} />
+                  会员列表
+                  {(selectedIndustry || selectedInterest || selectedMemberId) && (
+                    <Tag color="blue" style={{ marginLeft: 12 }}>
+                      已筛选 {filteredMembers.length} / {members.length}
+                    </Tag>
+                  )}
+                </span>
+              } 
+              className="content-card"
+              style={{ height: '100%' }}
+              extra={
+                (selectedIndustry || selectedInterest || selectedMemberId) ? (
+                  <Button 
+                    type="link" 
+                    size="small" 
+                    icon={<CloseCircleOutlined />}
+                    onClick={() => {
+                      setSelectedIndustry(null);
+                      setSelectedAcceptIntl(null);
+                      setSelectedInterest(null);
+                      setFilteredMembers(members);
+                      setSelectedMemberId(null);
+                    }}
+                  >
+                    清除筛选
+                  </Button>
+                ) : null
+              }
+            >
+              <div style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           {membersLoading ? (
             <div style={{ padding: 40, textAlign: 'center' }}>
               <div>加载中...</div>
@@ -1404,7 +1435,10 @@ const DashboardPage: React.FC = () => {
               )}
             />
           )}
-        </div>
+              </div>
+            </Card>
+          </Col>
+        </Row>
       </Card>
     </div>
     </PermissionGuard>
