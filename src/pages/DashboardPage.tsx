@@ -1266,8 +1266,13 @@ const DashboardPage: React.FC = () => {
                   />
                 ) : (
                   <Row gutter={8}>
-                    {interestDistribution.map((item, index) => (
-                      <Col xs={12} sm={6} md={6} lg={6} key={index}>
+                    {interestDistribution.map((item, index) => {
+                      // 判断文字长度，决定卡片占用宽度
+                      const isLongText = item.industry.length > 20;
+                      const colSpan = isLongText ? 12 : 6; // 长文字占2个位置，短文字占1个位置
+                      
+                      return (
+                      <Col xs={12} sm={colSpan} md={colSpan} lg={colSpan} key={index}>
                         <Card
                           size="small"
                           hoverable
@@ -1308,7 +1313,8 @@ const DashboardPage: React.FC = () => {
                           </div>
                         </Card>
                       </Col>
-                    ))}
+                      );
+                    })}
                   </Row>
                 )}
               </div>
