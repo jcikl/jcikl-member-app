@@ -1110,7 +1110,7 @@ const DashboardPage: React.FC = () => {
                           setFilteredMembers(members);
                         } else {
                           setSelectedIndustry(item.industry as IndustryType);
-                          const filtered = members.filter(m => m.business?.industry === item.industry);
+                          const filtered = members.filter(m => m.business?.ownIndustry?.includes(item.industry as IndustryType));
                           setFilteredMembers(filtered);
                         }
                       }}
@@ -1272,7 +1272,7 @@ const DashboardPage: React.FC = () => {
                         <span>{member.profile?.name || '未设置姓名'}</span>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <Tag color={
-                            member.category === 'Voting Member' ? 'blue' :
+                            member.category === 'Official Member' ? 'blue' :
                             member.category === 'Probation Member' ? 'orange' :
                             member.category === 'Honorary Member' ? 'purple' :
                             member.category === 'Visiting Member' ? 'cyan' :
@@ -1280,8 +1280,8 @@ const DashboardPage: React.FC = () => {
                           }>
                             {member.category}
                           </Tag>
-                          {member.business?.industry && (
-                            <Tag color="green">{member.business.industry}</Tag>
+                          {member.business?.ownIndustry?.[0] && (
+                            <Tag color="green">{member.business.ownIndustry[0]}</Tag>
                           )}
                         </div>
                       </div>
@@ -1289,10 +1289,10 @@ const DashboardPage: React.FC = () => {
                     description={
                       <div>
                         <div>{member.profile?.email || '未设置邮箱'}</div>
-                        {member.business?.companyName && (
+                        {member.business?.company && (
                           <div style={{ marginTop: 4 }}>
                             <ShopOutlined style={{ marginRight: 6 }} />
-                            {member.business.companyName}
+                            {member.business.company}
                           </div>
                         )}
                         {member.profile?.hobbies && member.profile.hobbies.length > 0 && (
