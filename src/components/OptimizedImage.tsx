@@ -167,6 +167,7 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
   className = '',
   style = {},
 }) => {
+  const [imageError, setImageError] = React.useState(false);
   const width = 400;
   const height = Math.round(width / aspectRatio);
 
@@ -197,6 +198,26 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
     aspectRatio,
     isCloudinary: src.includes('cloudinary.com'),
   });
+
+  // 🆕 图片加载失败时显示 fallback
+  if (imageError) {
+    return (
+      <div 
+        style={{ 
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '48px',
+        }}
+      >
+        <span>📷</span>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -243,6 +264,7 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
             alt,
             error,
           });
+          setImageError(true);  // 🆕 触发 fallback 显示
         }}
         afterLoad={() => {
           console.log(`✅ [OptimizedEventImage] Image loaded successfully:`, {
