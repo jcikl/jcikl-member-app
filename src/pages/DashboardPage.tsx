@@ -1268,9 +1268,16 @@ const DashboardPage: React.FC = () => {
                   <Row gutter={8}>
                     {interestDistribution.map((item, index) => {
                       // 判断文字长度，决定卡片占用宽度和高度
-                      const isLongText = item.industry.length > 20;
+                      const isLongText = item.industry.length > 15; // 降低阈值至15字符
                       const colSpan = isLongText ? 12 : 6; // 长文字占2个位置，短文字占1个位置
                       const cardHeight = 64; // 统一高度64px
+                      
+                      // 调试日志
+                      console.log(`🎴 [HobbyCard] ${item.industry}:`, {
+                        length: item.industry.length,
+                        isLongText,
+                        colSpan,
+                      });
                       
                       return (
                       <Col xs={12} sm={colSpan} md={colSpan} lg={colSpan} key={index}>
