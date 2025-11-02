@@ -119,10 +119,11 @@
 
 .event-card .ant-card-actions {
   background: #fafafa;
+  padding: 16px !important; /* 与 card-body 保持一致的上下左右 padding */
 }
 
 .event-card .ant-card-actions > li {
-  margin: 8px 0;
+  margin: 0; /* 移除额外 margin，统一间距 */
 }
 
 .event-card .ant-card-actions > li > span {
