@@ -36,7 +36,7 @@ exports.handler = async (event, context) => {
 
   try {
     // Parse request body
-    const { publicId } = JSON.parse(event.body);
+    let { publicId } = JSON.parse(event.body);
 
     if (!publicId) {
       return {
@@ -45,6 +45,10 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({ error: 'publicId is required' }),
       };
     }
+
+    // ⚠️ CRITICAL: Decode URL-encoded publicId
+    // Cloudinary requires unencoded values for signature generation
+    publicId = decodeURIComponent(publicId);
 
     console.log('🗑️ [Netlify Function] Deleting image:', {
       publicId,

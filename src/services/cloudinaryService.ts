@@ -71,12 +71,16 @@ class CloudinaryService {
       
       // Reconstruct publicId (folder + filename without extension)
       pathAfterVersion[pathAfterVersion.length - 1] = filenameWithoutExt;
-      const publicId = pathAfterVersion.join('/');
+      
+      // ⚠️ CRITICAL: Decode each segment (handles %20, %2F, etc.)
+      const decodedSegments = pathAfterVersion.map(segment => decodeURIComponent(segment));
+      const publicId = decodedSegments.join('/');
       
       console.log(`🔍 [Cloudinary] Extracted publicId:`, {
         originalUrl: url,
         publicId,
-        segments: pathAfterVersion,
+        encodedSegments: pathAfterVersion,
+        decodedSegments,
       });
       
       return publicId;

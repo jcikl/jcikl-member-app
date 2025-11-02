@@ -36,7 +36,16 @@ exports.handler = async (event, context) => {
 
   try {
     // Parse request body
-    const { publicId, folder } = JSON.parse(event.body);
+    let { publicId, folder } = JSON.parse(event.body);
+
+    // ⚠️ CRITICAL: Decode URL-encoded publicId
+    // Cloudinary requires unencoded values for signature generation
+    if (publicId) {
+      publicId = decodeURIComponent(publicId);
+    }
+    if (folder) {
+      folder = decodeURIComponent(folder);
+    }
 
     console.log('📝 [Netlify Function] Generating signature:', {
       publicId,
@@ -90,12 +99,20 @@ exports.handler = async (event, context) => {
       .map(key => `${key}=${uploadParams[key]}`)
       .join('&');
 
+    console.log('🔐 [Netlify Function] Signing parameters:', {
+      paramsToSign,
+      uploadParams,
+    });
+
     const signature = crypto
       .createHash('sha256')
       .update(`${paramsToSign}${apiSecret}`)
       .digest('hex');
 
-    console.log('✅ [Netlify Function] Signature generated successfully');
+    console.log('✅ [Netlify Function] Signature generated successfully:', {
+      signature: signature.substring(0, 16) + '...',
+      paramsLength: paramsToSign.length,
+    });
 
     // Return signature data
     return {
