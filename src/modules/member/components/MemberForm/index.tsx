@@ -110,6 +110,14 @@ const MemberForm: React.FC<MemberFormProps> = ({ member, mode }) => {
         }
       }
 
+      console.log(`📝 [MemberForm] Form submitted with values:`, values);
+      console.log(`👤 [MemberForm] Avatar in form:`, {
+        hasAvatar: !!values.avatar,
+        avatarUrl: values.avatar,
+        urlLength: values.avatar?.length,
+        isCloudinaryUrl: values.avatar?.includes('cloudinary.com'),
+      });
+
       // Prepare form data
       const formData: MemberFormData = {
         name: values.name,
@@ -128,6 +136,14 @@ const MemberForm: React.FC<MemberFormProps> = ({ member, mode }) => {
         departmentAndPosition: values.departmentAndPosition,
         joinDate: values.joinDate ? values.joinDate.toISOString() : undefined,
       };
+
+      console.log(`💾 [MemberForm] Prepared formData for submission:`, {
+        name: formData.name,
+        email: formData.email,
+        hasAvatar: !!formData.avatar,
+        avatarUrl: formData.avatar,
+        mode,
+      });
 
       let result;
       if (mode === 'create') {

@@ -811,25 +811,40 @@ const EventListPage: React.FC = () => {
                     hoverable
                     className="event-card"
                     cover={
-                      event.coverImage ? (
-                        <OptimizedEventImage
-                          src={event.coverImage}
-                          alt={event.name}
-                          aspectRatio={16/9}
-                        />
-                      ) : (
-                        <div style={{
-                          height: 180,
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontSize: 48,
-                        }}>
-                          <CalendarOutlined />
-                        </div>
-                      )
+                      (() => {
+                        // 优先使用 posterImage，其次使用 coverImage
+                        const imageUrl = event.posterImage || event.coverImage;
+                        
+                        console.log(`🎴 [EventCard] Rendering card for event:`, {
+                          eventId: event.id,
+                          eventName: event.name,
+                          hasPosterImage: !!event.posterImage,
+                          hasCoverImage: !!event.coverImage,
+                          posterImageUrl: event.posterImage,
+                          coverImageUrl: event.coverImage,
+                          usingImage: imageUrl ? 'posterImage or coverImage' : 'fallback gradient',
+                        });
+
+                        return imageUrl ? (
+                          <OptimizedEventImage
+                            src={imageUrl}
+                            alt={event.name}
+                            aspectRatio={16/9}
+                          />
+                        ) : (
+                          <div style={{
+                            height: 180,
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: 48,
+                          }}>
+                            <CalendarOutlined />
+                          </div>
+                        );
+                      })()
                     }
                     actions={[
                       <Button

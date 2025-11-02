@@ -172,13 +172,31 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
 
   const getEventImageUrl = (url: string): string => {
     if (url.includes('cloudinary.com')) {
-      return url.replace(
+      const optimizedUrl = url.replace(
         '/upload/',
         `/upload/w_${width},h_${height},c_fill,g_auto,q_80,f_auto,dpr_auto/`
       );
+      console.log(`🖼️ [OptimizedEventImage] Optimizing Cloudinary URL:`, {
+        original: url,
+        optimized: optimizedUrl,
+        width,
+        height,
+      });
+      return optimizedUrl;
     }
+    console.log(`🖼️ [OptimizedEventImage] Non-Cloudinary image:`, url);
     return url;
   };
+
+  const optimizedSrc = getEventImageUrl(src);
+
+  console.log(`🎴 [OptimizedEventImage] Rendering event image:`, {
+    alt,
+    originalSrc: src,
+    optimizedSrc,
+    aspectRatio,
+    isCloudinary: src.includes('cloudinary.com'),
+  });
 
   return (
     <div 
@@ -192,7 +210,7 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
       }}
     >
       <LazyLoadImage
-        src={getEventImageUrl(src)}
+        src={optimizedSrc}
         alt={alt}
         effect="blur"
         style={{
@@ -202,6 +220,18 @@ export const OptimizedEventImage: React.FC<OptimizedEventImageProps> = ({
           width: '100%',
           height: '100%',
           objectFit: 'cover',
+        }}
+        onError={() => {
+          console.error(`❌ [OptimizedEventImage] Image failed to load:`, {
+            src: optimizedSrc,
+            alt,
+          });
+        }}
+        afterLoad={() => {
+          console.log(`✅ [OptimizedEventImage] Image loaded successfully:`, {
+            src: optimizedSrc,
+            alt,
+          });
         }}
       />
     </div>

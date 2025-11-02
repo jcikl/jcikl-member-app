@@ -34,10 +34,20 @@ class CloudinaryService {
    */
   async uploadImage(file: File, folder?: string): Promise<UploadResult> {
     try {
+      console.log(`☁️ [Cloudinary] Starting upload:`, {
+        fileName: file.name,
+        fileSize: `${(file.size / 1024).toFixed(2)} KB`,
+        fileType: file.type,
+        targetFolder: folder || this.config.folder,
+        cloudName: this.config.cloudName,
+      });
+
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', this.config.uploadPreset);
       formData.append('folder', folder || this.config.folder);
+
+      console.log(`📤 [Cloudinary] Sending request to:`, `https://api.cloudinary.com/v1_1/${this.config.cloudName}/image/upload`);
 
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${this.config.cloudName}/image/upload`,
@@ -47,11 +57,28 @@ class CloudinaryService {
         }
       );
 
+      console.log(`📡 [Cloudinary] Response status:`, response.status, response.statusText);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ [Cloudinary] Upload failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
         throw new Error('Upload failed');
       }
 
       const data = await response.json();
+
+      console.log(`✅ [Cloudinary] Upload successful:`, {
+        url: data.secure_url,
+        publicId: data.public_id,
+        format: data.format,
+        width: data.width,
+        height: data.height,
+        bytes: data.bytes,
+      });
 
       return {
         success: true,
@@ -59,7 +86,7 @@ class CloudinaryService {
         publicId: data.public_id,
       };
     } catch (error: any) {
-      console.error('Cloudinary upload error:', error);
+      console.error('❌ [Cloudinary] Upload error:', error);
       return {
         success: false,
         error: error.message || 'Upload failed',

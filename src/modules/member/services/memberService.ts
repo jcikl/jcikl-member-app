@@ -593,6 +593,14 @@ export const createMember = async (
   createdBy: string
 ): Promise<Member> => {
   try {
+    console.log(`👤 [createMember] Creating new member:`, {
+      name: data.name,
+      email: data.email,
+      hasAvatar: !!data.avatar,
+      avatarUrl: data.avatar,
+      isCloudinaryAvatar: data.avatar?.includes('cloudinary.com'),
+    });
+
     const now = Timestamp.now();
     
     // Prepare member data
@@ -677,13 +685,31 @@ export const createMember = async (
       updatedBy: createdBy,
     });
     
+    console.log(`💾 [createMember] Saving member to Firestore:`, {
+      name: memberData.name,
+      email: memberData.email,
+      hasProfileAvatar: !!(memberData as any).profile?.avatar,
+      profileAvatarUrl: (memberData as any).profile?.avatar,
+    });
+
     // Add to Firestore with retry
     const docRef = await retryWithBackoff(
       () => addDoc(getMembersRef(), memberData)
     );
     
+    console.log(`✅ [createMember] Member saved to Firestore:`, {
+      memberId: docRef.id,
+      name: memberData.name,
+    });
+
     // Fetch and return the created member
     const createdMember = await getMemberById(docRef.id);
+    
+    console.log(`📤 [createMember] Fetched created member:`, {
+      memberId: createdMember?.id,
+      hasAvatar: !!createdMember?.profile?.avatar,
+      avatarUrl: createdMember?.profile?.avatar,
+    });
     
     if (!createdMember) {
       throw new Error('创建会员后无法获取数据');

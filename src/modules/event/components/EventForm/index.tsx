@@ -62,6 +62,14 @@ const EventForm: React.FC<EventFormProps> = ({
 
   const handleSubmit = async (values: any) => {
     try {
+      console.log(`📝 [EventForm] Form submitted with values:`, values);
+      console.log(`🖼️ [EventForm] Poster image in form:`, {
+        hasPosterImage: !!values.posterImage,
+        posterImageUrl: values.posterImage,
+        urlLength: values.posterImage?.length,
+        isCloudinaryUrl: values.posterImage?.includes('cloudinary.com'),
+      });
+
       const formData: EventFormData = {
         name: values.name,
         description: values.description,
@@ -77,8 +85,16 @@ const EventForm: React.FC<EventFormProps> = ({
         posterImage: values.posterImage,
       };
 
+      console.log(`💾 [EventForm] Prepared formData for submission:`, {
+        name: formData.name,
+        hasPosterImage: !!formData.posterImage,
+        posterImageUrl: formData.posterImage,
+      });
+
       await onSubmit(formData);
+      console.log(`✅ [EventForm] Form submission successful`);
     } catch (error) {
+      console.error('❌ [EventForm] Form submission failed:', error);
       message.error('提交表单失败');
       console.error(error);
     }

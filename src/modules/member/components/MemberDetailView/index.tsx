@@ -817,6 +817,15 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
   // 统一的 Row gutter 配置
   const ROW_GUTTER: [number, number] = [16, 16];  // 标签页层面的 gutter
   
+  // Log avatar display
+  console.log(`👤 [MemberDetailView] Rendering member profile:`, {
+    memberId: member.id,
+    memberName: member.name || member.profile?.name,
+    hasProfileAvatar: !!member.profile?.avatar,
+    avatarUrl: member.profile?.avatar,
+    isCloudinaryAvatar: member.profile?.avatar?.includes('cloudinary.com'),
+  });
+
   return (
     <div className="member-detail-view">
       {/* Profile Card */}
@@ -827,6 +836,13 @@ export const MemberDetailView: React.FC<MemberDetailViewProps> = ({
               size={120}
               src={member.profile.avatar}
               icon={<UserOutlined />}
+              onError={() => {
+                console.error(`❌ [MemberDetailView] Avatar image failed to load:`, {
+                  url: member.profile.avatar,
+                  memberId: member.id,
+                });
+                return true;
+              }}
             />
           </Col>
           <Col xs={24} sm={18}>

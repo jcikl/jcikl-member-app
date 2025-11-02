@@ -377,10 +377,24 @@ export const createEvent = async (
       updatedBy: currentUserId,
     };
     
+    console.log(`💾 [createEvent] Saving event to Firestore:`, {
+      name: eventData.name,
+      hasCoverImage: !!eventData.coverImage,
+      hasPosterImage: !!eventData.posterImage,
+      coverImageUrl: eventData.coverImage,
+      posterImageUrl: eventData.posterImage,
+      isCloudinaryCover: eventData.coverImage?.includes('cloudinary.com'),
+      isCloudinaryPoster: eventData.posterImage?.includes('cloudinary.com'),
+    });
+    
     const docRef = await addDoc(getEventsRef(), cleanUndefinedValues(eventData));
     const eventId = docRef.id;
     
-    console.log('✅ [createEvent] Event created:', eventId);
+    console.log('✅ [createEvent] Event created:', {
+      eventId,
+      name: eventData.name,
+      posterImage: eventData.posterImage,
+    });
     
     // 🆕 自动创建关联的 FinanceEvent
     try {
