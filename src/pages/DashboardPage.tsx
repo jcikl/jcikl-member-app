@@ -1029,7 +1029,7 @@ const DashboardPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'hidden', padding: '8px' }}>
+                <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'hidden', padding: '4px' }}>
                   <DashboardEventCards
                     events={upcomingEvents}
                     eventFinancials={eventFinancials}
@@ -1052,7 +1052,7 @@ const DashboardPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'hidden', padding: '8px' }}>
+                <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'hidden', padding: '4px' }}>
                   <DashboardEventCards
                     events={filteredPastEvents}
                     eventFinancials={eventFinancials}
