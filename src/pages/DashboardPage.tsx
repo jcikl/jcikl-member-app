@@ -900,7 +900,7 @@ const DashboardPage: React.FC = () => {
           </div>
         }
         style={{ marginBottom: 16 }}
-        bodyStyle={{ padding: '16px' }}
+        styles={{ body: { padding: '16px' } }}
       >
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={6}>
@@ -1013,7 +1013,7 @@ const DashboardPage: React.FC = () => {
           </div>
         }
         style={{ marginTop: 12 }}
-        bodyStyle={{ padding: '16px' }}
+        styles={{ body: { padding: '16px' } }}
       >
         <Tabs
           defaultActiveKey="upcoming"
@@ -1337,7 +1337,7 @@ const DashboardPage: React.FC = () => {
           </div>
         }
         style={{ marginTop: 12 }}
-        bodyStyle={{ padding: '16px' }}
+        styles={{ body: { padding: '16px' } }}
       >
         {/* 会员生日列表：单独一行置顶 */}
         <Row gutter={[16, 16]}>

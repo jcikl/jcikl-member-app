@@ -43,3 +43,6 @@ serviceAccountKey.json
 *-firebase-adminsdk-*.json
 
 
+
+# Local Netlify folder
+.netlify

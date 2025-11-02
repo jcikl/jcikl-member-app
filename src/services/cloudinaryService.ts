@@ -1,9 +1,7 @@
 /**
  * Cloudinary Service
- * Cloudinary 图片上传服务（使用 Signed Upload + Firebase Cloud Functions）
+ * Cloudinary 图片上传服务（使用 Signed Upload + Netlify Functions）
  */
-
-import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface CloudinaryConfig {
   cloudName: string;
@@ -28,6 +26,7 @@ interface UploadResult {
   url?: string;
   publicId?: string;
   error?: string;
+  wasOverwritten?: boolean; // True only if signed upload successfully overwrote an existing image
 }
 
 class CloudinaryService {
@@ -88,86 +87,113 @@ class CloudinaryService {
   }
 
   /**
-   * Get signature from Firebase Cloud Function
-   * 从 Firebase Cloud Function 获取签名
+   * Get signature from Netlify Serverless Function
+   * 从 Netlify Serverless Function 获取签名
    */
-  private async getSignature(publicId?: string, folder?: string): Promise<SignatureResponse> {
+  private async getSignature(publicId?: string, folder?: string): Promise<SignatureResponse | null> {
     try {
-      console.log(`🔐 [Cloudinary] Requesting signature from Cloud Function:`, {
+      console.log(`🔐 [Cloudinary] Requesting signature from Netlify Function:`, {
         publicId,
         folder,
       });
 
-      const functions = getFunctions();
-      const generateSignature = httpsCallable<
-        { publicId?: string; folder?: string },
-        SignatureResponse
-      >(functions, 'generateCloudinarySignature');
+      // Call Netlify Function
+      // In production: /.netlify/functions/cloudinary-signature
+      // In development: http://localhost:8888/.netlify/functions/cloudinary-signature
+      const netlifyFunctionUrl = import.meta.env.DEV
+        ? 'http://localhost:8888/.netlify/functions/cloudinary-signature'
+        : '/.netlify/functions/cloudinary-signature';
 
-      const result = await generateSignature({ publicId, folder });
-
-      console.log(`✅ [Cloudinary] Signature received:`, {
-        timestamp: result.data.timestamp,
-        hasSignature: !!result.data.signature,
-        publicId: result.data.publicId,
-        folder: result.data.folder,
+      const response = await fetch(netlifyFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ publicId, folder }),
       });
 
-      return result.data;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`❌ [Cloudinary] Netlify Function error:`, errorData);
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const result: SignatureResponse = await response.json();
+
+      console.log(`✅ [Cloudinary] Signature received from Netlify:`, {
+        timestamp: result.timestamp,
+        hasSignature: !!result.signature,
+        publicId: result.publicId,
+        folder: result.folder,
+      });
+
+      return result;
     } catch (error: any) {
       console.error(`❌ [Cloudinary] Failed to get signature:`, error);
-      throw new Error(`Signature generation failed: ${error.message}`);
+      console.warn(`⚠️ [Cloudinary] Falling back to unsigned upload (overwrite disabled)`);
+      return null;  // Return null to trigger fallback
     }
   }
 
   /**
-   * Upload image to Cloudinary using Signed Upload
+   * Upload image to Cloudinary using Signed Upload (with fallback to Unsigned)
    * 使用签名上传到 Cloudinary（如果提供 oldUrl，将覆盖原图片以节省存储空间）
+   * 如果签名获取失败，回退到 unsigned upload（不支持覆盖）
    */
   async uploadImage(file: File, folder?: string, oldUrl?: string): Promise<UploadResult> {
     try {
       // 尝试从旧 URL 提取 publicId
       const oldPublicId = oldUrl ? this.extractPublicId(oldUrl) : null;
       
-      console.log(`☁️ [Cloudinary] Starting signed upload:`, {
+      console.log(`☁️ [Cloudinary] Starting upload:`, {
         fileName: file.name,
         fileSize: `${(file.size / 1024).toFixed(2)} KB`,
         fileType: file.type,
         targetFolder: folder || this.config.folder,
-        willOverwrite: !!oldPublicId,
+        willAttemptOverwrite: !!oldPublicId,
         oldPublicId,
       });
 
-      // 🔐 Step 1: Get signature from Cloud Function
+      // 🔐 Step 1: Try to get signature from Cloud Function
       const signatureData = await this.getSignature(
         oldPublicId || undefined,
         oldPublicId ? undefined : (folder || this.config.folder)
       );
 
-      // 🆕 Step 2: Build FormData with signature
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('api_key', signatureData.apiKey);
-      formData.append('timestamp', signatureData.timestamp.toString());
-      formData.append('signature', signatureData.signature);
-      
-      // Add upload parameters
-      if (signatureData.publicId) {
-        formData.append('public_id', signatureData.publicId);
-        formData.append('overwrite', 'true');
-        formData.append('invalidate', 'true');
-        console.log(`♻️ [Cloudinary] Will overwrite existing image:`, signatureData.publicId);
-      } else if (signatureData.folder) {
-        formData.append('folder', signatureData.folder);
-        console.log(`📁 [Cloudinary] Will upload to folder:`, signatureData.folder);
+
+      // 🆕 Step 2: Build FormData (Signed or Unsigned)
+      if (signatureData) {
+        // ✅ Signed Upload (with overwrite support)
+        console.log(`🔐 [Cloudinary] Using signed upload`);
+        formData.append('api_key', signatureData.apiKey);
+        formData.append('timestamp', signatureData.timestamp.toString());
+        formData.append('signature', signatureData.signature);
+        
+        if (signatureData.publicId) {
+          formData.append('public_id', signatureData.publicId);
+          formData.append('overwrite', 'true');
+          formData.append('invalidate', 'true');
+          console.log(`♻️ [Cloudinary] Will overwrite existing image:`, signatureData.publicId);
+        } else if (signatureData.folder) {
+          formData.append('folder', signatureData.folder);
+          console.log(`📁 [Cloudinary] Will upload to folder:`, signatureData.folder);
+        }
+      } else {
+        // ⚠️ Fallback to Unsigned Upload (no overwrite)
+        console.warn(`⚠️ [Cloudinary] Using unsigned upload (fallback - overwrite disabled)`);
+        formData.append('upload_preset', this.config.uploadPreset);
+        formData.append('folder', folder || this.config.folder);
       }
 
-      console.log(`📤 [Cloudinary] Sending signed request to:`, 
-        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`);
+      const cloudName = signatureData?.cloudName || this.config.cloudName;
+      console.log(`📤 [Cloudinary] Sending request to:`, 
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
 
       // 🚀 Step 3: Upload to Cloudinary
       const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
         {
           method: 'POST',
           body: formData,
@@ -188,20 +214,22 @@ class CloudinaryService {
 
       const data = await response.json();
 
-      console.log(`✅ [Cloudinary] Signed upload successful:`, {
+      console.log(`✅ [Cloudinary] Upload successful:`, {
         url: data.secure_url,
         publicId: data.public_id,
         format: data.format,
         width: data.width,
         height: data.height,
         bytes: data.bytes,
-        wasOverwritten: !!oldPublicId,
+        wasOverwritten: !!oldPublicId && !!signatureData,
+        uploadMode: signatureData ? 'signed' : 'unsigned (fallback)',
       });
 
       return {
         success: true,
         url: data.secure_url,
         publicId: data.public_id,
+        wasOverwritten: !!oldPublicId && !!signatureData, // Only true if signed upload with old publicId
       };
     } catch (error: any) {
       console.error('❌ [Cloudinary] Upload error:', error);
@@ -245,17 +273,53 @@ class CloudinaryService {
   }
 
   /**
-   * Delete image from Cloudinary
-   * Note: This should be implemented server-side with Firebase Cloud Functions
+   * Delete image from Cloudinary via Netlify Function
+   * 通过 Netlify Function 从 Cloudinary 删除图片
    */
   async deleteImage(publicId: string): Promise<boolean> {
     try {
-      // Deletion requires API secret, must be done server-side
-      console.warn('Delete image should be implemented server-side. Public ID:', publicId);
-      // TODO: Implement via Firebase Cloud Function
-      return true;
-    } catch (error) {
-      console.error('Delete image error:', error);
+      console.log('🗑️ [Cloudinary] Requesting image deletion:', { publicId });
+
+      // 🚧 In development mode without Netlify Dev, skip actual deletion
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ [Cloudinary] Development mode: Skipping actual Cloudinary deletion');
+        console.warn('💡 [Cloudinary] To enable deletion in dev, run: netlify dev');
+        console.warn('🔧 [Cloudinary] Image will only be removed from UI, not from Cloudinary');
+        return true; // Return success to update UI
+      }
+
+      // Call Netlify Function (production only)
+      const netlifyFunctionUrl = '/.netlify/functions/cloudinary-delete';
+
+      const response = await fetch(netlifyFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ publicId }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('✅ [Cloudinary] Image deleted successfully from Cloudinary:', publicId);
+        return true;
+      } else if (response.status === 404) {
+        console.warn('⚠️ [Cloudinary] Image not found in Cloudinary:', publicId);
+        return true; // Consider not found as success (already deleted)
+      } else {
+        console.error('❌ [Cloudinary] Failed to delete image:', result);
+        return false;
+      }
+    } catch (error: any) {
+      console.error('❌ [Cloudinary] Delete image error:', error);
+      
+      // In development, treat errors as success (UI-only deletion)
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ [Cloudinary] Dev mode: Treating as success (UI-only deletion)');
+        return true;
+      }
+      
       return false;
     }
   }

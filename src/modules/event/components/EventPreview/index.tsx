@@ -39,7 +39,7 @@ const EventPreview: React.FC<EventPreviewProps> = ({ event }) => {
     <div className="event-preview">
       {/* 活动海报 */}
       {event.posterImage && (
-        <Card className="mb-4" bodyStyle={{ padding: 0 }}>
+        <Card className="mb-4" styles={{ body: { padding: 0 } }}>
           <Image
             src={event.posterImage}
             alt={event.name}
@@ -53,9 +53,9 @@ const EventPreview: React.FC<EventPreviewProps> = ({ event }) => {
                 }
               ) => (
                 <Space size={12} className="toolbar-wrapper">
-                  <ZoomOutOutlined 
+                  <ZoomOutOutlined
                     onClick={onZoomOut}
-                    style={{ 
+                    style={{
                       fontSize: 20, 
                       cursor: 'pointer',
                       color: 'white',
@@ -64,9 +64,9 @@ const EventPreview: React.FC<EventPreviewProps> = ({ event }) => {
                       borderRadius: '4px',
                     }}
                   />
-                  <ZoomInOutlined 
+                  <ZoomInOutlined
                     onClick={onZoomIn}
-                    style={{ 
+                    style={{
                       fontSize: 20, 
                       cursor: 'pointer',
                       color: 'white',

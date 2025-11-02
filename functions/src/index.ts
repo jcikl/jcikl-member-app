@@ -30,7 +30,7 @@ admin.initializeApp();
  * }
  */
 export const generateCloudinarySignature = functions
-  .region('asia-east1')  // Hong Kong region (closest to Malaysia)
+  .region('us-central1')  // Default region (matches Firebase project default)
   .https.onCall(async (data, context) => {
     try {
       // ✅ Check authentication
@@ -121,7 +121,7 @@ export const generateCloudinarySignature = functions
  * }
  */
 export const deleteCloudinaryImage = functions
-  .region('asia-east1')
+  .region('us-central1')  // Default region (matches Firebase project default)
   .https.onCall(async (data, context) => {
     try {
       // ✅ Check authentication

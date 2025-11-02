@@ -301,7 +301,7 @@ export const BaseSearchFilter: React.FC<BaseSearchFilterProps> = ({
     <Card
       className={`base-search-filter ${className}`}
       style={style}
-      bodyStyle={{ padding: '16px' }}
+      styles={{ body: { padding: '16px' } }}
     >
       {renderContent()}
       
