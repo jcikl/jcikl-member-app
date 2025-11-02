@@ -1038,7 +1038,6 @@ const DashboardPage: React.FC = () => {
                   cardColor="blue"
                   gradientColors={['#667eea', '#764ba2']}
                   icon={<CalendarOutlined />}
-                  maxCards={4}
                 />
               ),
             },
@@ -1060,7 +1059,6 @@ const DashboardPage: React.FC = () => {
                   cardColor="orange"
                   gradientColors={['#ff9a9e', '#fad0c4']}
                   icon={<TrophyOutlined />}
-                  maxCards={4}
                 />
               ),
             },
