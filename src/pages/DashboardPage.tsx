@@ -1029,7 +1029,7 @@ const DashboardPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'hidden', padding: '4px' }}>
+                <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'hidden', paddingRight: 4 }}>
                   <DashboardEventCards
                     events={upcomingEvents}
                     eventFinancials={eventFinancials}
@@ -1052,7 +1052,7 @@ const DashboardPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'hidden', padding: '4px' }}>
+                <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'hidden', paddingRight: 4 }}>
                   <DashboardEventCards
                     events={filteredPastEvents}
                     eventFinancials={eventFinancials}
@@ -1146,63 +1146,101 @@ const DashboardPage: React.FC = () => {
           {/* 右侧：兴趣分布 */}
           <Col xs={24} md={12}>
             <Card 
-              title="兴趣爱好分布 Top 10"
+              title={
+                <span>
+                  <HeartOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
+                  兴趣爱好分布
+                </span>
+              }
+              extra={
+                <Badge 
+                  count={selectedInterest ? <FilterOutlined style={{ color: '#fa8c16' }} /> : 0}
+                  offset={[-5, 5]}
+                >
+                  <span style={{ fontSize: 12, color: '#8c8c8c' }}>
+                    {interestDistribution.length} 项
+                  </span>
+                </Badge>
+              }
               className="content-card"
               style={{ height: '100%' }}
             >
               <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                 {listsLoading ? (
-                  <Skeleton active paragraph={{ rows: 6 }} />
+                  <Row gutter={8}>
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                      <Col span={8} key={i}>
+                        <Skeleton.Button active block style={{ height: 60, marginBottom: 8 }} />
+                      </Col>
+                    ))}
+                  </Row>
                 ) : interestDistribution.length === 0 ? (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description="暂无数据"
                   />
                 ) : (
-                  interestDistribution.map((item, index) => (
-                    <div 
-                      key={index}
-                      style={{ 
-                        marginBottom: 12,
-                        padding: 8,
-                        borderRadius: 4,
-                        border: '1px solid #f0f0f0',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        background: selectedInterest === item.industry ? '#fff7e6' : 'transparent',
-                      }}
-                      onClick={() => {
-                        if (selectedInterest === item.industry) {
-                          setSelectedInterest(null);
-                          setFilteredMembers(members);
-                        } else {
-                          setSelectedInterest(item.industry as IndustryType);
-                          const filtered = members.filter(m => 
-                            m.profile?.hobbies?.includes(item.industry)
-                          );
-                          setFilteredMembers(filtered);
-                        }
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <span style={{ fontWeight: 500 }}>
-                          <HeartOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
-                          {item.industry}
-                        </span>
-                        <Badge 
-                          count={item.count} 
-                          style={{ backgroundColor: '#fa8c16' }}
-                          overflowCount={999}
-                        />
-                      </div>
-                      <Progress 
-                        percent={item.percentage} 
-                        size="small"
-                        strokeColor="#fa8c16"
-                        format={(percent) => `${percent?.toFixed(1)}%`}
-                      />
-                    </div>
-                  ))
+                  <Row gutter={8}>
+                    {interestDistribution.map((item, index) => (
+                      <Col xs={12} sm={8} md={12} lg={8} key={index}>
+                        <Card
+                          size="small"
+                          hoverable
+                          style={{ 
+                            marginBottom: 8,
+                            cursor: 'pointer',
+                            transition: 'all 0.3s',
+                            background: selectedInterest === item.industry ? '#fff7e6' : '#fafafa',
+                            borderColor: selectedInterest === item.industry ? '#fa8c16' : '#f0f0f0',
+                          }}
+                          bodyStyle={{ padding: '8px 10px' }}
+                          onClick={() => {
+                            if (selectedInterest === item.industry) {
+                              setSelectedInterest(null);
+                              setFilteredMembers(members);
+                            } else {
+                              setSelectedInterest(item.industry as IndustryType);
+                              const filtered = members.filter(m => 
+                                m.profile?.hobbies?.includes(item.industry)
+                              );
+                              setFilteredMembers(filtered);
+                            }
+                          }}
+                        >
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ 
+                              fontSize: 20, 
+                              marginBottom: 4,
+                              color: selectedInterest === item.industry ? '#fa8c16' : '#595959',
+                            }}>
+                              <HeartOutlined />
+                            </div>
+                            <div style={{ 
+                              fontSize: 11, 
+                              fontWeight: 600,
+                              marginBottom: 4,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              color: selectedInterest === item.industry ? '#fa8c16' : '#262626',
+                            }}>
+                              {item.industry}
+                            </div>
+                            <div style={{ fontSize: 10, color: '#8c8c8c', marginBottom: 4 }}>
+                              {item.count} 人
+                            </div>
+                            <Progress 
+                              percent={item.percentage} 
+                              size="small"
+                              strokeColor={selectedInterest === item.industry ? '#fa8c16' : '#ffc069'}
+                              showInfo={false}
+                              strokeWidth={4}
+                            />
+                          </div>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
                 )}
               </div>
             </Card>
