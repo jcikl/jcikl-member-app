@@ -1029,16 +1029,18 @@ const DashboardPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <DashboardEventCards
-                  events={upcomingEvents}
-                  eventFinancials={eventFinancials}
-                  eventFinancialsLoaded={eventFinancialsLoaded}
-                  eventsLoading={eventsLoading}
-                  emptyDescription="暂无即将举办的活动"
-                  cardColor="blue"
-                  gradientColors={['#667eea', '#764ba2']}
-                  icon={<CalendarOutlined />}
-                />
+                <div style={{ maxHeight: 520, overflowY: 'auto', overflowX: 'hidden' }}>
+                  <DashboardEventCards
+                    events={upcomingEvents}
+                    eventFinancials={eventFinancials}
+                    eventFinancialsLoaded={eventFinancialsLoaded}
+                    eventsLoading={eventsLoading}
+                    emptyDescription="暂无即将举办的活动"
+                    cardColor="blue"
+                    gradientColors={['#667eea', '#764ba2']}
+                    icon={<CalendarOutlined />}
+                  />
+                </div>
               ),
             },
             {
@@ -1050,16 +1052,18 @@ const DashboardPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <DashboardEventCards
-                  events={filteredPastEvents}
-                  eventFinancials={eventFinancials}
-                  eventFinancialsLoaded={eventFinancialsLoaded}
-                  eventsLoading={eventsLoading}
-                  emptyDescription={selectedEventYear !== 'all' ? `${selectedEventYear}年暂无已结束的活动` : '暂无已结束的活动'}
-                  cardColor="orange"
-                  gradientColors={['#ff9a9e', '#fad0c4']}
-                  icon={<TrophyOutlined />}
-                />
+                <div style={{ maxHeight: 520, overflowY: 'auto', overflowX: 'hidden' }}>
+                  <DashboardEventCards
+                    events={filteredPastEvents}
+                    eventFinancials={eventFinancials}
+                    eventFinancialsLoaded={eventFinancialsLoaded}
+                    eventsLoading={eventsLoading}
+                    emptyDescription={selectedEventYear !== 'all' ? `${selectedEventYear}年暂无已结束的活动` : '暂无已结束的活动'}
+                    cardColor="orange"
+                    gradientColors={['#ff9a9e', '#fad0c4']}
+                    icon={<TrophyOutlined />}
+                  />
+                </div>
               ),
             },
           ]}
