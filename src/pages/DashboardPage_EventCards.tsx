@@ -15,6 +15,7 @@ interface EventCardsProps {
   cardColor?: string;
   gradientColors?: [string, string];
   icon?: React.ReactNode;
+  maxCards?: number; // 最多显示的卡片数量
 }
 
 /**
@@ -30,8 +31,13 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
   cardColor = "blue",
   gradientColors = ['#667eea', '#764ba2'],
   icon = <CalendarOutlined />,
+  maxCards,
 }) => {
   const navigate = useNavigate();
+  
+  // 限制显示的活动数量
+  const displayedEvents = maxCards ? events.slice(0, maxCards) : events;
+  const hasMore = maxCards && events.length > maxCards;
 
   if (eventsLoading) {
     return (
@@ -52,8 +58,9 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
   }
 
   return (
-    <Row gutter={[16, 16]}>
-      {events.map((event) => {
+    <>
+      <Row gutter={[16, 16]}>
+        {displayedEvents.map((event) => {
         const chairman = event.committeeMembers?.find(m => m.position === '筹委主席');
         const priceRange = event.isFree 
           ? 'FREE' 
@@ -205,7 +212,23 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
           </Col>
         );
       })}
-    </Row>
+      </Row>
+      
+      {/* 如果有更多活动，显示提示 */}
+      {hasMore && (
+        <div style={{ 
+          marginTop: 16, 
+          padding: '12px 16px', 
+          background: '#f0f5ff', 
+          borderRadius: 4,
+          textAlign: 'center',
+          fontSize: 13,
+          color: '#595959'
+        }}>
+          💡 共有 {events.length} 个活动，当前显示前 {maxCards} 个
+        </div>
+      )}
+    </>
   );
 };
 
