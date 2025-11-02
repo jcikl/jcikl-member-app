@@ -38,6 +38,12 @@ exports.handler = async (event, context) => {
     // Parse request body
     let { publicId, folder } = JSON.parse(event.body);
 
+    console.log('📥 [Netlify Function] Received request:', {
+      rawPublicId: publicId,
+      rawFolder: folder,
+      bodyLength: event.body?.length,
+    });
+
     // ⚠️ CRITICAL: Decode URL-encoded publicId
     // Cloudinary requires unencoded values for signature generation
     if (publicId) {
@@ -47,9 +53,9 @@ exports.handler = async (event, context) => {
       folder = decodeURIComponent(folder);
     }
 
-    console.log('📝 [Netlify Function] Generating signature:', {
-      publicId,
-      folder,
+    console.log('📝 [Netlify Function] After decoding:', {
+      decodedPublicId: publicId,
+      decodedFolder: folder,
       timestamp: new Date().toISOString(),
     });
 
@@ -114,17 +120,31 @@ exports.handler = async (event, context) => {
       paramsLength: paramsToSign.length,
     });
 
+    // Prepare response data
+    const responseData = {
+      signature: signature,
+      timestamp: timestamp,
+      apiKey: apiKey,
+      cloudName: cloudName,
+      // Map snake_case keys to camelCase for frontend compatibility
+      publicId: uploadParams.public_id,  // public_id → publicId
+      folder: uploadParams.folder,
+      overwrite: uploadParams.overwrite,
+      invalidate: uploadParams.invalidate,
+    };
+
+    console.log('📤 [Netlify Function] Returning signature data:', {
+      hasPublicId: !!responseData.publicId,
+      hasFolder: !!responseData.folder,
+      publicId: responseData.publicId,
+      folder: responseData.folder,
+    });
+
     // Return signature data
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        signature: signature,
-        timestamp: timestamp,
-        apiKey: apiKey,
-        cloudName: cloudName,
-        ...uploadParams,
-      }),
+      body: JSON.stringify(responseData),
     };
   } catch (error) {
     console.error('❌ [Netlify Function] Error:', error);
