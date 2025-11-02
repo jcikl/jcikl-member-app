@@ -1255,7 +1255,7 @@ const DashboardPage: React.FC = () => {
                   <Row gutter={8}>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                       <Col span={6} key={i}>
-                        <Skeleton.Button active block style={{ height: 60, marginBottom: 8 }} />
+                        <Skeleton.Button active block style={{ height: 56, marginBottom: 8 }} />
                       </Col>
                     ))}
                   </Row>
@@ -1294,33 +1294,21 @@ const DashboardPage: React.FC = () => {
                         >
                           <div style={{ textAlign: 'center' }}>
                             <div style={{ 
-                              fontSize: 20, 
-                              marginBottom: 4,
-                              color: selectedInterest === item.industry ? '#fa8c16' : '#595959',
-                            }}>
-                              <HeartOutlined />
-                            </div>
-                            <div style={{ 
                               fontSize: 11, 
                               fontWeight: 600,
                               marginBottom: 4,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              minHeight: 32,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              wordBreak: 'break-word',
                               color: selectedInterest === item.industry ? '#fa8c16' : '#262626',
                             }}>
                               {item.industry}
                             </div>
-                            <div style={{ fontSize: 10, color: '#8c8c8c', marginBottom: 4 }}>
+                            <div style={{ fontSize: 10, color: '#8c8c8c' }}>
                               {item.count} 人
                             </div>
-                            <Progress 
-                              percent={item.percentage} 
-                              size="small"
-                              strokeColor={selectedInterest === item.industry ? '#fa8c16' : '#ffc069'}
-                              showInfo={false}
-                              strokeWidth={4}
-                            />
                           </div>
                         </Card>
                       </Col>
