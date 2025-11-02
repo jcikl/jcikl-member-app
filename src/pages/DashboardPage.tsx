@@ -1255,7 +1255,7 @@ const DashboardPage: React.FC = () => {
                   <Row gutter={8}>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                       <Col span={6} key={i}>
-                        <Skeleton.Button active block style={{ height: 56, marginBottom: 8 }} />
+                        <Skeleton.Button active block style={{ height: 64, marginBottom: 8 }} />
                       </Col>
                     ))}
                   </Row>
@@ -1270,7 +1270,7 @@ const DashboardPage: React.FC = () => {
                       // 判断文字长度，决定卡片占用宽度和高度
                       const isLongText = item.industry.length > 20;
                       const colSpan = isLongText ? 12 : 6; // 长文字占2个位置，短文字占1个位置
-                      const cardHeight = isLongText ? 56 : 56; // 统一高度56px
+                      const cardHeight = 64; // 统一高度64px
                       
                       return (
                       <Col xs={12} sm={colSpan} md={colSpan} lg={colSpan} key={index}>
