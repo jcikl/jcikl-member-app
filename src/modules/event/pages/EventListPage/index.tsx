@@ -695,10 +695,7 @@ const EventListPage: React.FC = () => {
       {/* Page Header */}
       <PageHeader
         title="活动管理"
-        breadcrumbs={[
-          { title: '首页', path: '/' },
-          { title: '活动管理' },
-        ]}
+        
         extra={
           <Space>
             <Button 
@@ -850,7 +847,7 @@ const EventListPage: React.FC = () => {
                       <Button
                         type="text"
                         icon={<EyeOutlined />}
-                        onClick={() => handleView(event.id)}
+                        onClick={() => handleViewDetails(event.id)}
                       >
                         查看
                       </Button>,
@@ -878,9 +875,9 @@ const EventListPage: React.FC = () => {
                             {event.name}
                           </Typography.Title>
                           <Space size="small">
-                            {event.status === 'published' && <Tag color="green">已发布</Tag>}
-                            {event.status === 'draft' && <Tag color="default">草稿</Tag>}
-                            {event.status === 'cancelled' && <Tag color="red">已取消</Tag>}
+                            {event.status === 'Published' && <Tag color="green">已发布</Tag>}
+                            {event.status === 'Draft' && <Tag color="default">草稿</Tag>}
+                            {event.status === 'Cancelled' && <Tag color="red">已取消</Tag>}
                             {event.isFree && <Tag color="blue">免费</Tag>}
                             {event.isOnline && <Tag color="cyan">线上</Tag>}
                           </Space>

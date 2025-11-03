@@ -1042,11 +1042,7 @@ const BankAccountManagementPage: React.FC = () => {
         <PageHeader
           title="财务设置"
           subtitle="银行账户与财年管理"
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '财务管理', path: '/finance' },
-            { title: '财务设置' },
-          ]}
+          
         />
 
         {/* 🆕 顶层标签页 */}

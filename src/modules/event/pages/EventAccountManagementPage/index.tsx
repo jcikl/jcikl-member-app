@@ -1243,11 +1243,7 @@ const EventAccountManagementPage: React.FC = () => {
         <PageHeader
           title="活动账户管理"
           subtitle="Event Account Management"
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '活动管理', path: '/events' },
-            { title: '活动账户' },
-          ]}
+          
           extra={
             <Space>
               <Select

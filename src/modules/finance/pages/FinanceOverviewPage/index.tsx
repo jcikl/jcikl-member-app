@@ -430,11 +430,7 @@ const FinanceOverviewPage: React.FC = () => {
         <PageHeader
           title="财务概览"
           subtitle="组织财务状况综合视图"
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '财务管理', path: '/finance' },
-            { title: '财务概览' },
-          ]}
+          
         />
 
         {/* Tabbed Interface */}

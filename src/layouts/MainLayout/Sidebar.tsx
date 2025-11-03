@@ -68,23 +68,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       label: '会员管理',
     },
     {
-      key: 'events-menu',
+      key: '/events',
       icon: <CalendarOutlined />,
       label: '活动管理',
-      children: [
-        {
-          key: '/events',
-          label: '活动列表',
-        },
-        {
-          key: '/events/registrations',
-          label: '报名管理',
-        },
-        {
-          key: '/events/accounts',
-          label: '活动账户',
-        },
-      ],
     },
     {
       key: 'finance-menu',

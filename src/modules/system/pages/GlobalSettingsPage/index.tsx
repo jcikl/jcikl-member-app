@@ -203,11 +203,7 @@ const GlobalSettingsPage: React.FC = () => {
       <PageHeader
         title="全局配置管理"
         subtitle="管理系统级别的配置项"
-        breadcrumbs={[
-          { title: '首页', path: '/dashboard' },
-          { title: '系统设置', path: '/settings' },
-          { title: '全局配置' },
-        ]}
+        
         extra={<ConfigExport />}
       />
 

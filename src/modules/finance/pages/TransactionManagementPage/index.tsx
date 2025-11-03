@@ -2759,11 +2759,7 @@ const TransactionManagementPage: React.FC = () => {
         <PageHeader
           title="交易管理"
           subtitle="按银行账户查看和管理所有财务交易"
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '财务管理', path: '/finance' },
-            { title: '交易管理' },
-          ]}
+          
         />
 
         {/* 表格/树形视图切换 */}

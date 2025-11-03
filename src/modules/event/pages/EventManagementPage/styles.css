@@ -1,0 +1,129 @@
+/**
+ * Event Management Page Styles
+ * 活动管理页面样式
+ * 
+ * 参考财务概览页面的标签UI风格
+ */
+
+.event-management-page {
+  /* 移除背景和padding，让MainLayout控制 */
+  height: 100%;
+}
+
+/* Card容器样式 */
+.event-management-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.event-management-card .ant-card-body {
+  padding: 0;
+}
+
+/* 标签导航容器 */
+.event-management-page .ant-tabs {
+  height: 100%;
+}
+
+.event-management-page .ant-tabs-content {
+  height: 100%;
+}
+
+/* 标签导航栏样式 */
+.event-management-page .ant-tabs-nav {
+  margin-bottom: 0;
+  padding: 16px 16px 0;
+}
+
+/* 标签项间距 */
+.event-management-page .ant-tabs-tab {
+  padding: 12px 16px;
+  margin: 0 8px 0 0;
+}
+
+/* 标签内图标和文字间距 */
+.event-management-page .ant-tabs-tab .anticon {
+  margin-right: 8px;
+}
+
+/* 选中的标签样式 */
+.event-management-page .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #1890ff;
+  font-weight: 600;
+}
+
+.event-management-page .ant-tabs-tab-active .anticon {
+  color: #1890ff;
+}
+
+/* 未选中的标签样式 */
+.event-management-page .ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn {
+  color: #8c8c8c;
+  font-weight: 400;
+}
+
+.event-management-page .ant-tabs-tab:not(.ant-tabs-tab-active) .anticon {
+  color: #8c8c8c;
+}
+
+/* 标签悬停效果 */
+.event-management-page .ant-tabs-tab:hover:not(.ant-tabs-tab-active) .ant-tabs-tab-btn {
+  color: #595959;
+}
+
+.event-management-page .ant-tabs-tab:hover:not(.ant-tabs-tab-active) .anticon {
+  color: #595959;
+}
+
+/* 选中指示器（下划线） */
+.event-management-page .ant-tabs-ink-bar {
+  background: #1890ff;
+  height: 3px;
+}
+
+/* 标签内容区域 */
+.event-management-page .ant-tabs-content-holder {
+  padding: 0 16px 16px 16px;
+  background: transparent;
+}
+
+/* 标签页内容区域 */
+.event-management-tab-content {
+  padding: 0;
+}
+
+/* 隐藏子页面的 PageHeader，因为标签页已经提供了导航 */
+.event-management-tab-content .page-header {
+  display: none !important;
+}
+
+/* 调整子页面的容器，移除顶部 padding */
+.event-management-tab-content > div {
+  padding-top: 0 !important;
+}
+
+/* 确保事件列表页面的样式正确应用 */
+.event-management-tab-content .event-list-page {
+  padding: 0 !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .event-management-page .ant-tabs-nav {
+    padding: 12px 12px 0;
+  }
+
+  .event-management-page .ant-tabs-content-holder {
+    padding: 0 12px 12px 12px;
+  }
+
+  .event-management-page .ant-tabs-tab {
+    padding: 8px 12px;
+    margin: 0 4px 0 0;
+  }
+
+  .event-management-page .ant-tabs-tab .anticon {
+    margin-right: 6px;
+  }
+}
+

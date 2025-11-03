@@ -379,11 +379,7 @@ const EventRegistrationManagementPage: React.FC = () => {
         <PageHeader
           title="活动报名管理"
           subtitle="Event Registration Management"
-          breadcrumbs={[
-            { title: '首页', path: '/' },
-            { title: '活动管理', path: '/events' },
-            { title: '报名管理' },
-          ]}
+          
           extra={
             <Space>
               <Button
