@@ -142,6 +142,11 @@ const DashboardPage: React.FC = () => {
   }, [user?.id]);
 
   useEffect(() => {
+    // 🗑️ 清除旧的30天生日缓存（仅在组件初始化时执行一次）
+    sessionStorage.removeItem('dashboard_birthdays_upcoming');
+    sessionStorage.removeItem('dashboard_birthdays_upcoming_time');
+    console.log('🗑️ [初始化] 已清除旧的30天生日缓存');
+
     const fetchStats = async () => {
       try {
         // Fetch member statistics
@@ -236,9 +241,9 @@ const DashboardPage: React.FC = () => {
     const loadBirthdays = async () => {
       setListsLoading(true);
       try {
-        // 🚀 优化: 按视图模式分别缓存
+        // 🚀 优化: 按视图模式分别缓存（包含天数参数避免缓存冲突）
         const cacheKey = birthdayViewMode === 'upcoming' 
-          ? 'dashboard_birthdays_upcoming' 
+          ? 'dashboard_birthdays_upcoming_30' // ← 30天数据
           : `dashboard_birthdays_month_${selectedMonth}`;
         const cacheTimeKey = `${cacheKey}_time`;
         const cacheTTL = 10 * 60 * 1000; // 10分钟缓存（生日数据不常变）
@@ -275,7 +280,7 @@ const DashboardPage: React.FC = () => {
         try {
           sessionStorage.setItem(cacheKey, JSON.stringify(birthdays));
           sessionStorage.setItem(cacheTimeKey, Date.now().toString());
-          console.log(`💾 [生日优化] 已缓存 ${birthdays.length} 条生日数据`);
+          console.log(`💾 [生日优化] 已缓存 ${birthdays.length} 条生日数据（${birthdayViewMode === 'upcoming' ? '7天' : '本月'}）`);
         } catch (err) {
           console.warn('Failed to cache birthdays:', err);
         }
@@ -772,8 +777,12 @@ const DashboardPage: React.FC = () => {
         'dashboard_members_time',
         'dashboard_member_fees',
         'dashboard_member_fees_time',
-        'dashboard_birthdays_upcoming',
-        'dashboard_birthdays_upcoming_time',
+        'dashboard_birthdays_upcoming',        // 旧缓存
+        'dashboard_birthdays_upcoming_time',   // 旧缓存
+        'dashboard_birthdays_upcoming_7',      // 旧的7天缓存
+        'dashboard_birthdays_upcoming_7_time', // 旧的7天缓存
+        'dashboard_birthdays_upcoming_30',     // 当前30天缓存
+        'dashboard_birthdays_upcoming_30_time',// 当前30天缓存
       ];
       
       // 清除所有月份的生日缓存
@@ -791,9 +800,9 @@ const DashboardPage: React.FC = () => {
           const birthdays = await getUpcomingBirthdays(30);
           setUpcomingBirthdays(birthdays);
           
-          // 重新缓存
-          sessionStorage.setItem('dashboard_birthdays_upcoming', JSON.stringify(birthdays));
-          sessionStorage.setItem('dashboard_birthdays_upcoming_time', Date.now().toString());
+          // 重新缓存（使用新的缓存键）
+          sessionStorage.setItem('dashboard_birthdays_upcoming_30', JSON.stringify(birthdays));
+          sessionStorage.setItem('dashboard_birthdays_upcoming_30_time', Date.now().toString());
         } else {
           const birthdays = await getBirthdaysByMonth(selectedMonth);
           setUpcomingBirthdays(birthdays);
@@ -1164,6 +1173,132 @@ const DashboardPage: React.FC = () => {
         style={{ marginTop: 12 }}
         styles={{ body: { padding: '16px' } }}
       >
+        {/* 会员生日 - 独占一整行 */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col span={24}>
+            <Card 
+              title={
+                <span>
+                  <GiftOutlined style={{ marginRight: 8, color: '#eb2f96' }} />
+                  会员生日
+                </span>
+              }
+              extra={
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <Radio.Group
+                    size="small"
+                    value={birthdayViewMode}
+                    onChange={(e) => setBirthdayViewMode(e.target.value)}
+                    buttonStyle="solid"
+                  >
+                    <Radio.Button value="upcoming">即将到来</Radio.Button>
+                    <Radio.Button value="month">按月份</Radio.Button>
+                  </Radio.Group>
+                  {birthdayViewMode === 'month' && (
+                    <Select
+                      size="small"
+                      value={selectedMonth}
+                      onChange={setSelectedMonth}
+                      style={{ width: 100 }}
+                    >
+                      {[
+                        { value: 0, label: '1月' },
+                        { value: 1, label: '2月' },
+                        { value: 2, label: '3月' },
+                        { value: 3, label: '4月' },
+                        { value: 4, label: '5月' },
+                        { value: 5, label: '6月' },
+                        { value: 6, label: '7月' },
+                        { value: 7, label: '8月' },
+                        { value: 8, label: '9月' },
+                        { value: 9, label: '10月' },
+                        { value: 10, label: '11月' },
+                        { value: 11, label: '12月' },
+                      ].map(month => (
+                        <Option key={month.value} value={month.value}>
+                          {month.label}
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
+                </div>
+              }
+              className="content-card"
+            >
+              <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 8 }}>
+                {listsLoading ? (
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                      <div key={i} style={{ minWidth: 180, flexShrink: 0 }}>
+                        <Card><Skeleton active avatar paragraph={{ rows: 2 }} /></Card>
+                      </div>
+                    ))}
+                  </div>
+                ) : upcomingBirthdays.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={birthdayViewMode === 'upcoming' ? '近期无会员生日' : `${selectedMonth + 1}月无会员生日`}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    {upcomingBirthdays.map(birthday => (
+                      <div key={birthday.id} style={{ minWidth: 180, flexShrink: 0 }}>
+                        <Card
+                          hoverable
+                          style={{
+                            cursor: 'pointer',
+                            transition: 'all 0.3s',
+                            borderColor: birthdayViewMode === 'upcoming' && birthday.daysUntilBirthday === 0 ? '#ff4d4f' : '#f0f0f0',
+                          }}
+                          bodyStyle={{ padding: '16px', textAlign: 'center' }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                            <Avatar 
+                              size={64}
+                              src={birthday.avatar} 
+                              icon={<UserOutlined />}
+                              style={{ backgroundColor: '#eb2f96' }}
+                            />
+                            <div style={{ width: '100%' }}>
+                              <div style={{ 
+                                fontSize: 14, 
+                                fontWeight: 600, 
+                                marginBottom: 4,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {birthday.name}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8 }}>
+                                {birthday.birthDate ? dayjs(birthday.birthDate).format('MM-DD') : '-'}
+                              </div>
+                              {birthdayViewMode === 'upcoming' && birthday.daysUntilBirthday !== undefined && (
+                                <Tag 
+                                  color={birthday.daysUntilBirthday === 0 ? 'red' : birthday.daysUntilBirthday <= 7 ? 'orange' : 'blue'}
+                                  style={{ margin: 0 }}
+                                >
+                                  {birthday.daysUntilBirthday === 0 ? '🎂 今天' : `${birthday.daysUntilBirthday} 天后`}
+                                </Tag>
+                              )}
+                              {birthdayViewMode === 'month' && birthday.day && (
+                                <Tag color="purple" style={{ margin: 0 }}>
+                                  {birthday.day} 日
+                                </Tag>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* 行业分布、兴趣爱好分布、会员列表 */}
         <Row gutter={[16, 16]} align="stretch">
           {/* 左侧：行业分布 + 兴趣爱好分布（上下排列） */}
           <Col xs={24} sm={12} md={12} lg={12}>

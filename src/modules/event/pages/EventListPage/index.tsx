@@ -36,6 +36,7 @@ import {
   DollarOutlined,
 } from '@ant-design/icons';
 import { OptimizedEventImage } from '@/components/OptimizedImage';
+import { DashboardEventCards } from '@/pages/DashboardPage_EventCards';
 import { useNavigate } from 'react-router-dom';
 import { 
   PageHeader, 
@@ -52,6 +53,9 @@ import {
   deleteEvent, 
   getEventStats 
 } from '../../services/eventService';
+import { getOrCreateEventAccount, getEventAccountTransactions } from '../../services/eventAccountService';
+import { getEventAccountPlans } from '../../services/eventAccountPlanService';
+import { getTransactionsByEventId } from '@/modules/finance/services/transactionService';
 import { 
   EVENT_STATUS_OPTIONS, 
   EVENT_LEVEL_OPTIONS, 
@@ -96,6 +100,18 @@ const EventListPage: React.FC = () => {
   
   // 🆕 年份筛选状态
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+
+  // 🆕 活动财务数据
+  const [eventFinancials, setEventFinancials] = useState<Map<string, {
+    budgetTotal: number;
+    accountIncomeTotal: number;
+    accountExpenseTotal: number;
+    bankIncomeTotal: number;
+    bankExpenseTotal: number;
+    netProfit: number;
+  }>>(new Map());
+  const [eventFinancialsLoaded, setEventFinancialsLoaded] = useState(false);
+  const [eventFinancialsLoading, setEventFinancialsLoading] = useState(false);
 
   // ========== Data Fetching ==========
   
@@ -206,6 +222,75 @@ const EventListPage: React.FC = () => {
     }
   }, []);
 
+  // 🆕 加载活动财务数据
+  const loadEventFinancials = useCallback(async (eventList: Event[]) => {
+    if (eventList.length === 0 || !user) return;
+    
+    try {
+      setEventFinancialsLoading(true);
+      const financialMap = new Map();
+
+      await Promise.all(
+        eventList.map(async (event) => {
+          try {
+            // 1. 获取活动账户预算
+            const account = await getOrCreateEventAccount(event.id, event.name, user.id);
+            const budgetTotal = (account.budgetIncome || 0) + (account.budgetExpense || 0);
+
+            // 2. 获取活动账户交易记录
+            const accountTransactions = await getEventAccountTransactions(account.id);
+            let accountIncomeTotal = 0;
+            let accountExpenseTotal = 0;
+
+            accountTransactions.forEach(tx => {
+              if (tx.transactionType === 'income') {
+                accountIncomeTotal += tx.amount;
+              } else if (tx.transactionType === 'expense') {
+                accountExpenseTotal += tx.amount;
+              }
+            });
+
+            // 3. 获取银行交易记录（通过 eventId）
+            const bankTransactions = await getTransactionsByEventId(event.id);
+            let bankIncomeTotal = 0;
+            let bankExpenseTotal = 0;
+
+            bankTransactions.forEach(tx => {
+              if (tx.transactionType === 'income') {
+                bankIncomeTotal += tx.amount;
+              } else if (tx.transactionType === 'expense') {
+                bankExpenseTotal += tx.amount;
+              }
+            });
+
+            // 4. 计算净利润
+            const netProfit = accountIncomeTotal - accountExpenseTotal;
+
+            // 5. 保存财务数据
+            financialMap.set(event.id, {
+              budgetTotal,
+              accountIncomeTotal,
+              accountExpenseTotal,
+              bankIncomeTotal,
+              bankExpenseTotal,
+              netProfit,
+            });
+          } catch (error) {
+            console.error(`Failed to load financials for event ${event.id}:`, error);
+          }
+        })
+      );
+
+      setEventFinancials(financialMap);
+      setEventFinancialsLoaded(true);
+    } catch (error) {
+      console.error('Failed to load event financials:', error);
+      message.error('加载财务数据失败');
+    } finally {
+      setEventFinancialsLoading(false);
+    }
+  }, [user]);
+
   // 🆕 获取活动的年份范围
   const fetchAvailableYears = useCallback(async () => {
     try {
@@ -244,6 +329,22 @@ const EventListPage: React.FC = () => {
     fetchStats();
     fetchAvailableYears(); // 🆕 获取年份范围
   }, [fetchStats, fetchAvailableYears]);
+
+  // 🆕 懒加载：首次显示活动数据时才加载财务数据
+  useEffect(() => {
+    if (events.length === 0) return;
+    
+    // 检查是否有未加载财务数据的活动
+    const hasUnloadedFinancials = events.some(event => !eventFinancials.has(event.id));
+    
+    const shouldLoadFinancials = 
+      hasUnloadedFinancials &&
+      !eventFinancialsLoading;
+
+    if (shouldLoadFinancials) {
+      loadEventFinancials(events);
+    }
+  }, [events, eventFinancials, eventFinancialsLoading, loadEventFinancials]);
 
   // ========== Event Handlers ==========
   
@@ -711,6 +812,16 @@ const EventListPage: React.FC = () => {
               刷新
             </Button>
             <Button
+              icon={<DollarOutlined />}
+              loading={eventFinancialsLoading}
+              onClick={() => {
+                setEventFinancialsLoaded(false);
+                loadEventFinancials(events);
+              }}
+            >
+              刷新财务
+            </Button>
+            <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={handleCreate}
@@ -784,174 +895,67 @@ const EventListPage: React.FC = () => {
         onDeselectAll={() => setSelectedRowKeys([])}
       />
 
-      {/* 🆕 卡牌显示模式 */}
-      {loading ? (
-        <Row gutter={[16, 16]}>
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <Col xs={24} sm={12} lg={8} xl={6} key={i}>
-              <Card loading={true} />
-            </Col>
-          ))}
+      {/* 🆕 使用复用的 DashboardEventCards 组件 */}
+      <DashboardEventCards
+        events={events.filter((event: any) => !event.isGroupHeader)}
+        eventFinancials={eventFinancials}
+        eventFinancialsLoaded={eventFinancialsLoaded}
+        eventsLoading={loading}
+        emptyDescription="暂无活动数据"
+        cardColor="blue"
+        gradientColors={['#667eea', '#764ba2']}
+        icon={<CalendarOutlined />}
+        showPagination={false}
+        customActions={(event) => (
+          <Space size="small">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewDetails(event.id)}
+            >
+              查看
+            </Button>
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(event.id)}
+            >
+              编辑
+            </Button>
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(event.id)}
+            >
+              删除
+            </Button>
+          </Space>
+        )}
+      />
+      
+      {/* Pagination */}
+      {events.length > 0 && (
+        <Row justify="end" style={{ marginTop: 24 }}>
+          <Pagination
+            current={pagination.current}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            showSizeChanger
+            showQuickJumper
+            showTotal={(total) => `共 ${total} 个活动`}
+            onChange={(page, pageSize) => {
+              setPagination(prev => ({
+                ...prev,
+                current: page,
+                pageSize: pageSize || prev.pageSize,
+              }));
+            }}
+          />
         </Row>
-      ) : events.length === 0 ? (
-        <Card>
-          <Empty description="暂无活动数据" />
-        </Card>
-      ) : (
-        <>
-          <Row gutter={[16, 16]}>
-            {events
-              .filter((event: any) => !event.isGroupHeader)
-              .map((event: Event) => (
-                <Col xs={24} sm={12} lg={8} xl={6} key={event.id}>
-                  <Card
-                    hoverable
-                    className="event-card"
-                    cover={
-                      (() => {
-                        // 优先使用 posterImage，其次使用 coverImage
-                        const imageUrl = event.posterImage || event.coverImage;
-                        
-                        console.log(`🎴 [EventCard] Rendering card for event:`, {
-                          eventId: event.id,
-                          eventName: event.name,
-                          hasPosterImage: !!event.posterImage,
-                          hasCoverImage: !!event.coverImage,
-                          posterImageUrl: event.posterImage,
-                          coverImageUrl: event.coverImage,
-                          usingImage: imageUrl ? 'posterImage or coverImage' : 'fallback gradient',
-                        });
-
-                        return imageUrl ? (
-                          <OptimizedEventImage
-                            src={imageUrl}
-                            alt={event.name}
-                            aspectRatio={16/9}
-                          />
-                        ) : (
-                          <div style={{
-                            height: 180,
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontSize: 48,
-                          }}>
-                            <CalendarOutlined />
-                          </div>
-                        );
-                      })()
-                    }
-                    actions={[
-                      <Button
-                        type="text"
-                        icon={<EyeOutlined />}
-                        onClick={() => handleViewDetails(event.id)}
-                      >
-                        查看
-                      </Button>,
-                      <Button
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(event.id)}
-                      >
-                        编辑
-                      </Button>,
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDelete(event.id)}
-                      >
-                        删除
-                      </Button>,
-                    ]}
-                  >
-                    <Card.Meta
-                      title={
-                        <div>
-                          <Typography.Title level={5} style={{ margin: 0, marginBottom: 8 }}>
-                            {event.name}
-                          </Typography.Title>
-                          <Space size="small">
-                            {event.status === 'Published' && <Tag color="green">已发布</Tag>}
-                            {event.status === 'Draft' && <Tag color="default">草稿</Tag>}
-                            {event.status === 'Cancelled' && <Tag color="red">已取消</Tag>}
-                            {event.isFree && <Tag color="blue">免费</Tag>}
-                            {event.isOnline && <Tag color="cyan">线上</Tag>}
-                          </Space>
-                        </div>
-                      }
-                      description={
-                        <div style={{ marginTop: 12 }}>
-                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            <div>
-                              <ClockCircleOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
-                              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                                {globalDateService.formatDate(event.startDate, 'display')}
-                              </Typography.Text>
-                            </div>
-                            {!event.isOnline && event.location && (
-                              <div>
-                                <EnvironmentOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
-                                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                                  {event.location}
-                                </Typography.Text>
-                              </div>
-                            )}
-                            {event.boardMember && (
-                              <div>
-                                <UserOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
-                                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                                  {event.boardMember}
-                                </Typography.Text>
-                              </div>
-                            )}
-                            {event.maxParticipants && (
-                              <div>
-                                <TeamOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
-                                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                                  上限 {event.maxParticipants} 人
-                                </Typography.Text>
-                              </div>
-                            )}
-                            {event.pricing && !event.isFree && (
-                              <div>
-                                <DollarOutlined style={{ marginRight: 8, color: '#8c8c8c' }} />
-                                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                                  会员 RM {event.pricing.memberPrice} | 访客 RM {event.pricing.regularPrice}
-                                </Typography.Text>
-                              </div>
-                            )}
-                          </Space>
-                        </div>
-                      }
-                    />
-                  </Card>
-                </Col>
-              ))}
-          </Row>
-          
-          {/* Pagination */}
-          <Row justify="end" style={{ marginTop: 24 }}>
-            <Pagination
-              current={pagination.current}
-              pageSize={pagination.pageSize}
-              total={pagination.total}
-              showSizeChanger
-              showQuickJumper
-              showTotal={(total) => `共 ${total} 个活动`}
-              onChange={(page, pageSize) => {
-                setPagination(prev => ({
-                  ...prev,
-                  current: page,
-                  pageSize: pageSize || prev.pageSize,
-                }));
-              }}
-            />
-          </Row>
-        </>
       )}
 
       {/* Legacy Table (Hidden, for reference) */}

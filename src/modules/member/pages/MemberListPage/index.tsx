@@ -1155,46 +1155,6 @@ const MemberListPage: React.FC = () => {
           </Button>,
         ]}
       />
-      
-      {/* 🆕 会员分类标签页 */}
-      <Card style={{ marginBottom: 24 }}>
-        <Tabs
-          activeKey={activeTab}
-          onChange={handleTabChange}
-          items={[
-            {
-              key: 'all',
-              label: (
-                <span>
-                  <TeamOutlined /> 全部会员
-                  {stats?.total !== undefined && (
-                    <Tag color="blue" style={{ marginLeft: 8 }}>
-                      {stats.total}
-                    </Tag>
-                  )}
-                </span>
-              ),
-            },
-            ...MEMBER_CATEGORY_OPTIONS.map(option => {
-              const count = stats?.byCategory?.[option.value as keyof typeof stats.byCategory];
-              return {
-                key: option.value as string,
-                label: (
-                  <span>
-                    {option.label}
-                    {count !== undefined && (
-                      <Tag color="default" style={{ marginLeft: 8 }}>
-                        {count}
-                      </Tag>
-                    )}
-                  </span>
-                ),
-              };
-            }),
-          ]}
-        />
-      </Card>
-      
       {/* 筛选控件 - 直接显示 */}
       <Card style={{ marginBottom: 24 }}>
         <Form
@@ -1277,31 +1237,103 @@ const MemberListPage: React.FC = () => {
         </Form>
       </Card>
       
-      {/* Data Grid - 带批量操作 */}
-      <DataGrid
-        columns={columns}
-        dataSource={members}
-        loading={loading}
-        rowKey="id"
-        batchOperable={true}
-        onBatchDelete={handleBatchDelete}
-        onBatchExport={handleBatchExport}
-        rowSelection={{
-          selectedRowKeys,
-          onChange: setSelectedRowKeys,
-        }}
-        pagination={{
-          ...pagination,
-          onChange: (page, pageSize) => {
-            setPagination(prev => ({
-              ...prev,
-              current: page,
-              pageSize: pageSize || 20,
-            }));
-          },
-        }}
-        scroll={{ x: 1500 }}
-      />
+      {/* 🆕 会员分类标签页 + 数据表格 */}
+      <Card>
+        <Tabs
+          activeKey={activeTab}
+          onChange={handleTabChange}
+          size="large"
+          items={[
+            {
+              key: 'all',
+              label: (
+                <span>
+                  <TeamOutlined /> 全部会员
+                  {stats?.total !== undefined && (
+                    <Tag color="blue" style={{ marginLeft: 8 }}>
+                      {stats.total}
+                    </Tag>
+                  )}
+                </span>
+              ),
+              children: (
+                <div>
+                  <DataGrid
+                    columns={columns}
+                    dataSource={members}
+                    loading={loading}
+                    rowKey="id"
+                    searchable={false}
+                    batchOperable={true}
+                    onBatchDelete={handleBatchDelete}
+                    onBatchExport={handleBatchExport}
+                    rowSelection={{
+                      selectedRowKeys,
+                      onChange: setSelectedRowKeys,
+                    }}
+                    pagination={{
+                      ...pagination,
+                      onChange: (page, pageSize) => {
+                        setPagination(prev => ({
+                          ...prev,
+                          current: page,
+                          pageSize: pageSize || 20,
+                        }));
+                      },
+                    }}
+                    scroll={{ x: 1500 }}
+                  />
+                </div>
+              ),
+            },
+            ...MEMBER_CATEGORY_OPTIONS.map(option => {
+              const count = stats?.byCategory?.[option.value as keyof typeof stats.byCategory];
+              return {
+                key: option.value as string,
+                label: (
+                  <span>
+                    {option.label}
+                    {count !== undefined && (
+                      <Tag color="default" style={{ marginLeft: 8 }}>
+                        {count}
+                      </Tag>
+                    )}
+                  </span>
+                ),
+                children: (
+                  <div style={{ marginTop: 16 }}>
+                    <DataGrid
+                      columns={columns}
+                      dataSource={members}
+                      loading={loading}
+                      rowKey="id"
+                      searchable={false}
+                      batchOperable={true}
+                      onBatchDelete={handleBatchDelete}
+                      onBatchExport={handleBatchExport}
+                      rowSelection={{
+                        selectedRowKeys,
+                        onChange: setSelectedRowKeys,
+                      }}
+                      pagination={{
+                        ...pagination,
+                        onChange: (page, pageSize) => {
+                          setPagination(prev => ({
+                            ...prev,
+                            current: page,
+                            pageSize: pageSize || 20,
+                          }));
+                        },
+                      }}
+                      scroll={{ x: 1500 }}
+                    />
+                  </div>
+                ),
+              };
+            }),
+          ]}
+        />
+      </Card>
       
       {/* 批量操作栏 */}
       <BulkOperationBar

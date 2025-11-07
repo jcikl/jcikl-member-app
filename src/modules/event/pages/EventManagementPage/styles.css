@@ -107,6 +107,16 @@
   padding: 0 !important;
 }
 
+/* 确保活动卡片的 Card.Meta 有适当的间距 */
+.event-management-tab-content .event-card .ant-card-meta {
+  margin-bottom: 16px !important;
+}
+
+/* 确保活动卡片的 body 有适当的 padding */
+.event-management-tab-content .event-card .ant-card-body {
+  padding: 16px !important;
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
   .event-management-page .ant-tabs-nav {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Row, Col, Tag, Typography, Space, Button, Empty, Skeleton } from 'antd';
-import { CalendarOutlined, UserOutlined, TeamOutlined, DollarOutlined, EyeOutlined } from '@ant-design/icons';
+import { CalendarOutlined, UserOutlined, TeamOutlined, DollarOutlined, EyeOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { OptimizedEventImage } from '@/components/OptimizedImage';
@@ -16,6 +16,8 @@ interface EventCardsProps {
   gradientColors?: [string, string];
   icon?: React.ReactNode;
   maxCards?: number; // 最多显示的卡片数量
+  customActions?: (event: Event) => React.ReactNode; // 自定义操作按钮
+  showPagination?: boolean; // 是否显示分页提示
 }
 
 /**
@@ -32,6 +34,8 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
   gradientColors = ['#667eea', '#764ba2'],
   icon = <CalendarOutlined />,
   maxCards,
+  customActions,
+  showPagination = true,
 }) => {
   const navigate = useNavigate();
   
@@ -93,34 +97,48 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                   </div>
                 )
               }
-              actions={[
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<EyeOutlined />}
-                  onClick={() => navigate(`/events/${event.id}`)}
-                >
-                  查看
-                </Button>,
-              ]}
+              actions={
+                customActions 
+                  ? [customActions(event)]
+                  : [
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EyeOutlined />}
+                        onClick={() => navigate(`/events/${event.id}`)}
+                      >
+                        查看
+                      </Button>,
+                    ]
+              }
             >
               <Card.Meta
                 title={
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography.Text strong ellipsis style={{ flex: 1 }}>
-                      {event.name}
-                    </Typography.Text>
-                    <Tag color={cardColor} style={{ marginLeft: 8 }}>{event.level}</Tag>
-                  </div>
+                  <Typography.Text strong ellipsis>
+                    {event.name}
+                  </Typography.Text>
                 }
                 description={
-                  <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                    {/* 日期 + 负责理事（同排） */}
+                  <Space direction="vertical" size={6} style={{ width: '100%'}}>
+                    {/* 日期 + Level Tag（同排） */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <CalendarOutlined style={{ marginRight: 6 }} />
                         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                           {dayjs(event.startDate).format('YYYY-MM-DD HH:mm')}
+                        </Typography.Text>
+                      </div>
+                      <Tag color={cardColor} style={{ fontSize: 11, margin: 0 }}>
+                        {event.level}
+                      </Tag>
+                    </div>
+                    
+                    {/* 筹委主席 + BoardMember Tag（同排） */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <TeamOutlined style={{ marginRight: 6 }} />
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          {chairman?.name || '-'}
                         </Typography.Text>
                       </div>
                       {event.boardMember && (
@@ -131,9 +149,9 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
                     </div>
                     
                     <div>
-                      <TeamOutlined style={{ marginRight: 6 }} />
+                      <EnvironmentOutlined style={{ marginRight: 6 }} />
                       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        {chairman?.name || '-'}
+                        {event.venue || '-'}
                       </Typography.Text>
                     </div>
                     
@@ -208,7 +226,7 @@ export const DashboardEventCards: React.FC<EventCardsProps> = ({
       </Row>
       
       {/* 如果有更多活动，显示提示 */}
-      {hasMore && (
+      {showPagination && hasMore && (
         <div style={{ 
           marginTop: 16, 
           padding: '12px 16px', 

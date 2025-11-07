@@ -34,6 +34,15 @@ export interface DataGridProps<T = any> extends Omit<TableProps<T>, 'columns'> {
   storageKey?: string;
   rowKey?: string;
   loading?: boolean;
+  // BaseTable props
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  onSearch?: (value: string) => void;
+  exportable?: boolean;
+  onExport?: () => void;
+  refreshable?: boolean;
+  onRefresh?: () => void;
+  toolbarExtra?: React.ReactNode;
 }
 
 export interface ColumnConfig {

@@ -27,6 +27,15 @@ export function DataGrid<T extends { id?: string }>({
   storageKey = 'data-grid-config',
   rowKey = 'id',
   loading = false,
+  // BaseTable props
+  searchable,
+  searchPlaceholder,
+  onSearch,
+  exportable,
+  onExport,
+  refreshable,
+  onRefresh,
+  toolbarExtra,
   ...restProps
 }: DataGridProps<T>) {
   /**
@@ -59,6 +68,14 @@ export function DataGrid<T extends { id?: string }>({
         dataSource={dataSource}
         rowKey={rowKey}
         loading={loading}
+        searchable={searchable}
+        searchPlaceholder={searchPlaceholder}
+        onSearch={onSearch}
+        exportable={exportable}
+        onExport={onExport}
+        refreshable={refreshable}
+        onRefresh={onRefresh}
+        toolbarExtra={toolbarExtra}
         batchOperable={batchOperable}
         onBatchDelete={onBatchDelete}
         onBatchExport={onBatchExport}

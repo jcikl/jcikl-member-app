@@ -106,11 +106,11 @@
 }
 
 .event-card .ant-card-meta {
-  margin: 0 !important; /* 移除所有默认 margin，确保高度一致 */
+  margin-bottom: 0 !important; /* 移除底部 margin，但保留顶部间距 */
 }
 
 .event-card .ant-card-meta-title {
-  margin-bottom: 8px; /* 保持标题和描述之间的间距 */
+  margin-bottom: 12px; /* 增加标题和描述之间的间距 */
 }
 
 .event-card .ant-card-meta-description {
